@@ -28,7 +28,7 @@ You can get the current version from http://developer.apple.com
 
 1. Clone the github tree to get the source code
 
-    ```git clone http://github.com/DigitalNotedev/DigitalNote DigitalNote``` 
+    ```git clone https://github.com/DigitalNoteXDN/DigitalNote-2.git``` 
 
 2. Install dependencies using Homebrew
    1. Install dependencies:
@@ -130,4 +130,13 @@ DigitalNote-qt: Qt5 GUI Release for DigitalNote
    make
    python2.7 contrib/macdeploy/macdeployqtplus DigitalNote-Qt.app -add-qt-tr da,de,es,hu,ru,uk,zh_CN,zh_TW -dmg -fancy contrib/macdeploy/fancy.plist
    ```
+If you get errors regarding not finding "qmake" or any of the QT components do the following and include the location of the files in your profile: 
+  ```
+  echo 'export PATH="/usr/local/opt/qt/bin:$PATH"' >> ~/.bash_profile
+  ```
+Run:
+```
+. ~/.bash_profile
+```
+
  
