@@ -111,7 +111,7 @@ DigitalNoteGUI::DigitalNoteGUI(QWidget *parent):
     fontDB.addApplicationFont("/fonts/raleway");
 
     setObjectName("DigitalNote");
-    setStyleSheet("#DigitalNote { background-color: #e6e6e6; color: #333333; }");
+    setStyleSheet("#DigitalNote { background-color: #e6e6e6; color: #333333; background-image: url(:/images/background_light); }");
 
     // Accept D&D of URIs
     setAcceptDrops(true);
@@ -720,6 +720,7 @@ void DigitalNoteGUI::setNumBlocks(int count)
         //labelBlocksIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/synced" : ":/icons/synced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
 
         overviewPage->showOutOfSyncWarning(false);
+        overviewPage->ShowSynchronizedMessage(true);
 
         //progressBarLabel->setVisible(false);
         //progressBar->setVisible(false);
@@ -766,6 +767,7 @@ void DigitalNoteGUI::setNumBlocks(int count)
         prevBlocks = count;
 
         overviewPage->showOutOfSyncWarning(true);
+        overviewPage->ShowSynchronizedMessage(false);
 
         tooltip += QString("<br>");
         tooltip += tr("Last received block was generated %1 ago.").arg(timeBehindText);
