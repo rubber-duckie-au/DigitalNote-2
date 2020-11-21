@@ -157,11 +157,8 @@ bool CMasternodePayments::GetWinningMasternode(int nBlockHeight, CScript& payee,
         return false;
     }
     // Set masternode winner to pay
-    BOOST_FOREACH(CMasternodePaymentWinner& winner, vWinning){
-        payee = winner.payee;
-        vin = winner.vin;
-    }
-    // Return true if previous checks pass
+    payee = winningNode->donationAddress;
+    vin = winningNode->vin;
     return true;
 }
 
@@ -362,9 +359,8 @@ void CMasternodePayments::Relay(CMasternodePaymentWinner& winner)
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes){
         if(pnode->nVersion >= MIN_MASTERNODE_BSC_RELAY) {
-            LogPrintf("Relayed winning masternode. (SKIPPED) \n");
-            // TODO: Revisit relay method
-            // pnode->PushMessage("inv", vInv);
+            LogPrintf("Relayed winning masternode. \n");
+            pnode->PushMessage("inv", vInv);
         }
     }
 }
