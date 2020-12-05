@@ -361,7 +361,8 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
-    src/ckeypool.cpp \
+    src/cwallet.cpp \
+	src/ckeypool.cpp \
 	src/cvalidationstate.cpp \
 	src/cblocklocator.cpp \
 	src/cdiskblockindex.cpp \
