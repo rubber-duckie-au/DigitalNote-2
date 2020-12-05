@@ -203,7 +203,7 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive,
     // ... repeated
     // DATA=END
 
-    string strLine;
+    std::string strLine;
     while (!strDump.eof() && strLine != "HEADER=END")
         getline(strDump, strLine); // Skip past header
 
@@ -281,7 +281,7 @@ CDB::CDB(const std::string& strFilename, const char* pszMode) :
                 throw runtime_error(strprintf("CDB : Error %d, can't open database %s", ret, strFile));
             }
 
-            if (fCreate && !Exists(string("version")))
+            if (fCreate && !Exists(std::string("version")))
             {
                 bool fTmp = fReadOnly;
                 fReadOnly = false;
@@ -316,7 +316,7 @@ void CDB::Close()
     }
 }
 
-void CDBEnv::CloseDb(const string& strFile)
+void CDBEnv::CloseDb(const std::string& strFile)
 {
     {
         LOCK(cs_db);
@@ -331,7 +331,7 @@ void CDBEnv::CloseDb(const string& strFile)
     }
 }
 
-bool CDBEnv::RemoveDb(const string& strFile)
+bool CDBEnv::RemoveDb(const std::string& strFile)
 {
     this->CloseDb(strFile);
 
@@ -340,7 +340,7 @@ bool CDBEnv::RemoveDb(const string& strFile)
     return (rc == 0);
 }
 
-bool CDB::Rewrite(const string& strFile, const char* pszSkip)
+bool CDB::Rewrite(const std::string& strFile, const char* pszSkip)
 {
     while (true)
     {
@@ -355,7 +355,7 @@ bool CDB::Rewrite(const string& strFile, const char* pszSkip)
 
                 bool fSuccess = true;
                 LogPrintf("Rewriting %s...\n", strFile);
-                string strFileRes = strFile + ".rewrite";
+                std::string strFileRes = strFile + ".rewrite";
                 { // surround usage of db with extra {}
                     CDB db(strFile.c_str(), "r");
                     Db* pdbCopy = new Db(&bitdb.dbenv, 0);

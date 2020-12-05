@@ -30,7 +30,7 @@ using namespace boost;
 using namespace boost::asio;
 using namespace json_spirit;
 
-Object CallRPC(const string& strMethod, const Array& params)
+Object CallRPC(const std::string& strMethod, const Array& params)
 {
     if (mapArgs["-rpcuser"] == "" && mapArgs["-rpcpassword"] == "")
         throw runtime_error(strprintf(
@@ -213,7 +213,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
         else {
             Value jVal;
             if (!read_string(strVal, jVal))
-                throw runtime_error(string("Error parsing JSON:")+strVal);
+                throw runtime_error(std::string("Error parsing JSON:")+strVal);
             params.push_back(jVal);
         }
 
@@ -224,7 +224,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
 
 int CommandLineRPC(int argc, char *argv[])
 {
-    string strPrint;
+    std::string strPrint;
     int nRet = 0;
     try
     {
@@ -238,7 +238,7 @@ int CommandLineRPC(int argc, char *argv[])
         // Method
         if (argc < 2)
             throw runtime_error("too few parameters");
-        string strMethod = argv[1];
+        std::string strMethod = argv[1];
 
         // Parameters default to strings
         std::vector<std::string> strParams(&argv[2], &argv[argc]);
@@ -273,7 +273,7 @@ int CommandLineRPC(int argc, char *argv[])
         throw;
     }
     catch (std::exception& e) {
-        strPrint = string("error: ") + e.what();
+        strPrint = std::string("error: ") + e.what();
         nRet = 87;
     }
     catch (...) {

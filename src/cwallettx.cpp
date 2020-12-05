@@ -333,7 +333,7 @@ CAmount CWalletTx::GetChange() const
 }
 
 void CWalletTx::GetAmounts(std::list<std::pair<CTxDestination, int64_t> >& listReceived,
-		std::list<std::pair<CTxDestination, int64_t> >& listSent, CAmount& nFee, string& strSentAccount,
+		std::list<std::pair<CTxDestination, int64_t> >& listSent, CAmount& nFee, std::string& strSentAccount,
 		const isminefilter& filter) const
 {
     LOCK(pwallet->cs_wallet);
@@ -390,14 +390,14 @@ void CWalletTx::GetAmounts(std::list<std::pair<CTxDestination, int64_t> >& listR
     }
 }
 
-void CWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceived, CAmount& nSent,
+void CWalletTx::GetAccountAmounts(const std::string& strAccount, CAmount& nReceived, CAmount& nSent,
 		CAmount& nFee, const isminefilter& filter) const
 {
 
     nReceived = nSent = nFee = 0;
 
     CAmount allFee;
-    string strSentAccount;
+    std::string strSentAccount;
     std::list<std::pair<CTxDestination, int64_t> > listReceived;
     std::list<std::pair<CTxDestination, int64_t> > listSent;
     GetAmounts(listReceived, listSent, allFee, strSentAccount, filter);
@@ -414,7 +414,7 @@ void CWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceived, 
         {
             if (pwallet->mapAddressBook.count(r.first))
             {
-                std::map<CTxDestination, string>::const_iterator mi = pwallet->mapAddressBook.find(r.first);
+                std::map<CTxDestination, std::string>::const_iterator mi = pwallet->mapAddressBook.find(r.first);
                 if (mi != pwallet->mapAddressBook.end() && (*mi).second == strAccount)
                     nReceived += r.second;
             }

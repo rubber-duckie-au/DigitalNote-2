@@ -92,7 +92,7 @@ bool fSucessfullyLoaded = false;
 bool fEnableMNengine = false;
 //Standard features
 std::map<std::string, std::string> mapArgs;
-std::map<std::string, std::vector<string> > mapMultiArgs;
+std::map<std::string, std::vector<std::string> > mapMultiArgs;
 bool fDebug = false;
 bool fDebugSmsg = false;
 bool fNoSmsg = false;

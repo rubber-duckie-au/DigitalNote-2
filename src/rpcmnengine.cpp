@@ -27,7 +27,7 @@ void SendMoney(const CTxDestination &address, CAmount nValue, CWalletTx& wtxNew,
     if (nValue > pwalletMain->GetBalance())
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
 
-    string strError;
+    std::string strError;
     if (pwalletMain->IsLocked())
     {
         strError = "Error: Wallet locked, unable to create transaction!";
@@ -56,7 +56,7 @@ void SendMoney(const CTxDestination &address, CAmount nValue, CWalletTx& wtxNew,
 
 Value masternode(const Array& params, bool fHelp)
 {
-    string strCommand;
+    std::string strCommand;
     if (params.size() >= 1)
         strCommand = params[0].get_str();
 
@@ -723,7 +723,7 @@ Value masternodelist(const Array& params, bool fHelp)
         std::vector<std::pair<int, CMasternode> > vMasternodeRanks = mnodeman.GetMasternodeRanks(pindexBest->nHeight);
         BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
             std::string strVin = s.second.vin.prevout.ToStringShort();
-            if(strFilter !="" && strVin.find(strFilter) == string::npos) continue;
+            if(strFilter !="" && strVin.find(strFilter) == std::string::npos) continue;
             obj.push_back(Pair(strVin,       s.first));
         }
     } else {
@@ -731,15 +731,15 @@ Value masternodelist(const Array& params, bool fHelp)
         BOOST_FOREACH(CMasternode& mn, vMasternodes) {
             std::string strVin = mn.vin.prevout.ToStringShort();
             if (strMode == "activeseconds") {
-                if(strFilter !="" && strVin.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && strVin.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strVin,       (int64_t)(mn.lastTimeSeen - mn.sigTime)));
             } else if (strMode == "donation") {
                 CTxDestination address1;
                 ExtractDestination(mn.donationAddress, address1);
                 CDigitalNoteAddress address2(address1);
 
-                if(strFilter !="" && address2.ToString().find(strFilter) == string::npos &&
-                    strVin.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && address2.ToString().find(strFilter) == std::string::npos &&
+                    strVin.find(strFilter) == std::string::npos) continue;
 
                 std::string strOut = "";
 
@@ -770,15 +770,15 @@ Value masternodelist(const Array& params, bool fHelp)
                                mn.nLastPaid;
                 std::string output = stringStream.str();
                 stringStream << " " << strVin;
-                if(strFilter !="" && stringStream.str().find(strFilter) == string::npos &&
-                        strVin.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && stringStream.str().find(strFilter) == std::string::npos &&
+                        strVin.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(addrStream.str(), output));
             } else if (strMode == "lastseen") {
-                if(strFilter !="" && strVin.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && strVin.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strVin,       (int64_t)mn.lastTimeSeen));
             } else if (strMode == "protocol") {
                 if(strFilter !="" && strFilter != boost::lexical_cast<std::string>(mn.protocolVersion) &&
-                    strVin.find(strFilter) == string::npos) continue;
+                    strVin.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strVin,       (int64_t)mn.protocolVersion));
             } else if (strMode == "pubkey") {
                 CScript pubkey;
@@ -787,16 +787,16 @@ Value masternodelist(const Array& params, bool fHelp)
                 ExtractDestination(pubkey, address1);
                 CDigitalNoteAddress address2(address1);
 
-                if(strFilter !="" && address2.ToString().find(strFilter) == string::npos &&
-                    strVin.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && address2.ToString().find(strFilter) == std::string::npos &&
+                    strVin.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strVin,       address2.ToString().c_str()));
             } else if(strMode == "status") {
                 std::string strStatus = mn.Status();
-                if(strFilter !="" && strVin.find(strFilter) == string::npos && strStatus.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && strVin.find(strFilter) == std::string::npos && strStatus.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strVin,       strStatus.c_str()));
             } else if (strMode == "addr") {
-                if(strFilter !="" && mn.vin.prevout.hash.ToString().find(strFilter) == string::npos &&
-                    strVin.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && mn.vin.prevout.hash.ToString().find(strFilter) == std::string::npos &&
+                    strVin.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strVin,       mn.addr.ToString().c_str()));
             } else if(strMode == "votes"){
                 std::string strStatus = "ABSTAIN";
@@ -808,11 +808,11 @@ Value masternodelist(const Array& params, bool fHelp)
                     if(mn.nVote == 1) strStatus = "YAY";
                 }
 
-                if(strFilter !="" && (strVin.find(strFilter) == string::npos && strStatus.find(strFilter) == string::npos)) continue;
+                if(strFilter !="" && (strVin.find(strFilter) == std::string::npos && strStatus.find(strFilter) == std::string::npos)) continue;
                 obj.push_back(Pair(strVin,       strStatus.c_str()));
             } else if(strMode == "lastpaid"){
-                if(strFilter !="" && mn.vin.prevout.hash.ToString().find(strFilter) == string::npos &&
-                    strVin.find(strFilter) == string::npos) continue;
+                if(strFilter !="" && mn.vin.prevout.hash.ToString().find(strFilter) == std::string::npos &&
+                    strVin.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strVin,      (int64_t)mn.nLastPaid));
             }
         }

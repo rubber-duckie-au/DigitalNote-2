@@ -1349,7 +1349,7 @@ void ThreadMapPort()
             }
         }
 
-        string strDesc = "DigitalNote " + FormatFullVersion();
+        std::string strDesc = "DigitalNote " + FormatFullVersion();
 
         try {
             while (!ShutdownRequested()) {
@@ -1512,7 +1512,7 @@ void DumpData()
 
 void static ProcessOneShot()
 {
-    string strDest;
+    std::string strDest;
     {
         LOCK(cs_vOneShots);
         if (vOneShots.empty())
@@ -1536,7 +1536,7 @@ void ThreadOpenConnections()
         for (int64_t nLoop = 0;; nLoop++)
         {
             ProcessOneShot();
-            BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"])
+            BOOST_FOREACH(std::string strAddr, mapMultiArgs["-connect"])
             {
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
@@ -1637,13 +1637,13 @@ void ThreadOpenAddedConnections()
 
     if (HaveNameProxy()) {
         while(true) {
-            std::list<string> lAddresses(0);
+            std::list<std::string> lAddresses(0);
             {
                 LOCK(cs_vAddedNodes);
-                BOOST_FOREACH(string& strAddNode, vAddedNodes)
+                BOOST_FOREACH(std::string& strAddNode, vAddedNodes)
                     lAddresses.push_back(strAddNode);
             }
-            BOOST_FOREACH(string& strAddNode, lAddresses) {
+            BOOST_FOREACH(std::string& strAddNode, lAddresses) {
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
@@ -1658,12 +1658,12 @@ void ThreadOpenAddedConnections()
         std::list<std::string> lAddresses(0);
         {
             LOCK(cs_vAddedNodes);
-            BOOST_FOREACH(string& strAddNode, vAddedNodes)
+            BOOST_FOREACH(std::string& strAddNode, vAddedNodes)
                 lAddresses.push_back(strAddNode);
         }
 
         std::list<std::vector<CService> > lservAddressesToAdd(0);
-        BOOST_FOREACH(string& strAddNode, lAddresses)
+        BOOST_FOREACH(std::string& strAddNode, lAddresses)
         {
             std::vector<CService> vservNode(0);
             if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))

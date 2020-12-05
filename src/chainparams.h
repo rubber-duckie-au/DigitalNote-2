@@ -21,8 +21,8 @@ class CAddress;
 class CBlock;
 
 struct CDNSSeedData {
-    string name, host;
-    CDNSSeedData(const string &strName, const string &strHost) : name(strName), host(strHost) {}
+    std::string name, host;
+    CDNSSeedData(const std::string& strName, const std::string& strHost) : name(strName), host(strHost) {}
 };
 
 /**
@@ -62,7 +62,7 @@ public:
     const CBigNum& ProofOfStakeLimit() const { return bnProofOfStakeLimit; }
     virtual const CBlock& GenesisBlock() const = 0;
     virtual bool RequireRPCPassword() const { return true; }
-    const string& DataDir() const { return strDataDir; }
+    const std::string& DataDir() const { return strDataDir; }
     virtual Network NetworkID() const = 0;
     const std::vector<CDNSSeedData>& DNSSeeds() const { return vSeeds; }
     const std::vector<unsigned char> &Base58Prefix(Base58Type type) const { return base58Prefixes[type]; }
@@ -84,7 +84,7 @@ protected:
     int nRPCPort;
     CBigNum bnProofOfWorkLimit;
     CBigNum bnProofOfStakeLimit;
-    string strDataDir;
+    std::string strDataDir;
     std::vector<CDNSSeedData> vSeeds;
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
     int nEndPoWBlock;

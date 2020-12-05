@@ -1452,7 +1452,7 @@ void CWallet::ResendWalletTransactions(bool fForce)
     }
 }
 
-bool CWallet::ImportPrivateKey(CDigitalNoteSecret vchSecret, string strLabel, bool fRescan) {
+bool CWallet::ImportPrivateKey(CDigitalNoteSecret vchSecret, std::string strLabel, bool fRescan) {
     if (fWalletUnlockStakingOnly)
         return false;
 
@@ -1863,7 +1863,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std:
 
     if (!mapNarr.empty())
     {
-        BOOST_FOREACH(const PAIRTYPE(string,string)& item, mapNarr)
+        BOOST_FOREACH(const PAIRTYPE(std::string, std::string)& item, mapNarr)
             wtxNew.mapValue[item.first] = item.second;
     };
 
@@ -2346,20 +2346,20 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     return true;
 }
 
-string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee)
+std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee)
 {
     CReserveKey reservekey(this);
     int64_t nFeeRequired;
 
     if (IsLocked())
     {
-        string strError = _("Error: Wallet locked, unable to create transaction!");
+        std::string strError = _("Error: Wallet locked, unable to create transaction!");
         LogPrintf("SendMoney() : %s", strError);
         return strError;
     }
     if (fWalletUnlockStakingOnly)
     {
-        string strError = _("Error: Wallet unlocked for staking only, unable to create transaction.");
+        std::string strError = _("Error: Wallet unlocked for staking only, unable to create transaction.");
         LogPrintf("SendMoney() : %s", strError);
         return strError;
     }
@@ -2367,12 +2367,12 @@ string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNa
     CWalletTx wtx;
     std::vector<std::pair<CScript, int64_t> > vecSend;
     vecSend.push_back(std::make_pair(scriptPubKey, nValue));
-    string strError = "";
+    std::string strError = "";
 
 
     if (!CreateTransaction(scriptPubKey, nValue, sNarr, wtxNew, reservekey, nFeeRequired))
     {
-        string strError;
+        std::string strError;
         if (nValue + nFeeRequired > GetBalance())
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"), FormatMoney(nFeeRequired));
         else
@@ -2388,7 +2388,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNa
     return "";
 }
 
-string CWallet::SendMoneyToDestination(const CTxDestination& address, int64_t nValue, std::string& sNarr,
+std::string CWallet::SendMoneyToDestination(const CTxDestination& address, int64_t nValue, std::string& sNarr,
 		CWalletTx& wtxNew, bool fAskFee)
 {
     // Check amount
@@ -2766,26 +2766,26 @@ bool CWallet::CreateStealthTransaction(CScript scriptPubKey, int64_t nValue, std
     return rv;
 }
 
-string CWallet::SendStealthMoney(CScript scriptPubKey, int64_t nValue, std::vector<uint8_t>& P, std::vector<uint8_t>& narr, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee)
+std::string CWallet::SendStealthMoney(CScript scriptPubKey, int64_t nValue, std::vector<uint8_t>& P, std::vector<uint8_t>& narr, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee)
 {
     CReserveKey reservekey(this);
     int64_t nFeeRequired;
 
     if (IsLocked())
     {
-        string strError = _("Error: Wallet locked, unable to create transaction  ");
+        std::string strError = _("Error: Wallet locked, unable to create transaction  ");
         LogPrintf("SendStealthMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (fWalletUnlockStakingOnly)
     {
-        string strError = _("Error: Wallet unlocked for staking only, unable to create transaction.");
+        std::string strError = _("Error: Wallet unlocked for staking only, unable to create transaction.");
         LogPrintf("SendStealthMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (!CreateStealthTransaction(scriptPubKey, nValue, P, narr, sNarr, wtxNew, reservekey, nFeeRequired))
     {
-        string strError;
+        std::string strError;
         if (nValue + nFeeRequired > GetBalance())
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
         else
@@ -3627,7 +3627,7 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
     return DB_LOAD_OK;
 }
 
-bool CWallet::SetAddressBookName(const CTxDestination& address, const string& strName)
+bool CWallet::SetAddressBookName(const CTxDestination& address, const std::string& strName)
 {
     // never update address book if this is web wallet as this will break account<>address mapping
     if (fWebWalletMode)
@@ -3649,7 +3649,7 @@ bool CWallet::SetAddressBookName(const CTxDestination& address, const string& st
     return CWalletDB(strWalletFile).WriteName(CDigitalNoteAddress(address).ToString(), strName);
 }
 
-bool CWallet::SetAddressAccountIdAssociation(const CTxDestination& address, const string& strName)
+bool CWallet::SetAddressAccountIdAssociation(const CTxDestination& address, const std::string& strName)
 {
     if (!fWebWalletMode)
     {

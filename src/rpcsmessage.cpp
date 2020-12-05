@@ -920,10 +920,10 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
     char cbuf[256];
 
     // Find all addresses that have the given account
-    BOOST_FOREACH(const PAIRTYPE(CDigitalNoteAddress, string)& item, pwalletMain->mapAddressBook)
+    BOOST_FOREACH(const PAIRTYPE(CDigitalNoteAddress, std::string)& item, pwalletMain->mapAddressBook)
     {
         const CDigitalNoteAddress& address = item.first;
-        const string& strName = item.second;
+        const std::string& strName = item.second;
         if (strName == strAccount)
             accountAddresses.push_back(address.ToString());
     }

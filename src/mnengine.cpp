@@ -255,7 +255,7 @@ void CMNenginePool::CheckFinalTransaction()
             //return;
         }
 
-        string txHash = txNew.GetHash().ToString().c_str();
+        std::string txHash = txNew.GetHash().ToString().c_str();
         LogPrintf("CMNenginePool::Check() -- txHash %d \n", txHash);
         if(!mapMNengineBroadcastTxes.count(txNew.GetHash())){
             CMNengineBroadcastTx dstx;
@@ -815,8 +815,8 @@ bool CMNenginePool::SignFinalTransaction(CTransaction& finalTransactionNew, CNod
 
                 for(unsigned int i = 0; i < finalTransaction.vout.size(); i++){
                     BOOST_FOREACH(const CTxOut& o, e.vout) {
-                        string Ftx = finalTransaction.vout[i].scriptPubKey.ToString().c_str();
-                        string Otx = o.scriptPubKey.ToString().c_str();
+                        std::string Ftx = finalTransaction.vout[i].scriptPubKey.ToString().c_str();
+                        std::string Otx = o.scriptPubKey.ToString().c_str();
                         if(Ftx == Otx){
                             //if(fDebug) LogPrintf("CMNenginePool::SignFinalTransaction - foundOutputs = %d \n", foundOutputs);
                             foundOutputs++;

@@ -194,7 +194,7 @@ Value checkkernel(const Array& params, bool fHelp)
         const Value& txid_v = find_value(o, "txid");
         if (txid_v.type() != str_type)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing txid key");
-        string txid = txid_v.get_str();
+        std::string txid = txid_v.get_str();
         if (!IsHex(txid))
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected hex txid");
 
