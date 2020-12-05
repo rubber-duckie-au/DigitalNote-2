@@ -238,6 +238,11 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
 	return nCredit;
 }
 
+/**
+	Since 1.0.0 version jan 2019 this function could never have been used.
+	Because CWallet::GetInputMNengineRounds got removed for some reason?!
+*/
+/*
 CAmount CWalletTx::GetAnonymizableCredit(bool fUseCache) const
 {
 	if (pwallet == 0)
@@ -272,6 +277,7 @@ CAmount CWalletTx::GetAnonymizableCredit(bool fUseCache) const
 	fAnonymizableCreditCached = true;
 	return nCredit;
 }
+*/
 
 CAmount CWalletTx::GetImmatureWatchOnlyCredit(const bool& fUseCache) const
 {

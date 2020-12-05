@@ -5,6 +5,7 @@
 #include "uint256.h"
 #include "cblockindex.h"
 #include "main.h"
+#include "chainparams.h"
 
 CBlockLocator::CBlockLocator()
 {

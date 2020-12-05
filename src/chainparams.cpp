@@ -5,12 +5,15 @@
 
 #include <boost/assign/list_of.hpp>
 
+#include <netinet/in.h>
+
 #include "assert.h"
 #include "chainparams.h"
 #include "main.h"
 #include "util.h"
 #include "cblock.h"
 #include "genesis.h"
+#include "protocol.h"
 
 // TODO: Verify the requirement of below link
 // #include "base58.h"

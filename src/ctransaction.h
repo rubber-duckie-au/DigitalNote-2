@@ -5,7 +5,7 @@
 #include <map>
 
 #include "serialize.h"
-#include "scrypt.h"
+#include "script.h"
 
 class CDiskTxPos;
 class uint256;

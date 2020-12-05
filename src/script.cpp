@@ -17,6 +17,7 @@
 #include "crypto/common/sha1.h"
 #include "crypto/common/sha256.h"
 #include "ctransaction.h"
+#include "chain.h"
 
 using namespace std;
 using namespace boost;

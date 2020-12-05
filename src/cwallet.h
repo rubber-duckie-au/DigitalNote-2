@@ -223,7 +223,7 @@ public:
     int ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
     void ResendWalletTransactions(bool fForce = false);
-    bool ImportPrivateKey(CDigitalNoteSecret vchSecret, string strLabel = "", bool fRescan = true);
+    bool ImportPrivateKey(CDigitalNoteSecret vchSecret, std::string strLabel = "", bool fRescan = true);
 
     CAmount GetBalance() const;
     CAmount GetStake() const;
@@ -357,8 +357,8 @@ public:
     int GetInputMNengineRounds(CTxIn in) const;
 };
 
-void ApproximateBestSubset(vector<pair<int64_t, pair<const CWalletTx*,unsigned int> > >vValue, int64_t nTotalLower,
-		int64_t nTargetValue, vector<char>& vfBest, int64_t& nBest, int iterations = 1000);
+void ApproximateBestSubset(std::vector<std::pair<int64_t, std::pair<const CWalletTx*,unsigned int> > >vValue,
+		int64_t nTotalLower, int64_t nTargetValue, std::vector<char>& vfBest, int64_t& nBest, int iterations = 1000);
 
 extern int64_t GetStakeCombineThreshold();
 int64_t GetStakeSplitThreshold();

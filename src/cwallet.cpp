@@ -3872,7 +3872,7 @@ void CWallet::DisableTransaction(const CTransaction &tx)
 /**
 	Extra function
 */
-static void ApproximateBestSubset(vector<pair<int64_t, pair<const CWalletTx*,unsigned int> > >vValue, int64_t nTotalLower,
+static void ApproximateBestSubset(std::vector<std::pair<int64_t, std::pair<const CWalletTx*,unsigned int> > >vValue, int64_t nTotalLower,
 		int64_t nTargetValue, vector<char>& vfBest, int64_t& nBest, int iterations)
 {
     vector<char> vfIncluded;
