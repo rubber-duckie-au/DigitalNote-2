@@ -15,7 +15,6 @@
 #include "wallet.h"
 #endif
 
-using namespace std;
 using namespace boost;
 using namespace boost::assign;
 using namespace json_spirit;
@@ -106,7 +105,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
 Value getrawtransaction(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "getrawtransaction <txid> [verbose=0]\n"
             "If verbose=0, returns a string that is\n"
             "serialized, hex-encoded data for <txid>.\n"
@@ -142,7 +141,7 @@ Value getrawtransaction(const Array& params, bool fHelp)
 Value listunspent(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "listunspent [minconf=1] [maxconf=9999999]  [\"address\",...]\n"
             "Returns array of unspent transaction outputs\n"
             "with between minconf and maxconf (inclusive) confirmations.\n"
@@ -231,7 +230,7 @@ Value listunspent(const Array& params, bool fHelp)
 Value createrawtransaction(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "createrawtransaction [{\"txid\":txid,\"vout\":n},...] {address:amount,...}\n"
             "Create a transaction spending given inputs\n"
             "(array of objects containing transaction id and output number),\n"
@@ -296,7 +295,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
 Value decoderawtransaction(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "decoderawtransaction <hex string>\n"
             "Return a JSON object representing the serialized, hex-encoded transaction.");
 
@@ -321,7 +320,7 @@ Value decoderawtransaction(const Array& params, bool fHelp)
 Value decodescript(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "decodescript <hex string>\n"
             "Decode a hex-encoded script.");
 
@@ -344,7 +343,7 @@ Value decodescript(const Array& params, bool fHelp)
 Value signrawtransaction(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 4)
-        throw runtime_error(
+        throw std::runtime_error(
             "signrawtransaction <hex string> [{\"txid\":txid,\"vout\":n,\"scriptPubKey\":hex,\"redeemScript\":hex},...] [<privatekey1>,...] [sighashtype=\"ALL\"]\n"
             "Sign inputs for raw transaction (serialized, hex-encoded).\n"
             "Second optional argument (may be null) is an array of previous transaction outputs that\n"
@@ -554,7 +553,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
 Value sendrawtransaction(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "sendrawtransaction <hex string>\n"
             "Submits raw transaction (serialized, hex-encoded) to local node and network.");
 
@@ -600,7 +599,7 @@ Value sendrawtransaction(const Array& params, bool fHelp)
 Value searchrawtransactions(const Array &params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 4)
-        throw runtime_error(
+        throw std::runtime_error(
             "searchrawtransactions <address> [verbose=1] [skip=0] [count=100]\n");
 
     CDigitalNoteAddress address(params[0].get_str());

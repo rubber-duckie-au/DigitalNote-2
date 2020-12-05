@@ -5,8 +5,6 @@
 #include "addrman.h"
 #include "crypto/bmw/bmw512.h"
 
-using namespace std;
-
 int CAddrInfo::GetTriedBucket(const std::vector<unsigned char> &nKey) const
 {
     CDataStream ss1(SER_GETHASH, 0);
@@ -72,7 +70,7 @@ double CAddrInfo::GetChance(int64_t nNow) const
         fChance *= 0.01;
 
     // deprioritize 66% after each failed attempt, but at most 1/28th to avoid the search taking forever or overly penalizing outages.
-    fChance *= pow(0.66, min(nAttempts, 8));
+    fChance *= pow(0.66, std::min(nAttempts, 8));
 
     return fChance;
 }
@@ -325,7 +323,7 @@ bool CAddrMan::Add_(const CAddress &addr, const CNetAddr& source, int64_t nTimeP
         bool fCurrentlyOnline = (GetAdjustedTime() - addr.nTime < 24 * 60 * 60);
         int64_t nUpdateInterval = (fCurrentlyOnline ? 60 * 60 : 24 * 60 * 60);
         if (addr.nTime && (!pinfo->nTime || pinfo->nTime < addr.nTime - nUpdateInterval - nTimePenalty))
-            pinfo->nTime = max((int64_t)0, addr.nTime - nTimePenalty);
+            pinfo->nTime = std::max((int64_t)0, addr.nTime - nTimePenalty);
 
         // add services
         pinfo->nServices |= addr.nServices;
@@ -350,7 +348,7 @@ bool CAddrMan::Add_(const CAddress &addr, const CNetAddr& source, int64_t nTimeP
             return false;
     } else {
         pinfo = Create(addr, source, &nId);
-        pinfo->nTime = max((int64_t)0, (int64_t)pinfo->nTime - nTimePenalty);
+        pinfo->nTime = std::max((int64_t)0, (int64_t)pinfo->nTime - nTimePenalty);
         nNew++;
         fNew = true;
     }

@@ -12,8 +12,6 @@
 #include <cstdlib>
 #include <cstring>
 
-using namespace std;
-
 std::string EncodeBase64(const unsigned char* pch, size_t len)
 {
     static const char *pbase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -195,7 +193,7 @@ SecureString DecodeBase64Secure(const SecureString& input)
 
     // Prepare buffer to receive decoded data
     if(input.size() % 4 != 0) {
-        throw runtime_error("Input length should be a multiple of 4");
+        throw std::runtime_error("Input length should be a multiple of 4");
     }
     size_t nMaxLen = input.size() / 4 * 3; // upper bound, guaranteed divisible by 4
     output.resize(nMaxLen);

@@ -19,7 +19,6 @@
 #include "fork.h"
 
 using namespace json_spirit;
-using namespace std;
 using namespace boost::assign;
 
 // Key used by getwork/getblocktemplate miners.
@@ -46,7 +45,7 @@ void ShutdownRPCMining()
 Value getsubsidy(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getsubsidy [nTarget]\n"
             "Returns proof-of-work subsidy value for the specified value of target.");
 
@@ -56,7 +55,7 @@ Value getsubsidy(const Array& params, bool fHelp)
 Value getstakesubsidy(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getstakesubsidy <hex string>\n"
             "Returns proof-of-stake subsidy value for the specified coinstake.");
 
@@ -83,7 +82,7 @@ Value getstakesubsidy(const Array& params, bool fHelp)
 Value getmininginfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getmininginfo\n"
             "Returns an object containing mining-related information.");
 
@@ -124,7 +123,7 @@ Value getmininginfo(const Array& params, bool fHelp)
 Value getstakinginfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getstakinginfo\n"
             "Returns an object containing staking-related information.");
 
@@ -164,7 +163,7 @@ Value getstakinginfo(const Array& params, bool fHelp)
 Value checkkernel(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2) {
-        throw runtime_error(
+        throw std::runtime_error(
             "checkkernel [{\"txid\":txid,\"vout\":n},...] [createblocktemplate=false]\n"
             "Check if one of given inputs is a kernel input at the moment.\n"
         );
@@ -237,12 +236,12 @@ Value checkkernel(const Array& params, bool fHelp)
 
     /* Test for GCC < 6.3.0 */
     #if GCC_VERSION > 60300
-        unique_ptr<CBlock> pblock(CreateNewBlock(*pMiningKey, true, &nFees));
+        std::unique_ptr<CBlock> pblock(CreateNewBlock(*pMiningKey, true, &nFees));
     #else
         auto_ptr<CBlock> pblock(CreateNewBlock(*pMiningKey, true, &nFees));
     #endif
     #else
-        unique_ptr<CBlock> pblock(CreateNewBlock(*pMiningKey, true, &nFees));
+        std::unique_ptr<CBlock> pblock(CreateNewBlock(*pMiningKey, true, &nFees));
     #endif
 
     pblock->nTime = pblock->vtx[0].nTime = nTime;
@@ -265,7 +264,7 @@ Value checkkernel(const Array& params, bool fHelp)
 Value getworkex(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "getworkex [data, coinbase]\n"
             "If [data, coinbase] is not specified, returns extended work data.\n"
         );
@@ -313,7 +312,7 @@ Value getworkex(const Array& params, bool fHelp)
         }
 
         // Update nTime
-        pblock->nTime = max(pindexPrev->GetPastTimeLimit()+1, GetAdjustedTime());
+        pblock->nTime = std::max(pindexPrev->GetPastTimeLimit()+1, GetAdjustedTime());
         pblock->nNonce = 0;
 
         // Update nExtraNonce
@@ -395,7 +394,7 @@ Value getworkex(const Array& params, bool fHelp)
 Value getwork(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getwork [data]\n"
             "If [data] is not specified, returns formatted hash data to work on:\n"
             "  \"midstate\" : precomputed hash state after hashing the first half of the data (DEPRECATED)\n" // deprecated
@@ -511,7 +510,7 @@ Value getwork(const Array& params, bool fHelp)
 Value getblocktemplate(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getblocktemplate [params]\n"
             "Returns data needed to construct a block to work on:\n"
             "  \"version\" : block version\n"
@@ -724,7 +723,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
 Value submitblock(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "submitblock <hex data> [optional-params-obj]\n"
             "[optional-params-obj] parameter is currently ignored.\n"
             "Attempts to submit new block to network.\n"

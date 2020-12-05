@@ -15,8 +15,6 @@
 #include "clientversion.h"
 #include "main.h"
 
-using namespace std;
-
 namespace BlockSizeCalculator {
     unsigned int ComputeBlockSize(CBlockIndex*, unsigned int pastblocks = NUM_BLOCKS_FOR_MEDIAN_BLOCK);
     inline unsigned int GetMedianBlockSize(CBlockIndex*, unsigned int pastblocks = NUM_BLOCKS_FOR_MEDIAN_BLOCK);

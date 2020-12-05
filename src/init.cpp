@@ -46,8 +46,6 @@
 #include <signal.h>
 #endif
 
-
-using namespace std;
 using namespace boost;
 
 #ifdef ENABLE_WALLET

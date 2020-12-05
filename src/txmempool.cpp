@@ -7,8 +7,6 @@
 #include "txmempool.h"
 #include "ctransaction.h"
 
-using namespace std;
-
 CTxMemPool::CTxMemPool()
 {
 }

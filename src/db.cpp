@@ -17,7 +17,6 @@
 #include <boost/version.hpp>
 #include <openssl/rand.h>
 
-using namespace std;
 using namespace boost;
 
 
@@ -119,7 +118,7 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_)
 void CDBEnv::MakeMock()
 {
     if (fDbEnvInit)
-        throw runtime_error("CDBEnv::MakeMock(): already initialized");
+        throw std::runtime_error("CDBEnv::MakeMock(): already initialized");
 
     boost::this_thread::interruption_point();
 
@@ -144,7 +143,7 @@ void CDBEnv::MakeMock()
                      DB_PRIVATE,
                      S_IRUSR | S_IWUSR);
     if (ret > 0)
-        throw runtime_error(strprintf("CDBEnv::MakeMock(): error %d opening database environment", ret));
+        throw std::runtime_error(strprintf("CDBEnv::MakeMock(): error %d opening database environment", ret));
 
     fDbEnvInit = true;
     fMockDb = true;
@@ -176,7 +175,7 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive,
     u_int32_t flags = DB_SALVAGE;
     if (fAggressive) flags |= DB_AGGRESSIVE;
 
-    stringstream strDump;
+    std::stringstream strDump;
 
     Db db(&dbenv, 0);
     int result = db.verify(strFile.c_str(), NULL, &strDump, flags);
@@ -247,7 +246,7 @@ CDB::CDB(const std::string& strFilename, const char* pszMode) :
     {
         LOCK(bitdb.cs_db);
         if (!bitdb.Open(GetDataDir()))
-            throw runtime_error("env open failed");
+            throw std::runtime_error("env open failed");
 
         strFile = strFilename;
         ++bitdb.mapFileUseCount[strFile];
@@ -262,7 +261,7 @@ CDB::CDB(const std::string& strFilename, const char* pszMode) :
                 DbMpoolFile*mpf = pdb->get_mpf();
                 ret = mpf->set_flags(DB_MPOOL_NOFILE, 1);
                 if (ret != 0)
-                    throw runtime_error(strprintf("CDB : Failed to configure for no temp file backing for database %s", strFile));
+                    throw std::runtime_error(strprintf("CDB : Failed to configure for no temp file backing for database %s", strFile));
             }
 
             ret = pdb->open(NULL, // Txn pointer
@@ -278,7 +277,7 @@ CDB::CDB(const std::string& strFilename, const char* pszMode) :
                 pdb = NULL;
                 --bitdb.mapFileUseCount[strFile];
                 strFile = "";
-                throw runtime_error(strprintf("CDB : Error %d, can't open database %s", ret, strFile));
+                throw std::runtime_error(strprintf("CDB : Error %d, can't open database %s", ret, strFile));
             }
 
             if (fCreate && !Exists(std::string("version")))

@@ -13,7 +13,6 @@
 #include "masternode-payments.h"
 #include "fork.h"
 
-using namespace std;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -114,12 +113,12 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
     /* Test for GCC < 6.3.0 */
     #if GCC_VERSION > 60300
-        unique_ptr<CBlock> pblock(new CBlock());
+        std::unique_ptr<CBlock> pblock(new CBlock());
     #else
         auto_ptr<CBlock> pblock(new CBlock());
     #endif
     #else
-        unique_ptr<CBlock> pblock(new CBlock());
+        std::unique_ptr<CBlock> pblock(new CBlock());
     #endif
 
     if (!pblock.get())
@@ -472,7 +471,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
         // Fill in header
         pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-        pblock->nTime          = max(pindexPrev->GetPastTimeLimit()+1, pblock->GetMaxTransactionTime());
+        pblock->nTime          = std::max(pindexPrev->GetPastTimeLimit()+1, pblock->GetMaxTransactionTime());
         if (!fProofOfStake)
             pblock->UpdateTime(pindexPrev);
         pblock->nNonce         = 0;
@@ -682,12 +681,12 @@ void ThreadStakeMiner(CWallet *pwallet)
 
         /* Test for GCC < 6.3.0 */
         #if GCC_VERSION > 60300
-            unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+            std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
         #else
             auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
         #endif
         #else
-            unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+            std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
         #endif
         if (!pblock.get())
             return;

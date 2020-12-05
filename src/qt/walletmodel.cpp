@@ -25,8 +25,6 @@
 
 #include "walletmodel.h"
 
-using namespace std;
-
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet),
     fProcessingQueuedTransactions(false),

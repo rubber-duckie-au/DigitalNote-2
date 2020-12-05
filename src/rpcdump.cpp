@@ -15,7 +15,6 @@
 #include <boost/algorithm/string.hpp>
 
 using namespace json_spirit;
-using namespace std;
 
 void EnsureWalletIsUnlocked();
 
@@ -106,7 +105,7 @@ public:
 Value importprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "importprivkey <DigitalNoteprivkey> [label] [rescan=true]\n"
             "Adds a private key (as returned by dumpprivkey) to your wallet.");
 
@@ -164,7 +163,7 @@ Value importprivkey(const Array& params, bool fHelp)
 Value importaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "importaddress \"address\" ( \"label\" rescan )\n"
             "\nAdds an address or script (in hex) that can be watched as if it were in your wallet but cannot be used to spend.\n"
             "\nArguments:\n"
@@ -232,13 +231,13 @@ Value importaddress(const Array& params, bool fHelp)
 Value importwallet(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "importwallet <filename>\n"
             "Imports keys from a wallet dump file (see dumpwallet).");
 
     EnsureWalletIsUnlocked();
 
-    ifstream file;
+    std::ifstream file;
     file.open(params[0].get_str().c_str());
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
@@ -321,7 +320,7 @@ Value importwallet(const Array& params, bool fHelp)
 Value dumpprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "dumpprivkey <DigitalNote>\n"
             "Reveals the private key corresponding to <DigitalNote>.");
 
@@ -345,13 +344,13 @@ Value dumpprivkey(const Array& params, bool fHelp)
 Value dumpwallet(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "dumpwallet <filename>\n"
             "Dumps all wallet keys in a human-readable format.");
 
     EnsureWalletIsUnlocked();
 
-    ofstream file;
+    std::ofstream file;
     file.open(params[0].get_str().c_str());
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
@@ -403,13 +402,13 @@ Value dumpwallet(const Array& params, bool fHelp)
 Value dumpwalletjson(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
                 "dumpwallet <filename> [prettyPrint=false]\n"
                 "Dumps all wallet keys in a JSON format.");
 
     EnsureWalletIsUnlocked();
 
-    ofstream file;
+    std::ofstream file;
     file.open(params[0].get_str().c_str());
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
@@ -453,7 +452,7 @@ Value dumpwalletjson(const Array& params, bool fHelp)
 Value getaddressfromprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
                 "getaddressfromprivkey <DigitalNoteprivkey>\n"
                 "Returns DigitalNote address from private key.");
 

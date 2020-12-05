@@ -37,7 +37,6 @@
 
 #include "main.h"
 
-using namespace std;
 using namespace boost;
 
 //
@@ -365,7 +364,7 @@ void static EraseOrphanTx(uint256 hash)
         return;
     BOOST_FOREACH(const CTxIn& txin, it->second.vin)
     {
-        std::map<uint256, set<uint256> >::iterator itPrev = mapOrphanTransactionsByPrev.find(txin.prevout.hash);
+        std::map<uint256, std::set<uint256> >::iterator itPrev = mapOrphanTransactionsByPrev.find(txin.prevout.hash);
         if (itPrev == mapOrphanTransactionsByPrev.end())
             continue;
         itPrev->second.erase(hash);
@@ -2164,7 +2163,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 
         // Change version
         pfrom->PushMessage("verack");
-        pfrom->ssSend.SetVersion(min(pfrom->nVersion, PROTOCOL_VERSION));
+        pfrom->ssSend.SetVersion(std::min(pfrom->nVersion, PROTOCOL_VERSION));
 
         if (!pfrom->fInbound)
         {
@@ -2224,7 +2223,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 
     else if (strCommand == "verack")
     {
-        pfrom->SetRecvVersion(min(pfrom->nVersion, PROTOCOL_VERSION));
+        pfrom->SetRecvVersion(std::min(pfrom->nVersion, PROTOCOL_VERSION));
     }
 
 

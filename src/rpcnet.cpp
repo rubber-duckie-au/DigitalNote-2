@@ -17,12 +17,11 @@
 #include "main.h"
 
 using namespace json_spirit;
-using namespace std;
 
 Value getconnectioncount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getconnectioncount\n"
             "Returns the number of connections to other nodes.");
 
@@ -33,7 +32,7 @@ Value getconnectioncount(const Array& params, bool fHelp)
 Value ping(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "ping\n"
             "Requests that a ping be sent to all other nodes, to measure ping time.\n"
             "Results provided in getpeerinfo, pingtime and pingwait fields are decimal seconds.\n"
@@ -64,7 +63,7 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
 Value getpeerinfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getpeerinfo\n"
             "Returns data about each connected network node.");
 
@@ -112,7 +111,7 @@ Value addnode(const Array& params, bool fHelp)
         strCommand = params[1].get_str();
     if (fHelp || params.size() != 2 ||
         (strCommand != "onetry" && strCommand != "add" && strCommand != "remove"))
-        throw runtime_error(
+        throw std::runtime_error(
             "addnode <node> <add|remove|onetry>\n"
             "Attempts add or remove <node> from the addnode list or try a connection to <node> once.");
 
@@ -150,7 +149,7 @@ Value addnode(const Array& params, bool fHelp)
 Value getaddednodeinfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "getaddednodeinfo <dns> [node]\n"
             "Returns information about the given added node, or all added nodes\n"
             "(note that onetry addnodes are not listed here)\n"
@@ -246,7 +245,7 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
 Value sendalert(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 6)
-        throw runtime_error(
+        throw std::runtime_error(
             "sendalert <message> <privatekey> <minver> <maxver> <priority> <id> [cancelupto]\n"
             "<message> is the alert text message\n"
             "<privatekey> is hex string of alert master private key\n"
@@ -278,10 +277,10 @@ Value sendalert(const Array& params, bool fHelp)
     std::vector<unsigned char> vchPrivKey = ParseHex(params[1].get_str());
     key.SetPrivKey(CPrivKey(vchPrivKey.begin(), vchPrivKey.end()), false); // if key is not correct openssl may crash
     if (!key.Sign(Hash(alert.vchMsg.begin(), alert.vchMsg.end()), alert.vchSig))
-        throw runtime_error(
+        throw std::runtime_error(
             "Unable to sign alert, check private key?\n");  
     if(!alert.ProcessAlert()) 
-        throw runtime_error(
+        throw std::runtime_error(
             "Failed to process alert.\n");
     // Relay alert
     {
@@ -305,7 +304,7 @@ Value sendalert(const Array& params, bool fHelp)
 Value getnettotals(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getnettotals\n"
             "Returns information about network traffic, including bytes in, bytes out,\n"
             "and current time.");
@@ -324,7 +323,7 @@ Value setban(const Array& params, bool fHelp)
         strCommand = params[1].get_str();
     if (fHelp || params.size() < 2 ||
         (strCommand != "add" && strCommand != "remove"))
-        throw runtime_error(
+        throw std::runtime_error(
                             "setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
                             "\nAttempts add or remove a IP/Subnet from the banned list.\n"
                             "\nArguments:\n"
@@ -387,7 +386,7 @@ Value setban(const Array& params, bool fHelp)
 Value listbanned(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
                             "listbanned\n"
                             "\nList all banned IPs/Subnets.\n"
                             "\nExamples:\n"
@@ -417,7 +416,7 @@ Value listbanned(const Array& params, bool fHelp)
 Value clearbanned(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
                             "clearbanned\n"
                             "\nClear all banned IPs.\n"
                             "\nExamples:\n"

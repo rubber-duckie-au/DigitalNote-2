@@ -16,7 +16,6 @@
 #include "walletdb.h"
 #include "webwalletconnector.h"
 
-using namespace std;
 using namespace json_spirit;
 
 int64_t nWalletUnlockTime;
@@ -27,13 +26,13 @@ extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spiri
 static void accountingDeprecationCheck()
 {
     if (!GetBoolArg("-enableaccounts", false))
-        throw runtime_error(
+        throw std::runtime_error(
             "Accounting API is deprecated and will be removed in future.\n"
             "It can easily result in negative or odd balances if misused or misunderstood, which has happened in the field.\n"
             "If you still want to enable it, add to your config file enableaccounts=1\n");
 
     if (GetBoolArg("-staking", true))
-        throw runtime_error("If you want to use accounting API, staking must be disabled, add to your config file staking=0\n");
+        throw std::runtime_error("If you want to use accounting API, staking must be disabled, add to your config file staking=0\n");
 }
 
 std::string HelpRequiringPassphrase()
@@ -95,9 +94,9 @@ CScript _createmultisig(const Array& params)
 
     // Gather public keys
     if (nRequired < 1)
-        throw runtime_error("a multisignature address must require at least one key to redeem");
+        throw std::runtime_error("a multisignature address must require at least one key to redeem");
     if ((int)keys.size() < nRequired)
-        throw runtime_error(
+        throw std::runtime_error(
             strprintf("not enough keys supplied "
                       "(got %" PRIszu" keys, but need at least %d to redeem)", keys.size(), nRequired));
     std::vector<CPubKey> pubkeys;
@@ -112,14 +111,14 @@ CScript _createmultisig(const Array& params)
         {
             CKeyID keyID;
             if (!address.GetKeyID(keyID))
-                throw runtime_error(
+                throw std::runtime_error(
                     strprintf("%s does not refer to a key",ks));
             CPubKey vchPubKey;
             if (!pwalletMain->GetPubKey(keyID, vchPubKey))
-                throw runtime_error(
+                throw std::runtime_error(
                     strprintf("no full public key for address %s",ks));
             if (!vchPubKey.IsFullyValid())
-                throw runtime_error(" Invalid public key: "+ks);
+                throw std::runtime_error(" Invalid public key: "+ks);
             pubkeys[i] = vchPubKey;
         }
 
@@ -130,12 +129,12 @@ CScript _createmultisig(const Array& params)
         {
             CPubKey vchPubKey(ParseHex(ks));
             if (!vchPubKey.IsFullyValid())
-                throw runtime_error(" Invalid public key: "+ks);
+                throw std::runtime_error(" Invalid public key: "+ks);
             pubkeys[i] = vchPubKey;
         }
         else
         {
-            throw runtime_error(" Invalid public key: "+ks);
+            throw std::runtime_error(" Invalid public key: "+ks);
         }
     }
     CScript result;
@@ -171,7 +170,7 @@ Value createmultisig(const Array& params, bool fHelp)
             "\nAs a json rpc call\n"
             + HelpExampleRpc("createmultisig", "2, \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"")
         ;
-        throw runtime_error(msg);
+        throw std::runtime_error(msg);
     }
 
     // Construct using pay-to-script-hash:
@@ -189,7 +188,7 @@ Value createmultisig(const Array& params, bool fHelp)
 Value getnewpubkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getnewpubkey [account]\n"
             "Returns new public key for coinbase generation.");
 
@@ -216,7 +215,7 @@ Value getnewpubkey(const Array& params, bool fHelp)
 Value getnewaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getnewaddress ( \"account\" )\n"
             "\nReturns a new DigitalNote address for receiving payments.\n"
             "If 'account' is specified (recommended), it is added to the address book \n"
@@ -293,7 +292,7 @@ CDigitalNoteAddress GetAccountAddress(const std::string &strAccount, bool bForce
 Value getaccountaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getaccountaddress \"account\"\n"
             "\nReturns the current DigitalNote address for receiving payments to this account.\n"
             "\nArguments:\n"
@@ -322,7 +321,7 @@ Value getaccountaddress(const Array& params, bool fHelp)
 Value setaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "setaccount \"DigitalNote\" \"account\"\n"
             "\nSets the account associated with the given address.\n"
             "\nArguments:\n"
@@ -369,7 +368,7 @@ Value setaccount(const Array& params, bool fHelp)
 Value getaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getaccount \"DigitalNote\"\n"
             "\nReturns the account associated with the given address.\n"
             "\nArguments:\n"
@@ -396,7 +395,7 @@ Value getaccount(const Array& params, bool fHelp)
 Value getaddressesbyaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getaddressesbyaccount \"account\"\n"
             "\nReturns the list of addresses for the given account.\n"
             "\nArguments:\n"
@@ -428,7 +427,7 @@ Value getaddressesbyaccount(const Array& params, bool fHelp)
 Value sendtoaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)
-        throw runtime_error(
+        throw std::runtime_error(
             "sendtoaddress \"DigitalNote\" amount ( \"comment\" \"comment-to\" )\n"
             "\nSent an amount to a given address. The amount is a real and is rounded to the nearest 0.00000001\n"
             + HelpRequiringPassphrase() +
@@ -485,7 +484,7 @@ Value sendtoaddress(const Array& params, bool fHelp)
 Value listaddressgroupings(const Array& params, bool fHelp)
 {
     if (fHelp)
-        throw runtime_error(
+        throw std::runtime_error(
             "listaddressgroupings\n"
             "\nLists groups of addresses which have had their common ownership\n"
             "made public by common use as inputs or as the resulting change\n"
@@ -532,7 +531,7 @@ Value listaddressgroupings(const Array& params, bool fHelp)
 Value signmessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "signmessage \"DigitalNote\" \"message\"\n"
             "\nSign a message with the private key of an address"
             + HelpRequiringPassphrase() + "\n"
@@ -583,7 +582,7 @@ Value signmessage(const Array& params, bool fHelp)
 Value getreceivedbyaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "getreceivedbyaddress \"DigitalNote\" ( minconf )\n"
             "\nReturns the total amount received by the given DigitalNote in transactions with at least minconf confirmations.\n"
             "\nArguments:\n"
@@ -648,7 +647,7 @@ void GetAccountAddresses(const std::string &strAccount, std::set<CTxDestination>
 Value getreceivedbyaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "getreceivedbyaccount \"account\" ( minconf )\n"
             "\nReturns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations.\n"
             "\nArguments:\n"
@@ -735,7 +734,7 @@ int64_t GetAccountBalance(const std::string& strAccount, int nMinDepth, const is
 Value getbalance(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3) {
-        throw runtime_error(
+        throw std::runtime_error(
             "getbalance ( \"account\" minconf includeWatchonly )\n"
             "\nIf account is not specified, returns the server's total available balance.\n"
             "If account is specified, returns the balance in the account.\n"
@@ -812,7 +811,7 @@ Value getbalance(const Array& params, bool fHelp)
 Value movecmd(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 3 || params.size() > 5)
-        throw runtime_error(
+        throw std::runtime_error(
             "move \"fromaccount\" \"toaccount\" amount ( minconf \"comment\" )\n"
             "\nMove a specified amount from one account in your wallet to another.\n"
             "\nArguments:\n"
@@ -880,7 +879,7 @@ Value movecmd(const Array& params, bool fHelp)
 Value sendfrom(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 3 || params.size() > 7)
-        throw runtime_error(
+        throw std::runtime_error(
             "sendfrom \"fromaccount\" \"toDigitalNoteaddress\" amount ( minconf \"comment\" \"comment-to\" )\n"
             "\nSent an amount from an account to a DigitalNote address.\n"
             "The amount is a real and is rounded to the nearest 0.00000001."
@@ -931,7 +930,7 @@ Value sendfrom(const Array& params, bool fHelp)
         sNarr = params[6].get_str();
 
     if (sNarr.length() > 24)
-        throw runtime_error("Narration must be 24 characters or less.");
+        throw std::runtime_error("Narration must be 24 characters or less.");
 
     // Check funds
     int64_t nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
@@ -950,7 +949,7 @@ Value sendfrom(const Array& params, bool fHelp)
 Value sendmany(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)
-        throw runtime_error(
+        throw std::runtime_error(
             "sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" )\n"
             "\nSend multiple times. Amounts are double-precision floating point numbers."
             + HelpRequiringPassphrase() + "\n"
@@ -1064,7 +1063,7 @@ Value addmultisigaddress(const Array& params, bool fHelp)
             "\nAs json rpc call\n"
             + HelpExampleRpc("addmultisigaddress", "2, \"[\\\"ie6sxvFwLpMsp5tRHpAS6q3cZVewmqYzTg\\\",\\\"ThiLpx7oYd5YuuhsJAUD5ZsEX2YHgU98Us\\\"]\"")
         ;
-        throw runtime_error(msg);
+        throw std::runtime_error(msg);
     }
 
     int nRequired = params[0].get_int();
@@ -1075,9 +1074,9 @@ Value addmultisigaddress(const Array& params, bool fHelp)
 
     // Gather public keys
     if (nRequired < 1)
-        throw runtime_error("a multisignature address must require at least one key to redeem");
+        throw std::runtime_error("a multisignature address must require at least one key to redeem");
     if ((int)keys.size() < nRequired)
-        throw runtime_error(
+        throw std::runtime_error(
             strprintf("not enough keys supplied "
                       "(got %u keys, but need at least %d to redeem)", keys.size(), nRequired));
     std::vector<CPubKey> pubkeys;
@@ -1092,14 +1091,14 @@ Value addmultisigaddress(const Array& params, bool fHelp)
         {
             CKeyID keyID;
             if (!address.GetKeyID(keyID))
-                throw runtime_error(
+                throw std::runtime_error(
                     strprintf("%s does not refer to a key",ks));
             CPubKey vchPubKey;
             if (!pwalletMain->GetPubKey(keyID, vchPubKey))
-                throw runtime_error(
+                throw std::runtime_error(
                     strprintf("no full public key for address %s",ks));
             if (!vchPubKey.IsFullyValid())
-                throw runtime_error(" Invalid public key: "+ks);
+                throw std::runtime_error(" Invalid public key: "+ks);
             pubkeys[i] = vchPubKey;
         }
 
@@ -1108,12 +1107,12 @@ Value addmultisigaddress(const Array& params, bool fHelp)
         {
             CPubKey vchPubKey(ParseHex(ks));
             if (!vchPubKey.IsFullyValid())
-                throw runtime_error(" Invalid public key: "+ks);
+                throw std::runtime_error(" Invalid public key: "+ks);
             pubkeys[i] = vchPubKey;
         }
         else
         {
-            throw runtime_error(" Invalid public key: "+ks);
+            throw std::runtime_error(" Invalid public key: "+ks);
         }
     }
 
@@ -1122,7 +1121,7 @@ Value addmultisigaddress(const Array& params, bool fHelp)
     inner.SetMultisig(nRequired, pubkeys);
     CScriptID innerID = inner.GetID();
     if (!pwalletMain->AddCScript(inner))
-        throw runtime_error("AddCScript() failed");
+        throw std::runtime_error("AddCScript() failed");
 
     pwalletMain->SetAddressBookName(innerID, strAccount);
     return CDigitalNoteAddress(innerID).ToString();
@@ -1135,7 +1134,7 @@ Value addredeemscript(const Array& params, bool fHelp)
         std::string msg = "addredeemscript <redeemScript> [account]\n"
             "Add a P2SH address with a specified redeemScript to the wallet.\n"
             "If [account] is specified, assign address to [account].";
-        throw runtime_error(msg);
+        throw std::runtime_error(msg);
     }
 
     std::string strAccount;
@@ -1147,7 +1146,7 @@ Value addredeemscript(const Array& params, bool fHelp)
     CScript inner(innerData.begin(), innerData.end());
     CScriptID innerID = inner.GetID();
     if (!pwalletMain->AddCScript(inner))
-        throw runtime_error("AddCScript() failed");
+        throw std::runtime_error("AddCScript() failed");
 
     pwalletMain->SetAddressBookName(innerID, strAccount);
     return CDigitalNoteAddress(innerID).ToString();
@@ -1212,8 +1211,8 @@ Value ListReceived(const Array& params, bool fByAccounts)
 
             tallyitem& item = mapTally[address];
             item.nAmount += txout.nValue;
-            item.nConf = min(item.nConf, nDepth);
-            item.nBCConf = min(item.nBCConf, nBCDepth);
+            item.nConf = std::min(item.nConf, nDepth);
+            item.nBCConf = std::min(item.nBCConf, nBCDepth);
             item.txids.push_back(wtx.GetHash());
             if (mine & ISMINE_WATCH_ONLY)
                 item.fIsWatchonly = true;
@@ -1247,8 +1246,8 @@ Value ListReceived(const Array& params, bool fByAccounts)
         {
             tallyitem& item = mapAccountTally[strAccount];
             item.nAmount += nAmount;
-            item.nConf = min(item.nConf, nConf);
-            item.nBCConf = min(item.nBCConf, nBCConf);
+            item.nConf = std::min(item.nConf, nConf);
+            item.nBCConf = std::min(item.nBCConf, nBCConf);
             item.fIsWatchonly = fIsWatchonly;
         }
         else
@@ -1298,7 +1297,7 @@ Value ListReceived(const Array& params, bool fByAccounts)
 Value listreceivedbyaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "listreceivedbyaddress ( minconf includeempty includeWatchonly)\n"
             "\nList balances by receiving address.\n"
             "\nArguments:\n"
@@ -1331,7 +1330,7 @@ Value listreceivedbyaddress(const Array& params, bool fHelp)
 Value listreceivedbyaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "listreceivedbyaccount ( minconf includeempty includeWatchonly)\n"
             "\nList balances by account.\n"
             "\nArguments:\n"
@@ -1466,7 +1465,7 @@ void AcentryToJSON(const CAccountingEntry& acentry, const std::string& strAccoun
 Value listtransactions(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 4)
-        throw runtime_error(
+        throw std::runtime_error(
             "listtransactions ( \"account\" count from includeWatchonly)\n"
             "\nReturns up to 'count' most recent transactions skipping the first 'from' transactions for account 'account'.\n"
             "\nArguments:\n"
@@ -1579,7 +1578,7 @@ Value listtransactions(const Array& params, bool fHelp)
 Value listaccounts(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "listaccounts ( minconf includeWatchonly)\n"
             "\nReturns Object that has account names as keys, account balances as values.\n"
             "\nArguments:\n"
@@ -1655,7 +1654,7 @@ Value listaccounts(const Array& params, bool fHelp)
 Value listsinceblock(const Array& params, bool fHelp)
 {
     if (fHelp)
-       throw runtime_error(
+       throw std::runtime_error(
             "listsinceblock ( \"blockhash\" target-confirmations includeWatchonly)\n"
             "\nGet all transactions in blocks since block [blockhash], or all transactions if omitted\n"
             "\nArguments:\n"
@@ -1754,7 +1753,7 @@ Value listsinceblock(const Array& params, bool fHelp)
 Value gettransaction(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "gettransaction \"txid\" ( includeWatchonly )\n"
             "\nGet detailed information about in-wallet transaction <txid>\n"
             "\nArguments:\n"
@@ -1853,7 +1852,7 @@ Value gettransaction(const Array& params, bool fHelp)
 Value backupwallet(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "backupwallet \"destination\"\n"
             "\nSafely copies wallet.dat to destination, which can be a directory or a path with filename.\n"
             "\nArguments:\n"
@@ -1874,7 +1873,7 @@ Value backupwallet(const Array& params, bool fHelp)
 Value keypoolrefill(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "keypoolrefill ( newsize )\n"
             "\nFills the keypool."
             + HelpRequiringPassphrase() + "\n"
@@ -1889,9 +1888,9 @@ Value keypoolrefill(const Array& params, bool fHelp)
     unsigned int nSize;
 
     if (fLiteMode)
-        nSize = max(GetArg("-keypool", 1000), (int64_t)0);
+        nSize = std::max(GetArg("-keypool", 1000), (int64_t)0);
     else
-        nSize = max(GetArg("-keypool", 100), (int64_t)0);
+        nSize = std::max(GetArg("-keypool", 100), (int64_t)0);
 
     if (params.size() > 0) {
         if (params[0].get_int() < 0)
@@ -1920,7 +1919,7 @@ static void LockWallet(CWallet* pWallet)
 Value walletpassphrase(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 3))
-        throw runtime_error(
+        throw std::runtime_error(
             "walletpassphrase \"passphrase\" timeout ( anonymizeonly )\n"
             "\nStores the wallet decryption key in memory for 'timeout' seconds.\n"
             "This is needed prior to performing transactions related to private keys such as sending XDN\n"
@@ -1960,7 +1959,7 @@ Value walletpassphrase(const Array& params, bool fHelp)
             throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The wallet passphrase entered was incorrect.");
     }
     else
-        throw runtime_error(
+        throw std::runtime_error(
             "walletpassphrase <passphrase> <timeout>\n"
             "Stores the wallet decryption key in memory for <timeout> seconds.");
 
@@ -1992,7 +1991,7 @@ Value walletpassphrase(const Array& params, bool fHelp)
 Value walletpassphrasechange(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 2))
-        throw runtime_error(
+        throw std::runtime_error(
             "walletpassphrasechange \"oldpassphrase\" \"newpassphrase\"\n"
             "\nChanges the wallet passphrase from 'oldpassphrase' to 'newpassphrase'.\n"
             "\nArguments:\n"
@@ -2019,7 +2018,7 @@ Value walletpassphrasechange(const Array& params, bool fHelp)
     strNewWalletPass = params[1].get_str().c_str();
 
     if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "walletpassphrasechange <oldpassphrase> <newpassphrase>\n"
             "Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
@@ -2033,7 +2032,7 @@ Value walletpassphrasechange(const Array& params, bool fHelp)
 Value walletlock(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 0))
-        throw runtime_error(
+        throw std::runtime_error(
             "walletlock\n"
             "\nRemoves the wallet encryption key from memory, locking the wallet.\n"
             "After calling this method, you will need to call walletpassphrase again\n"
@@ -2067,7 +2066,7 @@ Value walletlock(const Array& params, bool fHelp)
 Value encryptwallet(const Array& params, bool fHelp)
 {
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() != 1))
-        throw runtime_error(
+        throw std::runtime_error(
             "encryptwallet \"passphrase\"\n"
             "\nEncrypts the wallet with 'passphrase'. This is for first time encryption.\n"
             "After this, any calls that interact with private keys such as sending or signing \n"
@@ -2102,7 +2101,7 @@ Value encryptwallet(const Array& params, bool fHelp)
     strWalletPass = params[0].get_str().c_str();
 
     if (strWalletPass.length() < 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "encryptwallet <passphrase>\n"
             "Encrypts the wallet with <passphrase>.");
 
@@ -2121,7 +2120,7 @@ Value encryptwallet(const Array& params, bool fHelp)
 Value reservebalance(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "reservebalance [<reserve> [amount]]\n"
             "<reserve> is true or false to turn balance reserve on or off.\n"
             "<amount> is a real and rounded to cent.\n"
@@ -2134,17 +2133,17 @@ Value reservebalance(const Array& params, bool fHelp)
         if (fReserve)
         {
             if (params.size() == 1)
-                throw runtime_error("must provide amount to reserve balance.\n");
+                throw std::runtime_error("must provide amount to reserve balance.\n");
             CAmount nAmount = AmountFromValue(params[1]);
             nAmount = (nAmount / CENT) * CENT;  // round to cent
             if (nAmount < 0)
-                throw runtime_error("amount cannot be negative.\n");
+                throw std::runtime_error("amount cannot be negative.\n");
             nReserveBalance = nAmount;
         }
         else
         {
             if (params.size() > 1)
-                throw runtime_error("cannot specify amount to turn off reserve.\n");
+                throw std::runtime_error("cannot specify amount to turn off reserve.\n");
             nReserveBalance = 0;
         }
     }
@@ -2160,7 +2159,7 @@ Value reservebalance(const Array& params, bool fHelp)
 Value checkwallet(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "checkwallet\n"
             "Check wallet for integrity.\n");
 
@@ -2183,7 +2182,7 @@ Value checkwallet(const Array& params, bool fHelp)
 Value repairwallet(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "repairwallet\n"
             "Repair wallet if checkwallet reports any problem.\n");
 
@@ -2205,7 +2204,7 @@ Value repairwallet(const Array& params, bool fHelp)
 Value resendtx(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "resendtx\n"
             "Re-send unconfirmed transactions.\n"
         );
@@ -2219,7 +2218,7 @@ Value resendtx(const Array& params, bool fHelp)
 Value makekeypair(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "makekeypair [prefix]\n"
             "Make a public/private key pair.\n"
             "[prefix] is optional preferred prefix for the public key.\n");
@@ -2241,7 +2240,7 @@ Value makekeypair(const Array& params, bool fHelp)
 Value settxfee(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "settxfee amount\n"
             "\nSet the transaction fee per kB.\n"
             "\nArguments:\n"
@@ -2263,12 +2262,12 @@ Value settxfee(const Array& params, bool fHelp)
 Value getnewstealthaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getnewstealthaddress [label]\n"
             "Returns a new DigitalNote stealth address for receiving payments anonymously.  ");
 
     if (pwalletMain->IsLocked())
-        throw runtime_error("Failed: Wallet must be unlocked.");
+        throw std::runtime_error("Failed: Wallet must be unlocked.");
 
     std::string sLabel;
     if (params.size() > 0)
@@ -2277,10 +2276,10 @@ Value getnewstealthaddress(const Array& params, bool fHelp)
     CStealthAddress sxAddr;
     std::string sError;
     if (!pwalletMain->NewStealthAddress(sError, sLabel, sxAddr))
-        throw runtime_error(std::string("Could get new stealth address: ") + sError);
+        throw std::runtime_error(std::string("Could get new stealth address: ") + sError);
 
     if (!pwalletMain->AddStealthAddress(sxAddr))
-        throw runtime_error("Could not save to wallet.");
+        throw std::runtime_error("Could not save to wallet.");
 
     return sxAddr.Encoded();
 }
@@ -2288,7 +2287,7 @@ Value getnewstealthaddress(const Array& params, bool fHelp)
 Value liststealthaddresses(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "liststealthaddresses [show_secrets=0]\n"
             "List owned stealth addresses.");
 
@@ -2307,7 +2306,7 @@ Value liststealthaddresses(const Array& params, bool fHelp)
     if (fShowSecrets)
     {
         if (pwalletMain->IsLocked())
-            throw runtime_error("Failed: Wallet must be unlocked.");
+            throw std::runtime_error("Failed: Wallet must be unlocked.");
     };
 
     Object result;
@@ -2340,7 +2339,7 @@ Value liststealthaddresses(const Array& params, bool fHelp)
 Value importstealthaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "importstealthaddress <scan_secret> <spend_secret> [label]\n"
             "Import an owned stealth addresses.");
 
@@ -2363,7 +2362,7 @@ Value importstealthaddress(const Array& params, bool fHelp)
     } else
     {
         if (!DecodeBase58(sScanSecret, vchScanSecret))
-            throw runtime_error("Could not decode scan secret as hex or base58.");
+            throw std::runtime_error("Could not decode scan secret as hex or base58.");
     };
 
     if (IsHex(sSpendSecret))
@@ -2372,13 +2371,13 @@ Value importstealthaddress(const Array& params, bool fHelp)
     } else
     {
         if (!DecodeBase58(sSpendSecret, vchSpendSecret))
-            throw runtime_error("Could not decode spend secret as hex or base58.");
+            throw std::runtime_error("Could not decode spend secret as hex or base58.");
     };
 
     if (vchScanSecret.size() != 32)
-        throw runtime_error("Scan secret is not 32 bytes.");
+        throw std::runtime_error("Scan secret is not 32 bytes.");
     if (vchSpendSecret.size() != 32)
-        throw runtime_error("Spend secret is not 32 bytes.");
+        throw std::runtime_error("Spend secret is not 32 bytes.");
 
 
     ec_secret scan_secret;
@@ -2389,10 +2388,10 @@ Value importstealthaddress(const Array& params, bool fHelp)
 
     ec_point scan_pubkey, spend_pubkey;
     if (SecretToPublicKey(scan_secret, scan_pubkey) != 0)
-        throw runtime_error("Could not get scan public key.");
+        throw std::runtime_error("Could not get scan public key.");
 
     if (SecretToPublicKey(spend_secret, spend_pubkey) != 0)
-        throw runtime_error("Could not get spend public key.");
+        throw std::runtime_error("Could not get spend public key.");
 
 
     CStealthAddress sxAddr;
@@ -2438,7 +2437,7 @@ Value importstealthaddress(const Array& params, bool fHelp)
 
 
     if (!pwalletMain->AddStealthAddress(sxAddr))
-        throw runtime_error("Could not save to wallet.");
+        throw std::runtime_error("Could not save to wallet.");
 
     return result;
 }
@@ -2447,7 +2446,7 @@ Value importstealthaddress(const Array& params, bool fHelp)
 Value sendtostealthaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 5)
-        throw runtime_error(
+        throw std::runtime_error(
             "sendtostealthaddress <stealth_address> <amount> [comment] [comment-to] [narration]\n"
             "<amount> is a real and is rounded to the nearest 0.000001"
             + HelpRequiringPassphrase());
@@ -2463,7 +2462,7 @@ Value sendtostealthaddress(const Array& params, bool fHelp)
         sNarr = params[4].get_str();
 
     if (sNarr.length() > 24)
-        throw runtime_error("Narration must be 24 characters or less.");
+        throw std::runtime_error("Narration must be 24 characters or less.");
 
     CStealthAddress sxAddr;
 
@@ -2499,7 +2498,7 @@ Value sendtostealthaddress(const Array& params, bool fHelp)
 Value scanforalltxns(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "scanforalltxns [fromHeight]\n"
             "Scan blockchain for owned transactions.");
 
@@ -2522,7 +2521,7 @@ Value scanforalltxns(const Array& params, bool fHelp)
     };
 
     if (pindex == NULL)
-        throw runtime_error("Genesis Block is not set.");
+        throw std::runtime_error("Genesis Block is not set.");
 
     {
         LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -2541,7 +2540,7 @@ Value scanforalltxns(const Array& params, bool fHelp)
 Value scanforstealthtxns(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "scanforstealthtxns [fromHeight]\n"
             "Scan blockchain for owned stealth transactions.");
 
@@ -2566,7 +2565,7 @@ Value scanforstealthtxns(const Array& params, bool fHelp)
     };
 
     if (pindex == NULL)
-        throw runtime_error("Genesis Block is not set.");
+        throw std::runtime_error("Genesis Block is not set.");
 
     // -- locks in AddToWalletIfInvolvingMe
 
@@ -2608,7 +2607,7 @@ Value scanforstealthtxns(const Array& params, bool fHelp)
 Value cclistcoins(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "cclistcoins\n"
                         "CoinControl: list your spendable coins and their information\n");
 

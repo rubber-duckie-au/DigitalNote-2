@@ -14,9 +14,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 
-using namespace std;
 using namespace boost;
-
 
 static uint64_t nAccountingEntryNumber = 0;
 extern bool fWalletUnlockStakingOnly;
@@ -222,7 +220,7 @@ void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<
 
     Dbc* pcursor = GetCursor();
     if (!pcursor)
-        throw runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
+        throw std::runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
     unsigned int fFlags = DB_SET_RANGE;
     while (true)
     {
@@ -238,7 +236,7 @@ void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<
         else if (ret != 0)
         {
             pcursor->close();
-            throw runtime_error("CWalletDB::ListAccountCreditDebit() : error scanning DB");
+            throw std::runtime_error("CWalletDB::ListAccountCreditDebit() : error scanning DB");
         }
 
         // Unserialize

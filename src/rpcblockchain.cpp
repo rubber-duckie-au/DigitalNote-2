@@ -11,7 +11,6 @@
 #include "main.h"
 
 using namespace json_spirit;
-using namespace std;
 
 extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spirit::Object& entry);
 
@@ -63,7 +62,7 @@ double GetPoWMHashPS()
         {
             int64_t nActualSpacingWork = pindex->GetBlockTime() - pindexPrevWork->GetBlockTime();
             nTargetSpacingWork = ((nPoWInterval - 1) * nTargetSpacingWork + nActualSpacingWork + nActualSpacingWork) / (nPoWInterval + 1);
-            nTargetSpacingWork = max(nTargetSpacingWork, nTargetSpacingWorkMin);
+            nTargetSpacingWork = std::max(nTargetSpacingWork, nTargetSpacingWorkMin);
             pindexPrevWork = pindex;
         }
 
@@ -165,7 +164,7 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
 Value getbestblockhash(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getbestblockhash\n"
             "Returns the hash of the best block in the longest block chain.");
 
@@ -175,7 +174,7 @@ Value getbestblockhash(const Array& params, bool fHelp)
 Value getblockcount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getblockcount\n"
             "Returns the number of blocks in the longest block chain.");
 
@@ -186,7 +185,7 @@ Value getblockcount(const Array& params, bool fHelp)
 Value getdifficulty(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getdifficulty\n"
             "Returns the difficulty as a multiple of the minimum difficulty.");
 
@@ -200,7 +199,7 @@ Value getdifficulty(const Array& params, bool fHelp)
 Value getrawmempool(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getrawmempool\n"
             "Returns all transaction ids in memory pool.");
 
@@ -217,13 +216,13 @@ Value getrawmempool(const Array& params, bool fHelp)
 Value getblockhash(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "getblockhash <index>\n"
             "Returns hash of block in best-block-chain at <index>.");
 
     int nHeight = params[0].get_int();
     if (nHeight < 0 || nHeight > nBestHeight)
-        throw runtime_error("Block number out of range.");
+        throw std::runtime_error("Block number out of range.");
 
     CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
     return pblockindex->phashBlock->GetHex();
@@ -232,7 +231,7 @@ Value getblockhash(const Array& params, bool fHelp)
 Value getblock(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "getblock <hash> [txinfo]\n"
             "txinfo optional to print more detailed tx info\n"
             "Returns details of a block with given block-hash.");
@@ -253,14 +252,14 @@ Value getblock(const Array& params, bool fHelp)
 Value getblockbynumber(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "getblockbynumber <number> [txinfo]\n"
             "txinfo optional to print more detailed tx info\n"
             "Returns details of a block with given block-number.");
 
     int nHeight = params[0].get_int();
     if (nHeight < 0 || nHeight > nBestHeight)
-        throw runtime_error("Block number out of range.");
+        throw std::runtime_error("Block number out of range.");
 
     CBlock block;
     CBlockIndex* pblockindex = mapBlockIndex[hashBestChain];
@@ -279,7 +278,7 @@ Value getblockbynumber(const Array& params, bool fHelp)
 Value getcheckpoint(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getcheckpoint\n"
             "Show info of synchronized checkpoint.\n");
 

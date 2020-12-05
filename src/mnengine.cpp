@@ -19,7 +19,6 @@
 
 #include "mnengine.h"
 
-using namespace std;
 using namespace boost;
 
 // The main object for accessing mnengine

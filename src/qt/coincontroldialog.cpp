@@ -26,7 +26,6 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 
-using namespace std;
 QList<qint64> CoinControlDialog::payAmounts;
 CCoinControl* CoinControlDialog::coinControl = new CCoinControl();
 
@@ -594,12 +593,12 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         int64_t nFee = nTransactionFee * (1 + (int64_t)nBytes / 1000);
 
         // IX Fee
-        if(coinControl->useInstantX) nFee = max(nFee, CENT);
+        if(coinControl->useInstantX) nFee = std::max(nFee, CENT);
 
         // Min Fee
         int64_t nMinFee = GetMinFee(txDummy, nBytes, AllowFree(dPriority), GMF_SEND);
 
-        nPayFee = max(nFee, nMinFee);
+        nPayFee = std::max(nFee, nMinFee);
 
         if (nPayAmount > 0)
         {

@@ -9,7 +9,6 @@
 #include "blocksizecalculator.h"
 
 using namespace BlockSizeCalculator;
-using namespace std;
 
 static std::vector<unsigned int> blocksizes;
 static bool sorted = false;

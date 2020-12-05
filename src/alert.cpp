@@ -18,8 +18,6 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
 
-using namespace std;
-
 std::map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;
 

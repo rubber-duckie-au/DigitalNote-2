@@ -16,7 +16,6 @@
 #include "util.h"
 
 using namespace json_spirit;
-using namespace std;
 
 void SendMoney(const CTxDestination &address, CAmount nValue, CWalletTx& wtxNew, AvailableCoinsType coin_type=ALL_COINS)
 {
@@ -64,7 +63,7 @@ Value masternode(const Array& params, bool fHelp)
         (strCommand != "count" && strCommand != "current" && strCommand != "debug" && strCommand != "genkey" && strCommand != "enforce" && strCommand != "list" && strCommand != "list-conf"
         	&& strCommand != "start" && strCommand != "start-alias" && strCommand != "start-many" && strCommand != "status" && strCommand != "stop" && strCommand != "stop-alias"
                 && strCommand != "stop-many" && strCommand != "winners" && strCommand != "connect" && strCommand != "outputs" && strCommand != "vote-many" && strCommand != "vote"))
-        throw runtime_error(
+        throw std::runtime_error(
                 "masternode \"command\"... ( \"passphrase\" )\n"
                 "Set of commands to execute masternode related actions\n"
                 "\nArguments:\n"
@@ -102,7 +101,7 @@ Value masternode(const Array& params, bool fHelp)
             if (params.size() == 2){
                 strWalletPass = params[1].get_str().c_str();
             } else {
-                throw runtime_error(
+                throw std::runtime_error(
                     "Your wallet is locked, passphrase is required\n");
             }
 
@@ -126,7 +125,7 @@ Value masternode(const Array& params, bool fHelp)
     if (strCommand == "stop-alias")
     {
 	    if (params.size() < 2){
-			throw runtime_error(
+			throw std::runtime_error(
 			"command needs at least 2 parameters\n");
 	    }
 
@@ -139,7 +138,7 @@ Value masternode(const Array& params, bool fHelp)
 			if (params.size() == 3){
 				strWalletPass = params[2].get_str().c_str();
 			} else {
-				throw runtime_error(
+				throw std::runtime_error(
 				"Your wallet is locked, passphrase is required\n");
 			}
 
@@ -185,7 +184,7 @@ Value masternode(const Array& params, bool fHelp)
 			if (params.size() == 2){
 				strWalletPass = params[1].get_str().c_str();
 			} else {
-				throw runtime_error(
+				throw std::runtime_error(
 				"Your wallet is locked, passphrase is required\n");
 			}
 
@@ -241,7 +240,7 @@ Value masternode(const Array& params, bool fHelp)
     if (strCommand == "count")
     {
         if (params.size() > 2){
-            throw runtime_error(
+            throw std::runtime_error(
                 "too many parameters\n");
         }
 
@@ -264,7 +263,7 @@ Value masternode(const Array& params, bool fHelp)
             if (params.size() == 2){
                 strWalletPass = params[1].get_str().c_str();
             } else {
-                throw runtime_error(
+                throw std::runtime_error(
                     "Your wallet is locked, passphrase is required\n");
             }
 
@@ -293,7 +292,7 @@ Value masternode(const Array& params, bool fHelp)
     if (strCommand == "start-alias")
     {
 	    if (params.size() < 2){
-			throw runtime_error(
+			throw std::runtime_error(
 			"command needs at least 2 parameters\n");
 	    }
 
@@ -306,7 +305,7 @@ Value masternode(const Array& params, bool fHelp)
 			if (params.size() == 3){
 				strWalletPass = params[2].get_str().c_str();
 			} else {
-				throw runtime_error(
+				throw std::runtime_error(
 				"Your wallet is locked, passphrase is required\n");
 			}
 
@@ -356,7 +355,7 @@ Value masternode(const Array& params, bool fHelp)
 			if (params.size() == 2){
 				strWalletPass = params[1].get_str().c_str();
 			} else {
-				throw runtime_error(
+				throw std::runtime_error(
 				"Your wallet is locked, passphrase is required\n");
 			}
 
@@ -504,7 +503,7 @@ Value masternode(const Array& params, bool fHelp)
         if (params.size() == 2){
             strAddress = params[1].get_str().c_str();
         } else {
-            throw runtime_error(
+            throw std::runtime_error(
                 "Masternode address required\n");
         }
 
@@ -556,7 +555,7 @@ Value masternode(const Array& params, bool fHelp)
         mnEntries = masternodeConfig.getEntries();
 
         if (params.size() != 2)
-            throw runtime_error("You can only vote 'yay' or 'nay'");
+            throw std::runtime_error("You can only vote 'yay' or 'nay'");
 
         std::string vote = params[1].get_str().c_str();
         if(vote != "yay" && vote != "nay") return "You can only vote 'yay' or 'nay'";
@@ -624,7 +623,7 @@ Value masternode(const Array& params, bool fHelp)
         mnEntries = masternodeConfig.getEntries();
 
         if (params.size() != 2)
-            throw runtime_error("You can only vote 'yay' or 'nay'");
+            throw std::runtime_error("You can only vote 'yay' or 'nay'");
 
         std::string vote = params[1].get_str().c_str();
         if(vote != "yay" && vote != "nay") return "You can only vote 'yay' or 'nay'";
@@ -697,7 +696,7 @@ Value masternodelist(const Array& params, bool fHelp)
             (strMode != "activeseconds" && strMode != "donation" && strMode != "full" && strMode != "lastseen" && strMode != "protocol" 
                 && strMode != "pubkey" && strMode != "rank" && strMode != "status" && strMode != "addr" && strMode != "votes" && strMode != "lastpaid"))
     {
-        throw runtime_error(
+        throw std::runtime_error(
                 "masternodelist ( \"mode\" \"filter\" )\n"
                 "Get a list of masternodes in different modes\n"
                 "\nArguments:\n"
@@ -757,15 +756,15 @@ Value masternodelist(const Array& params, bool fHelp)
                 CDigitalNoteAddress address2(address1);
 
                 std::ostringstream addrStream;
-                addrStream << setw(21) << strVin;
+                addrStream << std::setw(21) << strVin;
 
                 std::ostringstream stringStream;
-                stringStream << setw(10) <<
+                stringStream << std::setw(10) <<
                                mn.Status() << " " <<
                                mn.protocolVersion << " " <<
                                address2.ToString() << " " <<
                                mn.addr.ToString() << " " <<
-                               mn.lastTimeSeen << " " << setw(8) <<
+                               mn.lastTimeSeen << " " << std::setw(8) <<
                                (mn.lastTimeSeen - mn.sigTime) << " " <<
                                mn.nLastPaid;
                 std::string output = stringStream.str();

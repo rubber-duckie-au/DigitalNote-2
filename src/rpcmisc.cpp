@@ -23,7 +23,6 @@
 #include "json/json_spirit_utils.h"
 #include "json/json_spirit_value.h"
 
-using namespace std;
 using namespace boost;
 using namespace boost::assign;
 using namespace json_spirit;
@@ -31,7 +30,7 @@ using namespace json_spirit;
 Value getinfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "getinfo\n"
             "Returns an object containing various state info.");
 
@@ -131,7 +130,7 @@ public:
 Value validateaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "validateaddress <DigitalNote>\n"
             "Return information about <DigitalNote>.");
 
@@ -163,7 +162,7 @@ Value validateaddress(const Array& params, bool fHelp)
 Value validatepubkey(const Array& params, bool fHelp)
 {
     if (fHelp || !params.size() || params.size() > 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "validatepubkey <DigitalNotepubkey>\n"
             "Return information about <DigitalNotepubkey>.");
 
@@ -203,7 +202,7 @@ Value validatepubkey(const Array& params, bool fHelp)
 Value verifymessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "verifymessage <DigitalNote> <signature> <message>\n"
             "Verify a signed message");
 
@@ -268,7 +267,7 @@ Value spork(const Array& params, bool fHelp)
 
     }
 
-    throw runtime_error(
+    throw std::runtime_error(
         "spork <name> [<value>]\n"
         "<name> is the corresponding spork name, or 'show' to show all current spork settings"
         "<value> is a epoch datetime to enable or disable spork"

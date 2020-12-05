@@ -42,7 +42,6 @@
 
 // RETROCOMPATIBILITY SHOULD NOT BE AN OPTION
 
-using namespace std;
 using namespace boost;
 using namespace boost::asio;
 using namespace json_spirit;
@@ -197,7 +196,7 @@ std::string CRPCTable::help(const std::string &strCommand) const
 Value help(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "help [command]\n"
             "List commands, or get help for a command.");
 
@@ -213,7 +212,7 @@ Value stop(const Array& params, bool fHelp)
 {
     // Accept the deprecated and ignored 'detach' boolean argument
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "stop\n"
             "Stop DigitalNote server.");
     // Shutdown will take long enough that the response should get back
@@ -359,7 +358,7 @@ CRPCTable::CRPCTable()
     }
 }
 
-const CRPCCommand *CRPCTable::operator[](string name) const
+const CRPCCommand *CRPCTable::operator[](std::string name) const
 {
     std::map<std::string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
     if (it == mapCommands.end())

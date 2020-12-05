@@ -13,7 +13,6 @@
 #include "script.h"
 #include "base58.h"
 
-using namespace std;
 using namespace boost;
 
 class CMasternodeScanning;

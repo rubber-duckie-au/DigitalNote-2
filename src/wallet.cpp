@@ -27,8 +27,6 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
-using namespace std;
-
 // Settings
 int64_t nTransactionFee = MIN_TX_FEE;
 int64_t nReserveBalance = 0;

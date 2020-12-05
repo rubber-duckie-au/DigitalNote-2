@@ -14,8 +14,6 @@
 
 #include "kernel.h"
 
-using namespace std;
-
 extern bool IsConfirmedInNPrevBlocks(const CTxIndex& txindex, const CBlockIndex* pindexFrom, int nMaxDepth, int& nActualDepth);
 
 // Get time weight
@@ -153,7 +151,7 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
     uint64_t nStakeModifierNew = 0;
     int64_t nSelectionIntervalStop = nSelectionIntervalStart;
     std::map<uint256, const CBlockIndex*> mapSelectedBlocks;
-    for (int nRound=0; nRound<min(64, (int)vSortedByTimestamp.size()); nRound++)
+    for (int nRound=0; nRound<std::min(64, (int)vSortedByTimestamp.size()); nRound++)
     {
         // add an interval section to the current selection round
         nSelectionIntervalStop += GetStakeModifierSelectionIntervalSection(nRound);

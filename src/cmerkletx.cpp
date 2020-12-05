@@ -138,7 +138,7 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
-    return max(0, nCoinbaseMaturity+75 - GetDepthInMainChain());
+    return std::max(0, nCoinbaseMaturity+75 - GetDepthInMainChain());
 }
 
 bool CMerkleTx::AcceptToMemoryPool(bool fLimitFree, bool fRejectInsaneFee, bool ignoreFees)

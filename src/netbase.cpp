@@ -22,7 +22,6 @@
 #define MSG_NOSIGNAL 0
 #endif
 
-using namespace std;
 
 // Settings
 static proxyType proxyInfo[NET_MAX];

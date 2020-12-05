@@ -25,7 +25,6 @@
 #include <boost/shared_ptr.hpp>
 #include "json/json_spirit_writer_template.h"
 
-using namespace std;
 using namespace boost;
 using namespace boost::asio;
 using namespace json_spirit;
@@ -33,7 +32,7 @@ using namespace json_spirit;
 Object CallRPC(const std::string& strMethod, const Array& params)
 {
     if (mapArgs["-rpcuser"] == "" && mapArgs["-rpcpassword"] == "")
-        throw runtime_error(strprintf(
+        throw std::runtime_error(strprintf(
             _("You must set rpcpassword=<password> in the configuration file:\n%s\n"
               "If the file does not exist, create it with owner-readable-only file permissions."),
                 GetConfigFile().string()));
@@ -54,7 +53,7 @@ Object CallRPC(const std::string& strMethod, const Array& params)
         if (fWait)
             MilliSleep(1000);
         else
-            throw runtime_error("couldn't connect to server");
+            throw std::runtime_error("couldn't connect to server");
     } while (fWait);
 
     // HTTP basic authentication
@@ -77,19 +76,19 @@ Object CallRPC(const std::string& strMethod, const Array& params)
     ReadHTTPMessage(stream, mapHeaders, strReply, nProto, MAX_SIZE);
 
     if (nStatus == HTTP_UNAUTHORIZED)
-        throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+        throw std::runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
     else if (nStatus >= 400 && nStatus != HTTP_BAD_REQUEST && nStatus != HTTP_NOT_FOUND && nStatus != HTTP_INTERNAL_SERVER_ERROR)
-        throw runtime_error(strprintf("server returned HTTP error %d", nStatus));
+        throw std::runtime_error(strprintf("server returned HTTP error %d", nStatus));
     else if (strReply.empty())
-        throw runtime_error("no response from server");
+        throw std::runtime_error("no response from server");
 
     // Parse reply
     Value valReply;
     if (!read_string(strReply, valReply))
-        throw runtime_error("couldn't parse reply from server");
+        throw std::runtime_error("couldn't parse reply from server");
     const Object& reply = valReply.get_obj();
     if (reply.empty())
-        throw runtime_error("expected reply to have result, error and id properties");
+        throw std::runtime_error("expected reply to have result, error and id properties");
 
     return reply;
 }
@@ -213,7 +212,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
         else {
             Value jVal;
             if (!read_string(strVal, jVal))
-                throw runtime_error(std::string("Error parsing JSON:")+strVal);
+                throw std::runtime_error(std::string("Error parsing JSON:")+strVal);
             params.push_back(jVal);
         }
 
@@ -237,7 +236,7 @@ int CommandLineRPC(int argc, char *argv[])
 
         // Method
         if (argc < 2)
-            throw runtime_error("too few parameters");
+            throw std::runtime_error("too few parameters");
         std::string strMethod = argv[1];
 
         // Parameters default to strings

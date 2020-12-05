@@ -219,7 +219,7 @@ int CWallet::CountInputsWithAmount(int64_t nInputAmount)
 
 bool CWallet::SelectCoinsCollateral(std::vector<CTxIn>& setCoinsRet, int64_t& nValueRet) const
 {
-    vector<COutput> vCoins;
+    std::vector<COutput> vCoins;
 
     //printf(" selecting coins for collateral\n");
     AvailableCoins(vCoins);
@@ -304,7 +304,7 @@ bool CWallet::CanSupportFeature(enum WalletFeature wf)
 	return nWalletMaxVersion >= wf;
 }
 
-void CWallet::AvailableCoinsForStaking(vector<COutput>& vCoins, unsigned int nSpendTime) const
+void CWallet::AvailableCoinsForStaking(std::vector<COutput>& vCoins, unsigned int nSpendTime) const
 {
     vCoins.clear();
 
@@ -352,7 +352,7 @@ void CWallet::AvailableCoinsForStaking(vector<COutput>& vCoins, unsigned int nSp
 }
 
 // populate vCoins with vector of available COutputs.
-void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl,
+void CWallet::AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl,
 		AvailableCoinsType coin_type, bool useIX) const
 {
     vCoins.clear();
@@ -494,7 +494,7 @@ bool CWallet::SelectCoinsMinConf(int64_t nTargetValue, unsigned int nSpendTime, 
 
         int64_t n = pcoin->vout[i].nValue;
 
-        std::pair<int64_t,std::pair<const CWalletTx*,unsigned int> > coin = std::make_pair(n,make_pair(pcoin, i));
+        std::pair<int64_t,std::pair<const CWalletTx*,unsigned int> > coin = std::make_pair(n,std::make_pair(pcoin, i));
 
         if (n == nTargetValue)
         {
@@ -1648,7 +1648,7 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
         LOCK2(cs_main, cs_wallet);
         {
             nFeeRet = nTransactionFee;
-            if(useIX) nFeeRet = max(CENT, nFeeRet);
+            if(useIX) nFeeRet = std::max(CENT, nFeeRet);
             while (true)
             {
                 wtxNew.vin.clear();
@@ -1803,10 +1803,10 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
                 bool fAllowFree = AllowFree(dPriority);
                 int64_t nMinFee = GetMinFee(wtxNew, nBytes, fAllowFree, GMF_SEND);
 
-                if (nFeeRet < max(nPayFee, nMinFee))
+                if (nFeeRet < std::max(nPayFee, nMinFee))
                 {
-                    nFeeRet = max(nPayFee, nMinFee);
-                    if(useIX) nFeeRet = max(CENT, nFeeRet);
+                    nFeeRet = std::max(nPayFee, nMinFee);
+                    if(useIX) nFeeRet = std::max(CENT, nFeeRet);
                     continue;
                 }
                 // Fill vtxPrev by copying from previous transactions vtxPrev
@@ -2002,7 +2002,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     {
         static int nMaxStakeSearchInterval = 60;
         bool fKernelFound = false;
-        for (unsigned int n=0; n<min(nSearchInterval,(int64_t)nMaxStakeSearchInterval) && !fKernelFound && pindexPrev == pindexBest; n++)
+        for (unsigned int n=0; n < std::min(nSearchInterval,(int64_t)nMaxStakeSearchInterval) && !fKernelFound && pindexPrev == pindexBest; n++)
         {
             boost::this_thread::interruption_point();
             // Search backward in time from the given txNew timestamp
@@ -3172,9 +3172,9 @@ bool CWallet::NewKeyPool()
         int64_t nKeys;
 
         if (fLiteMode)
-            nKeys = max(GetArg("-keypool", 100), (int64_t)0);
+            nKeys = std::max(GetArg("-keypool", 100), (int64_t)0);
         else
-            nKeys = max(GetArg("-keypool", 1000), (int64_t)0);
+            nKeys = std::max(GetArg("-keypool", 1000), (int64_t)0);
 
         for (int i = 0; i < nKeys; i++)
         {
@@ -3204,9 +3204,9 @@ bool CWallet::TopUpKeyPool(unsigned int nSize)
         if (nSize > 0)
             nTargetSize = nSize;
         else if (fLiteMode)
-            nTargetSize = max(GetArg("-keypool", 100), (int64_t)0);
+            nTargetSize = std::max(GetArg("-keypool", 100), (int64_t)0);
         else
-            nTargetSize = max(GetArg("-keypool", 1000), (int64_t)0);
+            nTargetSize = std::max(GetArg("-keypool", 1000), (int64_t)0);
 
         while (setKeyPool.size() < (nTargetSize + 1))
         {
@@ -3214,7 +3214,7 @@ bool CWallet::TopUpKeyPool(unsigned int nSize)
             if (!setKeyPool.empty())
                 nEnd = *(--setKeyPool.end()) + 1;
             if (!walletdb.WritePool(nEnd, CKeyPool(GenerateNewKey())))
-                throw runtime_error("TopUpKeyPool() : writing generated key failed");
+                throw std::runtime_error("TopUpKeyPool() : writing generated key failed");
             setKeyPool.insert(nEnd);
             LogPrintf("keypool added key %d, size=%u\n", nEnd, setKeyPool.size());
             double dProgress = 100.f * nEnd / (nTargetSize + 1);
@@ -3233,7 +3233,7 @@ int64_t CWallet::AddReserveKey(const CKeyPool& keypool)
 
         int64_t nIndex = 1 + *(--setKeyPool.end());
         if (!walletdb.WritePool(nIndex, keypool))
-            throw runtime_error("AddReserveKey() : writing added key failed");
+            throw std::runtime_error("AddReserveKey() : writing added key failed");
         setKeyPool.insert(nIndex);
         return nIndex;
     }
@@ -3259,9 +3259,9 @@ void CWallet::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool)
         nIndex = *(setKeyPool.begin());
         setKeyPool.erase(setKeyPool.begin());
         if (!walletdb.ReadPool(nIndex, keypool))
-            throw runtime_error("ReserveKeyFromKeyPool() : read failed");
+            throw std::runtime_error("ReserveKeyFromKeyPool() : read failed");
         if (!HaveKey(keypool.vchPubKey.GetID()))
-            throw runtime_error("ReserveKeyFromKeyPool() : unknown key in key pool");
+            throw std::runtime_error("ReserveKeyFromKeyPool() : unknown key in key pool");
         assert(keypool.vchPubKey.IsValid());
         LogPrintf("keypool reserve %d\n", nIndex);
     }
@@ -3329,11 +3329,11 @@ void CWallet::GetAllReserveKeys(std::set<CKeyID>& setAddress) const
     {
         CKeyPool keypool;
         if (!walletdb.ReadPool(id, keypool))
-            throw runtime_error("GetAllReserveKeyHashes() : read failed");
+            throw std::runtime_error("GetAllReserveKeyHashes() : read failed");
         assert(keypool.vchPubKey.IsValid());
         CKeyID keyID = keypool.vchPubKey.GetID();
         if (!HaveKey(keyID))
-            throw runtime_error("GetAllReserveKeyHashes() : unknown key in key pool");
+            throw std::runtime_error("GetAllReserveKeyHashes() : unknown key in key pool");
         setAddress.insert(keyID);
     }
 }

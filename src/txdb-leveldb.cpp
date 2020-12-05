@@ -22,7 +22,6 @@
 #include "ctransaction.h"
 #include "main.h"
 
-using namespace std;
 using namespace boost;
 
 leveldb::DB *txdb; // global pointer for LevelDB object instance
@@ -61,7 +60,7 @@ void init_blockindex(leveldb::Options& options, bool fRemoveOld = false) {
     LogPrintf("Opening LevelDB in %s\n", directory.string());
     leveldb::Status status = leveldb::DB::Open(options, directory.string(), &txdb);
     if (!status.ok()) {
-        throw runtime_error(strprintf("init_blockindex(): error opening database environment %s", status.ToString()));
+        throw std::runtime_error(strprintf("init_blockindex(): error opening database environment %s", status.ToString()));
     }
 }
 
@@ -193,7 +192,7 @@ bool CTxDB::ScanBatch(const CDataStream &key, std::string *value, bool *deleted)
     scanner.foundValue = value;
     leveldb::Status status = activeBatch->Iterate(&scanner);
     if (!status.ok()) {
-        throw runtime_error(status.ToString());
+        throw std::runtime_error(status.ToString());
     }
     return scanner.foundEntry;
 }
@@ -319,7 +318,7 @@ static CBlockIndex *InsertBlockIndex(uint256 hash)
     // Create new
     CBlockIndex* pindexNew = new CBlockIndex();
     if (!pindexNew)
-        throw runtime_error("LoadBlockIndex() : new CBlockIndex failed");
+        throw std::runtime_error("LoadBlockIndex() : new CBlockIndex failed");
     mi = mapBlockIndex.insert(std::make_pair(hash, pindexNew)).first;
     pindexNew->phashBlock = &((*mi).first);
 

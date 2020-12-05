@@ -15,7 +15,6 @@
 #include <boost/lexical_cast.hpp>
 #include "masternodeman.h"
 
-using namespace std;
 using namespace boost;
 
 std::map<uint256, CMasternodeScanningError> mapMasternodeScanningErrors;

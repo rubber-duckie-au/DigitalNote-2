@@ -33,7 +33,7 @@
 #if !defined(HAVE_MSG_NOSIGNAL) && !defined(MSG_NOSIGNAL)
 #define MSG_NOSIGNAL 0
 #endif
-using namespace std;
+
 using namespace boost;
 
 static const int MAX_OUTBOUND_CONNECTIONS = 12;
@@ -1053,7 +1053,7 @@ void ThreadSocketHandler()
 
         BOOST_FOREACH(SOCKET hListenSocket, vhListenSocket) {
             FD_SET(hListenSocket, &fdsetRecv);
-            hSocketMax = max(hSocketMax, hListenSocket);
+            hSocketMax = std::max(hSocketMax, hListenSocket);
             have_fds = true;
         }
         {
@@ -1063,7 +1063,7 @@ void ThreadSocketHandler()
                 if (pnode->hSocket == INVALID_SOCKET)
                     continue;
                 FD_SET(pnode->hSocket, &fdsetError);
-                hSocketMax = max(hSocketMax, pnode->hSocket);
+                hSocketMax = std::max(hSocketMax, pnode->hSocket);
                 have_fds = true;
 
                 // Implement the following logic:
@@ -1595,7 +1595,7 @@ void ThreadOpenConnections()
         while (true)
         {
             // use an nUnkBias between 10 (no outgoing connections) and 90 (8 outgoing connections)
-            CAddress addr = addrman.Select(10 + min(nOutbound,8)*10);
+            CAddress addr = addrman.Select(10 + std::min(nOutbound,8)*10);
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
@@ -1859,7 +1859,7 @@ void ThreadMessageHandler()
 
 
 
-bool BindListenPort(const CService &addrBind, string& strError)
+bool BindListenPort(const CService &addrBind, std::string& strError)
 {
     strError = "";
     int nOne = 1;
@@ -2035,7 +2035,7 @@ void StartNode(boost::thread_group& threadGroup)
 
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
+        int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 

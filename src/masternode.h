@@ -36,8 +36,6 @@ class uint256;
 #define MASTERNODE_EXPIRATION_SECONDS          (65*60)
 #define MASTERNODE_REMOVAL_SECONDS             (70*60)
 
-using namespace std;
-
 class CMasternode;
 
 extern CCriticalSection cs_masternodes;

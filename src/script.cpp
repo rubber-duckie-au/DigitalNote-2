@@ -19,7 +19,6 @@
 #include "ctransaction.h"
 #include "chain.h"
 
-using namespace std;
 using namespace boost;
 
 namespace {
@@ -122,7 +121,7 @@ static const size_t nDefaultMaxNumSize = 4;
 CBigNum CastToBigNum(const valtype& vch, const size_t nMaxNumSize = nDefaultMaxNumSize)
 {
     if (vch.size() > nMaxNumSize)
-        throw runtime_error("CastToBigNum() : overflow");
+        throw std::runtime_error("CastToBigNum() : overflow");
     // Get rid of extra leading zeros
     return CBigNum(CBigNum(vch).getvch());
 }
@@ -179,7 +178,7 @@ void MakeSameSize(valtype& vch1, valtype& vch2)
 static inline void popstack(std::vector<valtype>& stack)
 {
     if (stack.empty())
-        throw runtime_error("popstack() : stack empty");
+        throw std::runtime_error("popstack() : stack empty");
     stack.pop_back();
 }
 

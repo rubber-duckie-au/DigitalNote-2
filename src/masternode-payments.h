@@ -11,8 +11,6 @@
 #include "base58.h"
 #include "masternode.h"
 
-using namespace std;
-
 class CMasternodePayments;
 class CMasternodePaymentWinner;
 

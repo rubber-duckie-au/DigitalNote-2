@@ -9,7 +9,6 @@
 #include "init.h" // pwalletMain
 
 using namespace json_spirit;
-using namespace std;
 
 extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spirit::Object& entry);
 
@@ -18,12 +17,12 @@ extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spiri
 Value smsgenable(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgenable \n"
             "Enable secure messaging.");
     
     if (fSecMsgEnabled)
-        throw runtime_error("Secure messaging is already enabled.");
+        throw std::runtime_error("Secure messaging is already enabled.");
     
     Object result;
     if (!SecureMsgEnable())
@@ -39,11 +38,11 @@ Value smsgenable(const Array& params, bool fHelp)
 Value smsgdisable(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgdisable \n"
             "Disable secure messaging.");
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is already disabled.");
+        throw std::runtime_error("Secure messaging is already disabled.");
     
     Object result;
     if (!SecureMsgDisable())
@@ -59,7 +58,7 @@ Value smsgdisable(const Array& params, bool fHelp)
 Value smsgoptions(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgoptions [list|set <optname> <value>]\n"
             "List and manage options.");
     
@@ -137,12 +136,12 @@ Value smsgoptions(const Array& params, bool fHelp)
 Value smsglocalkeys(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]\n"
             "List and manage keys.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     Object result;
     
@@ -345,12 +344,12 @@ Value smsglocalkeys(const Array& params, bool fHelp)
 Value smsgscanchain(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgscanchain \n"
             "Look for public keys in the block chain.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     Object result;
     if (!SecureMsgScanBlockChain())
@@ -366,15 +365,15 @@ Value smsgscanchain(const Array& params, bool fHelp)
 Value smsgscanbuckets(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgscanbuckets \n"
             "Force rescan of all messages in the bucket store.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
     
     Object result;
     if (!SecureMsgScanBuckets())
@@ -390,12 +389,12 @@ Value smsgscanbuckets(const Array& params, bool fHelp)
 Value smsgaddkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgaddkey <address> <pubkey>\n"
             "Add address, pubkey pair to database.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addr = params[0].get_str();
     std::string pubk = params[1].get_str();
@@ -424,13 +423,13 @@ Value smsgaddkey(const Array& params, bool fHelp)
 Value smsggetpubkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsggetpubkey <address>\n"
             "Return the base58 encoded compressed public key for an address.\n"
             "Tests localkeys first, then looks in public key db.\n");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     
     std::string address   = params[0].get_str();
@@ -508,12 +507,12 @@ Value smsggetpubkey(const Array& params, bool fHelp)
 Value smsgsend(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgsend <addrFrom> <addrTo> <message>\n"
             "Send an encrypted message from addrFrom to addrTo.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addrFrom  = params[0].get_str();
     std::string addrTo    = params[1].get_str();
@@ -536,12 +535,12 @@ Value smsgsend(const Array& params, bool fHelp)
 Value smsgsendanon(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgsendanon <addrTo> <message>\n"
             "Send an anonymous encrypted message to addrTo.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addrFrom  = "anon";
     std::string addrTo    = params[0].get_str();
@@ -563,16 +562,16 @@ Value smsgsendanon(const Array& params, bool fHelp)
 Value smsginbox(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1) // defaults to read
-        throw runtime_error(
+        throw std::runtime_error(
             "smsginbox [all|unread|clear]\n" 
             "Decrypt and display all received messages.\n"
             "Warning: clear will delete all messages.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
     
     std::string mode = "unread";
     if (params.size() > 0)
@@ -588,7 +587,7 @@ Value smsginbox(const Array& params, bool fHelp)
         SecMsgDB dbInbox;
         
         if (!dbInbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
         
         uint32_t nMessages = 0;
         char cbuf[256];
@@ -671,16 +670,16 @@ Value smsginbox(const Array& params, bool fHelp)
 Value smsgoutbox(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1) // defaults to read
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgoutbox [all|clear]\n" 
             "Decrypt and display all sent messages.\n"
             "Warning: clear will delete all sent messages.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
     
     std::string mode = "all";
     if (params.size() > 0)
@@ -701,7 +700,7 @@ Value smsgoutbox(const Array& params, bool fHelp)
         SecMsgDB dbOutbox;
         
         if (!dbOutbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
         
         uint32_t nMessages = 0;
         char cbuf[256];
@@ -765,12 +764,12 @@ Value smsgoutbox(const Array& params, bool fHelp)
 Value smsgbuckets(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgbuckets [stats|dump]\n"
             "Display some statistics.");
     
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string mode = "stats";
     if (params.size() > 0)
@@ -890,7 +889,7 @@ Value smsgbuckets(const Array& params, bool fHelp)
 Value smsggetmessagesforaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
                 "smsggetmessagesforaccount \"account\" [all|unread]\n"
                 "Decrypt and display all messages for an account."
                 "smsggetmessagesforaccount \"account\"\n"
@@ -899,17 +898,17 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
                 "1. \"account\"  (string, required) The account name.\n");
 
     if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+        throw std::runtime_error("Secure messaging is disabled.");
 
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
 
     std::string strAccount;
     if (params.size() > 0)
     {
         strAccount = params[0].get_str();
     } else {
-        throw runtime_error("Account is required.");
+        throw std::runtime_error("Account is required.");
     }
 
     Object result;
@@ -936,7 +935,7 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
         SecMsgDB dbInbox;
 
         if (!dbInbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
 
         std::string sPrefix("im");
         unsigned char chKey[18];
@@ -992,7 +991,7 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
         memset(&chKey[0], 0, 18);
 
         if (!dbOutbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
 
         SecMsgStored smsgStored;
         MessageData msg;

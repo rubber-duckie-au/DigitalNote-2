@@ -15,7 +15,6 @@
 #include "txdb.h"
 #include "cvalidationstate.h"
 
-using namespace std;
 using namespace boost;
 
 std::map<uint256, CTransaction> mapTxLockReq;

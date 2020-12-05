@@ -19,7 +19,6 @@
 #include <fstream>
 
 using namespace json_spirit;
-using namespace std;
 
 #include <QAbstractItemDelegate>
 #include <QClipboard>

@@ -61,7 +61,7 @@ public:
             SecMsgDB dbSmsg;
 
             if (!dbSmsg.Open("cr+"))
-                //throw runtime_error("Could not open DB.");
+                //throw std::runtime_error("Could not open DB.");
                 return;
 
             unsigned char chKey[18];
@@ -538,7 +538,7 @@ bool MessageModel::removeRows(int row, int count, const QModelIndex & parent)
         SecMsgDB dbSmsg;
 
         if (!dbSmsg.Open("cr+"))
-            //throw runtime_error("Could not open DB.");
+            //throw std::runtime_error("Could not open DB.");
             return false;
 
         dbSmsg.EraseSmesg(&rec->chKey[0]);
