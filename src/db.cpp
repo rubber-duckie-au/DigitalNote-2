@@ -214,7 +214,7 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive,
         if (keyHex != "DATA_END")
         {
             getline(strDump, valueHex);
-            vResult.push_back(make_pair(ParseHex(keyHex),ParseHex(valueHex)));
+            vResult.push_back(std::make_pair(ParseHex(keyHex),ParseHex(valueHex)));
         }
     }
 
@@ -444,10 +444,10 @@ void CDBEnv::Flush(bool fShutdown)
         return;
     {
         LOCK(cs_db);
-        map<string, int>::iterator mi = mapFileUseCount.begin();
+        std::map<std::string, int>::iterator mi = mapFileUseCount.begin();
         while (mi != mapFileUseCount.end())
         {
-            string strFile = (*mi).first;
+            std::string strFile = (*mi).first;
             int nRefCount = (*mi).second;
             LogPrint("db", "%s refcount=%d\n", strFile, nRefCount);
             if (nRefCount == 0)

@@ -17,16 +17,16 @@ CCriticalSection cs_process_message;
 
 struct CompareValueOnly
 {
-    bool operator()(const pair<int64_t, CTxIn>& t1,
-                    const pair<int64_t, CTxIn>& t2) const
+    bool operator()(const std::pair<int64_t, CTxIn>& t1,
+                    const std::pair<int64_t, CTxIn>& t2) const
     {
         return t1.first < t2.first;
     }
 };
 struct CompareValueOnlyMN
 {
-    bool operator()(const pair<int64_t, CMasternode>& t1,
-                    const pair<int64_t, CMasternode>& t2) const
+    bool operator()(const std::pair<int64_t, CMasternode>& t1,
+                    const std::pair<int64_t, CMasternode>& t2) const
     {
         return t1.first < t2.first;
     }
@@ -95,7 +95,7 @@ CMasternodeDB::ReadResult CMasternodeDB::Read(CMasternodeMan& mnodemanToLoad)
     // Don't try to resize to a negative number if file is small
     if (dataSize < 0)
         dataSize = 0;
-    vector<unsigned char> vchData;
+    std::vector<unsigned char> vchData;
     vchData.resize(dataSize);
     uint256 hashIn;
 
@@ -244,7 +244,7 @@ void CMasternodeMan::CheckAndRemove()
     Check();
 
     //remove inactive
-    vector<CMasternode>::iterator it = vMasternodes.begin();
+    std::vector<CMasternode>::iterator it = vMasternodes.begin();
     while(it != vMasternodes.end()){
         if((*it).activeState == CMasternode::MASTERNODE_REMOVE || (*it).activeState == CMasternode::MASTERNODE_VIN_SPENT || (*it).protocolVersion < nMasternodeMinProtocol){
             LogPrint("masternode", "CMasternodeMan: Removing inactive masternode %s - %i now\n", (*it).addr.ToString().c_str(), size() - 1);
@@ -255,7 +255,7 @@ void CMasternodeMan::CheckAndRemove()
     }
 
     // check who's asked for the masternode list
-    map<CNetAddr, int64_t>::iterator it1 = mAskedUsForMasternodeList.begin();
+    std::map<CNetAddr, int64_t>::iterator it1 = mAskedUsForMasternodeList.begin();
     while(it1 != mAskedUsForMasternodeList.end()){
         if((*it1).second < GetTime()) {
             mAskedUsForMasternodeList.erase(it1++);
@@ -275,7 +275,7 @@ void CMasternodeMan::CheckAndRemove()
     }
 
     // check which masternodes we've asked for
-    map<COutPoint, int64_t>::iterator it2 = mWeAskedForMasternodeListEntry.begin();
+    std::map<COutPoint, int64_t>::iterator it2 = mWeAskedForMasternodeListEntry.begin();
     while(it2 != mWeAskedForMasternodeListEntry.end()){
         if((*it2).second < GetTime()){
             mWeAskedForMasternodeListEntry.erase(it2++);
@@ -483,7 +483,7 @@ bool CMasternodeMan::IsPayeeAValidMasternode(CScript payee)
 
 int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int64_t nBlockHeight, int minProtocol, bool fOnlyActive)
 {
-    std::vector<pair<unsigned int, CTxIn> > vecMasternodeScores;
+    std::vector<std::pair<unsigned int, CTxIn> > vecMasternodeScores;
 
     //make sure we know about this block
     uint256 hash = 0;
@@ -502,7 +502,7 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int64_t nBlockHeight, in
         unsigned int n2 = 0;
         memcpy(&n2, &n, sizeof(n2));
 
-        vecMasternodeScores.push_back(make_pair(n2, mn.vin));
+        vecMasternodeScores.push_back(std::make_pair(n2, mn.vin));
     }
 
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareValueOnly());
@@ -518,10 +518,10 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int64_t nBlockHeight, in
     return -1;
 }
 
-std::vector<pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int64_t nBlockHeight, int minProtocol)
+std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int64_t nBlockHeight, int minProtocol)
 {
-    std::vector<pair<unsigned int, CMasternode> > vecMasternodeScores;
-    std::vector<pair<int, CMasternode> > vecMasternodeRanks;
+    std::vector<std::pair<unsigned int, CMasternode> > vecMasternodeScores;
+    std::vector<std::pair<int, CMasternode> > vecMasternodeRanks;
 
     //make sure we know about this block
     uint256 hash = 0;
@@ -541,7 +541,7 @@ std::vector<pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int64_t 
         unsigned int n2 = 0;
         memcpy(&n2, &n, sizeof(n2));
 
-        vecMasternodeScores.push_back(make_pair(n2, mn));
+        vecMasternodeScores.push_back(std::make_pair(n2, mn));
     }
 
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareValueOnlyMN());
@@ -549,7 +549,7 @@ std::vector<pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int64_t 
     int rank = 0;
     BOOST_FOREACH (PAIRTYPE(unsigned int, CMasternode)& s, vecMasternodeScores){
         rank++;
-        vecMasternodeRanks.push_back(make_pair(rank, s.second));
+        vecMasternodeRanks.push_back(std::make_pair(rank, s.second));
     }
 
     return vecMasternodeRanks;
@@ -557,7 +557,7 @@ std::vector<pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int64_t 
 
 CMasternode* CMasternodeMan::GetMasternodeByRank(int nRank, int64_t nBlockHeight, int minProtocol, bool fOnlyActive)
 {
-    std::vector<pair<unsigned int, CTxIn> > vecMasternodeScores;
+    std::vector<std::pair<unsigned int, CTxIn> > vecMasternodeScores;
 
     // scan for winner
     BOOST_FOREACH(CMasternode& mn, vMasternodes) {
@@ -572,7 +572,7 @@ CMasternode* CMasternodeMan::GetMasternodeByRank(int nRank, int64_t nBlockHeight
         unsigned int n2 = 0;
         memcpy(&n2, &n, sizeof(n2));
 
-        vecMasternodeScores.push_back(make_pair(n2, mn.vin));
+        vecMasternodeScores.push_back(std::make_pair(n2, mn.vin));
     }
 
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareValueOnly());
@@ -625,7 +625,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         CService addr;
         CPubKey pubkey;
         CPubKey pubkey2;
-        vector<unsigned char> vchSig;
+        std::vector<unsigned char> vchSig;
         int64_t sigTime;
         int count;
         int current;
@@ -764,7 +764,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             // should be at least not earlier than block when 2,000,000 DigitalNote tx got MASTERNODE_MIN_CONFIRMATIONS
             uint256 hashBlock = 0;
             GetTransaction(vin.prevout.hash, tx, hashBlock);
-            map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
+            std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
            if (mi != mapBlockIndex.end() && (*mi).second)
             {
                 CBlockIndex* pMNIndex = (*mi).second; // block for 2,000,000 DigitalNote tx -> 1 confirmation
@@ -817,7 +817,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
     else if (strCommand == "dseep") { //MNengine Election Entry Ping
 
         CTxIn vin;
-        vector<unsigned char> vchSig;
+        std::vector<unsigned char> vchSig;
         int64_t sigTime;
         bool stop;
         vRecv >> vin >> vchSig >> sigTime >> stop;
@@ -888,7 +888,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
     } else if (strCommand == "mvote") { //Masternode Vote
 
         CTxIn vin;
-        vector<unsigned char> vchSig;
+        std::vector<unsigned char> vchSig;
         int nVote;
         vRecv >> vin >> vchSig >> nVote;
 
@@ -989,7 +989,7 @@ void CMasternodeMan::Remove(CTxIn vin)
 {
     LOCK(cs);
 
-    vector<CMasternode>::iterator it = vMasternodes.begin();
+    std::vector<CMasternode>::iterator it = vMasternodes.begin();
     while(it != vMasternodes.end()){
         if((*it).vin == vin){
             LogPrint("masternode", "CMasternodeMan: Removing Masternode %s - %i now\n", (*it).addr.ToString().c_str(), size() - 1);

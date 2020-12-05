@@ -31,7 +31,7 @@
 #define UEND(a)             ((unsigned char*)&((&(a))[1]))
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
-/** This is needed because the foreach macro can't get over the comma in pair<t1, t2> */
+/** This is needed because the foreach macro can't get over the comma in std::pair<t1, t2> */
 #define PAIRTYPE(t1, t2)    std::pair<t1, t2>
 
 

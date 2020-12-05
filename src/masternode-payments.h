@@ -17,7 +17,7 @@ class CMasternodePayments;
 class CMasternodePaymentWinner;
 
 extern CMasternodePayments masternodePayments;
-extern map<uint256, CMasternodePaymentWinner> mapSeenMasternodeVotes;
+extern std::map<uint256, CMasternodePaymentWinner> mapSeenMasternodeVotes;
 
 void ProcessMessageMasternodePayments(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
 

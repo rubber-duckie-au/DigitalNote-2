@@ -56,7 +56,7 @@ public:
 
     const uint256& HashGenesisBlock() const { return hashGenesisBlock; }
     const MessageStartChars& MessageStart() const { return pchMessageStart; }
-    const vector<unsigned char>& AlertKey() const { return vAlertPubKey; }
+    const std::vector<unsigned char>& AlertKey() const { return vAlertPubKey; }
     int GetDefaultPort() const { return nDefaultPort; }
     const CBigNum& ProofOfWorkLimit() const { return bnProofOfWorkLimit; }
     const CBigNum& ProofOfStakeLimit() const { return bnProofOfStakeLimit; }
@@ -64,9 +64,9 @@ public:
     virtual bool RequireRPCPassword() const { return true; }
     const string& DataDir() const { return strDataDir; }
     virtual Network NetworkID() const = 0;
-    const vector<CDNSSeedData>& DNSSeeds() const { return vSeeds; }
+    const std::vector<CDNSSeedData>& DNSSeeds() const { return vSeeds; }
     const std::vector<unsigned char> &Base58Prefix(Base58Type type) const { return base58Prefixes[type]; }
-    virtual const vector<CAddress>& FixedSeeds() const = 0;
+    virtual const std::vector<CAddress>& FixedSeeds() const = 0;
     int RPCPort() const { return nRPCPort; }
     int EndPoWBlock() const { return nEndPoWBlock; }
     int StartPoSBlock() const { return nStartPoSBlock; }
@@ -79,13 +79,13 @@ protected:
     uint256 hashGenesisBlock;
     MessageStartChars pchMessageStart;
     // Raw pub key bytes for the broadcast alert signing key.
-    vector<unsigned char> vAlertPubKey;
+    std::vector<unsigned char> vAlertPubKey;
     int nDefaultPort;
     int nRPCPort;
     CBigNum bnProofOfWorkLimit;
     CBigNum bnProofOfStakeLimit;
     string strDataDir;
-    vector<CDNSSeedData> vSeeds;
+    std::vector<CDNSSeedData> vSeeds;
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
     int nEndPoWBlock;
     int nStartPoSBlock;

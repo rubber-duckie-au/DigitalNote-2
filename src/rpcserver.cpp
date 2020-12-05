@@ -51,12 +51,12 @@ static std::string strRPCUserColonPass;
 
 // These are created by StartRPCThreads, destroyed in StopRPCThreads
 static ioContext* rpc_io_service = NULL;
-static map<string, boost::shared_ptr<deadline_timer> > deadlineTimers;
+static std::map<std::string, boost::shared_ptr<deadline_timer> > deadlineTimers;
 static ssl::context* rpc_ssl_context = NULL;
 static boost::thread_group* rpc_worker_group = NULL;
 
 void RPCTypeCheck(const Array& params,
-                  const list<Value_type>& typesExpected,
+                  const std::list<Value_type>& typesExpected,
                   bool fAllowNull)
 {
     unsigned int i = 0;
@@ -68,7 +68,7 @@ void RPCTypeCheck(const Array& params,
         const Value& v = params[i];
         if (!((v.type() == t) || (fAllowNull && (v.type() == null_type))))
         {
-            string err = strprintf("Expected type %s, got %s",
+            std::string err = strprintf("Expected type %s, got %s",
                                    Value_type_name[t], Value_type_name[v.type()]);
             throw JSONRPCError(RPC_TYPE_ERROR, err);
         }
@@ -77,10 +77,10 @@ void RPCTypeCheck(const Array& params,
 }
 
 void RPCTypeCheck(const Object& o,
-                  const map<string, Value_type>& typesExpected,
+                  const std::map<std::string, Value_type>& typesExpected,
                   bool fAllowNull)
 {
-    BOOST_FOREACH(const PAIRTYPE(string, Value_type)& t, typesExpected)
+    BOOST_FOREACH(const PAIRTYPE(std::string, Value_type)& t, typesExpected)
     {
         const Value& v = find_value(o, t.first);
         if (!fAllowNull && v.type() == null_type)
@@ -88,7 +88,7 @@ void RPCTypeCheck(const Object& o,
 
         if (!((v.type() == t.second) || (fAllowNull && (v.type() == null_type))))
         {
-            string err = strprintf("Expected type %s for %s, got %s",
+            std::string err = strprintf("Expected type %s for %s, got %s",
                                    Value_type_name[t.second], t.first, Value_type_name[v.type()]);
             throw JSONRPCError(RPC_TYPE_ERROR, err);
         }
@@ -118,7 +118,7 @@ Value ValueFromAmount(int64_t amount)
 //
 uint256 ParseHashV(const Value& v, const std::string &strName)
 {
-    string strHex;
+    std::string strHex;
     if (v.type() == str_type)
         strHex = v.get_str();
     if (!IsHex(strHex)) // Note: IsHex("") is false
@@ -133,9 +133,9 @@ uint256 ParseHashO(const Object& o, const std::string &strKey)
     return ParseHashV(find_value(o, strKey), strKey);
 }
 
-vector<unsigned char> ParseHexV(const Value& v, const std::string &strName)
+std::vector<unsigned char> ParseHexV(const Value& v, const std::string &strName)
 {
-    string strHex;
+    std::string strHex;
     if (v.type() == str_type)
         strHex = v.get_str();
     if (!IsHex(strHex))
@@ -143,7 +143,7 @@ vector<unsigned char> ParseHexV(const Value& v, const std::string &strName)
     return ParseHex(strHex);
 }
 
-vector<unsigned char> ParseHexO(const Object& o, const std::string &strKey)
+std::vector<unsigned char> ParseHexO(const Object& o, const std::string &strKey)
 {
     return ParseHexV(find_value(o, strKey), strKey);
 }
@@ -153,16 +153,16 @@ vector<unsigned char> ParseHexO(const Object& o, const std::string &strKey)
 /// Note: This interface may still be subject to change.
 ///
 
-string CRPCTable::help(const std::string &strCommand) const
+std::string CRPCTable::help(const std::string &strCommand) const
 {
-    string strRet;
-    set<rpcfn_type> setDone;
-    for (map<string, const CRPCCommand*>::const_iterator mi = mapCommands.begin(); mi != mapCommands.end(); ++mi)
+    std::string strRet;
+    std::set<rpcfn_type> setDone;
+    for (std::map<std::string, const CRPCCommand*>::const_iterator mi = mapCommands.begin(); mi != mapCommands.end(); ++mi)
     {
         const CRPCCommand *pcmd = mi->second;
-        string strMethod = mi->first;
+        std::string strMethod = mi->first;
         // We already filter duplicates, but these deprecated screw up the sort order
-        if (strMethod.find("label") != string::npos)
+        if (strMethod.find("label") != std::string::npos)
             continue;
         if (strCommand != "" && strMethod != strCommand)
             continue;
@@ -181,9 +181,9 @@ string CRPCTable::help(const std::string &strCommand) const
         catch (std::exception& e)
         {
             // Help text is returned in an exception
-            string strHelp = string(e.what());
+            std::string strHelp = std::string(e.what());
             if (strCommand == "")
-                if (strHelp.find('\n') != string::npos)
+                if (strHelp.find('\n') != std::string::npos)
                     strHelp = strHelp.substr(0, strHelp.find('\n'));
             strRet += strHelp + "\n";
         }
@@ -201,7 +201,7 @@ Value help(const Array& params, bool fHelp)
             "help [command]\n"
             "List commands, or get help for a command.");
 
-    string strCommand;
+    std::string strCommand;
     if (params.size() > 0)
         strCommand = params[0].get_str();
 
@@ -361,20 +361,20 @@ CRPCTable::CRPCTable()
 
 const CRPCCommand *CRPCTable::operator[](string name) const
 {
-    map<string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
+    std::map<std::string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
     if (it == mapCommands.end())
         return NULL;
     return (*it).second;
 }
 
 
-bool HTTPAuthorized(map<string, string>& mapHeaders)
+bool HTTPAuthorized(std::map<std::string, std::string>& mapHeaders)
 {
-    string strAuth = mapHeaders["authorization"];
+    std::string strAuth = mapHeaders["authorization"];
     if (strAuth.substr(0,6) != "Basic ")
         return false;
-    string strUserPass64 = strAuth.substr(6); boost::trim(strUserPass64);
-    string strUserPass = DecodeBase64(strUserPass64);
+    std::string strUserPass64 = strAuth.substr(6); boost::trim(strUserPass64);
+    std::string strUserPass = DecodeBase64(strUserPass64);
     return TimingResistantEqual(strUserPass, strRPCUserColonPass);
 }
 
@@ -385,7 +385,7 @@ void ErrorReply(std::ostream& stream, const Object& objError, const Value& id)
     int code = find_value(objError, "code").get_int();
     if (code == RPC_INVALID_REQUEST) nStatus = HTTP_BAD_REQUEST;
     else if (code == RPC_METHOD_NOT_FOUND) nStatus = HTTP_NOT_FOUND;
-    string strReply = JSONRPCReply(Value::null, objError, id);
+    std::string strReply = JSONRPCReply(Value::null, objError, id);
     stream << HTTPReply(nStatus, strReply, false) << std::flush;
 }
 
@@ -404,9 +404,9 @@ bool ClientAllowed(const boost::asio::ip::address& address)
       && (address.to_v4().to_ulong() & 0xff000000) == 0x7f000000))
         return true;
 
-    const string strAddress = address.to_string();
-    const vector<string>& vAllow = mapMultiArgs["-rpcallowip"];
-    BOOST_FOREACH(string strAllow, vAllow)
+    const std::string strAddress = address.to_string();
+    const std::vector<std::string>& vAllow = mapMultiArgs["-rpcallowip"];
+    BOOST_FOREACH(std::string strAllow, vAllow)
         if (WildcardMatch(strAddress, strAllow))
             return true;
     return false;
@@ -545,7 +545,7 @@ void StartRPCThreads()
     {
         unsigned char rand_pwd[32];
         GetRandBytes(rand_pwd, 32);
-        string strWhatAmI = "To use DigitalNoted";
+        std::string strWhatAmI = "To use DigitalNoted";
         if (mapArgs.count("-server"))
             strWhatAmI = strprintf(_("To use the %s option"), "\"-server\"");
         else if (mapArgs.count("-daemon"))
@@ -589,7 +589,7 @@ void StartRPCThreads()
         if (filesystem::exists(pathPKFile)) rpc_ssl_context->use_private_key_file(pathPKFile.string(), ssl::context::pem);
         else LogPrintf("ThreadRPCServer ERROR: missing server private key file %s\n", pathPKFile.string());
 
-        string strCiphers = GetArg("-rpcsslciphers", "TLSv1.2+HIGH:TLSv1+HIGH:!SSLv3:!SSLv2:!aNULL:!eNULL:!3DES:@STRENGTH");
+        std::string strCiphers = GetArg("-rpcsslciphers", "TLSv1.2+HIGH:TLSv1+HIGH:!SSLv3:!SSLv2:!aNULL:!eNULL:!3DES:@STRENGTH");
         SSL_CTX_set_cipher_list(rpc_ssl_context->native_handle(), strCiphers.c_str());
     }
 
@@ -681,7 +681,7 @@ void RPCRunLater(const std::string& name, boost::function<void(void)> func, int6
 
     if (deadlineTimers.count(name) == 0)
     {
-        deadlineTimers.insert(make_pair(name,
+        deadlineTimers.insert(std::make_pair(name,
                                         boost::shared_ptr<deadline_timer>(new deadline_timer(*rpc_io_service))));
     }
     deadlineTimers[name]->expires_from_now(posix_time::seconds(nSeconds));
@@ -692,7 +692,7 @@ class JSONRequest
 {
 public:
     Value id;
-    string strMethod;
+    std::string strMethod;
     Array params;
 
     JSONRequest() { id = Value::null; }
@@ -754,7 +754,7 @@ static Object JSONRPCExecOne(const Value& req)
     return rpc_result;
 }
 
-static string JSONRPCExecBatch(const Array& vReq)
+static std::string JSONRPCExecBatch(const Array& vReq)
 {
     Array ret;
     for (unsigned int reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
@@ -769,8 +769,8 @@ void ServiceConnection(AcceptedConnection *conn)
     while (fRun)
     {
         int nProto = 0;
-        map<string, string> mapHeaders;
-        string strRequest, strMethod, strURI;
+        std::map<std::string, std::string> mapHeaders;
+        std::string strRequest, strMethod, strURI;
 
         // Read HTTP request line
         if (!ReadHTTPRequestLine(conn->stream(), nProto, strMethod, strURI))
@@ -813,7 +813,7 @@ void ServiceConnection(AcceptedConnection *conn)
             if (!read_string(strRequest, valRequest))
                 throw JSONRPCError(RPC_PARSE_ERROR, "Parse error");
 
-            string strReply;
+            std::string strReply;
 
             // singleton request
             if (valRequest.type() == obj_type) {
@@ -857,10 +857,10 @@ json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_s
 #endif
 
     // Observe safe mode
-    string strWarning = GetWarnings("rpc");
+    std::string strWarning = GetWarnings("rpc");
     if (strWarning != "" && !GetBoolArg("-disablesafemode", false) &&
         !pcmd->okSafeMode)
-        throw JSONRPCError(RPC_FORBIDDEN_BY_SAFE_MODE, string("Safe mode: ") + strWarning);
+        throw JSONRPCError(RPC_FORBIDDEN_BY_SAFE_MODE, std::string("Safe mode: ") + strWarning);
 
     try
     {

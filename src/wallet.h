@@ -94,7 +94,7 @@ public:
     int64_t nTimeExpires;
     std::string strComment;
     //// todo: add something to note what created it (user, getnewaddress, change)
-    ////   maybe should have a map<string, string> property map
+    ////   maybe should have a std::map<std::string, std::string> property map
 
     CWalletKey(int64_t nExpires=0)
     {

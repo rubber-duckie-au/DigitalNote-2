@@ -82,7 +82,7 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
 
             DoConsensusVote(tx, nBlockHeight);
 
-            mapTxLockReq.insert(make_pair(tx.GetHash(), tx));
+            mapTxLockReq.insert(std::make_pair(tx.GetHash(), tx));
 
             LogPrintf("ProcessMessageInstantX::txlreq - Transaction Lock Request: %s %s : accepted %s\n",
                 pfrom->addr.ToString().c_str(), pfrom->cleanSubVer.c_str(),
@@ -92,7 +92,7 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
             return;
 
         } else {
-            mapTxLockReqRejected.insert(make_pair(tx.GetHash(), tx));
+            mapTxLockReqRejected.insert(std::make_pair(tx.GetHash(), tx));
 
             // can we get the conflicting transaction as proof?
 
@@ -103,7 +103,7 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
 
             BOOST_FOREACH(const CTxIn& in, tx.vin){
                 if(!mapLockedInputs.count(in.prevout)){
-                    mapLockedInputs.insert(make_pair(in.prevout, tx.GetHash()));
+                    mapLockedInputs.insert(std::make_pair(in.prevout, tx.GetHash()));
                 }
             }
 
@@ -137,7 +137,7 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
             return;
         }
 
-        mapTxLockVote.insert(make_pair(ctx.GetHash(), ctx));
+        mapTxLockVote.insert(std::make_pair(ctx.GetHash(), ctx));
 
         if(ProcessConsensusVote(pfrom, ctx)){
             //Spam/Dos protection
@@ -244,7 +244,7 @@ int64_t CreateNewLock(CTransaction tx)
         newLock.nExpiration = GetTime()+(20*60); //locks expire after 20 minutes (20 confirmations)
         newLock.nTimeout = GetTime()+(60*5);
         newLock.txHash = tx.GetHash();
-        mapTxLocks.insert(make_pair(tx.GetHash(), newLock));
+        mapTxLocks.insert(std::make_pair(tx.GetHash(), newLock));
     } else {
         mapTxLocks[tx.GetHash()].nBlockHeight = nBlockHeight;
         LogPrint("instantx", "CreateNewLock - Transaction Lock Exists %s !\n", tx.GetHash().ToString().c_str());
@@ -338,7 +338,7 @@ bool ProcessConsensusVote(CNode* pnode, CConsensusVote& ctx)
         newLock.nExpiration = GetTime()+(20*60);
         newLock.nTimeout = GetTime()+(60*5);
         newLock.txHash = ctx.txHash;
-        mapTxLocks.insert(make_pair(ctx.txHash, newLock));
+        mapTxLocks.insert(std::make_pair(ctx.txHash, newLock));
     } else {
         LogPrint("instantx", "InstantX::ProcessConsensusVote - Transaction Lock Exists %s !\n", ctx.txHash.ToString().c_str());
     }
@@ -378,7 +378,7 @@ bool ProcessConsensusVote(CNode* pnode, CConsensusVote& ctx)
                 if(mapTxLockReq.count(ctx.txHash)){
                     BOOST_FOREACH(const CTxIn& in, tx.vin){
                         if(!mapLockedInputs.count(in.prevout)){
-                            mapLockedInputs.insert(make_pair(in.prevout, ctx.txHash));
+                            mapLockedInputs.insert(std::make_pair(in.prevout, ctx.txHash));
                         }
                     }
                 }

@@ -447,8 +447,8 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     fDebug = !mapMultiArgs["-debug"].empty();
     // Special-case: if -debug=0/-nodebug is set, turn off debugging messages
-    const vector<string>& categories = mapMultiArgs["-debug"];
-    if (GetBoolArg("-nodebug", false) || find(categories.begin(), categories.end(), string("0")) != categories.end())
+    const std::vector<std::string>& categories = mapMultiArgs["-debug"];
+    if (GetBoolArg("-nodebug", false) || find(categories.begin(), categories.end(), std::string("0")) != categories.end())
         fDebug = false;
 
     if(fDebug)
@@ -822,7 +822,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     {
         string strMatch = mapArgs["-printblock"];
         int nFound = 0;
-        for (map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.begin(); mi != mapBlockIndex.end(); ++mi)
+        for (std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.begin(); mi != mapBlockIndex.end(); ++mi)
         {
             uint256 hash = (*mi).first;
             if (strncmp(hash.ToString().c_str(), strMatch.c_str(), strMatch.size()) == 0)
@@ -850,7 +850,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             CBlockIndex* pindex = pindexBest;
             while (pindex != NULL && pindex->nHeight > nNewHeight)
             {
-                ostringstream osHeight;
+                std::ostringstream osHeight;
                 osHeight << pindex->nHeight;
                 string strHeight = osHeight.str();
                 uiInterface.InitMessage(strprintf("Rolling blocks back... %s to %i \n", strHeight, nNewHeight));

@@ -23,7 +23,7 @@ using namespace json_spirit;
 void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, bool fIncludeHex)
 {
     txnouttype type;
-    vector<CTxDestination> addresses;
+    std::vector<CTxDestination> addresses;
     int nRequired;
 
     out.push_back(Pair("asm", scriptPubKey.ToString()));
@@ -88,7 +88,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
     if (hashBlock != 0)
     {
         entry.push_back(Pair("blockhash", hashBlock.GetHex()));
-        map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
+        std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
         if (mi != mapBlockIndex.end() && (*mi).second)
         {
             CBlockIndex* pindex = (*mi).second;
@@ -127,7 +127,7 @@ Value getrawtransaction(const Array& params, bool fHelp)
 
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     ssTx << tx;
-    string strHex = HexStr(ssTx.begin(), ssTx.end());
+    std::string strHex = HexStr(ssTx.begin(), ssTx.end());
 
     if (!fVerbose)
         return strHex;
@@ -160,7 +160,7 @@ Value listunspent(const Array& params, bool fHelp)
     if (params.size() > 1)
         nMaxDepth = params[1].get_int();
 
-    set<CDigitalNoteAddress> setAddress;
+    std::set<CDigitalNoteAddress> setAddress;
     if (params.size() > 2)
     {
         Array inputs = params[2].get_array();
@@ -168,15 +168,15 @@ Value listunspent(const Array& params, bool fHelp)
         {
             CDigitalNoteAddress address(input.get_str());
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid DigitalNote address: ")+input.get_str());
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid DigitalNote address: ")+input.get_str());
             if (setAddress.count(address))
-                throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+input.get_str());
+                throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+input.get_str());
            setAddress.insert(address);
         }
     }
 
     Array results;
-    vector<COutput> vecOutputs;
+    std::vector<COutput> vecOutputs;
     assert(pwalletMain != NULL);
     pwalletMain->AvailableCoins(vecOutputs, false);
     BOOST_FOREACH(const COutput& out, vecOutputs)
@@ -254,7 +254,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
         const Value& txid_v = find_value(o, "txid");
         if (txid_v.type() != str_type)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing txid key");
-        string txid = txid_v.get_str();
+        std::string txid = txid_v.get_str();
         if (!IsHex(txid))
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected hex txid");
 
@@ -269,15 +269,15 @@ Value createrawtransaction(const Array& params, bool fHelp)
         rawTx.vin.push_back(in);
     }
 
-    set<CDigitalNoteAddress> setAddress;
+    std::set<CDigitalNoteAddress> setAddress;
     BOOST_FOREACH(const Pair& s, sendTo)
     {
         CDigitalNoteAddress address(s.name_);
         if (!address.IsValid())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid DigitalNote address: ")+s.name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid DigitalNote address: ")+s.name_);
 
         if (setAddress.count(address))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+s.name_);
+            throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+s.name_);
         setAddress.insert(address);
 
         CScript scriptPubKey;
@@ -302,7 +302,7 @@ Value decoderawtransaction(const Array& params, bool fHelp)
 
     RPCTypeCheck(params, list_of(str_type));
 
-    vector<unsigned char> txData(ParseHex(params[0].get_str()));
+    std::vector<unsigned char> txData(ParseHex(params[0].get_str()));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     CTransaction tx;
     try {
@@ -330,7 +330,7 @@ Value decodescript(const Array& params, bool fHelp)
     Object r;
     CScript script;
     if (params[0].get_str().size() > 0){
-        vector<unsigned char> scriptData(ParseHexV(params[0], "argument"));
+        std::vector<unsigned char> scriptData(ParseHexV(params[0], "argument"));
         script = CScript(scriptData.begin(), scriptData.end());
     } else {
         // Empty scripts are valid
@@ -363,9 +363,9 @@ Value signrawtransaction(const Array& params, bool fHelp)
 
     RPCTypeCheck(params, list_of(str_type)(array_type)(array_type)(str_type), true);
 
-    vector<unsigned char> txData(ParseHex(params[0].get_str()));
+    std::vector<unsigned char> txData(ParseHex(params[0].get_str()));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
-    vector<CTransaction> txVariants;
+    std::vector<CTransaction> txVariants;
     while (!ssData.empty())
     {
         try {
@@ -387,13 +387,13 @@ Value signrawtransaction(const Array& params, bool fHelp)
     bool fComplete = true;
 
     // Fetch previous transactions (inputs):
-    map<COutPoint, CScript> mapPrevOut;
+    std::map<COutPoint, CScript> mapPrevOut;
     for (unsigned int i = 0; i < mergedTx.vin.size(); i++)
     {
         CTransaction tempTx;
         MapPrevTx mapPrevTx;
         CTxDB txdb("r");
-        map<uint256, CTxIndex> unused;
+        std::map<uint256, CTxIndex> unused;
         bool fInvalid;
 
         // FetchInputs aborts on failure, so we go one at a time.
@@ -443,7 +443,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
 
             RPCTypeCheck(prevOut, map_list_of("txid", str_type)("vout", int_type)("scriptPubKey", str_type));
 
-            string txidHex = find_value(prevOut, "txid").get_str();
+            std::string txidHex = find_value(prevOut, "txid").get_str();
             if (!IsHex(txidHex))
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "txid must be hexadecimal");
             uint256 txid;
@@ -453,10 +453,10 @@ Value signrawtransaction(const Array& params, bool fHelp)
             if (nOut < 0)
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "vout must be positive");
 
-            string pkHex = find_value(prevOut, "scriptPubKey").get_str();
+            std::string pkHex = find_value(prevOut, "scriptPubKey").get_str();
             if (!IsHex(pkHex))
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "scriptPubKey must be hexadecimal");
-            vector<unsigned char> pkData(ParseHex(pkHex));
+            std::vector<unsigned char> pkData(ParseHex(pkHex));
             CScript scriptPubKey(pkData.begin(), pkData.end());
 
             COutPoint outpoint(txid, nOut);
@@ -465,7 +465,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
                 // Complain if scriptPubKey doesn't match
                 if (mapPrevOut[outpoint] != scriptPubKey)
                 {
-                    string err("Previous output scriptPubKey mismatch:\n");
+                    std::string err("Previous output scriptPubKey mismatch:\n");
                     err = err + mapPrevOut[outpoint].ToString() + "\nvs:\n"+
                         scriptPubKey.ToString();
                     throw JSONRPCError(RPC_DESERIALIZATION_ERROR, err);
@@ -482,7 +482,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
                 Value v = find_value(prevOut, "redeemScript");
                 if (!(v == Value::null))
                 {
-                    vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
+                    std::vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
                     CScript redeemScript(rsData.begin(), rsData.end());
                     tempKeystore.AddCScript(redeemScript);
                 }
@@ -499,16 +499,16 @@ Value signrawtransaction(const Array& params, bool fHelp)
     int nHashType = SIGHASH_ALL;
     if (params.size() > 3 && params[3].type() != null_type)
     {
-        static map<string, int> mapSigHashValues =
+        static std::map<std::string, int> mapSigHashValues =
             boost::assign::map_list_of
-            (string("ALL"), int(SIGHASH_ALL))
-            (string("ALL|ANYONECANPAY"), int(SIGHASH_ALL|SIGHASH_ANYONECANPAY))
-            (string("NONE"), int(SIGHASH_NONE))
-            (string("NONE|ANYONECANPAY"), int(SIGHASH_NONE|SIGHASH_ANYONECANPAY))
-            (string("SINGLE"), int(SIGHASH_SINGLE))
-            (string("SINGLE|ANYONECANPAY"), int(SIGHASH_SINGLE|SIGHASH_ANYONECANPAY))
+            (std::string("ALL"), int(SIGHASH_ALL))
+            (std::string("ALL|ANYONECANPAY"), int(SIGHASH_ALL|SIGHASH_ANYONECANPAY))
+            (std::string("NONE"), int(SIGHASH_NONE))
+            (std::string("NONE|ANYONECANPAY"), int(SIGHASH_NONE|SIGHASH_ANYONECANPAY))
+            (std::string("SINGLE"), int(SIGHASH_SINGLE))
+            (std::string("SINGLE|ANYONECANPAY"), int(SIGHASH_SINGLE|SIGHASH_ANYONECANPAY))
             ;
-        string strHashType = params[3].get_str();
+        std::string strHashType = params[3].get_str();
         if (mapSigHashValues.count(strHashType))
             nHashType = mapSigHashValues[strHashType];
         else
@@ -561,7 +561,7 @@ Value sendrawtransaction(const Array& params, bool fHelp)
     RPCTypeCheck(params, list_of(str_type));
 
     // parse hex string from parameter
-    vector<unsigned char> txData(ParseHex(params[0].get_str()));
+    std::vector<unsigned char> txData(ParseHex(params[0].get_str()));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     CTransaction tx;
 
@@ -581,7 +581,7 @@ Value sendrawtransaction(const Array& params, bool fHelp)
     if (GetTransaction(hashTx, existingTx, hashBlock))
     {
         if (hashBlock != 0)
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("transaction already in block ")+hashBlock.GetHex());
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("transaction already in block ")+hashBlock.GetHex());
         // Not in block, but already in the memory pool; will drop
         // through to re-relay it.
     }
@@ -648,7 +648,7 @@ Value searchrawtransactions(const Array &params, bool fHelp)
 
         CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
         ssTx << tx;
-        string strHex = HexStr(ssTx.begin(), ssTx.end());
+        std::string strHex = HexStr(ssTx.begin(), ssTx.end());
         if (fVerbose) {
             Object object;
             TxToJSON(tx, hashBlock, object);

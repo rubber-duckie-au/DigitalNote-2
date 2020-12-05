@@ -321,7 +321,7 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
     CScript pubScript;
 
     // Find possible candidates
-    vector<COutput> possibleCoins = SelectCoinsMasternode();
+    std::vector<COutput> possibleCoins = SelectCoinsMasternode();
     COutput *selectedOutput;
 
     // Find the vin
@@ -364,7 +364,7 @@ bool CActiveMasternode::GetMasterNodeVinForPubKey(const std::string &collateralA
     CScript pubScript;
 
     // Find possible candidates
-    vector<COutput> possibleCoins = SelectCoinsMasternodeForPubKey(collateralAddress);
+    std::vector<COutput> possibleCoins = SelectCoinsMasternodeForPubKey(collateralAddress);
     COutput *selectedOutput;
 
     // Find the vin
@@ -428,10 +428,10 @@ bool CActiveMasternode::GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubke
 }
 
 // get all possible outputs for running masternode
-vector<COutput> CActiveMasternode::SelectCoinsMasternode()
+std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
 {
-    vector<COutput> vCoins;
-    vector<COutput> filteredCoins;
+    std::vector<COutput> vCoins;
+    std::vector<COutput> filteredCoins;
 
     // Retrieve all possible outputs
     pwalletMain->AvailableCoinsMN(vCoins);
@@ -447,13 +447,13 @@ vector<COutput> CActiveMasternode::SelectCoinsMasternode()
 }
 
 // get all possible outputs for running masternode for a specific pubkey
-vector<COutput> CActiveMasternode::SelectCoinsMasternodeForPubKey(const std::string &collateralAddress)
+std::vector<COutput> CActiveMasternode::SelectCoinsMasternodeForPubKey(const std::string &collateralAddress)
 {
     CDigitalNoteAddress address(collateralAddress);
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address.Get());
-    vector<COutput> vCoins;
-    vector<COutput> filteredCoins;
+    std::vector<COutput> vCoins;
+    std::vector<COutput> filteredCoins;
 
     // Retrieve all possible outputs
     pwalletMain->AvailableCoins(vCoins);

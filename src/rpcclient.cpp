@@ -58,13 +58,13 @@ Object CallRPC(const string& strMethod, const Array& params)
     } while (fWait);
 
     // HTTP basic authentication
-    string strUserPass64 = EncodeBase64(mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"]);
-    map<string, string> mapRequestHeaders;
-    mapRequestHeaders["Authorization"] = string("Basic ") + strUserPass64;
+    std::string strUserPass64 = EncodeBase64(mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"]);
+    std::map<std::string, std::string> mapRequestHeaders;
+    mapRequestHeaders["Authorization"] = std::string("Basic ") + strUserPass64;
 
     // Send request
-    string strRequest = JSONRPCRequest(strMethod, params, 1);
-    string strPost = HTTPPost(strRequest, mapRequestHeaders);
+    std::string strRequest = JSONRPCRequest(strMethod, params, 1);
+    std::string strPost = HTTPPost(strRequest, mapRequestHeaders);
     stream << strPost << std::flush;
 
     // Receive HTTP reply status
@@ -72,8 +72,8 @@ Object CallRPC(const string& strMethod, const Array& params)
     int nStatus = ReadHTTPStatus(stream, nProto);
 
     // Receive HTTP reply message headers and body
-    map<string, string> mapHeaders;
-    string strReply;
+    std::map<std::string, std::string> mapHeaders;
+    std::string strReply;
     ReadHTTPMessage(stream, mapHeaders, strReply, nProto, MAX_SIZE);
 
     if (nStatus == HTTP_UNAUTHORIZED)

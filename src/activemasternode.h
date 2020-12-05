@@ -53,8 +53,8 @@ public:
     bool GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, const std::string &strOutputIndex);
     bool GetMasterNodeVinForPubKey(const std::string &collateralAddress, CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
     bool GetMasterNodeVinForPubKey(const std::string &collateralAddress, CTxIn& vin, CPubKey& pubkey, CKey& secretKey, const std::string &strTxHash, const std::string &strOutputIndex);
-    vector<COutput> SelectCoinsMasternode();
-    vector<COutput> SelectCoinsMasternodeForPubKey(const std::string &collateralAddress);
+    std::vector<COutput> SelectCoinsMasternode();
+    std::vector<COutput> SelectCoinsMasternodeForPubKey(const std::string &collateralAddress);
     bool GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
 
     // enable hot wallet mode (run a masternode with no funds)

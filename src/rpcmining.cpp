@@ -62,7 +62,7 @@ Value getstakesubsidy(const Array& params, bool fHelp)
 
     RPCTypeCheck(params, list_of(str_type));
 
-    vector<unsigned char> txData(ParseHex(params[0].get_str()));
+    std::vector<unsigned char> txData(ParseHex(params[0].get_str()));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     CTransaction tx;
     try {
@@ -279,9 +279,9 @@ Value getworkex(const Array& params, bool fHelp)
     if (pindexBest->nHeight >= Params().EndPoWBlock())
         throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
 
-    typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
+    typedef std::map<uint256, std::pair<CBlock*, CScript> > mapNewBlock_t;
     static mapNewBlock_t mapNewBlock;
-    static vector<CBlock*> vNewBlock;
+    static std::vector<CBlock*> vNewBlock;
 
     if (params.size() == 0)
     {
@@ -321,7 +321,7 @@ Value getworkex(const Array& params, bool fHelp)
         IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
         // Save
-        mapNewBlock[pblock->hashMerkleRoot] = make_pair(pblock, pblock->vtx[0].vin[0].scriptSig);
+        mapNewBlock[pblock->hashMerkleRoot] = std::make_pair(pblock, pblock->vtx[0].vin[0].scriptSig);
 
         // Prebuild hash buffers
         char pmidstate[32];
@@ -356,8 +356,8 @@ Value getworkex(const Array& params, bool fHelp)
     else
     {
         // Parse parameters
-        vector<unsigned char> vchData = ParseHex(params[0].get_str());
-        vector<unsigned char> coinbase;
+        std::vector<unsigned char> vchData = ParseHex(params[0].get_str());
+        std::vector<unsigned char> coinbase;
 
         if(params.size() == 2)
             coinbase = ParseHex(params[1].get_str());
@@ -413,9 +413,9 @@ Value getwork(const Array& params, bool fHelp)
     if (pindexBest->nHeight >= Params().EndPoWBlock())
         throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
 
-    typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
+    typedef std::map<uint256, std::pair<CBlock*, CScript> > mapNewBlock_t;
     static mapNewBlock_t mapNewBlock;    // FIXME: thread safety
-    static vector<CBlock*> vNewBlock;
+    static std::vector<CBlock*> vNewBlock;
 
     if (params.size() == 0)
     {
@@ -463,7 +463,7 @@ Value getwork(const Array& params, bool fHelp)
         IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
         // Save
-        mapNewBlock[pblock->hashMerkleRoot] = make_pair(pblock, pblock->vtx[0].vin[0].scriptSig);
+        mapNewBlock[pblock->hashMerkleRoot] = std::make_pair(pblock, pblock->vtx[0].vin[0].scriptSig);
 
         // Pre-build hash buffers
         char pmidstate[32];
@@ -483,7 +483,7 @@ Value getwork(const Array& params, bool fHelp)
     else
     {
         // Parse parameters
-        vector<unsigned char> vchData = ParseHex(params[0].get_str());
+        std::vector<unsigned char> vchData = ParseHex(params[0].get_str());
         if (vchData.size() != 128)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter");
         CBlock* pdata = (CBlock*)&vchData[0];
@@ -600,7 +600,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
     pblock->nNonce = 0;
 
     Array transactions;
-    map<uint256, int64_t> setTxIndex;
+    std::map<uint256, int64_t> setTxIndex;
     int i = 0;
     CTxDB txdb("r");
     BOOST_FOREACH (CTransaction& tx, pblock->vtx)
@@ -620,7 +620,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
         entry.push_back(Pair("hash", txHash.GetHex()));
 
         MapPrevTx mapInputs;
-        map<uint256, CTxIndex> mapUnused;
+        std::map<uint256, CTxIndex> mapUnused;
         bool fInvalid = false;
         if (tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
         {
@@ -730,7 +730,7 @@ Value submitblock(const Array& params, bool fHelp)
             "Attempts to submit new block to network.\n"
             "See https://en.bitcoin.it/wiki/BIP_0022 for full specification.");
 
-    vector<unsigned char> blockData(ParseHex(params[0].get_str()));
+    std::vector<unsigned char> blockData(ParseHex(params[0].get_str()));
     CDataStream ssBlock(blockData, SER_NETWORK, PROTOCOL_VERSION);
     CBlock block;
     try {

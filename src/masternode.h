@@ -41,7 +41,7 @@ using namespace std;
 class CMasternode;
 
 extern CCriticalSection cs_masternodes;
-extern map<int64_t, uint256> mapCacheBlockHashes;
+extern std::map<int64_t, uint256> mapCacheBlockHashes;
 
 bool GetBlockHash(uint256& hash, int nBlockHeight);
 

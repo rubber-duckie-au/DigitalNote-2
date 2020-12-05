@@ -14,17 +14,11 @@
 
 using namespace std;
 
-
-
-
-
-
-
-string EncodeBase64(const unsigned char* pch, size_t len)
+std::string EncodeBase64(const unsigned char* pch, size_t len)
 {
     static const char *pbase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    string strRet="";
+    std::string strRet="";
     strRet.reserve((len+2)/3*4);
 
     int mode=0, left=0;
@@ -66,12 +60,12 @@ string EncodeBase64(const unsigned char* pch, size_t len)
     return strRet;
 }
 
-string EncodeBase64(const string& str)
+std::string EncodeBase64(const std::string& str)
 {
     return EncodeBase64((const unsigned char*)str.c_str(), str.size());
 }
 
-vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid)
+std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid)
 {
     static const int decode64_table[256] =
     {
@@ -93,7 +87,7 @@ vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid)
     if (pfInvalid)
         *pfInvalid = false;
 
-    vector<unsigned char> vchRet;
+    std::vector<unsigned char> vchRet;
     vchRet.reserve(strlen(p)*3/4);
 
     int mode = 0;
@@ -154,10 +148,10 @@ vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid)
     return vchRet;
 }
 
-string DecodeBase64(const string& str)
+std::string DecodeBase64(const std::string& str)
 {
-    vector<unsigned char> vchRet = DecodeBase64(str.c_str());
-    return (vchRet.size() == 0) ? string() : string((const char*)&vchRet[0], vchRet.size());
+    std::vector<unsigned char> vchRet = DecodeBase64(str.c_str());
+    return (vchRet.size() == 0) ? std::string() : std::string((const char*)&vchRet[0], vchRet.size());
 }
 
 // Base64 encoding with secure memory allocation
@@ -219,11 +213,11 @@ SecureString DecodeBase64Secure(const SecureString& input)
 
 
 
-string EncodeBase32(const unsigned char* pch, size_t len)
+std::string EncodeBase32(const unsigned char* pch, size_t len)
 {
     static const char *pbase32 = "abcdefghijklmnopqrstuvwxyz234567";
 
-    string strRet="";
+    std::string strRet="";
     strRet.reserve((len+4)/5*8);
 
     int mode=0, left=0;
@@ -278,12 +272,12 @@ string EncodeBase32(const unsigned char* pch, size_t len)
     return strRet;
 }
 
-string EncodeBase32(const string& str)
+std::string EncodeBase32(const std::string& str)
 {
     return EncodeBase32((const unsigned char*)str.c_str(), str.size());
 }
 
-vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid)
+std::vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid)
 {
     static const int decode32_table[256] =
     {
@@ -305,7 +299,7 @@ vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid)
     if (pfInvalid)
         *pfInvalid = false;
 
-    vector<unsigned char> vchRet;
+    std::vector<unsigned char> vchRet;
     vchRet.reserve((strlen(p))*5/8);
 
     int mode = 0;
@@ -400,10 +394,10 @@ vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid)
     return vchRet;
 }
 
-string DecodeBase32(const string& str)
+std::string DecodeBase32(const std::string& str)
 {
-    vector<unsigned char> vchRet = DecodeBase32(str.c_str());
-    return (vchRet.size() == 0) ? string() : string((const char*)&vchRet[0], vchRet.size());
+    std::vector<unsigned char> vchRet = DecodeBase32(str.c_str());
+    return (vchRet.size() == 0) ? std::string() : std::string((const char*)&vchRet[0], vchRet.size());
 }
 
 bool ParseInt32(const std::string& str, int32_t *out)

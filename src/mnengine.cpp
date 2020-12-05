@@ -31,7 +31,7 @@ std::vector<CMNengineQueue> vecMNengineQueue;
 // Keep track of the used Masternodes
 std::vector<CTxIn> vecMasternodesUsed;
 // keep track of the scanning errors I've seen
-map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
+std::map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
 // Keep track of the active Masternode
 CActiveMasternode activeMasternode;
 
@@ -264,7 +264,7 @@ void CMNenginePool::CheckFinalTransaction()
             dstx.vchSig = vchSig;
             dstx.sigTime = sigTime;
 
-            mapMNengineBroadcastTxes.insert(make_pair(txNew.GetHash(), dstx));
+            mapMNengineBroadcastTxes.insert(std::make_pair(txNew.GetHash(), dstx));
         }
 
         CInv inv(MSG_DSTX, txNew.GetHash());
@@ -458,7 +458,7 @@ void CMNenginePool::CheckTimeout(){
 
     // check MNengine queue objects for timeouts
     int c = 0;
-    vector<CMNengineQueue>::iterator it = vecMNengineQueue.begin();
+    std::vector<CMNengineQueue>::iterator it = vecMNengineQueue.begin();
     while(it != vecMNengineQueue.end()){
         if((*it).IsExpired()){
             LogPrint("mnengine", "CMNenginePool::CheckTimeout() : Removing expired queue entry - %d\n", c);
@@ -474,7 +474,7 @@ void CMNenginePool::CheckTimeout(){
         c = 0;
 
         // check for a timeout and reset if needed
-        vector<CMNengineEntry>::iterator it2 = entries.begin();
+        std::vector<CMNengineEntry>::iterator it2 = entries.begin();
         while(it2 != entries.end()){
             if((*it2).IsExpired()){
                 LogPrint("mnengine", "CMNenginePool::CheckTimeout() : Removing expired entry - %d\n", c);
@@ -789,7 +789,7 @@ bool CMNenginePool::SignFinalTransaction(CTransaction& finalTransactionNew, CNod
     finalTransaction = finalTransactionNew;
     LogPrintf("CMNenginePool::SignFinalTransaction %s\n", finalTransaction.ToString());
 
-    vector<CTxIn> sigs;
+    std::vector<CTxIn> sigs;
 
     //make sure my inputs/outputs are present, otherwise refuse to sign
     BOOST_FOREACH(const CMNengineEntry e, entries) {
@@ -920,10 +920,10 @@ bool CMNenginePool::SendRandomPaymentToSelf()
     CWalletTx wtx;
     int64_t nFeeRet = 0;
     std::string strFail = "";
-    vector< pair<CScript, int64_t> > vecSend;
+    std::vector<std::pair<CScript, int64_t> > vecSend;
 
     // ****** Add fees ************ /
-    vecSend.push_back(make_pair(scriptChange, nPayment));
+    vecSend.push_back(std::make_pair(scriptChange, nPayment));
 
     CCoinControl *coinControl=NULL;
     int32_t nChangePos;
@@ -946,7 +946,7 @@ bool CMNenginePool::MakeCollateralAmounts()
     CWalletTx wtx;
     int64_t nFeeRet = 0;
     std::string strFail = "";
-    vector< pair<CScript, int64_t> > vecSend;
+    std::vector<std::pair<CScript, int64_t> > vecSend;
     CCoinControl *coinControl = NULL;
 
     // make our collateral address
@@ -959,7 +959,7 @@ bool CMNenginePool::MakeCollateralAmounts()
     assert(reservekeyCollateral.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
     scriptCollateral = GetScriptForDestination(vchPubKey.GetID());
 
-    vecSend.push_back(make_pair(scriptCollateral, MNengine_COLLATERAL*4));
+    vecSend.push_back(std::make_pair(scriptCollateral, MNengine_COLLATERAL*4));
 
     int32_t nChangePos;
     // try to use non-denominated and not mn-like funds
@@ -1056,7 +1056,7 @@ bool CMNengineSigner::SetKey(const std::string &strSecret, std::string& errorMes
     return true;
 }
 
-bool CMNengineSigner::SignMessage(const std::string &strMessage, std::string& errorMessage, vector<unsigned char>& vchSig, CKey key)
+bool CMNengineSigner::SignMessage(const std::string &strMessage, std::string& errorMessage, std::vector<unsigned char>& vchSig, CKey key)
 {
     CHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
@@ -1070,7 +1070,7 @@ bool CMNengineSigner::SignMessage(const std::string &strMessage, std::string& er
     return true;
 }
 
-bool CMNengineSigner::VerifyMessage(CPubKey pubkey, vector<unsigned char>& vchSig, const std::string &strMessage, std::string& errorMessage)
+bool CMNengineSigner::VerifyMessage(CPubKey pubkey, std::vector<unsigned char>& vchSig, const std::string &strMessage, std::string& errorMessage)
 {
     CHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;

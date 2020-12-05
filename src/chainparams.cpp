@@ -68,7 +68,7 @@ public:
         const char* pszTimestamp = "Elon Musk Wants to Embed AI-on-a-Chip Into Every Human Brain | JP Buntinx | January 18, 2019 | News, Technology | TheMerkle";
         std::vector<CTxIn> vin;
         vin.resize(1);
-        vin[0].scriptSig = CScript() << 0 << CBigNum(42) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+        vin[0].scriptSig = CScript() << 0 << CBigNum(42) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         std::vector<CTxOut> vout;
         vout.resize(1);
         vout[0].nValue = 1 * COIN;
@@ -123,12 +123,12 @@ public:
     virtual const CBlock& GenesisBlock() const { return genesis; }
     virtual Network NetworkID() const { return CChainParams::MAIN; }
 
-    virtual const vector<CAddress>& FixedSeeds() const {
+    virtual const std::vector<CAddress>& FixedSeeds() const {
         return vFixedSeeds;
     }
 protected:
     CBlock genesis;
-    vector<CAddress> vFixedSeeds;
+    std::vector<CAddress> vFixedSeeds;
 };
 static CMainParams mainParams;
 

@@ -539,7 +539,7 @@ Value masternode(const Array& params, bool fHelp)
 
     if (strCommand == "outputs"){
         // Find possible candidates
-        vector<COutput> possibleCoins = activeMasternode.SelectCoinsMasternode();
+        std::vector<COutput> possibleCoins = activeMasternode.SelectCoinsMasternode();
 
         Object obj;
         BOOST_FOREACH(COutput& out, possibleCoins) {
@@ -720,7 +720,7 @@ Value masternodelist(const Array& params, bool fHelp)
 
     Object obj;
     if (strMode == "rank") {
-        std::vector<pair<int, CMasternode> > vMasternodeRanks = mnodeman.GetMasternodeRanks(pindexBest->nHeight);
+        std::vector<std::pair<int, CMasternode> > vMasternodeRanks = mnodeman.GetMasternodeRanks(pindexBest->nHeight);
         BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
             std::string strVin = s.second.vin.prevout.ToStringShort();
             if(strFilter !="" && strVin.find(strFilter) == string::npos) continue;

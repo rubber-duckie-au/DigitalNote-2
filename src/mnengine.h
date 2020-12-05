@@ -48,7 +48,7 @@ extern CMNenginePool mnEnginePool;
 extern CMNengineSigner mnEngineSigner;
 extern std::vector<CMNengineQueue> vecMNengineQueue;
 extern std::string strMasterNodePrivKey;
-extern map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
+extern std::map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
 extern CActiveMasternode activeMasternode;
 
 /** Holds an MNengine input
@@ -226,7 +226,7 @@ class CMNengineBroadcastTx
 public:
     CTransaction tx;
     CTxIn vin;
-    vector<unsigned char> vchSig;
+    std::vector<unsigned char> vchSig;
     int64_t sigTime;
 };
 

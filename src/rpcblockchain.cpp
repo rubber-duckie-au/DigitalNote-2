@@ -204,7 +204,7 @@ Value getrawmempool(const Array& params, bool fHelp)
             "getrawmempool\n"
             "Returns all transaction ids in memory pool.");
 
-    vector<uint256> vtxid;
+    std::vector<uint256> vtxid;
     mempool.queryHashes(vtxid);
 
     Array a;

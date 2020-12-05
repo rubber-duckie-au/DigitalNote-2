@@ -68,7 +68,7 @@ Value getpeerinfo(const Array& params, bool fHelp)
             "getpeerinfo\n"
             "Returns data about each connected network node.");
 
-    vector<CNodeStats> vstats;
+    std::vector<CNodeStats> vstats;
     CopyNodeStats(vstats);
 
     Array ret;
@@ -107,7 +107,7 @@ Value getpeerinfo(const Array& params, bool fHelp)
 
 Value addnode(const Array& params, bool fHelp)
 {
-    string strCommand;
+    std::string strCommand;
     if (params.size() == 2)
         strCommand = params[1].get_str();
     if (fHelp || params.size() != 2 ||
@@ -116,7 +116,7 @@ Value addnode(const Array& params, bool fHelp)
             "addnode <node> <add|remove|onetry>\n"
             "Attempts add or remove <node> from the addnode list or try a connection to <node> once.");
 
-    string strNode = params[0].get_str();
+    std::string strNode = params[0].get_str();
 
     if (strCommand == "onetry")
     {
@@ -126,7 +126,7 @@ Value addnode(const Array& params, bool fHelp)
     }
 
     LOCK(cs_vAddedNodes);
-    vector<string>::iterator it = vAddedNodes.begin();
+    std::vector<std::string>::iterator it = vAddedNodes.begin();
     for(; it != vAddedNodes.end(); it++)
         if (strNode == *it)
             break;
@@ -159,18 +159,18 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
 
     bool fDns = params[0].get_bool();
 
-    list<string> laddedNodes(0);
+    std::list<std::string> laddedNodes(0);
     if (params.size() == 1)
     {
         LOCK(cs_vAddedNodes);
-        BOOST_FOREACH(string& strAddNode, vAddedNodes)
+        BOOST_FOREACH(std::string& strAddNode, vAddedNodes)
             laddedNodes.push_back(strAddNode);
     }
     else
     {
-        string strNode = params[1].get_str();
+        std::string strNode = params[1].get_str();
         LOCK(cs_vAddedNodes);
-        BOOST_FOREACH(string& strAddNode, vAddedNodes)
+        BOOST_FOREACH(std::string& strAddNode, vAddedNodes)
             if (strAddNode == strNode)
             {
                 laddedNodes.push_back(strAddNode);
@@ -183,19 +183,19 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
     if (!fDns)
     {
         Object ret;
-        BOOST_FOREACH(string& strAddNode, laddedNodes)
+        BOOST_FOREACH(std::string& strAddNode, laddedNodes)
             ret.push_back(Pair("addednode", strAddNode));
         return ret;
     }
 
     Array ret;
 
-    list<pair<string, vector<CService> > > laddedAddreses(0);
-    BOOST_FOREACH(string& strAddNode, laddedNodes)
+    std::list<std::pair<std::string, std::vector<CService> > > laddedAddreses(0);
+    BOOST_FOREACH(std::string& strAddNode, laddedNodes)
     {
-        vector<CService> vservNode(0);
+        std::vector<CService> vservNode(0);
         if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))
-            laddedAddreses.push_back(make_pair(strAddNode, vservNode));
+            laddedAddreses.push_back(std::make_pair(strAddNode, vservNode));
         else
         {
             Object obj;
@@ -207,7 +207,7 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
     }
 
     LOCK(cs_vNodes);
-    for (list<pair<string, vector<CService> > >::iterator it = laddedAddreses.begin(); it != laddedAddreses.end(); it++)
+    for (std::list<std::pair<std::string, std::vector<CService> > >::iterator it = laddedAddreses.begin(); it != laddedAddreses.end(); it++)
     {
         Object obj;
         obj.push_back(Pair("addednode", it->first));
@@ -273,9 +273,9 @@ Value sendalert(const Array& params, bool fHelp)
 
     CDataStream sMsg(SER_NETWORK, PROTOCOL_VERSION);
     sMsg << (CUnsignedAlert)alert;
-    alert.vchMsg = vector<unsigned char>(sMsg.begin(), sMsg.end());
+    alert.vchMsg = std::vector<unsigned char>(sMsg.begin(), sMsg.end());
 
-    vector<unsigned char> vchPrivKey = ParseHex(params[1].get_str());
+    std::vector<unsigned char> vchPrivKey = ParseHex(params[1].get_str());
     key.SetPrivKey(CPrivKey(vchPrivKey.begin(), vchPrivKey.end()), false); // if key is not correct openssl may crash
     if (!key.Sign(Hash(alert.vchMsg.begin(), alert.vchMsg.end()), alert.vchSig))
         throw runtime_error(
@@ -319,7 +319,7 @@ Value getnettotals(const Array& params, bool fHelp)
 
 Value setban(const Array& params, bool fHelp)
 {
-    string strCommand;
+    std::string strCommand;
     if (params.size() >= 2)
         strCommand = params[1].get_str();
     if (fHelp || params.size() < 2 ||
@@ -342,7 +342,7 @@ Value setban(const Array& params, bool fHelp)
     CNetAddr netAddr;
     bool isSubnet = false;
 
-    if (params[0].get_str().find("/") != string::npos)
+    if (params[0].get_str().find("/") != std::string::npos)
         isSubnet = true;
 
     if (!isSubnet)

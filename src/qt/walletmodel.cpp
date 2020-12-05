@@ -373,11 +373,11 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
                     CScript scriptPubKey;
                     scriptPubKey.SetDestination(addrTo.Get());
 
-                    vecSend.push_back(make_pair(scriptPubKey, rcp.amount));
+                    vecSend.push_back(std::make_pair(scriptPubKey, rcp.amount));
 
                     CScript scriptP = CScript() << OP_RETURN << ephem_pubkey;
 
-                    vecSend.push_back(make_pair(scriptP, 0));
+                    vecSend.push_back(std::make_pair(scriptP, 0));
 
                     continue;
                 } else {
@@ -388,7 +388,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
 
             CScript scriptPubKey;
             scriptPubKey.SetDestination(CDigitalNoteAddress(sAddr).Get());
-            vecSend.push_back(make_pair(scriptPubKey, rcp.amount));
+            vecSend.push_back(std::make_pair(scriptPubKey, rcp.amount));
         }
 
         CReserveKey keyChange(wallet);
@@ -573,7 +573,7 @@ static void NotifyTransactionChanged(WalletModel *walletmodel, CWallet *wallet, 
 {
     if (fQueueNotifications)
     {
-        vQueueNotifications.push_back(make_pair(hash, status));
+        vQueueNotifications.push_back(std::make_pair(hash, status));
         return;
     }
 

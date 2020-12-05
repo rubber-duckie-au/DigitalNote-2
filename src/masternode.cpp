@@ -11,15 +11,15 @@
 
 CCriticalSection cs_masternodes;
 // keep track of the scanning errors I've seen
-map<uint256, int> mapSeenMasternodeScanningErrors;
+std::map<uint256, int> mapSeenMasternodeScanningErrors;
 // cache block hashes as we calculate them
 std::map<int64_t, uint256> mapCacheBlockHashes;
 
 
 struct CompareValueOnly
 {
-    bool operator()(const pair<int64_t, CTxIn>& t1,
-                    const pair<int64_t, CTxIn>& t2) const
+    bool operator()(const std::pair<int64_t, CTxIn>& t1,
+                    const std::pair<int64_t, CTxIn>& t2) const
     {
         return t1.first < t2.first;
     }
