@@ -1,6 +1,8 @@
 #ifndef CTXOUTCOMPRESSOR_H
 #define CTXOUTCOMPRESSOR_H
 
+#include "serialize.h"
+
 /** wrapper for CTxOut that provides a more compact serialization */
 class CTxOutCompressor
 {
