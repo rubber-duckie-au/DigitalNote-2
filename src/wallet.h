@@ -50,40 +50,7 @@ class CWalletDB;
 #include "cwallet.h"
 #include "creservekey.h"
 #include "cwallettx.h"
-
-class COutput
-{
-public:
-    const CWalletTx *tx;
-    int i;
-    int nDepth;
-    bool fSpendable;
-
-    COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn)
-    {
-        tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn;
-    }
-
-    std::string ToString() const
-    {
-        return strprintf("COutput(%s, %d, %d) [%s]", tx->GetHash().ToString(), i, nDepth, FormatMoney(tx->vout[i].nValue));
-    }
-
-    //Used with MNengine. Will return fees, then everything else, then very small inputs that aren't fees
-    int Priority() const
-    {
-        //nondenom return largest first
-        return -(tx->vout[i].nValue/COIN);
-    }
-
-    void print() const
-    {
-        LogPrintf("%s\n", ToString().c_str());
-    }
-};
-
-
-
+#include "coutput.h"
 
 /** Private key that includes an expiration date in case it never gets used. */
 class CWalletKey
