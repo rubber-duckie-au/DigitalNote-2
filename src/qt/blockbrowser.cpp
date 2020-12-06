@@ -9,6 +9,7 @@
 #include "transactionrecord.h"
 #include "cblock.h"
 #include "cblockindex.h"
+#include "script.h"
 
 #include "blockbrowser.h"
 

@@ -5,6 +5,7 @@
 #include "instantx.h"
 #include "walletdb.h"
 #include "wallet.h"
+#include "script.h"
 
 #include "cwallettx.h"
 

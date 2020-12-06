@@ -11,6 +11,7 @@
 #include "txdb.h"
 #include "main.h"
 #include "cwallettx.h"
+#include "script.h"
 
 #include <string>
 

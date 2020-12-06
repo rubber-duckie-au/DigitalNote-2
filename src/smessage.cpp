@@ -60,6 +60,7 @@ Notes:
 #include "xxhash/xxhash.c"
 #include "cwallet.h"
 #include "cblock.h"
+#include "script.h"
 
 #include "smessage.h"
 

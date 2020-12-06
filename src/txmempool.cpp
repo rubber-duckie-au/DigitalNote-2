@@ -3,9 +3,12 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <boost/foreach.hpp>
+
 #include "chain.h"
-#include "txmempool.h"
 #include "ctransaction.h"
+
+#include "txmempool.h"
 
 CTxMemPool::CTxMemPool()
 {

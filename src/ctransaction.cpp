@@ -1,3 +1,5 @@
+#include <boost/foreach.hpp>
+
 #include "uint256.h"
 #include "txdb-leveldb.h"
 #include "cdisktxpos.h"

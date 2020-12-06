@@ -2,6 +2,7 @@
 #define COINCONTROL_H
 
 #include "chain.h"
+#include "script.h"
 
 /** Coin Control Features. */
 class CCoinControl

@@ -38,6 +38,7 @@
 #include "cblock.h"
 #include "cblocklocator.h"
 #include "cdiskblockpos.h"
+#include "script.h"
 
 #include "main.h"
 

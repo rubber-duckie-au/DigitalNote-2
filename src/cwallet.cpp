@@ -19,6 +19,7 @@
 #include "creservekey.h"
 #include "ckeypool.h"
 #include "wallet.h"
+#include "script.h"
 
 #include "cwallet.h"
 

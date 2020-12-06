@@ -15,6 +15,7 @@
 #include "checkpoints.h"
 #include "cblocklocator.h"
 #include "cwallet.h"
+#include "script.h"
 
 #include "cblock.h"
 

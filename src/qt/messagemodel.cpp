@@ -1,15 +1,3 @@
-#include "guiutil.h"
-#include "guiconstants.h"
-#include "bitcoinunits.h"
-#include "optionsmodel.h"
-#include "walletmodel.h"
-#include "messagemodel.h"
-#include "addresstablemodel.h"
-
-#include "ui_interface.h"
-#include "base58.h"
-#include "json_spirit.h"
-
 #include <QSet>
 #include <QTimer>
 #include <QDateTime>
@@ -20,6 +8,19 @@
 #include <QFont>
 #include <QColor>
 #include <boost/bind.hpp>
+
+#include "guiutil.h"
+#include "guiconstants.h"
+#include "bitcoinunits.h"
+#include "optionsmodel.h"
+#include "walletmodel.h"
+#include "addresstablemodel.h"
+#include "ui_interface.h"
+#include "base58.h"
+#include "json_spirit.h"
+#include "script.h"
+
+#include "messagemodel.h"
 
 Q_DECLARE_METATYPE(std::vector<unsigned char>);
 

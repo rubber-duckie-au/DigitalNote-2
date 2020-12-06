@@ -11,6 +11,7 @@
 #include "coutput.h"
 #include "cwallettx.h"
 #include "mining.h"
+#include "script.h"
 
 #include "activemasternode.h"
 

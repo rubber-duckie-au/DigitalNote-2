@@ -7,7 +7,6 @@
 
 #include "db.h"
 #include "key.h"
-#include "keystore.h"
 #include "stealth.h"
 
 #include <list>

@@ -18,6 +18,7 @@
 #include "cwallettx.h"
 #include "creservekey.h"
 #include "coutput.h"
+#include "script.h"
 
 using namespace json_spirit;
 

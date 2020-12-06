@@ -5,8 +5,11 @@
 #ifndef BITCOIN_MAIN_H
 #define BITCOIN_MAIN_H
 
+#include <boost/signals2/signal.hpp>
+
 #include "ctransaction.h"
 #include "txmempool.h"
+#include "script.h"
 
 #include <list>
 

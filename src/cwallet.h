@@ -9,6 +9,7 @@
 #include "sync.h"
 #include "ui_interface.h"
 #include "dberrors.h"
+#include "script.h"
 
 class CWalletDB;
 class CWalletTx;

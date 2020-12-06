@@ -1,13 +1,13 @@
-#include "addresstablemodel.h"
+#include <QFont>
+#include <QDebug>
 
 #include "guiutil.h"
 #include "walletmodel.h"
-
 #include "base58.h"
 #include "stealth.h"
+#include "script.h"
 
-#include <QFont>
-#include <QDebug>
+#include "addresstablemodel.h"
 
 const QString AddressTableModel::Send = "S";
 const QString AddressTableModel::Receive = "R";

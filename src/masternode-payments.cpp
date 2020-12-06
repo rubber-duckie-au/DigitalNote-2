@@ -10,6 +10,7 @@
 #include "spork.h"
 #include "addrman.h"
 #include <boost/lexical_cast.hpp>
+#include "script.h"
 
 CCriticalSection cs_masternodepayments;
 

@@ -16,7 +16,6 @@
 #include "base58.h"
 #include "checkpoints.h"
 #include "db.h"
-#include "keystore.h"
 #include "ui_interface.h"
 #include "walletdb.h" // for BackupWallet
 #include "spork.h"
@@ -25,6 +24,7 @@
 #include "cwallettx.h"
 #include "creservekey.h"
 #include "wallet.h"
+#include "script.h"
 
 #include "walletmodel.h"
 

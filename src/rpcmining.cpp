@@ -21,6 +21,7 @@
 #include "cwallet.h"
 #include "mining.h"
 #include "cblock.h"
+#include "script.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

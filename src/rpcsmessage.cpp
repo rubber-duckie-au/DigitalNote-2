@@ -8,6 +8,7 @@
 #include "smessage.h"
 #include "init.h" // pwalletMain
 #include "cwallet.h"
+#include "script.h"
 
 using namespace json_spirit;
 

@@ -12,7 +12,6 @@
 #include "util.h"
 #include "base58.h"
 #include "main.h"
-#include "script.h"
 #include "cblockindex.h"
 
 #include "masternode.h"

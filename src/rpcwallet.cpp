@@ -25,6 +25,7 @@
 #include "coutput.h"
 #include "mining.h"
 #include "wallet.h"
+#include "script.h"
 
 using namespace json_spirit;
 

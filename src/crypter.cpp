@@ -4,7 +4,6 @@
 
 #include "crypter.h"
 
-#include "script.h"
 #include "scrypt.h"
 
 #include <string>

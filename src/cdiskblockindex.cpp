@@ -1,5 +1,6 @@
 #include "cblock.h"
 #include "main.h"
+#include "bignum.h"
 
 #include "cdiskblockindex.h"
 

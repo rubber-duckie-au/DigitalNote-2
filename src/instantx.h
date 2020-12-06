@@ -10,7 +10,6 @@
 #include "key.h"
 #include "chain.h"
 #include "util.h"
-#include "script.h"
 #include "base58.h"
 
 using namespace boost;

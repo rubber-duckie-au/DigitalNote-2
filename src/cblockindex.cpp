@@ -2,6 +2,7 @@
 #include "ctransaction.h"
 #include "cdiskblockpos.h"
 #include "main.h"
+#include "bignum.h"
 
 #include "cblockindex.h"
 

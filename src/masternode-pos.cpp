@@ -6,7 +6,6 @@
 #include "net.h"
 #include "key.h"
 #include "util.h"
-#include "script.h"
 #include "base58.h"
 #include "protocol.h"
 #include "activemasternode.h"
@@ -14,6 +13,7 @@
 #include "spork.h"
 #include <boost/lexical_cast.hpp>
 #include "masternodeman.h"
+#include "script.h"
 
 using namespace boost;
 

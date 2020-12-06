@@ -3,10 +3,12 @@
 
 #include <string>
 #include <vector>
+#include <boost/foreach.hpp>
 
 #include "cmerkletx.h"
 #include "serialize.h"
 #include "cwallet.h"
+#include "script.h"
 
 void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue);
 void WriteOrderPos(const int64_t& nOrderPos, mapValue_t& mapValue);

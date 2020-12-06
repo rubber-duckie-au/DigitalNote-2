@@ -1,6 +1,7 @@
 #include "cblocklocator.h"
 
 #include <map>
+#include <boost/foreach.hpp>
 
 #include "uint256.h"
 #include "cblockindex.h"

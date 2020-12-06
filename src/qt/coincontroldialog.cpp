@@ -23,6 +23,7 @@
 #include "coutput.h"
 #include "cwallettx.h"
 #include "wallet.h"
+#include "script.h"
 
 #include "coincontroldialog.h"
 #include "ui_coincontroldialog.h"
