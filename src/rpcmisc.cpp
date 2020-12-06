@@ -12,9 +12,12 @@
 #include "util.h"
 #include "stealth.h"
 #include "spork.h"
+
 #ifdef ENABLE_WALLET
-#include "wallet.h"
 #include "walletdb.h"
+#include "cwallet.h"
+#include "wallet.h"
+
 #endif
 
 #include <stdint.h>

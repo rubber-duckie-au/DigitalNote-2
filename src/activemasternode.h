@@ -11,8 +11,9 @@
 #include "key.h"
 #include "masternode.h"
 #include "init.h"
-#include "wallet.h"
 #include "mnengine.h"
+
+class COutput;
 
 // Responsible for activating the masternode and pinging the network
 class CActiveMasternode

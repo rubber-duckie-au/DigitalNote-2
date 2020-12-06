@@ -17,6 +17,10 @@
 #include "miner.h"
 #include "kernel.h"
 #include "fork.h"
+#include "creservekey.h"
+#include "cwallet.h"
+#include "mining.h"
+#include "cblock.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

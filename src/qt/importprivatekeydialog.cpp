@@ -1,13 +1,14 @@
-#include "importprivatekeydialog.h"
-#include "ui_importprivatekeydialog.h"
+#include <QDataWidgetMapper>
+#include <QMessageBox>
+#include <QClipboard>
 
 #include "addresstablemodel.h"
 #include "base58.h"
 #include "init.h"
+#include "cwallet.h"
 
-#include <QDataWidgetMapper>
-#include <QMessageBox>
-#include <QClipboard>
+#include "importprivatekeydialog.h"
+#include "ui_importprivatekeydialog.h"
 
 ImportPrivateKeyDialog::ImportPrivateKeyDialog(QWidget *parent) :
     QDialog(parent),

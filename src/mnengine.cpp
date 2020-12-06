@@ -16,6 +16,10 @@
 #include "instantx.h"
 #include "ui_interface.h"
 #include "cvalidationstate.h"
+#include "cwallet.h"
+#include "cwallettx.h"
+#include "mining.h"
+#include "creservekey.h"
 
 #include "mnengine.h"
 

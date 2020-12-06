@@ -18,10 +18,13 @@
 #include "db.h"
 #include "keystore.h"
 #include "ui_interface.h"
-#include "wallet.h"
 #include "walletdb.h" // for BackupWallet
 #include "spork.h"
 #include "smessage.h"
+#include "coutput.h"
+#include "cwallettx.h"
+#include "creservekey.h"
+#include "wallet.h"
 
 #include "walletmodel.h"
 

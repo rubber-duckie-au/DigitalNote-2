@@ -34,6 +34,10 @@
 #include "smessage.h"
 #include "util.h"
 #include "cnodestatestats.h"
+#include "cwalletinterface.h"
+#include "cblock.h"
+#include "cblocklocator.h"
+#include "cdiskblockpos.h"
 
 #include "main.h"
 

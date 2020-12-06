@@ -3,6 +3,13 @@
  */
 
 #include <QApplication>
+#include <QMessageBox>
+#include <QTextCodec>
+#include <QLocale>
+#include <QTimer>
+#include <QTranslator>
+#include <QSplashScreen>
+#include <QLibraryInfo>
 
 #include "bitcoingui.h"
 #include "clientmodel.h"
@@ -13,20 +20,14 @@
 #include "guiconstants.h"
 #include "init.h"
 #include "util.h"
-#include "wallet.h"
 #include "ui_interface.h"
 #include "paymentserver.h"
+#include "wallet.h"
+
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
 #endif
 
-#include <QMessageBox>
-#include <QTextCodec>
-#include <QLocale>
-#include <QTimer>
-#include <QTranslator>
-#include <QSplashScreen>
-#include <QLibraryInfo>
 
 #if defined(BITCOIN_NEED_QT_PLUGINS) && !defined(_BITCOIN_QT_PLUGINS_INCLUDED)
 #define _BITCOIN_QT_PLUGINS_INCLUDED

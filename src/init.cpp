@@ -2,9 +2,21 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/bind.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/function.hpp>
+#include <boost/interprocess/sync/file_lock.hpp>
+#include <boost/thread.hpp>
+#include <openssl/crypto.h>
+#include <string>
+
+#ifndef WIN32
+#include <signal.h>
+#endif
 
 #include "init.h"
-
 #include "addrman.h"
 #include "main.h"
 #include "chainparams.h"
@@ -25,26 +37,18 @@
 #include "spork.h"
 #include "smessage.h"
 #include "webwalletconnector.h"
+#include "cwallet.h"
+#include "cblocklocator.h"
+#include "cblock.h"
+#include "cwallettx.h"
+#include "caccountingentry.h"
+#include "wallet.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"
-#include "wallet.h"
 #include "walletdb.h"
 #endif
 
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/bind.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/function.hpp>
-#include <boost/interprocess/sync/file_lock.hpp>
-#include <boost/thread.hpp>
-#include <openssl/crypto.h>
-#include <string>
-
-#ifndef WIN32
-#include <signal.h>
-#endif
 
 using namespace boost;
 

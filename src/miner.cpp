@@ -12,7 +12,9 @@
 #include "masternodeman.h"
 #include "masternode-payments.h"
 #include "fork.h"
-
+#include "cblock.h"
+#include "creservekey.h"
+#include "cwallet.h"
 
 //////////////////////////////////////////////////////////////////////////////
 //

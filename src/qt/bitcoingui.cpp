@@ -56,7 +56,6 @@
 #include "notificator.h"
 #include "guiutil.h"
 #include "rpcconsole.h"
-#include "wallet.h"
 #include "init.h"
 #include "ui_interface.h"
 #include "masternodemanager.h"
@@ -64,6 +63,9 @@
 #include "messagepage.h"
 #include "blockbrowser.h"
 #include "importprivatekeydialog.h"
+#include "cblock.h"
+#include "mining.h"
+#include "wallet.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"

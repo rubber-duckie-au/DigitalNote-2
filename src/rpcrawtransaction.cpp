@@ -11,8 +11,13 @@
 #include "init.h"
 #include "net.h"
 #include "keystore.h"
+#include "ctransaction.h"
+#include "main.h"
+
 #ifdef ENABLE_WALLET
-#include "wallet.h"
+#include "coutput.h"
+#include "cwallet.h"
+#include "cwallettx.h"
 #endif
 
 using namespace boost;

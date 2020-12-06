@@ -5,7 +5,6 @@
 #include "ui_masternodemanager.h"
 
 #include "walletdb.h"
-#include "wallet.h"
 #include "ui_interface.h"
 #include "util.h"
 #include "key.h"

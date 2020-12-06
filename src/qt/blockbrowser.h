@@ -14,7 +14,6 @@
 
 #include "clientmodel.h"
 #include "walletmodel.h"
-#include "wallet.h"
 #include "base58.h"
 
 double getBlockHardness(int);

@@ -2,6 +2,8 @@
 #include "blockparams.h"
 #include "spork.h"
 #include "instantx.h"
+#include "cblock.h"
+#include "mining.h"
 
 #include "cmerkletx.h"
 

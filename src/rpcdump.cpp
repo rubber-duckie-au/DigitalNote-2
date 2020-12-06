@@ -4,15 +4,18 @@
 
 #include <iostream>
 #include <fstream>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/variant/get.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "init.h" // for pwalletMain
 #include "rpcserver.h"
 #include "ui_interface.h"
 #include "base58.h"
-
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/variant/get.hpp>
-#include <boost/algorithm/string.hpp>
+#include "cwallettx.h"
+#include "walletdb.h"
+#include "cblockindex.h"
+#include "wallet.h"
 
 using namespace json_spirit;
 

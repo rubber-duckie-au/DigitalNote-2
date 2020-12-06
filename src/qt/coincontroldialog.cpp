@@ -1,18 +1,3 @@
-#include "coincontroldialog.h"
-#include "ui_coincontroldialog.h"
-
-#include "addresstablemodel.h"
-#include "bitcoinunits.h"
-#include "base58.h"
-#include "chain.h"
-#include "guiutil.h"
-#include "init.h"
-#include "optionsmodel.h"
-#include "walletmodel.h"
-
-#include "coincontrol.h"
-#include "wallet.h"
-
 #include <ctime>
 #include <QMessageBox>
 #include <QApplication>
@@ -25,6 +10,22 @@
 #include <QString>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
+
+#include "addresstablemodel.h"
+#include "bitcoinunits.h"
+#include "base58.h"
+#include "chain.h"
+#include "guiutil.h"
+#include "init.h"
+#include "optionsmodel.h"
+#include "walletmodel.h"
+#include "coincontrol.h"
+#include "coutput.h"
+#include "cwallettx.h"
+#include "wallet.h"
+
+#include "coincontroldialog.h"
+#include "ui_coincontroldialog.h"
 
 QList<qint64> CoinControlDialog::payAmounts;
 CCoinControl* CoinControlDialog::coinControl = new CCoinControl();

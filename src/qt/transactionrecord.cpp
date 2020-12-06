@@ -1,12 +1,13 @@
-#include "transactionrecord.h"
+#include <stdint.h>
 
 #include "base58.h"
 #include "util.h"
-#include "wallet.h"
 #include "mnengine.h"
 #include "instantx.h"
+#include "cwallettx.h"
+#include "mining.h"
 
-#include <stdint.h>
+#include "transactionrecord.h"
 
 /* Return positive answer if transaction should be shown in list.
  */

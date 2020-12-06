@@ -1,4 +1,5 @@
 #include <boost/lexical_cast.hpp>
+
 #include "uint256.h"
 #include "sync.h"
 #include "net.h"
@@ -6,7 +7,6 @@
 #include "util.h"
 #include "base58.h"
 #include "protocol.h"
-#include "instantx.h"
 #include "activemasternode.h"
 #include "blockparams.h"
 #include "masternodeman.h"
@@ -14,6 +14,10 @@
 #include "spork.h"
 #include "txdb.h"
 #include "cvalidationstate.h"
+#include "cblock.h"
+#include "cwallet.h"
+
+#include "instantx.h"
 
 using namespace boost;
 

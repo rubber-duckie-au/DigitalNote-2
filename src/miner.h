@@ -6,7 +6,10 @@
 #ifndef NOVACOIN_MINER_H
 #define NOVACOIN_MINER_H
 
-#include "wallet.h"
+class CReserveKey;
+class CBlock;
+class CBlockIndex;
+class CWallet;
 
 /* Generate a new block, without valid proof-of-work */
 CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake=false, int64_t* pFees = 0);

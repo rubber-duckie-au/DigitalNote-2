@@ -13,6 +13,8 @@
 #include "instantx.h"
 #include "velocity.h"
 #include "checkpoints.h"
+#include "cblocklocator.h"
+#include "cwallet.h"
 
 #include "cblock.h"
 

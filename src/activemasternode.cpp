@@ -2,11 +2,17 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "protocol.h"
-#include "activemasternode.h"
-#include "masternodeman.h"
 #include <boost/lexical_cast.hpp>
+
+#include "protocol.h"
+#include "masternodeman.h"
 #include "clientversion.h"
+#include "cwallet.h"
+#include "coutput.h"
+#include "cwallettx.h"
+#include "mining.h"
+
+#include "activemasternode.h"
 
 //
 // Bootup the masternode, look for a 2,000,000 XDN input and register on the network

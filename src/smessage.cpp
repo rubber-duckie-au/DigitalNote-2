@@ -30,7 +30,6 @@ Notes:
 
 */
 
-#include "smessage.h"
 
 #include <stdint.h>
 #include <time.h>
@@ -50,19 +49,19 @@ Notes:
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-
 #include "base58.h"
 #include "db.h"
 #include "init.h" // pwalletMain
 #include "txdb.h"
 #include "sync.h"
 #include "ecwrapper.h"
-
 #include "lz4/lz4.c"
-
 #include "xxhash/xxhash.h"
 #include "xxhash/xxhash.c"
+#include "cwallet.h"
+#include "cblock.h"
 
+#include "smessage.h"
 
 boost::thread_group threadGroupSmsg;
 

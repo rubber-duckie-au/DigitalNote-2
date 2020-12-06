@@ -10,6 +10,15 @@
 #include "masternodeman.h"
 #include "masternode-payments.h"
 #include "webwalletconnector.h"
+#include "coutput.h"
+#include "cwallettx.h"
+#include "mining.h"
+#include "walletdb.h"
+#include "caccountingentry.h"
+#include "cblock.h"
+#include "creservekey.h"
+#include "ckeypool.h"
+#include "wallet.h"
 
 #include "cwallet.h"
 

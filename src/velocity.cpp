@@ -9,6 +9,9 @@
 #include "main.h"
 #include "velocity.h"
 #include "rpcserver.h"
+#include "cblockindex.h"
+#include "cblock.h"
+#include "ctxindex.h"
 #include "wallet.h"
 
 /* VelocityI(int nHeight) ? i : -1

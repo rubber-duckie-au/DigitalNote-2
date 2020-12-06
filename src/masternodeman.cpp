@@ -8,6 +8,7 @@
 #include "util.h"
 #include "addrman.h"
 #include "cvalidationstate.h"
+#include "mining.h"
 
 #include "masternodeman.h"
 

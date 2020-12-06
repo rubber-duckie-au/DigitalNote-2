@@ -8,8 +8,9 @@
 #include "transactionrecord.h"
 #include "util.h"
 #include "ui_interface.h"
-#include "wallet.h"
 #include "txdb.h"
+#include "main.h"
+#include "cwallettx.h"
 
 #include <string>
 

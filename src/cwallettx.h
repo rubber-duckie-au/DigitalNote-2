@@ -3,14 +3,10 @@
 
 #include <string>
 #include <vector>
-#include <vector>
 
 #include "cmerkletx.h"
 #include "serialize.h"
-
-class CWallet;
-
-typedef std::map<std::string, std::string> mapValue_t;
+#include "cwallet.h"
 
 void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue);
 void WriteOrderPos(const int64_t& nOrderPos, mapValue_t& mapValue);

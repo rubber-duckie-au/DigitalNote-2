@@ -10,10 +10,10 @@
 
 #include "net.h"
 #include "db.h"
-#include "wallet.h"
 #include "base58.h"
 #include "lz4/lz4.h"
 #include "json/json_spirit_value.h"
+#include "ui_interface.h"
 
 using namespace json_spirit;
 

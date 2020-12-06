@@ -11,7 +11,6 @@
 #include "masternodeman.h"
 #include "masternode.h"
 #include "walletdb.h"
-#include "wallet.h"
 #include "init.h"
 #include "rpcserver.h"
 #include "guiutil.h"

@@ -7,6 +7,7 @@
 #include "rpcserver.h"
 #include "smessage.h"
 #include "init.h" // pwalletMain
+#include "cwallet.h"
 
 using namespace json_spirit;
 

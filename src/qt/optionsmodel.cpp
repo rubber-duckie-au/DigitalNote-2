@@ -8,6 +8,7 @@
 #include "guiutil.h"
 #include "init.h"
 #include "net.h"
+#include "main.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet.h"

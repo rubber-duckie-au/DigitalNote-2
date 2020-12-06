@@ -1,9 +1,10 @@
 #include "cwallet.h"
 #include "cblockindex.h"
 #include "mining.h"
-#include "wallet.h"
 #include "txdb-leveldb.h"
 #include "instantx.h"
+#include "walletdb.h"
+#include "wallet.h"
 
 #include "cwallettx.h"
 

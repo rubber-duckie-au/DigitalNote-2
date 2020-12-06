@@ -2,12 +2,13 @@
 #include <string>
 
 #include "ui_blockbrowser.h"
-#include "wallet.h"
 #include "base58.h"
 #include "clientmodel.h"
 #include "walletmodel.h"
 #include "rpcconsole.h"
 #include "transactionrecord.h"
+#include "cblock.h"
+#include "cblockindex.h"
 
 #include "blockbrowser.h"
 

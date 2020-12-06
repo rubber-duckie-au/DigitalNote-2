@@ -14,6 +14,10 @@
 #include "masternodeconfig.h"
 #include "rpcserver.h"
 #include "util.h"
+#include "cwallet.h"
+#include "cwallettx.h"
+#include "creservekey.h"
+#include "coutput.h"
 
 using namespace json_spirit;
 
