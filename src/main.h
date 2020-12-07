@@ -10,6 +10,7 @@
 #include "ctransaction.h"
 #include "txmempool.h"
 #include "script.h"
+#include "util.h"
 
 #include <list>
 

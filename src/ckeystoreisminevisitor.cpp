@@ -1,6 +1,7 @@
 #include "keystore.h"
 
 #include "stealth.h"
+#include "cstealthaddress.h"
 
 #include "ckeystoreisminevisitor.h"
 

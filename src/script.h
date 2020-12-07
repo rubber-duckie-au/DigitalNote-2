@@ -12,6 +12,8 @@
 #include <boost/variant.hpp>
 
 #include "stealth.h"
+#include "pubkey.h"
+#include "cstealthaddress.h"
 
 class CKeyStore;
 class CTransaction;

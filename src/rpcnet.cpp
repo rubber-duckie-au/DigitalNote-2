@@ -15,6 +15,7 @@
 #include "util.h"
 #include "json/json_spirit_value.h"
 #include "main.h"
+#include "key.h"
 
 using namespace json_spirit;
 

@@ -2,28 +2,15 @@
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #ifndef BITCOIN_UTIL_H
 #define BITCOIN_UTIL_H
-
-#ifndef WIN32
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#endif
-
-#ifdef WIN32
-#include <windows.h>
-#endif
-
-#include "serialize.h"
-#include "tinyformat.h"
 
 #include <map>
 #include <list>
 #include <utility>
 #include <vector>
 #include <string>
+#include <stdint.h>
 
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
@@ -38,8 +25,18 @@
 #include <openssl/rand.h>
 #include <openssl/bn.h>
 
-#include <stdint.h>
+#ifndef WIN32
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+#ifdef WIN32
+#include <windows.h>
+#endif
 
+#include "serialize.h"
+#include "tinyformat.h"
+#include "utilstrencodings.h"
 
 class CNetAddr;
 class uint256;
@@ -289,15 +286,6 @@ long hex2long(const char *hexString);
  */
 bool ParseInt32(const std::string& str, int32_t *out);
 
-
-/** 
- * Format a paragraph of text to a fixed width, adding spaces for
- * indentation to any added line.
- */
-std::string FormatParagraph(const std::string &in, size_t width=79, size_t indent=0);
-
-
-
 inline std::string i64tostr(int64_t n)
 {
     return strprintf("%d", n);
@@ -354,31 +342,6 @@ inline std::string leftTrim(std::string src, char chr)
         src.erase(0, pos);
 
     return src;
-}
-
-template<typename T>
-std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
-{
-    std::string rv;
-    static const char hexmap[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
-                                     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    rv.reserve((itend-itbegin)*3);
-    for(T it = itbegin; it < itend; ++it)
-    {
-        unsigned char val = (unsigned char)(*it);
-        if(fSpaces && it != itbegin)
-            rv.push_back(' ');
-        rv.push_back(hexmap[val>>4]);
-        rv.push_back(hexmap[val&15]);
-    }
-
-    return rv;
-}
-
-template<typename T>
-inline std::string HexStr(const T& vch, bool fSpaces=false)
-{
-    return HexStr(vch.begin(), vch.end(), fSpaces);
 }
 
 inline int64_t GetPerformanceCounter()
@@ -608,7 +571,8 @@ inline uint32_t ByteReverse(uint32_t value)
 // or maybe:
 //    boost::function<void()> f = boost::bind(&FunctionWithArg, argument);
 //    threadGroup.create_thread(boost::bind(&LoopForever<boost::function<void()> >, "nothing", f, milliseconds));
-template <typename Callable> void LoopForever(const char* name,  Callable func, int64_t msecs)
+template <typename Callable>
+void LoopForever(const char* name, Callable func, int64_t msecs)
 {
     std::string s = strprintf("DigitalNote-%s", name);
     RenameThread(s.c_str());

@@ -21,6 +21,9 @@
 #include <string>
 #include <vector>
 
+class CKey;
+class CExtKey;
+
 /**
  * Encode a byte sequence as a base58-encoded string.
  * pbegin and pend cannot be NULL, unless both are.

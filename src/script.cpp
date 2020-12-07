@@ -17,6 +17,9 @@
 #include "cscriptnum.h"
 #include "cscriptvisitor.h"
 #include "ctransaction.h"
+#include "tinyformat.h"
+#include "utilstrencodings.h"
+#include "util.h"
 
 #include "script.h"
 

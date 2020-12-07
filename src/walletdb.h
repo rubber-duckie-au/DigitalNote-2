@@ -24,6 +24,7 @@ class CWallet;
 class CWalletTx;
 class uint160;
 class uint256;
+class CStealthAddress;
 
 #include "dberrors.h"
 
