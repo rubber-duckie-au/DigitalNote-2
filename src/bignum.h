@@ -9,6 +9,7 @@
 #include "serialize.h"
 #include "uint256.h"
 #include "version.h"
+#include "utilstrencodings.h"
 
 #ifdef WIN32
 #include <windows.h>
