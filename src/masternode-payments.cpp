@@ -158,8 +158,11 @@ bool CMasternodePayments::GetWinningMasternode(int nBlockHeight, CScript& payee,
         return false;
     }
     // Set masternode winner to pay
-    payee = winningNode->donationAddress;
-    vin = winningNode->vin;
+    BOOST_FOREACH(CMasternodePaymentWinner& winner, vWinning){
+        payee = winner.payee;
+        vin = winner.vin;
+    }
+    // Return true if previous checks pass
     return true;
 }
 
