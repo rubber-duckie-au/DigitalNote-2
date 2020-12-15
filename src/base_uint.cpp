@@ -1,7 +1,31 @@
 #include "uint256.h"
-#include "utilstrencodings.h"
+#include "serialize.h"
 
 #include "base_uint.h"
+
+const signed char p_util_hexdigit[256] =
+{ -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  0,1,2,3,4,5,6,7,8,9,-1,-1,-1,-1,-1,-1,
+  -1,0xa,0xb,0xc,0xd,0xe,0xf,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,0xa,0xb,0xc,0xd,0xe,0xf,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, };
+
+
+signed char HexDigit(char c)
+{
+    return p_util_hexdigit[(unsigned char)c];
+}
 
 template<unsigned int BITS>
 bool base_uint<BITS>::operator!() const
@@ -15,7 +39,7 @@ bool base_uint<BITS>::operator!() const
 template<unsigned int BITS>
 const base_uint<BITS> base_uint<BITS>::operator~() const
 {
-	base_uint<BITS> ret;
+	base_uint ret;
 	for (int i = 0; i < WIDTH; i++)
 		ret.pn[i] = ~pn[i];
 	return ret;
@@ -24,7 +48,7 @@ const base_uint<BITS> base_uint<BITS>::operator~() const
 template<unsigned int BITS>
 const base_uint<BITS> base_uint<BITS>::operator-() const
 {
-	base_uint<BITS> ret;
+	base_uint ret;
 	for (int i = 0; i < WIDTH; i++)
 		ret.pn[i] = ~pn[i];
 	ret++;
@@ -205,10 +229,22 @@ const base_uint<BITS> base_uint<BITS>::operator--(int)
 	return ret;
 }
 
-template<unsigned int _BITS_>
-bool operator<(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
+
+
+/**
+	I try to patch the functionality into the cpp file but it didnt let me. In the end the project got compiled
+	but the functionality didnt got into my .o file. This means on linking there was this code missing.
+	
+	Issue: Template class friend operators
+	
+	Reference:
+		https://bytefreaks.net/programming-2/c/c-undefined-reference-to-templated-class-function
+		http://www.c-jump.com/CIS62/L12slides/lecture.html
+*/
+template<unsigned int BITS>
+inline bool operator<(const base_uint<BITS>& a, const base_uint<BITS>& b)
 {
-	for (int i = base_uint<_BITS_>::WIDTH-1; i >= 0; i--)
+	for (int i = base_uint<BITS>::WIDTH-1; i >= 0; i--)
 	{
 		if (a.pn[i] < b.pn[i])
 			return true;
@@ -218,10 +254,10 @@ bool operator<(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
 	return false;
 }
 
-template<unsigned int _BITS_>
-bool operator<=(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
+template<unsigned int BITS>
+inline bool operator<=(const base_uint<BITS>& a, const base_uint<BITS>& b)
 {
-	for (int i = base_uint<_BITS_>::WIDTH-1; i >= 0; i--)
+	for (int i = base_uint<BITS>::WIDTH-1; i >= 0; i--)
 	{
 		if (a.pn[i] < b.pn[i])
 			return true;
@@ -231,10 +267,10 @@ bool operator<=(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
 	return true;
 }
 
-template<unsigned int _BITS_>
-bool operator>(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
+template<unsigned int BITS>
+inline bool operator>(const base_uint<BITS>& a, const base_uint<BITS>& b)
 {
-	for (int i = base_uint<_BITS_>::WIDTH-1; i >= 0; i--)
+	for (int i = base_uint<BITS>::WIDTH-1; i >= 0; i--)
 	{
 		if (a.pn[i] > b.pn[i])
 			return true;
@@ -244,10 +280,10 @@ bool operator>(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
 	return false;
 }
 
-template<unsigned int _BITS_>
-bool operator>=(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
+template<unsigned int BITS>
+inline bool operator>=(const base_uint<BITS>& a, const base_uint<BITS>& b)
 {
-	for (int i = base_uint<_BITS_>::WIDTH-1; i >= 0; i--)
+	for (int i = base_uint<BITS>::WIDTH-1; i >= 0; i--)
 	{
 		if (a.pn[i] > b.pn[i])
 			return true;
@@ -257,39 +293,45 @@ bool operator>=(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
 	return true;
 }
 
-template<unsigned int _BITS_>
-bool operator==(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
+template<unsigned int BITS>
+inline bool operator==(const base_uint<BITS>& a, const base_uint<BITS>& b)
 {
-	for (int i = 0; i < base_uint<_BITS_>::WIDTH; i++)
+	for (int i = 0; i < base_uint<BITS>::WIDTH; i++)
 		if (a.pn[i] != b.pn[i])
 			return false;
 	return true;
 }
 
-template<unsigned int _BITS_>
-bool operator==(const base_uint<_BITS_>& a, uint64_t b)
+template<unsigned int BITS>
+inline bool operator==(const base_uint<BITS>& a, uint64_t b)
 {
 	if (a.pn[0] != (unsigned int)b)
 		return false;
 	if (a.pn[1] != (unsigned int)(b >> 32))
 		return false;
-	for (int i = 2; i < base_uint<_BITS_>::WIDTH; i++)
+	for (int i = 2; i < base_uint<BITS>::WIDTH; i++)
 		if (a.pn[i] != 0)
 			return false;
 	return true;
 }
 
-template<unsigned int _BITS_>
-bool operator!=(const base_uint<_BITS_>& a, const base_uint<_BITS_>& b)
+template<unsigned int BITS>
+inline bool operator!=(const base_uint<BITS>& a, const base_uint<BITS>& b)
 {
 	return (!(a == b));
 }
 
-template<unsigned int _BITS_>
-bool operator!=(const base_uint<_BITS_>& a, uint64_t b)
+template<unsigned int BITS>
+inline bool operator!=(const base_uint<BITS>& a, uint64_t b)
 {
 	return (!(a == b));
 }
+
+
+
+
+
+
 
 template<unsigned int BITS>
 std::string base_uint<BITS>::GetHex() const
@@ -390,6 +432,21 @@ template<typename Stream>
 void base_uint<BITS>::Serialize(Stream& s, int nType, int nVersion) const
 {
 	s.write((char*)pn, sizeof(pn));
+};
+
+template<unsigned int BITS>
+template<typename Stream>
+void base_uint<BITS>::Unserialize(Stream& s, int nType, int nVersion)
+{
+	s.read((char*)pn, sizeof(pn));
+};
+
+/*
+template<unsigned int BITS>
+template<typename Stream>
+void base_uint<BITS>::Serialize(Stream& s, int nType, int nVersion) const
+{
+	s.write((char*)pn, sizeof(pn));
 }
 
 template<unsigned int BITS>
@@ -398,4 +455,52 @@ void base_uint<BITS>::Unserialize(Stream& s, int nType, int nVersion)
 {
 	s.read((char*)pn, sizeof(pn));
 }
+*/
 
+/**
+	Solution to force to compile the template code for different bits.
+	
+	Reference:
+		https://stackoverflow.com/questions/8752837/undefined-reference-to-template-class-constructor
+*/
+template class base_uint<160>;
+template bool operator<  <160>(const base_uint<160>& a, const base_uint<160>& b);
+template bool operator<= <160>(const base_uint<160>& a, const base_uint<160>& b);
+template bool operator>  <160>(const base_uint<160>& a, const base_uint<160>& b);
+template bool operator>= <160>(const base_uint<160>& a, const base_uint<160>& b);
+template bool operator== <160>(const base_uint<160>& a, const base_uint<160>& b);
+template bool operator== <160>(const base_uint<160>& a, uint64_t b);
+template bool operator!= <160>(const base_uint<160>& a, const base_uint<160>& b);
+template bool operator!= <160>(const base_uint<160>& a, uint64_t b);
+template void base_uint<160>::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void base_uint<160>::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
+template void base_uint<160>::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
+template void base_uint<160>::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+
+template class base_uint<256>;
+template bool operator<  <256>(const base_uint<256>& a, const base_uint<256>& b);
+template bool operator<= <256>(const base_uint<256>& a, const base_uint<256>& b);
+template bool operator>  <256>(const base_uint<256>& a, const base_uint<256>& b);
+template bool operator>= <256>(const base_uint<256>& a, const base_uint<256>& b);
+template bool operator== <256>(const base_uint<256>& a, const base_uint<256>& b);
+template bool operator== <256>(const base_uint<256>& a, uint64_t b);
+template bool operator!= <256>(const base_uint<256>& a, const base_uint<256>& b);
+template bool operator!= <256>(const base_uint<256>& a, uint64_t b);
+template void base_uint<256>::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void base_uint<256>::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
+template void base_uint<256>::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
+template void base_uint<256>::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+
+template class base_uint<512>;
+template bool operator<  <512>(const base_uint<512>& a, const base_uint<512>& b);
+template bool operator<= <512>(const base_uint<512>& a, const base_uint<512>& b);
+template bool operator>  <512>(const base_uint<512>& a, const base_uint<512>& b);
+template bool operator>= <512>(const base_uint<512>& a, const base_uint<512>& b);
+template bool operator== <512>(const base_uint<512>& a, const base_uint<512>& b);
+template bool operator== <512>(const base_uint<512>& a, uint64_t b);
+template bool operator!= <512>(const base_uint<512>& a, const base_uint<512>& b);
+template bool operator!= <512>(const base_uint<512>& a, uint64_t b);
+template void base_uint<512>::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void base_uint<512>::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
+template void base_uint<512>::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
+template void base_uint<512>::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
