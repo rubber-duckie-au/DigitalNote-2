@@ -1,3 +1,4 @@
+#include <boost/foreach.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
 #include "util.h"
@@ -18,6 +19,8 @@
 #include "script.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "masternode-payments.h"
+#include "masternodeman.h"
 
 #include "cblock.h"
 

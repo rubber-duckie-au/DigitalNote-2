@@ -9,6 +9,7 @@
 #include <boost/function.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/thread.hpp>
+#include <boost/lexical_cast.hpp>
 #include <openssl/crypto.h>
 #include <string>
 
@@ -44,7 +45,6 @@
 #include "caccountingentry.h"
 #include "wallet.h"
 #include "net/caddrdb.h"
-
 #ifdef ENABLE_WALLET
 #include "db.h"
 #include "walletdb.h"

@@ -10,6 +10,7 @@
 #include "blockparams.h"
 #include "cconsensusvote.h"
 #include "cwallet.h"
+#include "mnengine.h"
 
 #include "instantx.h"
 

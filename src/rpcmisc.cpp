@@ -3,6 +3,13 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <stdint.h>
+#include <boost/foreach.hpp>
+#include <boost/assign/list_of.hpp>
+
+#include "json/json_spirit_utils.h"
+#include "json/json_spirit_value.h"
+
 #include "base58.h"
 #include "init.h"
 #include "main.h"
@@ -13,19 +20,15 @@
 #include "spork.h"
 #include "script.h"
 #include "net.h"
+#include "cblockindex.h"
+#include "csporkmessage.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"
 #include "cwallet.h"
 #include "wallet.h"
-
 #endif
 
-#include <stdint.h>
-
-#include <boost/assign/list_of.hpp>
-#include "json/json_spirit_utils.h"
-#include "json/json_spirit_value.h"
 
 using namespace boost;
 using namespace boost::assign;

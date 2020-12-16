@@ -43,6 +43,7 @@
 #include "instantx.h"
 #include "ctransactionlock.h"
 #include "cconsensusvote.h"
+#include "csporkmessage.h"
 
 #include "main.h"
 

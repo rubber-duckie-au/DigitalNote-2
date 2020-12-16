@@ -5,6 +5,7 @@
 #include "cblock.h"
 #include "mining.h"
 #include "ctransactionlock.h"
+#include "main.h"
 
 #include "cmerkletx.h"
 
