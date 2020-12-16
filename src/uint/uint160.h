@@ -9,14 +9,14 @@
 class uint160 : public uint_base160
 {
 public:
-    uint160();
-    uint160(const uint_base160& b);
-    uint160(uint64_t b);
-    explicit uint160(const std::string& str);
-    explicit uint160(const std::vector<unsigned char>& vch);
-    
+	uint160();
+	uint160(const uint_base160& b);
+	uint160(uint64_t b);
+	explicit uint160(const std::string& str);
+	explicit uint160(const std::vector<unsigned char>& vch);
+
 	uint160& operator=(const uint_base160& b);
-    uint160& operator=(uint64_t b);
+	uint160& operator=(uint64_t b);
 };
 
 bool operator==(const uint160& a, uint64_t b);

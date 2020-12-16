@@ -14,14 +14,14 @@
 class uint256 : public uint_base256
 {
 public:
-    uint256();
-    uint256(const uint_base256& b);
-    uint256(uint64_t b);
-    explicit uint256(const std::string& str);
-    explicit uint256(const std::vector<unsigned char>& vch);
-	
-    uint256& operator=(const uint_base256& b);
-    uint256& operator=(uint64_t b);
+	uint256();
+	uint256(const uint_base256& b);
+	uint256(uint64_t b);
+	explicit uint256(const std::string& str);
+	explicit uint256(const std::vector<unsigned char>& vch);
+
+	uint256& operator=(const uint_base256& b);
+	uint256& operator=(uint64_t b);
 };
 
 bool operator==(const uint256& a, uint64_t b);
