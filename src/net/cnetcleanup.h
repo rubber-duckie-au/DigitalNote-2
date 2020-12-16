@@ -37,7 +37,6 @@ public:
         WSACleanup();
 #endif
     }
-}
-instance_of_cnetcleanup;
+};
 
 #endif // CNETCLEANUP_H

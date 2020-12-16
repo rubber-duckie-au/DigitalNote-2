@@ -90,7 +90,7 @@ std::list<CNode*> vNodesDisconnected;
 int LastRefreshstamp = 0;
 int RefreshesDone = 0;
 bool FirstCycle = true;
-
+static CNetCleanup instance_of_cnetcleanup;
 
 
 CNodeSignals& GetNodeSignals()
