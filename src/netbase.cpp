@@ -8,7 +8,7 @@
 #include "hash.h"
 #include "crypto/bmw/bmw512.h"
 #include "sync.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "util.h"
 
 #ifndef WIN32

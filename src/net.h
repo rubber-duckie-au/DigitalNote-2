@@ -13,7 +13,7 @@
 #include "netbase.h"
 #include "protocol.h"
 #include "sync.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "util.h"
 
 #include <deque>

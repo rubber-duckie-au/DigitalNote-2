@@ -7,9 +7,9 @@
 #define BITCOIN_BIGNUM_H
 
 #include "serialize.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "version.h"
-#include "utilstrencodings.h"
+#include "util.h"
 
 #ifdef WIN32
 #include <windows.h>

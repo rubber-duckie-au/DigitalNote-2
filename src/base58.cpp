@@ -10,7 +10,7 @@
 #include <boost/variant/static_visitor.hpp>
 
 #include "hash.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "chainparams.h"
 #include "script.h"
 #include "key.h"

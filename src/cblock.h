@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "serialize.h"
 
 class CTransaction;

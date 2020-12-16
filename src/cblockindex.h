@@ -1,7 +1,7 @@
 #ifndef CBLOCKINDEX_H
 #define CBLOCKINDEX_H
 
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "chain.h"
 
 class CBlock;

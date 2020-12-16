@@ -3,7 +3,7 @@
 #include <map>
 #include <boost/foreach.hpp>
 
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "cblockindex.h"
 #include "main.h"
 #include "chainparams.h"

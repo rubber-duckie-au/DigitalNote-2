@@ -361,8 +361,8 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
-	src/base_uint.cpp \
-	src/uint256.cpp \
+	src/uint/uint_base.cpp \
+	src/uint/uint256.cpp \
 	src/cstealthaddress.cpp \
 	src/cscriptcompressor.cpp \
 	src/cscriptvisitor.cpp \

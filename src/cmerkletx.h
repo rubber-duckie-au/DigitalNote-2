@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "ctransaction.h"
 
 class CBlockIndex;

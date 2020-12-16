@@ -1,6 +1,6 @@
 #include "csignaturecache.h"
 
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "pubkey.h"
 #include "util.h"
 #include <boost/tuple/tuple_comparison.hpp>

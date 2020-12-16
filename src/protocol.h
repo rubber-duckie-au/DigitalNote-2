@@ -14,7 +14,7 @@
 #include "serialize.h"
 #include "netbase.h"
 #include <string>
-#include "uint256.h"
+#include "uint/uint256.h"
 
 /** Message header.
  * (4) message start.

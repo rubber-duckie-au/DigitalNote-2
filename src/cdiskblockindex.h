@@ -3,7 +3,7 @@
 
 #include "cblockindex.h"
 #include "serialize.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 
 /** Used to marshal pointers into hashes for db storage. */
 class CDiskBlockIndex : public CBlockIndex

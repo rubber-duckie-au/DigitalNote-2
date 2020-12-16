@@ -7,7 +7,7 @@
 #define BITCOIN_CHAIN_PARAMS_H
 
 #include "bignum.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "util.h"
 
 #include <vector>

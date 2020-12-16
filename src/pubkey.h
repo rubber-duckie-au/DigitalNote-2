@@ -9,7 +9,7 @@
 #include "hash.h"
 #include "crypto/bmw/bmw512.h"
 #include "serialize.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 
 #include <stdexcept>
 #include <vector>

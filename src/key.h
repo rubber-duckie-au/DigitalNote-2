@@ -8,7 +8,7 @@
 #include "allocators.h"
 #include "pubkey.h"
 #include "serialize.h"
-#include "uint256.h"
+#include "uint/uint256.h"
 
 #include <stdexcept>
 #include <vector>

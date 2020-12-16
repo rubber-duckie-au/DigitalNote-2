@@ -5,7 +5,7 @@
 #ifndef ACTIVEMASTERNODE_H
 #define ACTIVEMASTERNODE_H
 
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "sync.h"
 #include "net.h"
 #include "key.h"
