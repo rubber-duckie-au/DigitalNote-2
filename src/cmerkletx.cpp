@@ -4,10 +4,9 @@
 #include "instantx.h"
 #include "cblock.h"
 #include "mining.h"
+#include "ctransactionlock.h"
 
 #include "cmerkletx.h"
-
-class CTransactionLock;
 
 CMerkleTx::CMerkleTx()
 {

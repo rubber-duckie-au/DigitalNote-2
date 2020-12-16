@@ -19,6 +19,8 @@
 #include "creservekey.h"
 #include "coutput.h"
 #include "script.h"
+#include "net/cnode.h"
+#include "net.h"
 
 using namespace json_spirit;
 

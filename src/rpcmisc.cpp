@@ -6,13 +6,13 @@
 #include "base58.h"
 #include "init.h"
 #include "main.h"
-#include "net.h"
 #include "netbase.h"
 #include "rpcserver.h"
 #include "util.h"
 #include "stealth.h"
 #include "spork.h"
 #include "script.h"
+#include "net.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"

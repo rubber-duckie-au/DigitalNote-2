@@ -26,7 +26,6 @@
 #include "txmempool.h"
 #include "ui_interface.h"
 #include "velocity.h"
-#include "instantx.h"
 #include "mnengine.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
@@ -39,6 +38,11 @@
 #include "cblocklocator.h"
 #include "cdiskblockpos.h"
 #include "script.h"
+#include "net/cnode.h"
+#include "net/cnetmessage.h"
+#include "instantx.h"
+#include "ctransactionlock.h"
+#include "cconsensusvote.h"
 
 #include "main.h"
 

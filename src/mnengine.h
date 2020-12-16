@@ -10,6 +10,7 @@
 #include "activemasternode.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
+#include <boost/foreach.hpp>
 
 class CTxIn;
 class CMNenginePool;

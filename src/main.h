@@ -11,6 +11,7 @@
 #include "txmempool.h"
 #include "script.h"
 #include "util.h"
+#include "net/cnode.h"
 
 #include <list>
 
@@ -31,8 +32,6 @@ class CBlockLocator;
 class CDiskBlockPos;
 class CTxMemPool;
 struct CNodeSignals;
-
-typedef int NodeId;
 
 /** The maximum allowed multiple for the computed block size */
 static const unsigned int MAX_BLOCK_SIZE_INCREASE_MULTIPLE = 2;

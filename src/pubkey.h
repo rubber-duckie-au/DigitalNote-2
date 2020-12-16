@@ -6,13 +6,14 @@
 #ifndef BITCOIN_PUBKEY_H
 #define BITCOIN_PUBKEY_H
 
+#include <stdexcept>
+#include <vector>
+
 #include "hash.h"
 #include "crypto/bmw/bmw512.h"
 #include "serialize.h"
-#include "uint/uint256.h"
 
-#include <stdexcept>
-#include <vector>
+class uint256;
 
 /**
  * secp256k1:

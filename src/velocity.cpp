@@ -5,14 +5,17 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <boost/foreach.hpp>
+
 #include "blockparams.h"
 #include "main.h"
-#include "velocity.h"
 #include "rpcserver.h"
 #include "cblockindex.h"
 #include "cblock.h"
 #include "ctxindex.h"
 #include "wallet.h"
+
+#include "velocity.h"
 
 /* VelocityI(int nHeight) ? i : -1
    Returns i or -1 if not found */

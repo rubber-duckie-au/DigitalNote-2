@@ -6,7 +6,6 @@
 
 #include "rpcserver.h"
 #include "alert.h"
-#include "net.h"
 #include "netbase.h"
 #include "protocol.h"
 #include "sync.h"
@@ -16,6 +15,10 @@
 #include "json/json_spirit_value.h"
 #include "main.h"
 #include "key.h"
+#include "net/cnode.h"
+#include "net/cnodestats.h"
+#include "net/cbanentry.h"
+#include "net.h"
 
 using namespace json_spirit;
 

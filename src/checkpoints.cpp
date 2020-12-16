@@ -5,12 +5,12 @@
 #include <boost/assign/list_of.hpp> // for 'map_list_of()'
 #include <boost/foreach.hpp>
 
-#include "checkpoints.h"
-
 #include "txdb.h"
 #include "main.h"
 #include "uint/uint256.h"
+#include "chainparams.h"
 
+#include "checkpoints.h"
 
 static const int nCheckpointSpan = 5000;
 

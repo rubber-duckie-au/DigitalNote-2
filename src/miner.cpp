@@ -4,9 +4,10 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <boost/foreach.hpp>
+
 #include "blockparams.h"
 #include "txdb.h"
-#include "miner.h"
 #include "kernel.h"
 #include "masternode.h"
 #include "masternodeman.h"
@@ -16,6 +17,9 @@
 #include "creservekey.h"
 #include "cwallet.h"
 #include "script.h"
+#include "net.h"
+
+#include "miner.h"
 
 //////////////////////////////////////////////////////////////////////////////
 //

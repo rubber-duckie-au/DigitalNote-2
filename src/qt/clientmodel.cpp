@@ -15,6 +15,8 @@
 #include "ui_interface.h"
 #include "masternodeman.h"
 #include "cblock.h"
+#include "net/cnode.h"
+#include "net.h"
 
 #include "clientmodel.h"
 

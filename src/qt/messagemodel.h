@@ -1,8 +1,6 @@
 #ifndef MESSAGEMODEL_H
 #define MESSAGEMODEL_H
 
-#include "uint/uint256.h"
-
 #include <vector>
 #include "allocators.h" /* for SecureString */
 #include "smessage.h"

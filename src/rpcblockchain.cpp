@@ -3,12 +3,15 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <boost/foreach.hpp>
+
 #include "rpcserver.h"
 #include "kernel.h"
 #include "checkpoints.h"
 #include "cblock.h"
 #include "cblockindex.h"
 #include "main.h"
+#include "chainparams.h"
 
 using namespace json_spirit;
 

@@ -8,12 +8,12 @@
 #include "allocators.h"
 #include "pubkey.h"
 #include "serialize.h"
-#include "uint/uint256.h"
 
 #include <stdexcept>
 #include <vector>
 
 class CPubKey;
+class uint256;
 
 // secp256k1:
 // const unsigned int PRIVATE_KEY_SIZE = 279;

@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QList>
 #include <QTimer>
+#include <boost/foreach.hpp>
 
 #include "clientmodel.h"
 #include "guiconstants.h"
@@ -12,6 +13,7 @@
 #include "net.h"
 #include "sync.h"
 #include "main.h"
+#include "net/cnode.h"
 
 #include "peertablemodel.h"
 

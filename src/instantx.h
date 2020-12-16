@@ -4,19 +4,16 @@
 #ifndef INSTANTX_H
 #define INSTANTX_H
 
-#include "uint/uint256.h"
-#include "sync.h"
-#include "net.h"
-#include "key.h"
-#include "chain.h"
-#include "util.h"
-#include "base58.h"
-
-using namespace boost;
+#include <cstdint>
+#include <string>
 
 class CConsensusVote;
 class CTransaction;
 class CTransactionLock;
+class uint256;
+class COutPoint;
+class CNode;
+class CDataStream;
 
 extern std::map<uint256, CTransaction> mapTxLockReq;
 extern std::map<uint256, CTransaction> mapTxLockReqRejected;
@@ -27,65 +24,16 @@ extern int nCompleteTXLocks;
 
 
 int64_t CreateNewLock(CTransaction tx);
-
 bool IsIXTXValid(const CTransaction& txCollateral);
-
 // if two conflicting locks are approved by the network, they will cancel out
 bool CheckForConflictingLocks(CTransaction& tx);
-
 void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
-
 //check if we need to vote on this transaction
 void DoConsensusVote(CTransaction& tx, int64_t nBlockHeight);
-
 //process consensus vote message
 bool ProcessConsensusVote(CNode* pnode, CConsensusVote& ctx);
-
 // keep transaction locks in memory for an hour
 void CleanTransactionLocksList();
-
 int64_t GetAverageVoteTime();
 
-class CConsensusVote
-{
-public:
-    CTxIn vinMasternode;
-    uint256 txHash;
-    int nBlockHeight;
-    std::vector<unsigned char> vchMasterNodeSignature;
-
-    uint256 GetHash() const;
-
-    bool SignatureValid();
-    bool Sign();
-
-    IMPLEMENT_SERIALIZE
-    (
-        READWRITE(txHash);
-        READWRITE(vinMasternode);
-        READWRITE(vchMasterNodeSignature);
-        READWRITE(nBlockHeight);
-    )
-};
-
-class CTransactionLock
-{
-public:
-    int nBlockHeight;
-    uint256 txHash;
-    std::vector<CConsensusVote> vecConsensusVotes;
-    int nExpiration;
-    int nTimeout;
-
-    bool SignaturesValid();
-    int CountSignatures();
-    void AddSignature(CConsensusVote& cv);
-
-    uint256 GetHash()
-    {
-        return txHash;
-    }
-};
-
-
-#endif
+#endif // INSTANTX_H

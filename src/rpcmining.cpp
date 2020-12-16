@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <boost/assign/list_of.hpp>
+#include <boost/foreach.hpp>
 
 #include "rpcserver.h"
 #include "blockparams.h"
@@ -22,6 +23,7 @@
 #include "mining.h"
 #include "cblock.h"
 #include "script.h"
+#include "net.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

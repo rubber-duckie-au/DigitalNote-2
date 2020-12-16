@@ -1,5 +1,6 @@
 #include <QFont>
 #include <QDebug>
+#include <boost/foreach.hpp>
 
 #include "guiutil.h"
 #include "walletmodel.h"

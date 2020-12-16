@@ -30,7 +30,6 @@ Notes:
 
 */
 
-
 #include <stdint.h>
 #include <time.h>
 #include <map>
@@ -48,6 +47,7 @@ Notes:
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/foreach.hpp>
 
 #include "base58.h"
 #include "db.h"
@@ -61,6 +61,8 @@ Notes:
 #include "cwallet.h"
 #include "cblock.h"
 #include "script.h"
+#include "net/cnode.h"
+#include "net.h"
 
 #include "smessage.h"
 

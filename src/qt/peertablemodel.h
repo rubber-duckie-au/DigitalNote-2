@@ -8,8 +8,8 @@
 #include <QStringList>
 #include <QAbstractTableModel>
 
-#include "net.h"
 #include "cnodestatestats.h"
+#include "net/cnodestats.h"
 
 class PeerTablePriv;
 class ClientModel;

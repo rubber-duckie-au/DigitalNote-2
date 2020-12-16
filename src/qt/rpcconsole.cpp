@@ -18,6 +18,8 @@
 #include "util.h"
 #include "rpcserver.h"
 #include "rpcclient.h"
+#include "net/cnode.h"
+#include "net.h"
 
 #include "rpcconsole.h"
 

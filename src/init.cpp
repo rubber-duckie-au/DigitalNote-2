@@ -43,6 +43,7 @@
 #include "cwallettx.h"
 #include "caccountingentry.h"
 #include "wallet.h"
+#include "net/caddrdb.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

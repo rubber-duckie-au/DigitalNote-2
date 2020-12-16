@@ -8,7 +8,7 @@
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
 
-#include "net.h"
+#include "net/cnode.h"
 #include "db.h"
 #include "base58.h"
 #include "lz4/lz4.h"

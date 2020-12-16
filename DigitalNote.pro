@@ -361,6 +361,13 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
+	src/cconsensusvote.cpp \
+	src/ctransactionlock.cpp \
+	src/net/cbandb.cpp \
+	src/net/caddrdb.cpp \
+	src/net/cnode.cpp \
+	src/net/cbanentry.cpp \
+	src/net/cnetmessage.cpp \
 	src/uint/uint_base.cpp \
 	src/uint/uint160.cpp \
 	src/uint/uint256.cpp \

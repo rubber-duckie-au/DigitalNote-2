@@ -7,7 +7,6 @@
 
 #include "uint/uint256.h"
 #include "sync.h"
-#include "net.h"
 #include "key.h"
 #include "util.h"
 #include "base58.h"

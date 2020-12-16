@@ -66,6 +66,7 @@
 #include "cblock.h"
 #include "mining.h"
 #include "wallet.h"
+#include "net.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
@@ -1364,14 +1365,14 @@ void DigitalNoteGUI::editConfig()
 
 void DigitalNoteGUI::editConfigExt()
 {
-    filesystem::path path = GetConfigFile();
+    boost::filesystem::path path = GetConfigFile();
     QString pathString = QString::fromStdString(path.string());
     QDesktopServices::openUrl(QUrl::fromLocalFile(pathString));
 }
 
 void DigitalNoteGUI::openDataDir()
 {
-    filesystem::path path = GetDataDir();
+    boost::filesystem::path path = GetDataDir();
     QString pathString = QString::fromStdString(path.string());
     QDesktopServices::openUrl(QUrl::fromLocalFile(pathString));
 }

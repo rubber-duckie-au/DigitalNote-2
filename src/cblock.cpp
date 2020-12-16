@@ -16,6 +16,8 @@
 #include "cblocklocator.h"
 #include "cwallet.h"
 #include "script.h"
+#include "net/cnode.h"
+#include "net.h"
 
 #include "cblock.h"
 

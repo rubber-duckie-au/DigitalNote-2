@@ -6,6 +6,7 @@
 #include "walletdb.h"
 #include "wallet.h"
 #include "script.h"
+#include "net.h"
 
 #include "cwallettx.h"
 

@@ -2,15 +2,19 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "masternode-payments.h"
+#include <boost/lexical_cast.hpp>
+
 #include "masternodeman.h"
 #include "mnengine.h"
 #include "util.h"
 #include "sync.h"
 #include "spork.h"
 #include "addrman.h"
-#include <boost/lexical_cast.hpp>
 #include "script.h"
+#include "net/cnode.h"
+#include "net.h"
+
+#include "masternode-payments.h"
 
 CCriticalSection cs_masternodepayments;
 

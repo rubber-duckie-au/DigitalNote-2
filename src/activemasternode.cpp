@@ -12,6 +12,7 @@
 #include "cwallettx.h"
 #include "mining.h"
 #include "script.h"
+#include "net.h"
 
 #include "activemasternode.h"
 

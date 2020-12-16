@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <boost/lexical_cast.hpp>
+#include <boost/foreach.hpp>
 
 #include "rpcserver.h"
 #include "smessage.h"

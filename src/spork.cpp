@@ -3,6 +3,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <boost/lexical_cast.hpp>
 
 #include "bignum.h"
 #include "sync.h"
@@ -11,8 +12,9 @@
 #include "util.h"
 #include "base58.h"
 #include "protocol.h"
+#include "net/cnode.h"
+
 #include "spork.h"
-#include <boost/lexical_cast.hpp>
 
 using namespace boost;
 

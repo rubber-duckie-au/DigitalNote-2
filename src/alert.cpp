@@ -2,21 +2,20 @@
 // Alert system
 //
 
-#include "alert.h"
-
-#include "chainparams.h"
-#include "pubkey.h"
-#include "net.h"
-#include "ui_interface.h"
-#include "util.h"
-
 #include <stdint.h>
 #include <algorithm>
 #include <map>
-
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
+
+#include "net/cnode.h"
+#include "chainparams.h"
+#include "pubkey.h"
+#include "ui_interface.h"
+#include "util.h"
+
+#include "alert.h"
 
 std::map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;

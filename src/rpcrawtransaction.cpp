@@ -9,10 +9,10 @@
 #include "rpcserver.h"
 #include "txdb.h"
 #include "init.h"
-#include "net.h"
 #include "ctransaction.h"
 #include "main.h"
 #include "script.h"
+#include "net.h"
 
 #ifdef ENABLE_WALLET
 #include "coutput.h"
