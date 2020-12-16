@@ -1,7 +1,8 @@
 #ifndef UINT_BASE_H
 #define UINT_BASE_H
 
-#include <ostream>
+#include <cstdint>
+#include <string>
 
 // Forward declare class template
 template<unsigned int BITS>
@@ -39,7 +40,6 @@ protected:
     unsigned int pn[WIDTH];
 
 public:
-	
     bool operator!() const;
     const uint_base operator~() const;
     const uint_base operator-() const;
@@ -60,16 +60,6 @@ public:
     const uint_base operator++(int);
     uint_base& operator--();
     const uint_base operator--(int);
-	
-	friend bool operator<  <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
-	friend bool operator<= <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
-	friend bool operator>  <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
-	friend bool operator>= <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
-	friend bool operator== <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
-	friend bool operator== <>(const uint_base<BITS>& a, uint64_t b);
-	friend bool operator!= <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
-	friend bool operator!= <>(const uint_base<BITS>& a, uint64_t b);
-	
     std::string GetHex() const;
     void SetHex(const char* psz);
     void SetHex(const std::string& str);
@@ -81,15 +71,24 @@ public:
     unsigned int size();
     uint64_t Get64(int n=0) const;
     unsigned int GetSerializeSize(int nType, int nVersion) const;
-	
     template<typename Stream>
     void Serialize(Stream& s, int nType, int nVersion) const;
     template<typename Stream>
     void Unserialize(Stream& s, int nType, int nVersion);
 	
+	// Friends to give access to protected variables
     friend class uint160;
     friend class uint256;
     friend class uint512;
+	
+	friend bool operator<  <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
+	friend bool operator<= <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
+	friend bool operator>  <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
+	friend bool operator>= <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
+	friend bool operator== <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
+	friend bool operator== <>(const uint_base<BITS>& a, uint64_t b);
+	friend bool operator!= <>(const uint_base<BITS>& a, const uint_base<BITS>& b);
+	friend bool operator!= <>(const uint_base<BITS>& a, uint64_t b);
 };
 
 typedef uint_base<160> uint_base160;
