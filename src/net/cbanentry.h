@@ -3,8 +3,6 @@
 
 #include <string>
 
-#include "serialize.h"
-
 class CBanEntry
 {
 public:
@@ -16,15 +14,12 @@ public:
 
     CBanEntry();
     CBanEntry(int64_t nCreateTimeIn);
-  
-    IMPLEMENT_SERIALIZE
-    (
-        READWRITE(this->nVersion);
-        nVersion = this->nVersion;
-        READWRITE(nCreateTime);
-        READWRITE(nBanUntil);
-        READWRITE(banReason);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 
     void SetNull();
     std::string banReasonToString();

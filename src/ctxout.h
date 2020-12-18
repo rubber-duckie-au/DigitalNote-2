@@ -2,7 +2,6 @@
 #define CTXOUT_H
 
 #include "cscript.h"
-#include "serialize.h"
 
 class uint256;
 class CTxOut;
@@ -22,12 +21,12 @@ public:
 
     CTxOut();
     CTxOut(int64_t nValueIn, CScript scriptPubKeyIn);
-
-    IMPLEMENT_SERIALIZE
-    (
-        READWRITE(nValue);
-        READWRITE(scriptPubKey);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 	
     void SetNull();
     bool IsNull() const;

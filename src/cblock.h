@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "uint/uint256.h"
-#include "serialize.h"
 
 class CTransaction;
 class CBlockIndex;
@@ -54,31 +53,6 @@ public:
     void Serialize(Stream& s, int nType, int nVersion) const;
     template<typename Stream>
     void Unserialize(Stream& s, int nType, int nVersion);
-	
-	/*
-    IMPLEMENT_SERIALIZE
-    (
-        READWRITE(this->nVersion);
-        nVersion = this->nVersion;
-        READWRITE(hashPrevBlock);
-        READWRITE(hashMerkleRoot);
-        READWRITE(nTime);
-        READWRITE(nBits);
-        READWRITE(nNonce);
-
-        // ConnectBlock depends on vtx following header to generate CDiskTxPos
-        if (!(nType & (SER_GETHASH|SER_BLOCKHEADERONLY)))
-        {
-            READWRITE(vtx);
-            READWRITE(vchBlockSig);
-        }
-        else if (fRead)
-        {
-            const_cast<CBlock*>(this)->vtx.clear();
-            const_cast<CBlock*>(this)->vchBlockSig.clear();
-        }
-    )
-	*/
 	
     void SetNull();
     bool IsNull() const;

@@ -5,6 +5,7 @@
 #ifndef BITCOIN_KEY_H
 #define BITCOIN_KEY_H
 
+#include "cprivkey.h"
 #include "allocators.h"
 #include "pubkey.h"
 #include "serialize.h"
@@ -23,9 +24,7 @@ class uint256;
 // see www.keylength.com
 // script supports up to 75 for single byte push
 
-// secure_allocator is defined in allocators.h
-// CPrivKey is a serialized private key, with all parameters included (279 bytes)
-typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
+
 // CSecret is a serialization of just the secret parameter (32 bytes)
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CSecret;
 

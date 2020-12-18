@@ -26,17 +26,13 @@ public:
     CMerkleTx();
     CMerkleTx(const CTransaction& txIn);
     
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
+	
 	void Init();
-
-    IMPLEMENT_SERIALIZE
-    (
-        nSerSize += SerReadWrite(s, *(CTransaction*)this, nType, nVersion, ser_action);
-        nVersion = this->nVersion;
-        READWRITE(hashBlock);
-        READWRITE(vMerkleBranch);
-        READWRITE(nIndex);
-    )
-
     int SetMerkleBranch(const CBlock* pblock=NULL);
 
     // Return depth of transaction in blockchain:

@@ -1,4 +1,5 @@
 #include "util.h"
+#include "serialize.h"
 
 #include "ctxin.h"
 
@@ -20,6 +21,61 @@ CTxIn::CTxIn(uint256 hashPrevTx, unsigned int nOut, CScript scriptSigIn, unsigne
     scriptSig = scriptSigIn;
     nSequence = nSequenceIn;
 }
+
+unsigned int CTxIn::GetSerializeSize(int nType, int nVersion) const
+{
+	CSerActionGetSerializeSize ser_action;
+	const bool fGetSize = true;
+	const bool fWrite = false;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	ser_streamplaceholder s;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	s.nType = nType;
+	s.nVersion = nVersion;
+	
+	READWRITE(prevout);
+	READWRITE(scriptSig);
+	READWRITE(nSequence);
+	
+	return nSerSize;
+}
+
+template<typename Stream>
+void CTxIn::Serialize(Stream& s, int nType, int nVersion) const
+{
+	CSerActionSerialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = true;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(prevout);
+	READWRITE(scriptSig);
+	READWRITE(nSequence);
+}
+
+template<typename Stream>
+void CTxIn::Unserialize(Stream& s, int nType, int nVersion)
+{
+	CSerActionUnserialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = false;
+	const bool fRead = true;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(prevout);
+	READWRITE(scriptSig);
+	READWRITE(nSequence);
+}
+
+template void CTxIn::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void CTxIn::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
+template void CTxIn::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
+template void CTxIn::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+template void CTxIn::Serialize<CHashWriter>(CHashWriter& s, int nType, int nVersion) const;
 
 bool CTxIn::IsFinal() const
 {

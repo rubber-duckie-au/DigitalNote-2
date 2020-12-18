@@ -1,8 +1,7 @@
 #ifndef CWALLETKEY_H
 #define CWALLETKEY_H
 
-#include "serialize.h"
-#include "key.h"
+#include "cprivkey.h"
 
 /** Private key that includes an expiration date in case it never gets used. */
 class CWalletKey
@@ -16,16 +15,12 @@ public:
     ////   maybe should have a std::map<std::string, std::string> property map
 
     CWalletKey(int64_t nExpires=0);
-
-    IMPLEMENT_SERIALIZE
-    (
-        if (!(nType & SER_GETHASH))
-            READWRITE(nVersion);
-        READWRITE(vchPrivKey);
-        READWRITE(nTimeCreated);
-        READWRITE(nTimeExpires);
-        READWRITE(strComment);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 };
 
 #endif // CWALLETKEY_H

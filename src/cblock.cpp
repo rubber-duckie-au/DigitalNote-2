@@ -21,6 +21,7 @@
 #include "net.h"
 #include "masternode-payments.h"
 #include "masternodeman.h"
+#include "serialize.h"
 
 #include "cblock.h"
 

@@ -3,8 +3,6 @@
 
 #include <vector>
 
-#include "serialize.h"
-
 class uint256;
 class CBlockIndex;
 
@@ -24,12 +22,11 @@ public:
 	explicit CBlockLocator(uint256 hashBlock);
 	CBlockLocator(const std::vector<uint256>& vHaveIn);
 	
-    IMPLEMENT_SERIALIZE
-    (
-        if (!(nType & SER_GETHASH))
-            READWRITE(nVersion);
-        READWRITE(vHave);
-    )
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 
     void SetNull();
     bool IsNull();

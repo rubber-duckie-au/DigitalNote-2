@@ -3,7 +3,10 @@
 
 #include <string>
 
-#include "serialize.h"
+class CDiskTxPos;
+
+bool operator==(const CDiskTxPos& a, const CDiskTxPos& b);
+bool operator!=(const CDiskTxPos& a, const CDiskTxPos& b);
 
 /** Position on disk for a particular transaction. */
 class CDiskTxPos
@@ -14,10 +17,13 @@ public:
     unsigned int nTxPos;
 
     CDiskTxPos();
-    CDiskTxPos(unsigned int nFileIn, unsigned int nBlockPosIn, unsigned int nTxPosIn)
-		: nFile(nFileIn), nBlockPos(nBlockPosIn), nTxPos(nTxPosIn) {};
-
-    IMPLEMENT_SERIALIZE(READWRITE(FLATDATA(*this));)
+    CDiskTxPos(unsigned int nFileIn, unsigned int nBlockPosIn, unsigned int nTxPosIn);
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
     
 	void SetNull();
     bool IsNull() const;

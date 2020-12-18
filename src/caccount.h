@@ -2,7 +2,6 @@
 #define CACCOUNT_H
 
 #include "pubkey.h"
-#include "serialize.h"
 
 /** Account information.
  * Stored in wallet with key "acc"+string account name.
@@ -14,13 +13,12 @@ public:
 
     CAccount();
     void SetNull();
-
-    IMPLEMENT_SERIALIZE
-    (
-        if (!(nType & SER_GETHASH))
-            READWRITE(nVersion);
-        READWRITE(vchPubKey);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 };
 
 #endif // CACCOUNT_H

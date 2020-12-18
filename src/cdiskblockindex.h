@@ -1,8 +1,9 @@
 #ifndef CDISKBLOCKINDEX_H
 #define CDISKBLOCKINDEX_H
 
+#include <string>
+
 #include "cblockindex.h"
-#include "serialize.h"
 #include "uint/uint256.h"
 
 /** Used to marshal pointers into hashes for db storage. */
@@ -17,42 +18,12 @@ public:
 
     CDiskBlockIndex();
     explicit CDiskBlockIndex(CBlockIndex* pindex);
-
-    IMPLEMENT_SERIALIZE
-    (
-        if (!(nType & SER_GETHASH))
-            READWRITE(nVersion);
-
-        READWRITE(hashNext);
-        READWRITE(nFile);
-        READWRITE(nBlockPos);
-        READWRITE(nHeight);
-        READWRITE(nMint);
-        READWRITE(nMoneySupply);
-        READWRITE(nFlags);
-        READWRITE(nStakeModifier);
-        READWRITE(bnStakeModifierV2);
-        if (IsProofOfStake())
-        {
-            READWRITE(prevoutStake);
-            READWRITE(nStakeTime);
-        }
-        else if (fRead)
-        {
-            const_cast<CDiskBlockIndex*>(this)->prevoutStake.SetNull();
-            const_cast<CDiskBlockIndex*>(this)->nStakeTime = 0;
-        }
-        READWRITE(hashProof);
-
-        // block header
-        READWRITE(this->nVersion);
-        READWRITE(hashPrev);
-        READWRITE(hashMerkleRoot);
-        READWRITE(nTime);
-        READWRITE(nBits);
-        READWRITE(nNonce);
-        READWRITE(blockHash);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 
     uint256 GetBlockHash() const;
     std::string ToString() const;

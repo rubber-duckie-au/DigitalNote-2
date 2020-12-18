@@ -5,7 +5,6 @@
 
 #include "ctxin.h"
 #include "uint/uint256.h"
-#include "serialize.h"
 
 class CConsensusVote
 {
@@ -14,14 +13,12 @@ public:
     uint256 txHash;
     int nBlockHeight;
     std::vector<unsigned char> vchMasterNodeSignature;
-
-    IMPLEMENT_SERIALIZE
-    (
-        READWRITE(txHash);
-        READWRITE(vinMasternode);
-        READWRITE(vchMasterNodeSignature);
-        READWRITE(nBlockHeight);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 	
     uint256 GetHash() const;
     bool SignatureValid();

@@ -164,3 +164,9 @@ void CScriptCompressor::Unserialize(Stream &s, int nType, int nVersion) {
 	s >> REF(CFlatData(&script[0], &script[script.size()]));
 }
 
+template void CScriptCompressor::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void CScriptCompressor::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
+template void CScriptCompressor::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
+template void CScriptCompressor::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+template void CScriptCompressor::Serialize<CHashWriter>(CHashWriter& s, int nType, int nVersion) const;
+

@@ -2,7 +2,6 @@
 #define CKEYPOOL_H
 
 #include "pubkey.h"
-#include "serialize.h"
 
 /** A key pool entry */
 class CKeyPool
@@ -13,14 +12,12 @@ public:
 
     CKeyPool();
     CKeyPool(const CPubKey& vchPubKeyIn);
-
-    IMPLEMENT_SERIALIZE
-    (
-        if (!(nType & SER_GETHASH))
-            READWRITE(nVersion);
-        READWRITE(nTime);
-        READWRITE(vchPubKey);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 };
 
 #endif // CKEYPOOL_H

@@ -16,6 +16,8 @@
 #include "ckeypool.h"
 #include "cblocklocator.h"
 #include "cscript.h"
+#include "cwallet.h"
+#include "cwallettx.h"
 
 #include "walletdb.h"
 

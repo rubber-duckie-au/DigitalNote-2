@@ -5,7 +5,6 @@
 
 #include "coutpoint.h"
 #include "cscript.h"
-#include "serialize.h"
 
 class CTxIn;
 
@@ -29,13 +28,12 @@ public:
 			unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max());
     explicit CTxIn(uint256 hashPrevTx, unsigned int nOut, CScript scriptSigIn=CScript(),
 			unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max());
-
-    IMPLEMENT_SERIALIZE
-    (
-        READWRITE(prevout);
-        READWRITE(scriptSig);
-        READWRITE(nSequence);
-    )
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 
     bool IsFinal() const;
     friend bool operator==(const CTxIn& a, const CTxIn& b);

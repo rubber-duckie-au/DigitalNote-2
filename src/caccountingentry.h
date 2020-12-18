@@ -4,8 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "cwallet.h"
-#include "cwallettx.h"
+#include "mapvalue_t.h"
 
 /** Internal transfers.
  * Database key is acentry<account><counter>.
@@ -26,51 +25,14 @@ public:
     uint64_t nEntryNo;
 
     CAccountingEntry();
-    void SetNull();
+    
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 	
-    IMPLEMENT_SERIALIZE
-    (
-        CAccountingEntry& me = *const_cast<CAccountingEntry*>(this);
-        if (!(nType & SER_GETHASH))
-            READWRITE(nVersion);
-        // Note: strAccount is serialized as part of the key, not here.
-        READWRITE(nCreditDebit);
-        READWRITE(nTime);
-        READWRITE(strOtherAccount);
-
-        if (!fRead)
-        {
-            WriteOrderPos(nOrderPos, me.mapValue);
-
-            if (!(mapValue.empty() && _ssExtra.empty()))
-            {
-                CDataStream ss(nType, nVersion);
-                ss.insert(ss.begin(), '\0');
-                ss << mapValue;
-                ss.insert(ss.end(), _ssExtra.begin(), _ssExtra.end());
-                me.strComment.append(ss.str());
-            }
-        }
-
-        READWRITE(strComment);
-
-        size_t nSepPos = strComment.find("\0", 0, 1);
-        if (fRead)
-        {
-            me.mapValue.clear();
-            if (std::string::npos != nSepPos)
-            {
-                CDataStream ss(std::vector<char>(strComment.begin() + nSepPos + 1, strComment.end()), nType, nVersion);
-                ss >> me.mapValue;
-                me._ssExtra = std::vector<char>(ss.begin(), ss.end());
-            }
-            ReadOrderPos(me.nOrderPos, me.mapValue);
-        }
-        if (std::string::npos != nSepPos)
-            me.strComment.erase(nSepPos);
-
-        me.mapValue.erase("n");
-    )
+	void SetNull();
 };
 
 #endif // CACCOUNTINGENTRY_H

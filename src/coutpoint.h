@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include "serialize.h"
 #include "uint/uint256.h"
 
 class COutPoint;
@@ -22,9 +21,11 @@ public:
     COutPoint();
     COutPoint(uint256 hashIn, unsigned int nIn);
 	
-    IMPLEMENT_SERIALIZE(
-		READWRITE(FLATDATA(*this));
-	)
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 	
     void SetNull();
     bool IsNull() const;

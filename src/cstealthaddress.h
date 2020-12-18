@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include "serialize.h"
 #include "stealth.h"
 
 class CPubKey;
@@ -23,15 +22,11 @@ public:
     
 	CStealthAddress();
 	
-	IMPLEMENT_SERIALIZE
-    (
-        READWRITE(this->options);
-        READWRITE(this->scan_pubkey);
-        READWRITE(this->spend_pubkey);
-        READWRITE(this->label);
-        READWRITE(this->scan_secret);
-        READWRITE(this->spend_secret);
-    );
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 	
     bool SetEncoded(const std::string& encodedAddress);
     std::string Encoded() const;

@@ -7,6 +7,7 @@
 #include "wallet.h"
 #include "script.h"
 #include "net.h"
+#include "serialize.h"
 
 #include "cwallettx.h"
 

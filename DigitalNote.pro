@@ -412,6 +412,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
 	src/cblockindex.cpp \
 	src/cdiskblockpos.cpp \
 	src/cblock.cpp \
+	src/ctxoutcompressor.cpp \
 	src/ctxindex.cpp \
 	src/cmerkletx.cpp \
 	src/cdisktxpos.cpp \

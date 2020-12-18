@@ -1,6 +1,7 @@
 #include "uint/uint256.h"
 #include "serialize.h"
 #include "util.h"
+#include "hash.h"
 
 #include "uint_base.h"
 
@@ -419,6 +420,7 @@ template void uint_base<160>::Serialize<CDataStream>(CDataStream& s, int nType, 
 template void uint_base<160>::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
 template void uint_base<160>::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
 template void uint_base<160>::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+template void uint_base<160>::Serialize<CHashWriter>(CHashWriter& s, int nType, int nVersion) const;
 
 template class uint_base<256>;
 template bool operator<  <256>(const uint_base<256>& a, const uint_base<256>& b);
@@ -433,6 +435,7 @@ template void uint_base<256>::Serialize<CDataStream>(CDataStream& s, int nType, 
 template void uint_base<256>::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
 template void uint_base<256>::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
 template void uint_base<256>::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+template void uint_base<256>::Serialize<CHashWriter>(CHashWriter& s, int nType, int nVersion) const;
 
 template class uint_base<512>;
 template bool operator<  <512>(const uint_base<512>& a, const uint_base<512>& b);
@@ -447,3 +450,4 @@ template void uint_base<512>::Serialize<CDataStream>(CDataStream& s, int nType, 
 template void uint_base<512>::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
 template void uint_base<512>::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
 template void uint_base<512>::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+template void uint_base<512>::Serialize<CHashWriter>(CHashWriter& s, int nType, int nVersion) const;

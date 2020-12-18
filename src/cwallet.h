@@ -10,6 +10,7 @@
 #include "ui_interface.h"
 #include "dberrors.h"
 #include "script.h"
+#include "mapvalue_t.h"
 
 class CWalletDB;
 class CWalletTx;
@@ -24,7 +25,6 @@ class CDigitalNoteSecret;
 class CKeyPool;
 
 typedef std::map<CKeyID, CStealthKeyMetadata> StealthKeyMetaMap;
-typedef std::map<std::string, std::string> mapValue_t;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
