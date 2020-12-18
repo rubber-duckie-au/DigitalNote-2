@@ -43,6 +43,108 @@ CBlock::CBlock()
 	SetNull();
 }
 
+unsigned int CBlock::GetSerializeSize(int nType, int nVersion) const
+{
+	CSerActionGetSerializeSize ser_action;
+	const bool fGetSize = true;
+	const bool fWrite = false;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	ser_streamplaceholder s;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	s.nType = nType;
+	s.nVersion = nVersion;
+	
+	READWRITE(this->nVersion);
+	nVersion = this->nVersion;
+	READWRITE(hashPrevBlock);
+	READWRITE(hashMerkleRoot);
+	READWRITE(nTime);
+	READWRITE(nBits);
+	READWRITE(nNonce);
+
+	// ConnectBlock depends on vtx following header to generate CDiskTxPos
+	if (!(nType & (SER_GETHASH|SER_BLOCKHEADERONLY)))
+	{
+		READWRITE(vtx);
+		READWRITE(vchBlockSig);
+	}
+	else if (fRead)
+	{
+		const_cast<CBlock*>(this)->vtx.clear();
+		const_cast<CBlock*>(this)->vchBlockSig.clear();
+	}
+	
+	return nSerSize;
+}
+
+template<typename Stream>
+void CBlock::Serialize(Stream& s, int nType, int nVersion) const
+{
+	CSerActionSerialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = true;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(this->nVersion);
+	nVersion = this->nVersion;
+	READWRITE(hashPrevBlock);
+	READWRITE(hashMerkleRoot);
+	READWRITE(nTime);
+	READWRITE(nBits);
+	READWRITE(nNonce);
+
+	// ConnectBlock depends on vtx following header to generate CDiskTxPos
+	if (!(nType & (SER_GETHASH|SER_BLOCKHEADERONLY)))
+	{
+		READWRITE(vtx);
+		READWRITE(vchBlockSig);
+	}
+	else if (fRead)
+	{
+		const_cast<CBlock*>(this)->vtx.clear();
+		const_cast<CBlock*>(this)->vchBlockSig.clear();
+	}
+}
+
+template<typename Stream>
+void CBlock::Unserialize(Stream& s, int nType, int nVersion)
+{
+	CSerActionUnserialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = false;
+	const bool fRead = true;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(this->nVersion);
+	nVersion = this->nVersion;
+	READWRITE(hashPrevBlock);
+	READWRITE(hashMerkleRoot);
+	READWRITE(nTime);
+	READWRITE(nBits);
+	READWRITE(nNonce);
+
+	// ConnectBlock depends on vtx following header to generate CDiskTxPos
+	if (!(nType & (SER_GETHASH|SER_BLOCKHEADERONLY)))
+	{
+		READWRITE(vtx);
+		READWRITE(vchBlockSig);
+	}
+	else if (fRead)
+	{
+		const_cast<CBlock*>(this)->vtx.clear();
+		const_cast<CBlock*>(this)->vchBlockSig.clear();
+	}
+}
+
+template void CBlock::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void CBlock::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
+template void CBlock::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
+template void CBlock::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+
 void CBlock::SetNull()
 {
 	nVersion = CBlock::CURRENT_VERSION;

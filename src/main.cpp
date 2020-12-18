@@ -44,6 +44,8 @@
 #include "ctransactionlock.h"
 #include "cconsensusvote.h"
 #include "csporkmessage.h"
+#include "coutpoint.h"
+#include "cinpoint.h"
 
 #include "main.h"
 
@@ -1184,7 +1186,7 @@ bool IsInitialBlockDownload()
             pindexBest->GetBlockTime() < GetTime() - 8 * 60 * 60);
 }
 
-void static InvalidChainFound(CBlockIndex* pindexNew)
+void InvalidChainFound(CBlockIndex* pindexNew)
 {
     if (pindexNew->nChainTrust > nBestInvalidTrust)
     {
@@ -1219,7 +1221,7 @@ bool IsConfirmedInNPrevBlocks(const CTxIndex& txindex, const CBlockIndex* pindex
     return false;
 }
 
-bool static BuildAddrIndex(const CScript &script, std::vector<uint160>& addrIds)
+bool BuildAddrIndex(const CScript &script, std::vector<uint160>& addrIds)
 {
     CScript::const_iterator pc = script.begin();
     CScript::const_iterator pend = script.end();
@@ -1279,7 +1281,7 @@ bool FindTransactionsByDestination(const CTxDestination &dest, std::vector<uint2
     return true;
 }
 
-bool static Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
+bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
 {
     LogPrintf("REORGANIZE\n");
 

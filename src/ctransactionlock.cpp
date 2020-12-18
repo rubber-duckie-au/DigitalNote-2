@@ -1,4 +1,5 @@
 #include <boost/foreach.hpp>
+
 #include "cconsensusvote.h"
 #include "masternodeman.h"
 #include "blockparams.h"

@@ -14,7 +14,6 @@
 #include "addresstablemodel.h"
 #include "bitcoinunits.h"
 #include "base58.h"
-#include "chain.h"
 #include "guiutil.h"
 #include "init.h"
 #include "optionsmodel.h"
@@ -24,6 +23,7 @@
 #include "cwallettx.h"
 #include "wallet.h"
 #include "script.h"
+#include "ctxout.h"
 
 #include "coincontroldialog.h"
 #include "ui_coincontroldialog.h"

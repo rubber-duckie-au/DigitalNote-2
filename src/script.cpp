@@ -8,7 +8,6 @@
 #include <boost/tuple/tuple_comparison.hpp>
 
 #include "bignum.h"
-#include "chain.h"
 #include "crypto/common/sha1.h"
 #include "signaturechecker.h"
 #include "csignaturecache.h"

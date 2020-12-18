@@ -197,6 +197,7 @@ enum GetMinFee_mode
     GMF_SEND,
 };
 
+
 int64_t GetMinFee(const CTransaction& tx, unsigned int nBytes, bool fAllowFree, enum GetMinFee_mode mode);
 
 /** Check for standard transaction types

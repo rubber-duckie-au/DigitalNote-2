@@ -5,12 +5,12 @@
 #ifndef MNengine_H
 #define MNengine_H
 
-#include "chain.h"
+#include <boost/foreach.hpp>
+
 #include "sync.h"
 #include "activemasternode.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
-#include <boost/foreach.hpp>
 
 class CTxIn;
 class CMNenginePool;

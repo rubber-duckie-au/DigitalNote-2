@@ -7,6 +7,7 @@
 #include "base58.h"
 #include "stealth.h"
 #include "script.h"
+#include "cscript.h"
 
 #include "addresstablemodel.h"
 

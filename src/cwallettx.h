@@ -64,6 +64,12 @@ public:
     CWalletTx(const CWallet* pwalletIn, const CTransaction& txIn);
     void Init(const CWallet* pwalletIn);
     
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
+	/*
 	IMPLEMENT_SERIALIZE
     (
         CWalletTx* pthis = const_cast<CWalletTx*>(this);
@@ -120,7 +126,8 @@ public:
         pthis->mapValue.erase("n");
         pthis->mapValue.erase("timesmart");
     )
-
+	*/
+	
     // marks certain txout's as spent
     // returns true if any update took place
     bool UpdateSpent(const std::vector<char>& vfNewSpent);

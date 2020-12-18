@@ -4,7 +4,6 @@
 #include "masternode.h"
 #include "activemasternode.h"
 #include "mnengine.h"
-#include "chain.h"
 #include "util.h"
 #include "addrman.h"
 #include "cvalidationstate.h"

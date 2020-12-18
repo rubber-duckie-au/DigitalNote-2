@@ -23,6 +23,7 @@
 #include "ui_interface.h"
 #include "paymentserver.h"
 #include "wallet.h"
+#include "cscript.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"

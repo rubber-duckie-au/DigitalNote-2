@@ -2,7 +2,7 @@
 #define CBLOCKINDEX_H
 
 #include "uint/uint256.h"
-#include "chain.h"
+#include "coutpoint.h"
 
 class CBlock;
 class CBlockIndex;

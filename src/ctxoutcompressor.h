@@ -2,6 +2,8 @@
 #define CTXOUTCOMPRESSOR_H
 
 #include "serialize.h"
+#include "ctxout.h"
+#include "script.h"
 
 /** wrapper for CTxOut that provides a more compact serialization */
 class CTxOutCompressor

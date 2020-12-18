@@ -1,7 +1,6 @@
 #include "cwallettx.h"
 
 #include "coutput.h"
-#include "chain.h"
 
 COutput::COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn)
 {

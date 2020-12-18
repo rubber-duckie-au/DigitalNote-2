@@ -7,6 +7,8 @@
 #ifndef BITCOIN_BLOCKPARAMS_H
 #define BITCOIN_BLOCKPARAMS_H
 
+#include <cstdint>
+
 class CBlockIndex;
 
 #define START_MASTERNODE_PAYMENTS_TESTNET      9993058800  // OFF (NOT TOGGLED)

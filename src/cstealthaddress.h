@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "stealth.h"
 #include "serialize.h"
+#include "stealth.h"
 
 class CPubKey;
 

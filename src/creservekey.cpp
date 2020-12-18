@@ -1,5 +1,6 @@
 #include "cwallet.h"
 #include "ckeypool.h"
+#include "cscript.h"
 
 #include "creservekey.h"
 

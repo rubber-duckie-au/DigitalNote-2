@@ -1,5 +1,3 @@
-#include "cblocklocator.h"
-
 #include <map>
 #include <boost/foreach.hpp>
 
@@ -7,6 +5,8 @@
 #include "cblockindex.h"
 #include "main.h"
 #include "chainparams.h"
+
+#include "cblocklocator.h"
 
 CBlockLocator::CBlockLocator()
 {

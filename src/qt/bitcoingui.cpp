@@ -67,6 +67,7 @@
 #include "mining.h"
 #include "wallet.h"
 #include "net.h"
+#include "cscript.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"

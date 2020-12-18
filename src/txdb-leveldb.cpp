@@ -22,6 +22,8 @@
 #include "cblock.h"
 #include "ctransaction.h"
 #include "main.h"
+#include "ctxin.h"
+#include "ctxout.h"
 
 using namespace boost;
 

@@ -16,6 +16,9 @@
 #include "cdiskblockindex.h"
 #include "ctxindex.h"
 
+class CBigNum;
+class CTransaction;
+
 // Class that provides access to a LevelDB. Note that this class is frequently
 // instantiated on the stack and then destroyed again, so instantiation has to
 // be very cheap. Unfortunately that means, a CTxDB instance is actually just a

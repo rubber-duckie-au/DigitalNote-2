@@ -6,6 +6,8 @@
 #ifndef NOVACOIN_MINER_H
 #define NOVACOIN_MINER_H
 
+#include <cstdint>
+
 class CReserveKey;
 class CBlock;
 class CBlockIndex;

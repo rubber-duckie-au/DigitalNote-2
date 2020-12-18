@@ -3,9 +3,9 @@
 
 #include <vector>
 
-#include "serialize.h"
+#include "ctxin.h"
 #include "uint/uint256.h"
-#include "chain.h"
+#include "serialize.h"
 
 class CConsensusVote
 {

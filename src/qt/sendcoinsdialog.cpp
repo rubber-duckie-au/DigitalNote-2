@@ -3,6 +3,12 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <QMessageBox>
+#include <QLocale>
+#include <QScrollBar>
+#include <QSettings>
+#include <QTextDocument>
+
 #include "sendcoinsdialog.h"
 #include "ui_sendcoinsdialog.h"
 #include "addresstablemodel.h"
@@ -18,12 +24,7 @@
 #include "init.h"
 #include "addressbookpage.h"
 #include "askpassphrasedialog.h"
-
-#include <QMessageBox>
-#include <QLocale>
-#include <QScrollBar>
-#include <QSettings>
-#include <QTextDocument>
+#include "cscript.h"
 
 SendCoinsDialog::SendCoinsDialog(QWidget *parent) :
     QDialog(parent),

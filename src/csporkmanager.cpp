@@ -10,7 +10,8 @@
 
 #include "csporkmanager.h"
 
-CSporkManager::CSporkManager() {
+CSporkManager::CSporkManager()
+{
 	strMainPubKey = "04d244288a8c6ebbf491443ebfa1207275d71cb009f201c118b00cf8e77641c7f1e63e330ba909842c009af375c0f5c1c7368e8d7e2066168c40ce3cb629cf212f";
 	strTestPubKey = "04d244288a8c6ebbf491443ebfa1207275d71cb009f201c118b00cf8e77641c7f1e63e330ba909842c009af375c0f5c1c7368e8d7e2066168c40ce3cb629cf212f";
 }
@@ -134,5 +135,4 @@ void CSporkManager::Relay(CSporkMessage& msg)
 
     RelayInventory(inv);
 }
-
 

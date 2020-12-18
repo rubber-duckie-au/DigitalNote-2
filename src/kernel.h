@@ -4,6 +4,9 @@
 #ifndef PPCOIN_KERNEL_H
 #define PPCOIN_KERNEL_H
 
+#include <cstdint>
+#include <cstddef>
+
 class CBlockIndex;
 class uint256;
 class CTransaction;

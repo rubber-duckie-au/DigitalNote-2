@@ -197,8 +197,20 @@ contains(USE_O0, 1) {
     QMAKE_CFLAGS += -msse2
 }
 
-QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wno-ignored-qualifiers -Wformat -Wformat-security -Wno-unused-parameter -Wstack-protector
-QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-variable -fpermissive -Wfatal-errors
+QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option
+QMAKE_CXXFLAGS_WARN_ON += -Wall
+QMAKE_CXXFLAGS_WARN_ON += -Wextra
+QMAKE_CXXFLAGS_WARN_ON += -Wno-ignored-qualifiers
+QMAKE_CXXFLAGS_WARN_ON += -Wformat
+QMAKE_CXXFLAGS_WARN_ON += -Wformat-security
+QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-parameter
+QMAKE_CXXFLAGS_WARN_ON += -Wstack-protector
+QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-variable
+QMAKE_CXXFLAGS_WARN_ON += -fpermissive
+QMAKE_CXXFLAGS_WARN_ON += -Wfatal-errors
+
+## Debug header inclusions
+#QMAKE_CXXFLAGS_WARN_ON += -H
 
 windows:QMAKE_CXXFLAGS_WARN_ON += -Wno-cpp -Wno-maybe-uninitialized
 !macx:QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-local-typedefs
@@ -239,7 +251,6 @@ HEADERS += src/qt/bitcoingui.h \
     src/sync.h \
     src/util.h \
     src/hash.h \
-    src/uint256.h \
     src/kernel.h \
     src/pbkdf2.h \
     src/serialize.h \
@@ -361,6 +372,10 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
+	src/cinpoint.cpp \
+	src/coutpoint.cpp \
+	src/ctxin.cpp \
+	src/ctxout.cpp \
 	src/csporkmanager.cpp \
 	src/csporkmessage.cpp \
 	src/cconsensusvote.cpp \
@@ -507,31 +522,47 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/crypto/common/bmw.c \
     src/crypto/common/echo.c
 
+## ----------------------------------------------------------
+##
+## Experiment to make precompiling headers work
+##
+
+#CONFIG += precompile_header
+
+## Use Precompiled headers (PCH)
+#PRECOMPILED_HEADER += src/all_headers.h
+
+#precompile_header:!isEmpty(PRECOMPILED_HEADER) {
+#DEFINES += USING_PCH
+#}
+
+## ----------------------------------------------------------
+
 RESOURCES += \
     src/qt/bitcoin.qrc
 
 FORMS += \
-    src/qt/forms/coincontroldialog.ui \
-    src/qt/forms/sendcoinsdialog.ui \
-    src/qt/forms/addressbookpage.ui \
-    src/qt/forms/signverifymessagedialog.ui \
     src/qt/forms/aboutdialog.ui \
-    src/qt/forms/editaddressdialog.ui \
-    src/qt/forms/importprivatekeydialog.ui \
-    src/qt/forms/editconfigdialog.ui \
-    src/qt/forms/transactiondescdialog.ui \
-    src/qt/forms/overviewpage.ui \
-    src/qt/forms/sendcoinsentry.ui \
-    src/qt/forms/askpassphrasedialog.ui \
-    src/qt/forms/rpcconsole.ui \
-    src/qt/forms/optionsdialog.ui \
-    src/qt/forms/masternodemanager.ui \
     src/qt/forms/addeditadrenalinenode.ui \
+    src/qt/forms/addressbookpage.ui \
     src/qt/forms/adrenalinenodeconfigdialog.ui \
-    src/qt/forms/messagepage.ui \
-    src/qt/forms/sendmessagesentry.ui \
-    src/qt/forms/sendmessagesdialog.ui \
+    src/qt/forms/askpassphrasedialog.ui \
     src/qt/forms/blockbrowser.ui \
+    src/qt/forms/coincontroldialog.ui \
+    src/qt/forms/editaddressdialog.ui \
+    src/qt/forms/editconfigdialog.ui \
+    src/qt/forms/importprivatekeydialog.ui \
+    src/qt/forms/masternodemanager.ui \
+    src/qt/forms/messagepage.ui \
+    src/qt/forms/optionsdialog.ui \
+    src/qt/forms/overviewpage.ui \
+    src/qt/forms/rpcconsole.ui \
+    src/qt/forms/sendcoinsdialog.ui \
+    src/qt/forms/sendcoinsentry.ui \
+    src/qt/forms/sendmessagesdialog.ui \
+    src/qt/forms/sendmessagesentry.ui \
+    src/qt/forms/signverifymessagedialog.ui \
+    src/qt/forms/transactiondescdialog.ui \
     src/qt/plugins/mrichtexteditor/mrichtextedit.ui
 
 contains(USE_QRCODE, 1) {

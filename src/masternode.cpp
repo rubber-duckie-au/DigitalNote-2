@@ -1,7 +1,6 @@
 #include <boost/lexical_cast.hpp>
 #include "masternodeman.h"
 #include "mnengine.h"
-#include "chain.h"
 #include "sync.h"
 #include "util.h"
 #include "addrman.h"

@@ -1,6 +1,9 @@
 #ifndef UINT512_H
 #define UINT512_H
 
+#include <string>
+#include <vector>
+
 #include "uint/uint_base.h"
 
 class uint256;

@@ -8,7 +8,6 @@
 #include "bignum.h"
 #include "sync.h"
 #include "key.h"
-#include "chain.h"
 #include "util.h"
 #include "base58.h"
 #include "masternode.h"

@@ -8,6 +8,7 @@
 #include "key.h"
 #include "serialize.h"
 #include "keystore.h"
+#include "cscript.h"
 
 const unsigned int WALLET_CRYPTO_KEY_SIZE = 32;
 const unsigned int WALLET_CRYPTO_SALT_SIZE = 8;

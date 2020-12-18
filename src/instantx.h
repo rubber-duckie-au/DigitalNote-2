@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <map>
 
 class CConsensusVote;
 class CTransaction;

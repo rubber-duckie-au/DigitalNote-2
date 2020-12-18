@@ -6,6 +6,7 @@
 #include "ctxindex.h"
 #include "mining.h"
 #include "main.h"
+#include "serialize.h"
 
 #include "ctransaction.h"
 
@@ -16,10 +17,81 @@ bool CTransaction::DoS(int nDoSIn, bool fIn) const
 	return fIn;
 }
 
+CTransaction::CTransaction(int nVersion, unsigned int nTime, const std::vector<CTxIn>& vin,
+		const std::vector<CTxOut>& vout, unsigned int nLockTime)
+        : nVersion(nVersion), nTime(nTime), vin(vin), vout(vout), nLockTime(nLockTime), nDoS(0)
+{
+	
+}
+
 CTransaction::CTransaction()
 {
 	this->SetNull();
 }
+
+unsigned int CTransaction::GetSerializeSize(int nType, int nVersion) const
+{
+	CSerActionGetSerializeSize ser_action;
+	const bool fGetSize = true;
+	const bool fWrite = false;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	ser_streamplaceholder s;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	s.nType = nType;
+	s.nVersion = nVersion;
+	
+	READWRITE(this->nVersion);
+	nVersion = this->nVersion;
+	READWRITE(nTime);
+	READWRITE(vin);
+	READWRITE(vout);
+	READWRITE(nLockTime);
+	
+	return nSerSize;
+}
+
+template<typename Stream>
+void CTransaction::Serialize(Stream& s, int nType, int nVersion) const
+{
+	CSerActionSerialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = true;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(this->nVersion);
+	nVersion = this->nVersion;
+	READWRITE(nTime);
+	READWRITE(vin);
+	READWRITE(vout);
+	READWRITE(nLockTime);
+}
+
+template<typename Stream>
+void CTransaction::Unserialize(Stream& s, int nType, int nVersion)
+{
+	CSerActionUnserialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = false;
+	const bool fRead = true;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(this->nVersion);
+	nVersion = this->nVersion;
+	READWRITE(nTime);
+	READWRITE(vin);
+	READWRITE(vout);
+	READWRITE(nLockTime);
+}
+
+template void CTransaction::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void CTransaction::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
+template void CTransaction::Serialize<CAutoFile>(CAutoFile& s, int nType, int nVersion) const;
+template void CTransaction::Unserialize<CAutoFile>(CAutoFile& s, int nType, int nVersion);
+template void CTransaction::Serialize<CHashWriter>(CHashWriter& s, int nType, int nVersion) const;
 
 void CTransaction::SetNull()
 {

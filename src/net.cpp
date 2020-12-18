@@ -21,7 +21,6 @@
 #include "main.h"
 #include "addrman.h"
 #include "chainparams.h"
-#include "chain.h"
 #include "ui_interface.h"
 #include "mnengine.h"
 #include "net/cnode.h"

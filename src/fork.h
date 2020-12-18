@@ -7,6 +7,7 @@
 #define BITCOIN_FORK_H
 
 #include "bignum.h"
+#include "chainparams.h"
 
 /** Reserve Phase start block */ 
 static const int64_t nReservePhaseStart = 1;

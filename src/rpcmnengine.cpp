@@ -6,7 +6,6 @@
 #include <fstream>
 #include <boost/lexical_cast.hpp>
 
-#include "chain.h"
 #include "db.h"
 #include "init.h"
 #include "activemasternode.h"

@@ -49,6 +49,13 @@ public:
 
     CBlock();
 	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
+	
+	/*
     IMPLEMENT_SERIALIZE
     (
         READWRITE(this->nVersion);
@@ -71,7 +78,8 @@ public:
             const_cast<CBlock*>(this)->vchBlockSig.clear();
         }
     )
-
+	*/
+	
     void SetNull();
     bool IsNull() const;
     uint256 GetHash() const;

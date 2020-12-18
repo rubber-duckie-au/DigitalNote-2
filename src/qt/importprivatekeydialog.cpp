@@ -6,6 +6,7 @@
 #include "base58.h"
 #include "init.h"
 #include "cwallet.h"
+#include "cscript.h"
 
 #include "importprivatekeydialog.h"
 #include "ui_importprivatekeydialog.h"

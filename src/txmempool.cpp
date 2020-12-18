@@ -5,8 +5,8 @@
 
 #include <boost/foreach.hpp>
 
-#include "chain.h"
 #include "ctransaction.h"
+#include "cinpoint.h"
 
 #include "txmempool.h"
 

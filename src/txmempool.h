@@ -5,8 +5,11 @@
 #ifndef BITCOIN_TXMEMPOOL_H
 #define BITCOIN_TXMEMPOOL_H
 
-#include "chain.h"
+#include "uint/uint256.h"
 #include "sync.h"
+
+class CInPoint;
+class CTransaction;
 
 /*
  * CTxMemPool stores valid-according-to-the-current-best-chain

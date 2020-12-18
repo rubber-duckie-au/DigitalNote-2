@@ -1,6 +1,8 @@
 #ifndef COMPAREBYPRIORITY_H
 #define COMPAREBYPRIORITY_H
 
+#include "coutput.h"
+
 struct CompareByPriority
 {
     bool operator()(const COutput& t1,
