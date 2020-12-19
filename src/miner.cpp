@@ -19,6 +19,7 @@
 #include "script.h"
 #include "net.h"
 #include "main_const.h"
+#include "txmempool.h"
 
 #include "miner.h"
 

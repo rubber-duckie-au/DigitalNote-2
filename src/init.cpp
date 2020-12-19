@@ -45,6 +45,7 @@
 #include "wallet.h"
 #include "net/caddrdb.h"
 #include "main_const.h"
+#include "txmempool.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

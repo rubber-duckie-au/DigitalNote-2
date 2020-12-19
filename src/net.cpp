@@ -29,6 +29,7 @@
 #include "net/cbandb.h"
 #include "net/cnetcleanup.h"
 #include "net/cnetmessage.h"
+#include "txmempool.h"
 
 #include "net.h"
 

@@ -13,6 +13,7 @@
 #include "chainparams.h"
 #include "main.h"
 #include "main_extern.h"
+#include "txmempool.h"
 
 using namespace json_spirit;
 

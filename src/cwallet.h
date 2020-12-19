@@ -24,6 +24,8 @@ class COutput;
 class CDigitalNoteSecret;
 class CKeyPool;
 
+typedef int64_t CAmount;
+
 typedef std::map<CKeyID, CStealthKeyMetadata> StealthKeyMetaMap;
 
 /** (client) version numbers for particular wallet features */

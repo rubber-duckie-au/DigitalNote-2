@@ -1,3 +1,5 @@
+#include "uint/uint256.h"
+#include "ctransaction.h"
 #include "main.h"
 
 #include "cvalidationstate.h"

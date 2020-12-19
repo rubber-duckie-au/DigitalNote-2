@@ -23,6 +23,7 @@
 #include "cblock.h"
 #include "script.h"
 #include "net.h"
+#include "txmempool.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

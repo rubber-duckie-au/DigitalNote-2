@@ -21,6 +21,7 @@
 #include "masternode-payments.h"
 #include "masternodeman.h"
 #include "serialize.h"
+#include "txmempool.h"
 
 #include "cblock.h"
 

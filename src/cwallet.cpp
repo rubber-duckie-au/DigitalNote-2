@@ -21,6 +21,8 @@
 #include "wallet.h"
 #include "script.h"
 #include "main_const.h"
+#include "main_extern.h"
+#include "txmempool.h"
 
 #include "cwallet.h"
 

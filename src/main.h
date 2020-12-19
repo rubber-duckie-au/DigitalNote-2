@@ -5,14 +5,10 @@
 #ifndef BITCOIN_MAIN_H
 #define BITCOIN_MAIN_H
 
-#include <boost/signals2/signal.hpp>
+#include <boost/filesystem.hpp>
+#include <map>
 
-#include "ctransaction.h"
-#include "txmempool.h"
 #include "script.h"
-#include "util.h"
-#include "net/cnode.h"
-#include <list>
 
 struct CNodeStateStats;
 class CValidationState;
@@ -31,7 +27,13 @@ class CBlockLocator;
 class CDiskBlockPos;
 class CTxMemPool;
 class COrphanBlock;
+class CTxIn;
+class CTxOut;
+
 struct CNodeSignals;
+
+typedef int NodeId;
+typedef std::map<uint256, std::pair<CTxIndex, CTransaction>> MapPrevTx;
 
 enum GetMinFee_mode
 {
@@ -39,8 +41,6 @@ enum GetMinFee_mode
     GMF_RELAY,
     GMF_SEND,
 };
-
-
 
 /** Moneyrange params */
 bool MoneyRange(int64_t nValue);

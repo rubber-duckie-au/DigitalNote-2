@@ -9,6 +9,7 @@
 #include "main.h"
 #include "main_extern.h"
 #include "main_const.h"
+#include "txmempool.h"
 
 #include "ctransaction.h"
 

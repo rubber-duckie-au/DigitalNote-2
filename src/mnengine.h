@@ -11,8 +11,10 @@
 #include "activemasternode.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "ctransaction.h"
 
-class CTxIn;
 class CMNenginePool;
 class CMNengineSigner;
 class CMasterNodeVote;
