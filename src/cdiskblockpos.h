@@ -1,6 +1,8 @@
 #ifndef CDISKBLOCKPOS_H
 #define CDISKBLOCKPOS_H
 
+#include <string>
+
 class CDiskBlockPos;
 
 bool operator==(const CDiskBlockPos &a, const CDiskBlockPos &b);

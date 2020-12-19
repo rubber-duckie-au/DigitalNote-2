@@ -2,21 +2,20 @@
 // Created by vgulkevic on 06/10/2020.
 //
 
-#include <websocketpp/config/asio_no_tls.hpp>
-#include <websocketpp/common/thread.hpp>
-#include <websocketpp/server.hpp>
-
 #include <iostream>
 #include <set>
-
+#include <functional>
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
-
-#include <functional>
+#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/common/thread.hpp>
+#include <websocketpp/server.hpp>
 
 #include "json/json_spirit_writer_template.h"
+#include "util.h"
+#include "smessage.h"
 
 #include "webwalletconnector.h"
 

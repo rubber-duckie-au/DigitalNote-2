@@ -36,7 +36,6 @@
 #include "masternodeconfig.h"
 #include "spork.h"
 #include "smessage.h"
-#include "webwalletconnector.h"
 #include "cwallet.h"
 #include "cblocklocator.h"
 #include "cblock.h"
@@ -46,6 +45,7 @@
 #include "net/caddrdb.h"
 #include "main_const.h"
 #include "txmempool.h"
+#include "webwalletconnector.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

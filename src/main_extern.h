@@ -1,6 +1,7 @@
 #ifndef MAIN_EXTERN_H
 #define MAIN_EXTERN_H
 
+#include <set>
 #include "ccriticalsection.h"
 #include "cmainsignals.h"
 

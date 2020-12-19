@@ -1,6 +1,8 @@
 #ifndef MAIN_CONST_H
 #define MAIN_CONST_H
 
+#include <cstdint>
+
 static const int64_t COIN = 100000000;
 static const int64_t CENT = 1000000;
 

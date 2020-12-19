@@ -10,6 +10,7 @@
 #include "ccriticalblock.h"
 
 class CInPoint;
+class COutPoint;
 class CTransaction;
 
 /*

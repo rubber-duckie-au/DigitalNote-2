@@ -5,9 +5,6 @@
 #define DIGITALNOTE_WEBWALLETCONNECTOR_H
 
 #include <string>
-#include "util.h"
-
-#include "smessage.h"
 
 extern bool fWebWalletMode;
 extern bool fWebWalletConnectorEnabled;
