@@ -8,6 +8,7 @@
 #include "script.h"
 #include "net.h"
 #include "serialize.h"
+#include "main_extern.h"
 
 #include "cwallettx.h"
 

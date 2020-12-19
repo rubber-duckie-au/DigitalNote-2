@@ -10,9 +10,9 @@
 #include "txdb.h"
 #include "init.h"
 #include "ctransaction.h"
-#include "main.h"
 #include "script.h"
 #include "net.h"
+#include "main_extern.h"
 
 #ifdef ENABLE_WALLET
 #include "coutput.h"

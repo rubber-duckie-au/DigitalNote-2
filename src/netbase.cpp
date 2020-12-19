@@ -10,6 +10,8 @@
 #include "sync.h"
 #include "uint/uint256.h"
 #include "util.h"
+#include "ccriticalsection.h"
+#include "ccriticalblock.h"
 
 #ifndef WIN32
 #include <fcntl.h>

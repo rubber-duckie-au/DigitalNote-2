@@ -21,9 +21,9 @@
 #include "ctxindex.h"
 #include "cblock.h"
 #include "ctransaction.h"
-#include "main.h"
 #include "ctxin.h"
 #include "ctxout.h"
+#include "main_extern.h"
 
 using namespace boost;
 

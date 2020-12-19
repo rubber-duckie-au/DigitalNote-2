@@ -24,6 +24,7 @@
 #include "wallet.h"
 #include "script.h"
 #include "ctxout.h"
+#include "main_const.h"
 
 #include "coincontroldialog.h"
 #include "ui_coincontroldialog.h"

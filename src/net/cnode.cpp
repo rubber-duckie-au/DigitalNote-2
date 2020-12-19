@@ -5,6 +5,7 @@
 #include "net/cnetmessage.h"
 #include "crypto/bmw/bmw512.h"
 #include "net.h"
+#include "ccriticalblock.h"
 
 #include "net/cnode.h"
 

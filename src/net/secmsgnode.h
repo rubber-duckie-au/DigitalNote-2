@@ -1,7 +1,7 @@
 #ifndef NET_SECMSGNODE_H
 #define NET_SECMSGNODE_H
 
-#include "sync.h"
+#include "ccriticalsection.h"
 
 /** Information about a DigitalNote (D-Note) peer */
 class SecMsgNode

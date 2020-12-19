@@ -9,7 +9,6 @@
 #include "rpcserver.h"
 #include "blockparams.h"
 #include "chainparams.h"
-#include "main.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
 #include "db.h"

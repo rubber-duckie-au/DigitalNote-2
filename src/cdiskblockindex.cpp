@@ -1,7 +1,7 @@
 #include "cblock.h"
-#include "main.h"
 #include "bignum.h"
 #include "serialize.h"
+#include "main_extern.h"
 
 #include "cdiskblockindex.h"
 

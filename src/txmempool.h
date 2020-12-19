@@ -6,7 +6,8 @@
 #define BITCOIN_TXMEMPOOL_H
 
 #include "uint/uint256.h"
-#include "sync.h"
+#include "ccriticalsection.h"
+#include "ccriticalblock.h"
 
 class CInPoint;
 class CTransaction;

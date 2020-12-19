@@ -68,6 +68,7 @@
 #include "wallet.h"
 #include "net.h"
 #include "cscript.h"
+#include "main_extern.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"

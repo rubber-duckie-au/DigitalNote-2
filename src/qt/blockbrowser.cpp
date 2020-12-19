@@ -10,6 +10,8 @@
 #include "cblock.h"
 #include "cblockindex.h"
 #include "script.h"
+#include "main_extern.h"
+#include "main_const.h"
 
 #include "blockbrowser.h"
 

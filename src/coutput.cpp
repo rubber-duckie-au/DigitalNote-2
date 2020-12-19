@@ -1,4 +1,5 @@
 #include "cwallettx.h"
+#include "main_const.h"
 
 #include "coutput.h"
 

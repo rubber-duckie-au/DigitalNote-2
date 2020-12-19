@@ -5,6 +5,10 @@
 
 #include "cblockindex.h"
 #include "cdiskblockpos.h"
+#include "cscript.h"
+#include "main_extern.h"
+#include "ccriticalblock.h"
+#include "main.h"
 
 #include "blocksizecalculator.h"
 

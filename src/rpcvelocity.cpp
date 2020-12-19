@@ -7,7 +7,8 @@
 
 #include <boost/assign/list_of.hpp>
 
-#include "main.h"
+#include "cscript.h"
+#include "main_extern.h"
 
 #include "rpcvelocity.h"
 

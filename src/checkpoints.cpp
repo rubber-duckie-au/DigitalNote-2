@@ -6,9 +6,9 @@
 #include <boost/foreach.hpp>
 
 #include "txdb.h"
-#include "main.h"
 #include "uint/uint256.h"
 #include "chainparams.h"
+#include "main_extern.h"
 
 #include "checkpoints.h"
 

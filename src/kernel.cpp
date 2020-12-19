@@ -11,7 +11,7 @@
 #include "cblock.h"
 #include "mining.h"
 #include "crypto/echo/echo512.h"
-#include "main.h"
+#include "main_extern.h"
 
 #include "kernel.h"
 

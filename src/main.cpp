@@ -116,6 +116,24 @@ std::map<uint256, std::pair<NodeId, std::list<QueuedBlock>::iterator> > mapBlock
 std::map<uint256, std::pair<NodeId, std::list<uint256>::iterator> > mapBlocksToDownload;
 }
 
+bool MoneyRange(int64_t nValue)
+{
+	return (nValue >= 0 && nValue <= MAX_SINGLE_TX);
+}
+
+/** Future drift params */
+int64_t FutureDrift(int64_t nTime)
+{
+	return nTime + nDrift;
+}
+
+bool AllowFree(double dPriority)
+{
+    // Large (in bytes) low-priority (new, small-coin) transactions
+    // need a fee.
+    return dPriority > COIN * 576 / 250;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // dispatching functions

@@ -25,6 +25,8 @@
 #include "addressbookpage.h"
 #include "askpassphrasedialog.h"
 #include "cscript.h"
+#include "main_extern.h"
+#include "main_const.h"
 
 SendCoinsDialog::SendCoinsDialog(QWidget *parent) :
     QDialog(parent),

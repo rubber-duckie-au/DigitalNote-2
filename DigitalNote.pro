@@ -198,8 +198,8 @@ contains(USE_O0, 1) {
 }
 
 QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option
-QMAKE_CXXFLAGS_WARN_ON += -Wall
-QMAKE_CXXFLAGS_WARN_ON += -Wextra
+#QMAKE_CXXFLAGS_WARN_ON += -Wall
+#QMAKE_CXXFLAGS_WARN_ON += -Wextra
 QMAKE_CXXFLAGS_WARN_ON += -Wno-ignored-qualifiers
 QMAKE_CXXFLAGS_WARN_ON += -Wformat
 QMAKE_CXXFLAGS_WARN_ON += -Wformat-security

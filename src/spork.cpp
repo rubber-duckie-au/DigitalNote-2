@@ -4,10 +4,12 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "util.h"
-#include "main.h"
 #include "cblockindex.h"
 #include "csporkmanager.h"
 #include "csporkmessage.h"
+#include "main_extern.h"
+#include "net/cnode.h"
+#include "main.h"
 
 #include "spork.h"
 

@@ -14,6 +14,7 @@
 #include "pubkey.h"
 #include "ui_interface.h"
 #include "util.h"
+#include "ccriticalblock.h"
 
 #include "alert.h"
 

@@ -20,6 +20,7 @@
 #include "ckeypool.h"
 #include "wallet.h"
 #include "script.h"
+#include "main_const.h"
 
 #include "cwallet.h"
 

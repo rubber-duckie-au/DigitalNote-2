@@ -49,41 +49,6 @@ LEAVE_CRITICAL_SECTION(mutex); // no RAII
 
 
 
-///////////////////////////////
-//                           //
-// THE ACTUAL IMPLEMENTATION //
-//                           //
-///////////////////////////////
-
-// Template mixin that adds -Wthread-safety locking annotations to a
-// subset of the mutex API.
-template <typename PARENT>
-class LOCKABLE AnnotatedMixin : public PARENT
-{
-public:
-    void lock() EXCLUSIVE_LOCK_FUNCTION()
-    {
-      PARENT::lock();
-    }
-
-    void unlock() UNLOCK_FUNCTION()
-    {
-      PARENT::unlock();
-    }
-
-    bool try_lock() EXCLUSIVE_TRYLOCK_FUNCTION(true)
-    {
-      return PARENT::try_lock();
-    }
-};
-
-/** Wrapped boost mutex: supports recursive locking, but no waiting  */
-// TODO: We should move away from using the recursive lock by default.
-typedef AnnotatedMixin<boost::recursive_mutex> CCriticalSection;
-
-/** Wrapped boost mutex: supports waiting but not recursive locking */
-typedef AnnotatedMixin<boost::mutex> CWaitableCriticalSection;
-
 #ifdef DEBUG_LOCKORDER
 void EnterCritical(const char* pszName, const char* pszFile, int nLine, void* cs, bool fTry = false);
 void LeaveCritical();
@@ -100,74 +65,8 @@ void static inline AssertLockHeldInternal(const char* pszName, const char* pszFi
 void PrintLockContention(const char* pszName, const char* pszFile, int nLine);
 #endif
 
-/** Wrapper around boost::unique_lock<Mutex> */
-template<typename Mutex>
-class CMutexLock
-{
-private:
-    boost::unique_lock<Mutex> lock;
 
-    void Enter(const char* pszName, const char* pszFile, int nLine)
-    {
-        EnterCritical(pszName, pszFile, nLine, (void*)(lock.mutex()));
-#ifdef DEBUG_LOCKCONTENTION
-        if (!lock.try_lock())
-        {
-            PrintLockContention(pszName, pszFile, nLine);
-#endif
-        lock.lock();
-#ifdef DEBUG_LOCKCONTENTION
-        }
-#endif
-    }
 
-    bool TryEnter(const char* pszName, const char* pszFile, int nLine)
-    {
-        EnterCritical(pszName, pszFile, nLine, (void*)(lock.mutex()), true);
-        lock.try_lock();
-        if (!lock.owns_lock())
-            LeaveCritical();
-        return lock.owns_lock();
-    }
-
-public:
-    CMutexLock(Mutex& mutexIn, const char* pszName, const char* pszFile, int nLine, bool fTry = false) : lock(mutexIn, boost::defer_lock)
-    {
-        if (fTry)
-            TryEnter(pszName, pszFile, nLine);
-        else
-            Enter(pszName, pszFile, nLine);
-    }
-
-    ~CMutexLock()
-    {
-        if (lock.owns_lock())
-            LeaveCritical();
-    }
-
-    operator bool()
-    {
-        return lock.owns_lock();
-    }
-};
-
-typedef CMutexLock<CCriticalSection> CCriticalBlock;
-
-#define LOCK(cs) CCriticalBlock criticalblock(cs, #cs, __FILE__, __LINE__)
-#define LOCK2(cs1,cs2) CCriticalBlock criticalblock1(cs1, #cs1, __FILE__, __LINE__),criticalblock2(cs2, #cs2, __FILE__, __LINE__)
-#define TRY_LOCK(cs,name) CCriticalBlock name(cs, #cs, __FILE__, __LINE__, true)
-
-#define ENTER_CRITICAL_SECTION(cs) \
-    { \
-        EnterCritical(#cs, __FILE__, __LINE__, (void*)(&cs)); \
-        (cs).lock(); \
-    }
-
-#define LEAVE_CRITICAL_SECTION(cs) \
-    { \
-        (cs).unlock(); \
-        LeaveCritical(); \
-    }
 
 class CSemaphore
 {

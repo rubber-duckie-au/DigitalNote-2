@@ -10,8 +10,9 @@
 #include "checkpoints.h"
 #include "cblock.h"
 #include "cblockindex.h"
-#include "main.h"
 #include "chainparams.h"
+#include "main.h"
+#include "main_extern.h"
 
 using namespace json_spirit;
 

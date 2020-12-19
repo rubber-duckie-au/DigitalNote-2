@@ -1,8 +1,9 @@
 #include "cblock.h"
 #include "ctransaction.h"
 #include "cdiskblockpos.h"
-#include "main.h"
 #include "bignum.h"
+#include "main_extern.h"
+#include "main_const.h"
 
 #include "cblockindex.h"
 

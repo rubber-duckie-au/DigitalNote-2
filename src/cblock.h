@@ -4,8 +4,8 @@
 #include <vector>
 
 #include "uint/uint256.h"
+#include "ctransaction.h"
 
-class CTransaction;
 class CBlockIndex;
 class COutPoint;
 class CTxDB;

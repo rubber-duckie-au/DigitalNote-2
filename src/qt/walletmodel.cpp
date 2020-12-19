@@ -25,6 +25,8 @@
 #include "creservekey.h"
 #include "wallet.h"
 #include "script.h"
+#include "main_extern.h"
+#include "main_const.h"
 
 #include "walletmodel.h"
 

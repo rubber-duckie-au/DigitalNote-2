@@ -10,8 +10,13 @@
 #include "key.h"
 #include "util.h"
 #include "base58.h"
-#include "main.h"
 #include "cblockindex.h"
+#include "ccriticalsection.h"
+#include "ctxin.h"
+#include "netbase.h"
+#include "ccriticalblock.h"
+#include "main_extern.h"
+#include "main.h"
 
 #include "masternode.h"
 

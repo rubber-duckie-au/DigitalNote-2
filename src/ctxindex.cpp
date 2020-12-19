@@ -1,7 +1,7 @@
-#include "main.h"
 #include "cblock.h"
 #include "cblockindex.h"
 #include "serialize.h"
+#include "main_extern.h"
 
 #include "ctxindex.h"
 

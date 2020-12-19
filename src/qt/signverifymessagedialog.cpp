@@ -9,6 +9,7 @@
 #include "optionsmodel.h"
 #include "walletmodel.h"
 #include "cscript.h"
+#include "main_extern.h"
 
 #include "signverifymessagedialog.h"
 #include "ui_signverifymessagedialog.h"

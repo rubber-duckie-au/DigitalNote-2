@@ -13,12 +13,13 @@
 #include "cnodestatestats.h"
 #include "util.h"
 #include "json/json_spirit_value.h"
-#include "main.h"
 #include "key.h"
 #include "net/cnode.h"
 #include "net/cnodestats.h"
 #include "net/cbanentry.h"
 #include "net.h"
+#include "ccriticalblock.h"
+#include "main.h"
 
 using namespace json_spirit;
 

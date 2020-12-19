@@ -18,6 +18,7 @@
 #include "cwallet.h"
 #include "script.h"
 #include "net.h"
+#include "main_const.h"
 
 #include "miner.h"
 

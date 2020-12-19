@@ -7,6 +7,7 @@
 #include "cwallettx.h"
 #include "mining.h"
 #include "script.h"
+#include "main_const.h"
 
 #include "transactionrecord.h"
 

@@ -12,7 +12,6 @@
 
 #include "base58.h"
 #include "init.h"
-#include "main.h"
 #include "netbase.h"
 #include "rpcserver.h"
 #include "util.h"
@@ -22,6 +21,8 @@
 #include "net.h"
 #include "cblockindex.h"
 #include "csporkmessage.h"
+#include "main_const.h"
+#include "main_extern.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"

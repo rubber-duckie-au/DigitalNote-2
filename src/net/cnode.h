@@ -3,6 +3,7 @@
 
 #include "protocol.h"
 #include "mruset.h"
+#include "sync.h"
 #include "net/secmsgnode.h"
 #include "net/banreason.h"
 

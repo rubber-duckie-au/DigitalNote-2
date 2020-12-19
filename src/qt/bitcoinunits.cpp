@@ -6,8 +6,9 @@
 #include <QSettings>
 #include <QStringList>
 
+#include "main_const.h"
+
 #include "bitcoinunits.h"
-#include "main.h"
 
 DigitalNoteUnits::DigitalNoteUnits(QObject *parent):
         QAbstractListModel(parent),

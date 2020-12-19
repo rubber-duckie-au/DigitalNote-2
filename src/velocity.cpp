@@ -8,7 +8,6 @@
 #include <boost/foreach.hpp>
 
 #include "blockparams.h"
-#include "main.h"
 #include "rpcserver.h"
 #include "cblockindex.h"
 #include "cblock.h"

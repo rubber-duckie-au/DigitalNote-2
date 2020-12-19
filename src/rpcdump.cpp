@@ -16,6 +16,7 @@
 #include "walletdb.h"
 #include "cblockindex.h"
 #include "wallet.h"
+#include "main_extern.h"
 
 using namespace json_spirit;
 

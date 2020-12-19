@@ -5,8 +5,10 @@
 #include "cdisktxpos.h"
 #include "ctxindex.h"
 #include "mining.h"
-#include "main.h"
 #include "serialize.h"
+#include "main.h"
+#include "main_extern.h"
+#include "main_const.h"
 
 #include "ctransaction.h"
 

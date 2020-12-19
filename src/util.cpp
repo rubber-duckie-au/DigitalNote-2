@@ -13,6 +13,9 @@
 #include "version.h"
 #include "netbase.h"
 #include "allocators.h"
+#include "ccriticalsection.h"
+#include "ccriticalblock.h"
+#include "main_const.h"
 
 #include <algorithm>
 

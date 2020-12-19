@@ -9,6 +9,7 @@
 #include "protocol.h"
 #include "sync.h"
 #include "util.h"
+#include "ccriticalblock.h"
 
 #include <map>
 #include <set>

@@ -24,6 +24,8 @@
 #include "paymentserver.h"
 #include "wallet.h"
 #include "cscript.h"
+#include "main_const.h"
+#include "main_extern.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"

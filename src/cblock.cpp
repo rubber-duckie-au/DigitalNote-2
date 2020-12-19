@@ -4,7 +4,6 @@
 #include "util.h"
 #include "crypto/bmw/bmw512.h"
 #include "ctransaction.h"
-#include "main.h"
 #include "txdb-leveldb.h"
 #include "blocksizecalculator.h"
 #include "blockparams.h"

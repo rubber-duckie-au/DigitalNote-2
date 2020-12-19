@@ -1,13 +1,13 @@
 #ifndef MASTERNODEMANAGER_H
 #define MASTERNODEMANAGER_H
 
-#include "util.h"
-#include "sync.h"
-
 #include <QMenu>
 #include <QWidget>
 #include <QTimer>
 #include <QItemSelectionModel>
+
+#include "util.h"
+#include "ccriticalsection.h"
 
 namespace Ui {
     class MasternodeManager;

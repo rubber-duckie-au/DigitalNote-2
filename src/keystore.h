@@ -5,12 +5,14 @@
 #ifndef BITCOIN_KEYSTORE_H
 #define BITCOIN_KEYSTORE_H
 
+#include <boost/variant.hpp>
+#include <boost/signals2/signal.hpp>
+
 #include "key.h"
 #include "pubkey.h"
 #include "sync.h"
-#include <boost/signals2/signal.hpp>
-
-#include <boost/variant.hpp>
+#include "ccriticalsection.h"
+#include "ccriticalblock.h"
 
 class CScript;
 

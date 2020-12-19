@@ -9,9 +9,10 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "txdb.h"
-#include "main.h"
 #include "cwallettx.h"
 #include "script.h"
+#include "main_extern.h"
+#include "main_const.h"
 
 #include <string>
 

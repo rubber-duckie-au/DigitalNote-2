@@ -11,7 +11,7 @@
 #include "chainparams.h"
 #include "fork.h"
 #include "mining.h"
-#include "main.h"
+#include "main_const.h"
 
 class CBlock;
 class CBlockIndex;

@@ -63,6 +63,7 @@ Notes:
 #include "script.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "main_extern.h"
 
 #include "smessage.h"
 

@@ -3,9 +3,9 @@
 
 #include "uint/uint256.h"
 #include "cblockindex.h"
-#include "main.h"
 #include "chainparams.h"
 #include "serialize.h"
+#include "main_extern.h"
 
 #include "cblocklocator.h"
 

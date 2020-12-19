@@ -19,7 +19,6 @@
 
 #include "init.h"
 #include "addrman.h"
-#include "main.h"
 #include "chainparams.h"
 #include "txdb.h"
 #include "rpcserver.h"
@@ -45,6 +44,8 @@
 #include "caccountingentry.h"
 #include "wallet.h"
 #include "net/caddrdb.h"
+#include "main_const.h"
+
 #ifdef ENABLE_WALLET
 #include "db.h"
 #include "walletdb.h"

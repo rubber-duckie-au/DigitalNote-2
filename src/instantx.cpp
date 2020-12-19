@@ -11,6 +11,7 @@
 #include "cconsensusvote.h"
 #include "cwallet.h"
 #include "mnengine.h"
+#include "main_const.h"
 
 #include "instantx.h"
 
