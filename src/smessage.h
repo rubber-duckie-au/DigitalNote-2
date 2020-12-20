@@ -331,54 +331,34 @@ public:
 
 int SecureMsgBuildBucketSet();
 int SecureMsgAddWalletAddresses();
-
 int SecureMsgReadIni();
 int SecureMsgWriteIni();
-
 bool SecureMsgStart(bool fDontStart, bool fScanChain);
 bool SecureMsgShutdown();
-
 bool SecureMsgEnable();
 bool SecureMsgDisable();
-
 bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStream& vRecv);
 bool SecureMsgSendData(CNode* pto, bool fSendTrickle);
-
-
 bool SecureMsgScanBlock(CBlock& block);
 bool ScanChainForPublicKeys(CBlockIndex* pindexStart);
 bool SecureMsgScanBlockChain();
 bool SecureMsgScanBuckets();
-
-
 int SecureMsgWalletUnlocked();
 int SecureMsgWalletKeyChanged(std::string sAddress, std::string sLabel, ChangeType mode);
-
 int SecureMsgScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool reportToGui);
-
 int SecureMsgGetStoredKey(CKeyID& ckid, CPubKey& cpkOut);
 int SecureMsgGetLocalKey(CKeyID& ckid, CPubKey& cpkOut);
 int SecureMsgGetLocalPublicKey(std::string& strAddress, std::string& strPublicKey);
-
 int SecureMsgAddAddress(std::string& address, std::string& publicKey);
-
 int SecureMsgRetrieve(SecMsgToken &token, std::vector<uint8_t>& vchData);
-
 int SecureMsgReceive(CNode* pfrom, std::vector<uint8_t>& vchData);
-
 int SecureMsgStoreUnscanned(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload);
 int SecureMsgStore(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool fUpdateBucket);
 int SecureMsgStore(SecureMessage& smsg, bool fUpdateBucket);
-
-
-
 int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string &message, std::string &sError);
-
 int SecureMsgValidate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload);
 int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload);
-
 int SecureMsgEncrypt(SecureMessage &smsg, const std::string &addressFrom, const std::string &addressTo, const std::string &message);
-
 int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, MessageData &msg);
 int SecureMsgDecrypt(bool fTestOnly, std::string &address, SecureMessage &smsg, MessageData &msg);
 

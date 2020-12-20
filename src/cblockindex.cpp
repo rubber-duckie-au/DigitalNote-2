@@ -4,6 +4,7 @@
 #include "bignum.h"
 #include "main_extern.h"
 #include "main_const.h"
+#include "util.h"
 
 #include "cblockindex.h"
 

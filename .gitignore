@@ -10,6 +10,7 @@ src/build.h
 *.orig
 *.o
 *.patch
+*.gch
 .DigitalNote
 #compilation and Qt preprocessor part
 .qmake.stash

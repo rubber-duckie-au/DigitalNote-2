@@ -2,6 +2,7 @@
 #include "bignum.h"
 #include "serialize.h"
 #include "main_extern.h"
+#include "util.h"
 
 #include "cdiskblockindex.h"
 
