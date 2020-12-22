@@ -1,5 +1,5 @@
-#ifndef SMESSAGE_CONST_H
-#define SMESSAGE_CONST_H
+#ifndef SMSG_CONST_H
+#define SMSG_CONST_H
 
 #include "lz4/lz4.h"
 
@@ -17,4 +17,4 @@ const unsigned int SMSG_MAX_MSG_BYTES   = 4096;              // the user input p
 // max size of payload worst case compression
 const unsigned int SMSG_MAX_MSG_WORST = LZ4_COMPRESSBOUND(SMSG_MAX_MSG_BYTES+SMSG_PL_HDR_LEN);
 
-#endif // SMESSAGE_CONST_H
+#endif // SMSG_CONST_H

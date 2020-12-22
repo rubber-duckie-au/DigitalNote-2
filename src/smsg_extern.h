@@ -1,5 +1,5 @@
-#ifndef SMESSAGE_EXTERN_H
-#define SMESSAGE_EXTERN_H
+#ifndef SMSG_EXTERN_H
+#define SMSG_EXTERN_H
 
 #include <cstdint>
 #include <map>
@@ -46,4 +46,4 @@ namespace DigitalNote
 	} // namespace SMSG
 } // namespace DigitalNote
 
-#endif // SMESSAGE_EXTERN_H
+#endif // SMSG_EXTERN_H
