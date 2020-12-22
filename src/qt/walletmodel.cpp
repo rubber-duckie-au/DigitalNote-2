@@ -19,7 +19,6 @@
 #include "ui_interface.h"
 #include "walletdb.h" // for BackupWallet
 #include "spork.h"
-#include "smessage.h"
 #include "coutput.h"
 #include "cwallettx.h"
 #include "creservekey.h"

@@ -11,6 +11,12 @@ CONFIG += widgets
 CONFIG += static
 CONFIG += openssl
 
+## 
+## This gives us abilitie to create same name .cpp files in different directories.
+## Without this option it overwrite and then there is a .o missing on linking
+##
+CONFIG += object_parallel_to_source
+
 greaterThan(QT_MAJOR_VERSION, 4) {
     QT += widgets
     DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
@@ -341,7 +347,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/addeditadrenalinenode.h \
     src/qt/adrenalinenodeconfigdialog.h \
     src/qt/qcustomplot.h \
-    src/smessage.h \
+    src/smsg.h \
     src/webwalletconnector.h \
     src/qt/messagepage.h \
     src/qt/messagemodel.h \
@@ -372,6 +378,17 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
+	src/smsg/batchscanner.cpp \
+	src/smsg/address.cpp \
+	src/smsg/crypter.cpp \
+	src/smsg/token.cpp \
+	src/smsg/stored.cpp \
+	src/smsg/bucket.cpp \
+	src/smsg/options.cpp \
+	src/smsg/db.cpp \
+	src/smsg/ckeyid_b.cpp \
+	src/smsg/cdigitalnoteaddress_b.cpp \
+	src/smsg/securemessage.cpp \
 	src/bignum.cpp \
 	src/cinpoint.cpp \
 	src/coutpoint.cpp \
@@ -510,7 +527,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/addeditadrenalinenode.cpp \
     src/qt/adrenalinenodeconfigdialog.cpp \
     src/qt/qcustomplot.cpp \
-    src/smessage.cpp \
+    src/smsg.cpp \
     src/webwalletconnector.cpp \
     src/qt/messagepage.cpp \
     src/qt/messagemodel.cpp \

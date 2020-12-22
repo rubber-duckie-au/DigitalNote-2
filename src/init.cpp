@@ -35,7 +35,6 @@
 #include "masternodeman.h"
 #include "masternodeconfig.h"
 #include "spork.h"
-#include "smessage.h"
 #include "cwallet.h"
 #include "cblocklocator.h"
 #include "cblock.h"
@@ -46,6 +45,7 @@
 #include "main_const.h"
 #include "txmempool.h"
 #include "webwalletconnector.h"
+#include "smsg.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"
@@ -123,7 +123,7 @@ void Shutdown()
     RenameThread("DigitalNote-shutoff");
     mempool.AddTransactionsUpdated(1);
     StopRPCThreads();
-    SecureMsgShutdown();
+    DigitalNote::SMSG::Shutdown();
     WebWalletConnectorShutdown();
 
 #ifdef ENABLE_WALLET
@@ -999,7 +999,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // ********************************************************* Step 10.5: startup secure messaging
 
-    SecureMsgStart(fNoSmsg, GetBoolArg("-smsgscanchain", false));
+    DigitalNote::SMSG::Start(fNoSmsg, GetBoolArg("-smsgscanchain", false));
 
     // ********************************************************* Step 10.6: startup web wallet connector
 

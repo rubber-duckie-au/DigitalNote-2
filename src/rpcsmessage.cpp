@@ -6,16 +6,23 @@
 #include <boost/foreach.hpp>
 
 #include "rpcserver.h"
-#include "smessage.h"
 #include "init.h" // pwalletMain
 #include "cwallet.h"
 #include "script.h"
+#include "base58.h"
+#include "smsg.h"
+#include "smsg_const.h"
+#include "smsg_extern.h"
+#include "smsg/bucket.h"
+#include "smsg/options.h"
+#include "smsg/address.h"
+#include "smsg/db.h"
+#include "smsg/stored.h"
+#include "smsg/messagedata.h"
 
 using namespace json_spirit;
 
 extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spirit::Object& entry);
-
-
 
 Value smsgenable(const Array& params, bool fHelp)
 {
@@ -24,11 +31,11 @@ Value smsgenable(const Array& params, bool fHelp)
             "smsgenable \n"
             "Enable secure messaging.");
     
-    if (fSecMsgEnabled)
+    if (DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is already enabled.");
     
     Object result;
-    if (!SecureMsgEnable())
+    if (!DigitalNote::SMSG::Enable())
     {
         result.push_back(Pair("result", "Failed to enable secure messaging."));
     } else
@@ -44,11 +51,11 @@ Value smsgdisable(const Array& params, bool fHelp)
         throw std::runtime_error(
             "smsgdisable \n"
             "Disable secure messaging.");
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is already disabled.");
     
     Object result;
-    if (!SecureMsgDisable())
+    if (!DigitalNote::SMSG::Disable())
     {
         result.push_back(Pair("result", "Failed to disable secure messaging."));
     } else
@@ -75,8 +82,8 @@ Value smsgoptions(const Array& params, bool fHelp)
     
     if (mode == "list")
     {
-        result.push_back(Pair("option", std::string("newAddressRecv = ") + (smsgOptions.fNewAddressRecv ? "true" : "false")));
-        result.push_back(Pair("option", std::string("newAddressAnon = ") + (smsgOptions.fNewAddressAnon ? "true" : "false")));
+        result.push_back(Pair("option", std::string("newAddressRecv = ") + (DigitalNote::SMSG::ext_options.fNewAddressRecv ? "true" : "false")));
+        result.push_back(Pair("option", std::string("newAddressAnon = ") + (DigitalNote::SMSG::ext_options.fNewAddressAnon ? "true" : "false")));
         
         result.push_back(Pair("result", "Success."));
     } else
@@ -96,33 +103,33 @@ Value smsgoptions(const Array& params, bool fHelp)
         {
             if (value == "+" || value == "on"  || value == "true"  || value == "1")
             {
-                smsgOptions.fNewAddressRecv = true;
+                DigitalNote::SMSG::ext_options.fNewAddressRecv = true;
             } else
             if (value == "-" || value == "off" || value == "false" || value == "0")
             {
-                smsgOptions.fNewAddressRecv = false;
+                DigitalNote::SMSG::ext_options.fNewAddressRecv = false;
             } else
             {
                 result.push_back(Pair("result", "Unknown value."));
                 return result;
             };
-            result.push_back(Pair("set option", std::string("newAddressRecv = ") + (smsgOptions.fNewAddressRecv ? "true" : "false")));
+            result.push_back(Pair("set option", std::string("newAddressRecv = ") + (DigitalNote::SMSG::ext_options.fNewAddressRecv ? "true" : "false")));
         } else
         if (optname == "newAddressAnon")
         {
             if (value == "+" || value == "on"  || value == "true"  || value == "1")
             {
-                smsgOptions.fNewAddressAnon = true;
+                DigitalNote::SMSG::ext_options.fNewAddressAnon = true;
             } else
             if (value == "-" || value == "off" || value == "false" || value == "0")
             {
-                smsgOptions.fNewAddressAnon = false;
+                DigitalNote::SMSG::ext_options.fNewAddressAnon = false;
             } else
             {
                 result.push_back(Pair("result", "Unknown value."));
                 return result;
             };
-            result.push_back(Pair("set option", std::string("newAddressAnon = ") + (smsgOptions.fNewAddressAnon ? "true" : "false")));
+            result.push_back(Pair("set option", std::string("newAddressAnon = ") + (DigitalNote::SMSG::ext_options.fNewAddressAnon ? "true" : "false")));
         } else
         {
             result.push_back(Pair("result", "Option not found."));
@@ -143,7 +150,7 @@ Value smsglocalkeys(const Array& params, bool fHelp)
             "smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]\n"
             "List and manage keys.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     Object result;
@@ -161,7 +168,7 @@ Value smsglocalkeys(const Array& params, bool fHelp)
     {
         uint32_t nKeys = 0;
         int all = mode == "all" ? 1 : 0;
-        for (std::vector<SecMsgAddress>::iterator it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+        for (std::vector<DigitalNote::SMSG::Address>::iterator it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (!all 
                 && !it->fReceiveEnabled)
@@ -216,15 +223,15 @@ Value smsglocalkeys(const Array& params, bool fHelp)
         std::string op      = params[1].get_str();
         std::string addr    = params[2].get_str();
         
-        std::vector<SecMsgAddress>::iterator it;
-        for (it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+        std::vector<DigitalNote::SMSG::Address>::iterator it;
+        for (it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (addr != it->sAddress)
                 continue;
             break;
         };
         
-        if (it == smsgAddresses.end())
+        if (it == DigitalNote::SMSG::ext_addresses.end())
         {
             result.push_back(Pair("result", "Address not found."));
             return result;
@@ -263,15 +270,15 @@ Value smsglocalkeys(const Array& params, bool fHelp)
         std::string op      = params[1].get_str();
         std::string addr    = params[2].get_str();
         
-        std::vector<SecMsgAddress>::iterator it;
-        for (it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+        std::vector<DigitalNote::SMSG::Address>::iterator it;
+        for (it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (addr != it->sAddress)
                 continue;
             break;
         };
         
-        if (it == smsgAddresses.end())
+        if (it == DigitalNote::SMSG::ext_addresses.end())
         {
             result.push_back(Pair("result", "Address not found."));
             return result;
@@ -351,11 +358,11 @@ Value smsgscanchain(const Array& params, bool fHelp)
             "smsgscanchain \n"
             "Look for public keys in the block chain.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     Object result;
-    if (!SecureMsgScanBlockChain())
+    if (!DigitalNote::SMSG::ScanBlockChain())
     {
         result.push_back(Pair("result", "Scan Chain Failed."));
     } else
@@ -372,14 +379,14 @@ Value smsgscanbuckets(const Array& params, bool fHelp)
             "smsgscanbuckets \n"
             "Force rescan of all messages in the bucket store.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
         throw std::runtime_error("Wallet is locked.");
     
     Object result;
-    if (!SecureMsgScanBuckets())
+    if (!DigitalNote::SMSG::ScanBuckets())
     {
         result.push_back(Pair("result", "Scan Buckets Failed."));
     } else
@@ -396,14 +403,14 @@ Value smsgaddkey(const Array& params, bool fHelp)
             "smsgaddkey <address> <pubkey>\n"
             "Add address, pubkey pair to database.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addr = params[0].get_str();
     std::string pubk = params[1].get_str();
     
     Object result;
-    int rv = SecureMsgAddAddress(addr, pubk);
+    int rv = DigitalNote::SMSG::AddAddress(addr, pubk);
     if (rv != 0)
     {
         result.push_back(Pair("result", "Public key not added to db."));
@@ -431,7 +438,7 @@ Value smsggetpubkey(const Array& params, bool fHelp)
             "Return the base58 encoded compressed public key for an address.\n"
             "Tests localkeys first, then looks in public key db.\n");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     
@@ -439,7 +446,7 @@ Value smsggetpubkey(const Array& params, bool fHelp)
     std::string publicKey;
     
     Object result;
-    int rv = SecureMsgGetLocalPublicKey(address, publicKey);
+    int rv = DigitalNote::SMSG::GetLocalPublicKey(address, publicKey);
     switch (rv)
     {
         case 0:
@@ -473,7 +480,7 @@ Value smsggetpubkey(const Array& params, bool fHelp)
     };
     
     CPubKey cpkFromDB;
-    rv = SecureMsgGetStoredKey(keyID, cpkFromDB);
+    rv = DigitalNote::SMSG::GetStoredKey(keyID, cpkFromDB);
     
     switch (rv)
     {
@@ -514,7 +521,7 @@ Value smsgsend(const Array& params, bool fHelp)
             "smsgsend <addrFrom> <addrTo> <message>\n"
             "Send an encrypted message from addrFrom to addrTo.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addrFrom  = params[0].get_str();
@@ -525,7 +532,7 @@ Value smsgsend(const Array& params, bool fHelp)
     Object result;
     
     std::string sError;
-    if (SecureMsgSend(addrFrom, addrTo, msg, sError) != 0)
+    if (DigitalNote::SMSG::Send(addrFrom, addrTo, msg, sError) != 0)
     {
         result.push_back(Pair("result", "Send failed."));
         result.push_back(Pair("error", sError));
@@ -542,7 +549,7 @@ Value smsgsendanon(const Array& params, bool fHelp)
             "smsgsendanon <addrTo> <message>\n"
             "Send an anonymous encrypted message to addrTo.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addrFrom  = "anon";
@@ -552,7 +559,7 @@ Value smsgsendanon(const Array& params, bool fHelp)
     
     Object result;
     std::string sError;
-    if (SecureMsgSend(addrFrom, addrTo, msg, sError) != 0)
+    if (DigitalNote::SMSG::Send(addrFrom, addrTo, msg, sError) != 0)
     {
         result.push_back(Pair("result", "Send failed."));
         result.push_back(Pair("error", sError));
@@ -570,7 +577,7 @@ Value smsginbox(const Array& params, bool fHelp)
             "Decrypt and display all received messages.\n"
             "Warning: clear will delete all messages.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
@@ -585,9 +592,9 @@ Value smsginbox(const Array& params, bool fHelp)
     
     Object result;
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
         
-        SecMsgDB dbInbox;
+        DigitalNote::SMSG::DB dbInbox;
         
         if (!dbInbox.Open("cr+"))
             throw std::runtime_error("Could not open DB.");
@@ -619,8 +626,8 @@ Value smsginbox(const Array& params, bool fHelp)
         {
             int fCheckReadStatus = mode == "unread" ? 1 : 0;
             
-            SecMsgStored smsgStored;
-            MessageData msg;
+            DigitalNote::SMSG::Stored smsgStored;
+            DigitalNote::SMSG::Message msg;
             
             dbInbox.TxnBegin();
             
@@ -632,7 +639,7 @@ Value smsginbox(const Array& params, bool fHelp)
                     continue;
                 
                 uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-                if (SecureMsgDecrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+                if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
                 {
                     Object objM;
                     objM.push_back(Pair("received", getTimeString(smsgStored.timeReceived, cbuf, sizeof(cbuf))));
@@ -678,7 +685,7 @@ Value smsgoutbox(const Array& params, bool fHelp)
             "Decrypt and display all sent messages.\n"
             "Warning: clear will delete all sent messages.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
@@ -698,9 +705,9 @@ Value smsgoutbox(const Array& params, bool fHelp)
     memset(&chKey[0], 0, 18);
     
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
         
-        SecMsgDB dbOutbox;
+        DigitalNote::SMSG::DB dbOutbox;
         
         if (!dbOutbox.Open("cr+"))
             throw std::runtime_error("Could not open DB.");
@@ -727,14 +734,14 @@ Value smsgoutbox(const Array& params, bool fHelp)
         } else
         if (mode == "all")
         {
-            SecMsgStored smsgStored;
-            MessageData msg;
+            DigitalNote::SMSG::Stored smsgStored;
+            DigitalNote::SMSG::Message msg;
             leveldb::Iterator* it = dbOutbox.pdb->NewIterator(leveldb::ReadOptions());
             while (dbOutbox.NextSmesg(it, sPrefix, chKey, smsgStored))
             {
                 uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
                 
-                if (SecureMsgDecrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+                if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
                 {
                     Object objM;
                     objM.push_back(Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
@@ -771,7 +778,7 @@ Value smsgbuckets(const Array& params, bool fHelp)
             "smsgbuckets [stats|dump]\n"
             "Display some statistics.");
     
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
     
     std::string mode = "stats";
@@ -789,13 +796,13 @@ Value smsgbuckets(const Array& params, bool fHelp)
         uint32_t nMessages = 0;
         uint64_t nBytes = 0;
         {
-            LOCK(cs_smsg);
-            std::map<int64_t, SecMsgBucket>::iterator it;
-            it = smsgBuckets.begin();
+            LOCK(DigitalNote::SMSG::ext_cs);
+            std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it;
+            it = DigitalNote::SMSG::ext_buckets.begin();
             
-            for (it = smsgBuckets.begin(); it != smsgBuckets.end(); ++it)
+            for (it = DigitalNote::SMSG::ext_buckets.begin(); it != DigitalNote::SMSG::ext_buckets.end(); ++it)
             {
-                std::set<SecMsgToken>& tokenSet = it->second.setTokens;
+                std::set<DigitalNote::SMSG::Token>& tokenSet = it->second.setTokens;
                 
                 std::string sBucket = boost::lexical_cast<std::string>(it->first);
                 std::string sFile = sBucket + "_01.dat";
@@ -841,7 +848,7 @@ Value smsgbuckets(const Array& params, bool fHelp)
                 
                 result.push_back(Pair("bucket", objM));
             };
-        }; // LOCK(cs_smsg);
+        }; // LOCK(DigitalNote::SMSG::ext_cs);
         
         
         std::string snBuckets = boost::lexical_cast<std::string>(nBuckets);
@@ -857,11 +864,11 @@ Value smsgbuckets(const Array& params, bool fHelp)
     if (mode == "dump")
     {
         {
-            LOCK(cs_smsg);
-            std::map<int64_t, SecMsgBucket>::iterator it;
-            it = smsgBuckets.begin();
+            LOCK(DigitalNote::SMSG::ext_cs);
+            std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it;
+            it = DigitalNote::SMSG::ext_buckets.begin();
             
-            for (it = smsgBuckets.begin(); it != smsgBuckets.end(); ++it)
+            for (it = DigitalNote::SMSG::ext_buckets.begin(); it != DigitalNote::SMSG::ext_buckets.end(); ++it)
             {
                 std::string sFile = boost::lexical_cast<std::string>(it->first) + "_01.dat";
                 
@@ -874,8 +881,8 @@ Value smsgbuckets(const Array& params, bool fHelp)
                     printf("Error removing bucket file %s.\n", ex.what());
                 };
             };
-            smsgBuckets.clear();
-        }; // LOCK(cs_smsg);
+            DigitalNote::SMSG::ext_buckets.clear();
+        }; // LOCK(DigitalNote::SMSG::ext_cs);
         
         result.push_back(Pair("result", "Removed all buckets."));
         
@@ -900,7 +907,7 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
                 "\nArguments:\n"
                 "1. \"account\"  (string, required) The account name.\n");
 
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         throw std::runtime_error("Secure messaging is disabled.");
 
     if (pwalletMain->IsLocked())
@@ -933,9 +940,9 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
 
     // get 'in' messages
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
 
-        SecMsgDB dbInbox;
+        DigitalNote::SMSG::DB dbInbox;
 
         if (!dbInbox.Open("cr+"))
             throw std::runtime_error("Could not open DB.");
@@ -943,15 +950,15 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
         std::string sPrefix("im");
         unsigned char chKey[18];
 
-        SecMsgStored smsgStored;
-        MessageData msg;
+        DigitalNote::SMSG::Stored smsgStored;
+        DigitalNote::SMSG::Message msg;
 
         dbInbox.TxnBegin();
 
         leveldb::Iterator *it = dbInbox.pdb->NewIterator(leveldb::ReadOptions());
         while (dbInbox.NextSmesg(it, sPrefix, chKey, smsgStored)) {
             uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-            if (SecureMsgDecrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
+            if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
                 bool oneOfTheAccountMessages = false;
                 for (std::string accountAddress : accountAddresses) {
                     if (smsgStored.sAddrTo == accountAddress) {
@@ -986,9 +993,9 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
 
     // get 'out' messages
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
 
-        SecMsgDB dbOutbox;
+        DigitalNote::SMSG::DB dbOutbox;
         std::string sPrefix("sm");
         unsigned char chKey[18];
         memset(&chKey[0], 0, 18);
@@ -996,16 +1003,16 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
         if (!dbOutbox.Open("cr+"))
             throw std::runtime_error("Could not open DB.");
 
-        SecMsgStored smsgStored;
-        MessageData msg;
+        DigitalNote::SMSG::Stored smsgStored;
+        DigitalNote::SMSG::Message msg;
         leveldb::Iterator *it = dbOutbox.pdb->NewIterator(leveldb::ReadOptions());
         while (dbOutbox.NextSmesg(it, sPrefix, chKey, smsgStored)) {
             uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-            if (SecureMsgDecrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
+            if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
                 bool oneOfTheAccountMessages = false;
                 for (std::string accountAddress : accountAddresses) {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Comparing from address with account addresses %s vs %s \n", accountAddress, msg.sFromAddress);
+                        LogPrint("smsg", "Comparing from address with account addresses %s vs %s \n", accountAddress, msg.sFromAddress);
 
                     if (msg.sFromAddress == accountAddress) {
                         oneOfTheAccountMessages = true;

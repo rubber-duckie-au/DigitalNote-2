@@ -3,7 +3,6 @@
 
 #include <vector>
 #include "allocators.h" /* for SecureString */
-#include "smessage.h"
 #include <map>
 #include <QSortFilterProxyModel>
 #include <QAbstractTableModel>
@@ -18,6 +17,12 @@ class ReceiptTableModel;
 class CWallet;
 class WalletModel;
 class OptionsModel;
+
+namespace DigitalNote {
+	namespace SMSG {
+		class Stored;
+	}
+}
 
 class SendMessagesRecipient
 {
@@ -176,8 +181,8 @@ private:
 public slots:
 
     /* Check for new messages */
-    void newMessage(const SecMsgStored& smsg);
-    void newOutboxMessage(const SecMsgStored& smsg);
+    void newMessage(const DigitalNote::SMSG::Stored& smsg);
+    void newOutboxMessage(const DigitalNote::SMSG::Stored& smsg);
     
     void walletUnlocked();
     

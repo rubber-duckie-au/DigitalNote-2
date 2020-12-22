@@ -974,7 +974,7 @@ void ThreadSocketHandler()
                             if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                             {
                                 if (!pnode->fDisconnect)
-                                    LogPrintf("socket recv error %d\n", nErr);
+                                    LogPrintf("socket recv error %d, %s\n", nErr, strerror(nErr));
                                 pnode->CloseSocketDisconnect();
                             }
                         }

@@ -1,6 +1,8 @@
 #ifndef CNETCLEANUP_H
 #define CNETCLEANUP_H
 
+#include <boost/foreach.hpp>
+
 #include "net.h"
 
 class CNetCleanup
@@ -21,9 +23,9 @@ public:
                     LogPrintf("closesocket(hListenSocket) failed with error %d\n", WSAGetLastError());
 
         // clean up some globals (to help leak detection)
-        BOOST_FOREACH(CNode *pnode, vNodes)
+        BOOST_FOREACH(CNode* pnode, vNodes)
             delete pnode;
-        BOOST_FOREACH(CNode *pnode, vNodesDisconnected)
+        BOOST_FOREACH(CNode* pnode, vNodesDisconnected)
             delete pnode;
         vNodes.clear();
         vNodesDisconnected.clear();

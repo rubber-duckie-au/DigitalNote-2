@@ -30,7 +30,6 @@
 #include "masternodeman.h"
 #include "masternode-payments.h"
 #include "spork.h"
-#include "smessage.h"
 #include "util.h"
 #include "cnodestatestats.h"
 #include "cwalletinterface.h"
@@ -46,6 +45,8 @@
 #include "csporkmessage.h"
 #include "coutpoint.h"
 #include "cinpoint.h"
+#include "smsg.h"
+#include "smsg_extern.h"
 
 #include "main.h"
 
@@ -2607,8 +2608,8 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 
         ProcessBlock(pfrom, &block);
         if (block.nDoS) Misbehaving(pfrom->GetId(), block.nDoS);
-        if (fSecMsgEnabled) {
-            SecureMsgScanBlock(block);
+        if (DigitalNote::SMSG::ext_enabled) {
+            DigitalNote::SMSG::ScanBlock(block);
         }
     }
 
@@ -2760,8 +2761,8 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 
     else
     {
-        if (fSecMsgEnabled) {
-            SecureMsgReceiveData(pfrom, strCommand, vRecv);
+        if (DigitalNote::SMSG::ext_enabled) {
+            DigitalNote::SMSG::ReceiveData(pfrom, strCommand, vRecv);
         }
         // Relay and Request MasterNode peer data
         //
@@ -3167,8 +3168,8 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         if (!vGetData.empty())
             pto->PushMessage("getdata", vGetData);
 
-        if (fSecMsgEnabled) {
-            SecureMsgSendData(pto, fSendTrickle); // should be in cs_main?
+        if (DigitalNote::SMSG::ext_enabled) {
+            DigitalNote::SMSG::SendData(pto, fSendTrickle); // should be in cs_main?
         }
 
     }

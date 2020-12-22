@@ -15,7 +15,7 @@
 
 #include "json/json_spirit_writer_template.h"
 #include "util.h"
-#include "smessage.h"
+#include "smsg_extern.h"
 
 #include "webwalletconnector.h"
 
@@ -282,8 +282,8 @@ void subscribeToCoreSignals()
     LogPrint("webwallet", "webwallet: subscribeToCoreSignals \n");
 
     // Connect signals
-    NotifySecMsgInboxChangedJson.connect(&NotifySecMsgInbox);
-    NotifySecMsgOutboxChangedJson.connect(&NotifySecMsgOutbox);
+    DigitalNote::SMSG::ext_signal_NotifyInboxChangedJson.connect(&NotifySecMsgInbox);
+    DigitalNote::SMSG::ext_signal_NotifyOutboxChangedJson.connect(&NotifySecMsgOutbox);
 }
 
 void unsubscribeFromCoreSignals()
@@ -291,6 +291,6 @@ void unsubscribeFromCoreSignals()
     LogPrint("webwallet", "webwallet: unsubscribeFromCoreSignals \n");
 
     // Disconnect signals
-    NotifySecMsgInboxChangedJson.disconnect(&NotifySecMsgInbox);
-    NotifySecMsgOutboxChangedJson.disconnect(&NotifySecMsgOutbox);
+    DigitalNote::SMSG::ext_signal_NotifyInboxChangedJson.disconnect(&NotifySecMsgInbox);
+    DigitalNote::SMSG::ext_signal_NotifyOutboxChangedJson.disconnect(&NotifySecMsgOutbox);
 }

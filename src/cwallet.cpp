@@ -3,13 +3,11 @@
 #include "walletmodel.h"
 #include "coincontrol.h"
 #include "kernel.h"
-#include "smessage.h"
 #include "txdb-leveldb.h"
 #include "blockparams.h"
 #include "fork.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
-#include "webwalletconnector.h"
 #include "coutput.h"
 #include "cwallettx.h"
 #include "mining.h"
@@ -23,6 +21,8 @@
 #include "main_const.h"
 #include "main_extern.h"
 #include "txmempool.h"
+#include "webwalletconnector.h"
+#include "smsg.h"
 
 #include "cwallet.h"
 
@@ -871,7 +871,7 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase, bool anonymizeOnly
         fWalletUnlockAnonymizeOnly = anonymizeOnly;
         fWalletUnlockStakingOnly = stakingOnly;
         UnlockStealthAddresses(vMasterKey);
-        SecureMsgWalletUnlocked();
+        DigitalNote::SMSG::WalletUnlocked();
         return true;
     }
     return false;

@@ -20,7 +20,7 @@ Notes:
 
 
     Address Whitelist
-        Owned Addresses are stored in smsgAddresses vector
+        Owned Addresses are stored in DigitalNote::SMSG::ext_addresses vector
         Saved to smsg.ini
         Modify options using the smsglocalkeys rpc command or edit the smsg.ini file (with client closed)
     
@@ -56,8 +56,6 @@ Notes:
 #include "sync.h"
 #include "ecwrapper.h"
 #include "lz4/lz4.c"
-#include "xxhash/xxhash.h"
-#include "xxhash/xxhash.c"
 #include "cwallet.h"
 #include "cblock.h"
 #include "script.h"
@@ -65,580 +63,95 @@ Notes:
 #include "net.h"
 #include "main_extern.h"
 
-#include "smessage.h"
-
-boost::thread_group threadGroupSmsg;
-
-boost::signals2::signal<void (SecMsgStored& inboxHdr)>  NotifySecMsgInboxChanged;
-boost::signals2::signal<void (SecMsgStored& outboxHdr)> NotifySecMsgOutboxChanged;
-boost::signals2::signal<void ()> NotifySecMsgWalletUnlocked;
-
-boost::signals2::signal<void (json_spirit::Object& inboxHdr)> NotifySecMsgInboxChangedJson;
-boost::signals2::signal<void (json_spirit::Object& outboxHdr)> NotifySecMsgOutboxChangedJson;
-
-bool fSecMsgEnabled = false;
-
-std::map<int64_t, SecMsgBucket> smsgBuckets;
-std::vector<SecMsgAddress>      smsgAddresses;
-SecMsgOptions                   smsgOptions;
-
-
-CCriticalSection cs_smsg;
-CCriticalSection cs_smsgDB;
-CCriticalSection cs_smsgThreads;
-
-leveldb::DB *smsgDB = NULL;
-
-using namespace json_spirit;
-namespace fs = boost::filesystem;
-
-bool SecMsgCrypter::SetKey(const std::vector<uint8_t>& vchNewKey, uint8_t* chNewIV)
-{
-    if (vchNewKey.size() < sizeof(chKey))
-        return false;
-
-    return SetKey(&vchNewKey[0], chNewIV);
-};
-
-bool SecMsgCrypter::SetKey(const uint8_t* chNewKey, uint8_t* chNewIV)
-{
-    // -- for EVP_aes_256_cbc() key must be 256 bit, iv must be 128 bit.
-    memcpy(&chKey[0], chNewKey, sizeof(chKey));
-    memcpy(chIV, chNewIV, sizeof(chIV));
-
-    fKeySet = true;
-    return true;
-};
-
-bool SecMsgCrypter::Encrypt(uint8_t* chPlaintext, uint32_t nPlain, std::vector<uint8_t> &vchCiphertext)
-{
-    if (!fKeySet)
-        return false;
-
-    // -- max ciphertext len for a n bytes of plaintext is n + AES_BLOCK_SIZE - 1 bytes
-    int nLen = nPlain;
-
-    int nCLen = nLen + AES_BLOCK_SIZE, nFLen = 0;
-    vchCiphertext = std::vector<uint8_t> (nCLen);
-
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-
-    bool fOk = true;
-
-    EVP_CIPHER_CTX_init(ctx);
-    if (fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, &chKey[0], &chIV[0]);
-    if (fOk) fOk = EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, chPlaintext, nLen);
-    if (fOk) fOk = EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0])+nCLen, &nFLen);
-    EVP_CIPHER_CTX_cleanup(ctx);
-    EVP_CIPHER_CTX_free(ctx);
-
-    if (!fOk)
-        return false;
-
-    vchCiphertext.resize(nCLen + nFLen);
-
-    return true;
-};
-
-bool SecMsgCrypter::Decrypt(uint8_t* chCiphertext, uint32_t nCipher, std::vector<uint8_t>& vchPlaintext)
-{
-    if (!fKeySet)
-        return false;
-
-    // plaintext will always be equal to or lesser than length of ciphertext
-    int nPLen = nCipher, nFLen = 0;
-
-    vchPlaintext.resize(nCipher);
-
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-
-    bool fOk = true;
-
-    EVP_CIPHER_CTX_init(ctx);
-    if (fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, &chKey[0], &chIV[0]);
-    if (fOk) fOk = EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &chCiphertext[0], nCipher);
-    if (fOk) fOk = EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0])+nPLen, &nFLen);
-    EVP_CIPHER_CTX_cleanup(ctx);
-    EVP_CIPHER_CTX_free(ctx);
-
-    if (!fOk)
-        return false;
-
-    vchPlaintext.resize(nPLen + nFLen);
-
-    return true;
-};
-
-void SecMsgBucket::hashBucket()
-{
-    if (fDebugSmsg)
-        LogPrint("smessage", "SecMsgBucket::hashBucket()\n");
-    
-    timeChanged = GetTime();
-    
-    std::set<SecMsgToken>::iterator it;
-    
-    void* state = XXH32_init(1);
-    
-    for (it = setTokens.begin(); it != setTokens.end(); ++it)
-    {
-        XXH32_update(state, it->sample, 8);
-    };
-    
-    hash = XXH32_digest(state);
-    
-    if (fDebugSmsg)
-        LogPrint("smessage", "Hashed %u messages, hash %u\n", setTokens.size(), hash);
-};
-
-
-bool SecMsgDB::Open(const char* pszMode)
-{
-    if (smsgDB)
-    {
-        pdb = smsgDB;
-        return true;
-    };
-
-    bool fCreate = strchr(pszMode, 'c');
-
-    fs::path fullpath = GetDataDir() / "smsgDB";
-
-    if (!fCreate
-        && (!fs::exists(fullpath)
-            || !fs::is_directory(fullpath)))
-    {
-        LogPrint("smessage", "SecMsgDB::open() - DB does not exist.\n");
-        return false;
-    };
-
-    leveldb::Options options;
-    options.create_if_missing = fCreate;
-    leveldb::Status s = leveldb::DB::Open(options, fullpath.string(), &smsgDB);
-
-    if (!s.ok())
-    {
-        LogPrint("smessage", "SecMsgDB::open() - Error opening db: %s.\n", s.ToString().c_str());
-        return false;
-    };
-
-    pdb = smsgDB;
-
-    return true;
-};
-
-
-class SecMsgBatchScanner : public leveldb::WriteBatch::Handler
-{
-public:
-    std::string needle;
-    bool* deleted;
-    std::string* foundValue;
-    bool foundEntry;
-
-    SecMsgBatchScanner() : foundEntry(false) {}
-
-    virtual void Put(const leveldb::Slice& key, const leveldb::Slice& value)
-    {
-        if (key.ToString() == needle)
-        {
-            foundEntry = true;
-            *deleted = false;
-            *foundValue = value.ToString();
-        };
-    };
-
-    virtual void Delete(const leveldb::Slice& key)
-    {
-        if (key.ToString() == needle)
-        {
-            foundEntry = true;
-            *deleted = true;
-        };
-    };
-};
-
-// When performing a read, if we have an active batch we need to check it first
-// before reading from the database, as the rest of the code assumes that once
-// a database transaction begins reads are consistent with it. It would be good
-// to change that assumption in future and avoid the performance hit, though in
-// practice it does not appear to be large.
-bool SecMsgDB::ScanBatch(const CDataStream& key, std::string* value, bool* deleted) const
-{
-    if (!activeBatch)
-        return false;
-
-    *deleted = false;
-    SecMsgBatchScanner scanner;
-    scanner.needle = key.str();
-    scanner.deleted = deleted;
-    scanner.foundValue = value;
-    leveldb::Status s = activeBatch->Iterate(&scanner);
-    if (!s.ok())
-    {
-        LogPrint("smessage", "SecMsgDB ScanBatch error: %s\n", s.ToString().c_str());
-        return false;
-    };
-
-    return scanner.foundEntry;
-}
-
-bool SecMsgDB::TxnBegin()
-{
-    if (activeBatch)
-        return true;
-    activeBatch = new leveldb::WriteBatch();
-    return true;
-};
-
-bool SecMsgDB::TxnCommit()
-{
-    if (!activeBatch)
-        return false;
-
-    leveldb::WriteOptions writeOptions;
-    writeOptions.sync = true;
-    leveldb::Status status = pdb->Write(writeOptions, activeBatch);
-    delete activeBatch;
-    activeBatch = NULL;
-
-    if (!status.ok())
-    {
-        LogPrint("smessage", "SecMsgDB batch commit failure: %s\n", status.ToString().c_str());
-        return false;
-    };
-
-    return true;
-};
-
-bool SecMsgDB::TxnAbort()
-{
-    delete activeBatch;
-    activeBatch = NULL;
-    return true;
-};
-
-bool SecMsgDB::ReadPK(CKeyID& addr, CPubKey& pubkey)
-{
-    if (!pdb)
-        return false;
-
-    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-    ssKey.reserve(sizeof(addr) + 2);
-    ssKey << 'p';
-    ssKey << 'k';
-    ssKey << addr;
-    std::string strValue;
-
-    bool readFromDb = true;
-    if (activeBatch)
-    {
-        // -- check activeBatch first
-        bool deleted = false;
-        readFromDb = ScanBatch(ssKey, &strValue, &deleted) == false;
-        if (deleted)
-            return false;
-    };
-
-    if (readFromDb)
-    {
-        leveldb::Status s = pdb->Get(leveldb::ReadOptions(), ssKey.str(), &strValue);
-        if (!s.ok())
-        {
-            if (s.IsNotFound())
-                return false;
-            LogPrint("smessage", "LevelDB read failure: %s\n", s.ToString().c_str());
-            return false;
-        };
-    };
-
-    try {
-        CDataStream ssValue(strValue.data(), strValue.data() + strValue.size(), SER_DISK, CLIENT_VERSION);
-        ssValue >> pubkey;
-    } catch (std::exception& e) {
-        LogPrint("smessage", "SecMsgDB::ReadPK() unserialize threw: %s.\n", e.what());
-        return false;
-    }
-
-    return true;
-};
-
-bool SecMsgDB::WritePK(CKeyID& addr, CPubKey& pubkey)
-{
-    if (!pdb)
-        return false;
-
-    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-    ssKey.reserve(sizeof(addr) + 2);
-    ssKey << 'p';
-    ssKey << 'k';
-    ssKey << addr;
-    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-    ssValue.reserve(sizeof(pubkey));
-    ssValue << pubkey;
-
-    if (activeBatch)
-    {
-        activeBatch->Put(ssKey.str(), ssValue.str());
-        return true;
-    };
-
-    leveldb::WriteOptions writeOptions;
-    writeOptions.sync = true;
-    leveldb::Status s = pdb->Put(writeOptions, ssKey.str(), ssValue.str());
-    if (!s.ok())
-    {
-        LogPrint("smessage", "SecMsgDB write failure: %s\n", s.ToString().c_str());
-        return false;
-    };
-
-    return true;
-};
-
-bool SecMsgDB::ExistsPK(CKeyID& addr)
-{
-    if (!pdb)
-        return false;
-
-    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-    ssKey.reserve(sizeof(addr)+2);
-    ssKey << 'p';
-    ssKey << 'k';
-    ssKey << addr;
-    std::string unused;
-
-    if (activeBatch)
-    {
-        bool deleted;
-        if (ScanBatch(ssKey, &unused, &deleted) && !deleted)
-        {
-            return true;
-        };
-    };
-
-    leveldb::Status s = pdb->Get(leveldb::ReadOptions(), ssKey.str(), &unused);
-    return s.IsNotFound() == false;
-};
-
-
-bool SecMsgDB::NextSmesg(leveldb::Iterator* it, std::string& prefix, uint8_t* chKey, SecMsgStored& smsgStored)
-{
-    if (!pdb)
-        return false;
-
-    if (!it->Valid()) // first run
-        it->Seek(prefix);
-    else
-        it->Next();
-
-    if (!(it->Valid()
-        && it->key().size() == 18
-        && memcmp(it->key().data(), prefix.data(), 2) == 0))
-        return false;
-
-    memcpy(chKey, it->key().data(), 18);
-
-    try {
-        CDataStream ssValue(it->value().data(), it->value().data() + it->value().size(), SER_DISK, CLIENT_VERSION);
-        ssValue >> smsgStored;
-    } catch (std::exception& e) {
-        LogPrint("smessage", "SecMsgDB::NextSmesg() unserialize threw: %s.\n", e.what());
-        return false;
-    }
-
-    return true;
-};
-
-bool SecMsgDB::NextSmesgKey(leveldb::Iterator* it, std::string& prefix, uint8_t* chKey)
-{
-    if (!pdb)
-        return false;
-
-    if (!it->Valid()) // first run
-        it->Seek(prefix);
-    else
-        it->Next();
-
-    if (!(it->Valid()
-        && it->key().size() == 18
-        && memcmp(it->key().data(), prefix.data(), 2) == 0))
-        return false;
-
-    memcpy(chKey, it->key().data(), 18);
-
-    return true;
-};
-
-bool SecMsgDB::ReadSmesg(uint8_t* chKey, SecMsgStored& smsgStored)
-{
-    if (!pdb)
-        return false;
-
-    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-    ssKey.write((const char*)chKey, 18);
-    std::string strValue;
-
-    bool readFromDb = true;
-    if (activeBatch)
-    {
-        // -- check activeBatch first
-        bool deleted = false;
-        readFromDb = ScanBatch(ssKey, &strValue, &deleted) == false;
-        if (deleted)
-            return false;
-    };
-
-    if (readFromDb)
-    {
-        leveldb::Status s = pdb->Get(leveldb::ReadOptions(), ssKey.str(), &strValue);
-        if (!s.ok())
-        {
-            if (s.IsNotFound())
-                return false;
-            LogPrint("smessage", "LevelDB read failure: %s\n", s.ToString().c_str());
-            return false;
-        };
-    };
-
-    try {
-        CDataStream ssValue(strValue.data(), strValue.data() + strValue.size(), SER_DISK, CLIENT_VERSION);
-        ssValue >> smsgStored;
-    } catch (std::exception& e) {
-        LogPrint("smessage", "SecMsgDB::ReadSmesg() unserialize threw: %s.\n", e.what());
-        return false;
-    }
-
-    return true;
-};
-
-bool SecMsgDB::WriteSmesg(uint8_t* chKey, SecMsgStored& smsgStored)
-{
-    if (!pdb)
-        return false;
-
-    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-    ssKey.write((const char*)chKey, 18);
-    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-    ssValue << smsgStored;
-
-    if (activeBatch)
-    {
-        activeBatch->Put(ssKey.str(), ssValue.str());
-        return true;
-    };
-
-    leveldb::WriteOptions writeOptions;
-    writeOptions.sync = true;
-    leveldb::Status s = pdb->Put(writeOptions, ssKey.str(), ssValue.str());
-    if (!s.ok())
-    {
-        LogPrint("smessage", "SecMsgDB write failed: %s\n", s.ToString().c_str());
-        return false;
-    };
-
-    return true;
-};
-
-bool SecMsgDB::ExistsSmesg(uint8_t* chKey)
-{
-    if (!pdb)
-        return false;
-
-    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-    ssKey.write((const char*)chKey, 18);
-    std::string unused;
-
-    if (activeBatch)
-    {
-        bool deleted;
-        if (ScanBatch(ssKey, &unused, &deleted) && !deleted)
-        {
-            return true;
-        };
-    };
-
-    leveldb::Status s = pdb->Get(leveldb::ReadOptions(), ssKey.str(), &unused);
-    return s.IsNotFound() == false;
-    return true;
-};
-
-bool SecMsgDB::EraseSmesg(uint8_t* chKey)
-{
-    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-    ssKey.write((const char*)chKey, 18);
-
-    if (activeBatch)
-    {
-        activeBatch->Delete(ssKey.str());
-        return true;
-    };
-
-    leveldb::WriteOptions writeOptions;
-    writeOptions.sync = true;
-    leveldb::Status s = pdb->Delete(writeOptions, ssKey.str());
-
-    if (s.ok() || s.IsNotFound())
-        return true;
-    LogPrint("smessage", "SecMsgDB erase failed: %s\n", s.ToString().c_str());
-    return false;
-};
-
-void ThreadSecureMsg()
+#include "smsg.h"
+#include "smsg_const.h"
+#include "smsg_extern.h"
+#include "smsg/options.h"
+#include "smsg/bucket.h"
+#include "smsg/stored.h"
+#include "smsg/db.h"
+#include "smsg/securemessage.h"
+#include "smsg/address.h"
+#include "smsg/messagedata.h"
+#include "smsg/cdigitalnoteaddress_b.h"
+#include "smsg/ckeyid_b.h"
+#include "smsg/crypter.h"
+
+
+namespace DigitalNote {
+namespace SMSG {
+// Extern
+//DigitalNote::SMSG::
+boost::thread_group								ext_thread_group;
+bool											ext_enabled = false;
+std::map<int64_t, DigitalNote::SMSG::Bucket>	ext_buckets;
+std::vector<DigitalNote::SMSG::Address>			ext_addresses;
+DigitalNote::SMSG::Options						ext_options;
+CCriticalSection								ext_cs;
+CCriticalSection								ext_cs_db;
+leveldb::DB*									ext_db = NULL;
+boost::signals2::signal<void (DigitalNote::SMSG::Stored& inboxHdr)>		ext_signal_NotifyInboxChanged;
+boost::signals2::signal<void (json_spirit::Object& inboxHdr)>			ext_signal_NotifyInboxChangedJson;
+boost::signals2::signal<void (DigitalNote::SMSG::Stored& outboxHdr)>	ext_signal_NotifyOutboxChanged;
+boost::signals2::signal<void (json_spirit::Object& outboxHdr)>			ext_signal_NotifyOutboxChangedJson;
+boost::signals2::signal<void ()>										ext_signal_NotifyWalletUnlocked;
+
+void Thread()
 {
     // -- bucket management thread
     SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
 
     uint32_t nLoop = 0;
     std::vector<std::pair<int64_t, NodeId> > vTimedOutLocks;
-    while (fSecMsgEnabled)
+    while (DigitalNote::SMSG::ext_enabled)
     {
         nLoop++;
         int64_t now = GetTime();
         
         if (fDebugSmsg && nLoop % SMSG_THREAD_LOG_GAP == 0) // log every SMSG_THREAD_LOG_GAP instance, is useful source of timestamps
-            LogPrint("smessage", "SecureMsgThread %d \n", now);
+            LogPrint("smsg", "SecureMsgThread %d \n", now);
         
         vTimedOutLocks.resize(0);
         
         int64_t cutoffTime = now - SMSG_RETENTION;
         {
-            LOCK(cs_smsg);
-            for (std::map<int64_t, SecMsgBucket>::iterator it(smsgBuckets.begin()); it != smsgBuckets.end(); )
+            LOCK(DigitalNote::SMSG::ext_cs);
+            for (std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it(DigitalNote::SMSG::ext_buckets.begin()); it != DigitalNote::SMSG::ext_buckets.end(); )
             {
                 //if (fDebugSmsg)
-                //    LogPrint("smessage", "Checking bucket %d", size %u \n", it->first, it->second.setTokens.size());
+                //    LogPrint("smsg", "Checking bucket %d", size %u \n", it->first, it->second.setTokens.size());
                 if (it->first < cutoffTime)
                 {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Removing bucket %d \n", it->first);
+                        LogPrint("smsg", "Removing bucket %d \n", it->first);
 
                     std::string fileName = boost::lexical_cast<std::string>(it->first);
 
-                    fs::path fullPath = GetDataDir() / "smsgStore" / (fileName + "_01.dat");
-                    if (fs::exists(fullPath))
+                    boost::filesystem::path fullPath = GetDataDir() / "smsgStore" / (fileName + "_01.dat");
+                    if (boost::filesystem::exists(fullPath))
                     {
-                        try { fs::remove(fullPath);
-                        } catch (const fs::filesystem_error& ex)
+                        try { boost::filesystem::remove(fullPath);
+                        } catch (const boost::filesystem::filesystem_error& ex)
                         {
-                            LogPrint("smessage", "Error removing bucket file %s.\n", ex.what());
+                            LogPrint("smsg", "Error removing bucket file %s.\n", ex.what());
                         };
                     } else
                     {
-                        LogPrint("smessage", "Path %s does not exist \n", fullPath.string().c_str());
+                        LogPrint("smsg", "Path %s does not exist \n", fullPath.string().c_str());
                     };
                     
                     // -- look for a wl file, it stores incoming messages when wallet is locked
                     fullPath = GetDataDir() / "smsgStore" / (fileName + "_01_wl.dat");
-                    if (fs::exists(fullPath))
+                    if (boost::filesystem::exists(fullPath))
                     {
-                        try { fs::remove(fullPath);
-                        } catch (const fs::filesystem_error& ex)
+                        try { boost::filesystem::remove(fullPath);
+                        } catch (const boost::filesystem::filesystem_error& ex)
                         {
-                            LogPrint("smessage", "Error removing wallet locked file %s.\n", ex.what());
+                            LogPrint("smsg", "Error removing wallet locked file %s.\n", ex.what());
                         };
                     };
 
-                    smsgBuckets.erase(it++);
+                    DigitalNote::SMSG::ext_buckets.erase(it++);
                 } else
                 {
                     if (it->second.nLockCount > 0) // -- tick down nLockCount, so will eventually expire if peer never sends data
@@ -655,7 +168,7 @@ void ThreadSecureMsg()
                     ++it;
                 }
             };
-        } // cs_smsg
+        } // DigitalNote::SMSG::ext_cs
         
         for (std::vector<std::pair<int64_t, NodeId> >::iterator it(vTimedOutLocks.begin()); it != vTimedOutLocks.end(); it++)
         {
@@ -663,7 +176,7 @@ void ThreadSecureMsg()
             uint32_t fExists = 0;
 
             if (fDebugSmsg)
-                LogPrint("smessage", "Lock on bucket %d for peer %d timed out.\n", it->first, nPeerId);
+                LogPrint("smsg", "Lock on bucket %d for peer %d timed out.\n", it->first, nPeerId);
 
             // -- look through the nodes for the peer that locked this bucket
             
@@ -687,38 +200,38 @@ void ThreadSecureMsg()
                     pnode->PushMessage("smsgIgnore", vchData);
 
                     if (fDebugSmsg)
-                        LogPrint("smessage", "This node will ignore peer %d until %d.\n", nPeerId, ignoreUntil);
+                        LogPrint("smsg", "This node will ignore peer %d until %d.\n", nPeerId, ignoreUntil);
                     break;
                 };
             } // cs_vNodes
 
             if(fDebugSmsg)
-                LogPrint("smessage", "smessage: ignoring - looked peer %d, status on search %u\n", nPeerId, fExists);
+                LogPrint("smsg", "smsg: ignoring - looked peer %d, status on search %u\n", nPeerId, fExists);
         };
         
         MilliSleep(SMSG_THREAD_DELAY * 1000); //  // check every SMSG_THREAD_DELAY seconds
     };
 };
 
-void ThreadSecureMsgPow()
+void Thread_Pow()
 {
     // -- proof of work thread
 
     int rv;
-    SecMsgStored smsgStored;
+    DigitalNote::SMSG::Stored smsgStored;
 
     std::string sPrefix("qm");
     uint8_t chKey[18];
 
 
-    while (fSecMsgEnabled)
+    while (DigitalNote::SMSG::ext_enabled)
     {
-        // -- sleep at end, then fSecMsgEnabled is tested on wake
+        // -- sleep at end, then DigitalNote::SMSG::ext_enabled is tested on wake
 
-        SecMsgDB dbOutbox;
+        DigitalNote::SMSG::DB dbOutbox;
         leveldb::Iterator* it;
         {
-            LOCK(cs_smsgDB);
+            LOCK(DigitalNote::SMSG::ext_cs_db);
 
             if (!dbOutbox.Open("cr+"))
                 continue;
@@ -726,55 +239,55 @@ void ThreadSecureMsgPow()
             // -- fifo (smallest key first)
             it = dbOutbox.pdb->NewIterator(leveldb::ReadOptions());
         }
-        // -- break up lock, SecureMsgSetHash will take long
+        // -- break up lock, DigitalNote::SMSG::SetHash will take long
 
         for (;;)
         {
             {
-                LOCK(cs_smsgDB);
+                LOCK(DigitalNote::SMSG::ext_cs_db);
                 if (!dbOutbox.NextSmesg(it, sPrefix, chKey, smsgStored))
                     break;
             }
 
             uint8_t* pHeader = &smsgStored.vchMessage[0];
             uint8_t* pPayload = &smsgStored.vchMessage[SMSG_HDR_LEN];
-            SecureMessage* psmsg = (SecureMessage*) pHeader;
+            DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) pHeader;
 
             // -- do proof of work
-            rv = SecureMsgSetHash(pHeader, pPayload, psmsg->nPayload);
+            rv = DigitalNote::SMSG::SetHash(pHeader, pPayload, psmsg->nPayload);
             if (rv == 2)
                 break; // leave message in db, if terminated due to shutdown
 
             // -- message is removed here, no matter what
             {
-                LOCK(cs_smsgDB);
+                LOCK(DigitalNote::SMSG::ext_cs_db);
                 dbOutbox.EraseSmesg(chKey);
             }
             if (rv != 0)
             {
-                LogPrint("smessage", "SecMsgPow: Could not get proof of work hash, message removed.\n");
+                LogPrint("smsg", "SecMsgPow: Could not get proof of work hash, message removed.\n");
                 continue;
             };
 
             // -- add to message store
             {
-                LOCK(cs_smsg);
-                if (SecureMsgStore(pHeader, pPayload, psmsg->nPayload, true) != 0)
+                LOCK(DigitalNote::SMSG::ext_cs);
+                if (DigitalNote::SMSG::Store(pHeader, pPayload, psmsg->nPayload, true) != 0)
                 {
-                    LogPrint("smessage", "SecMsgPow: Could not place message in buckets, message removed.\n");
+                    LogPrint("smsg", "SecMsgPow: Could not place message in buckets, message removed.\n");
                     continue;
                 };
             }
 
             // -- test if message was sent to self
-            if (SecureMsgScanMessage(pHeader, pPayload, psmsg->nPayload, true) != 0)
+            if (DigitalNote::SMSG::ScanMessage(pHeader, pPayload, psmsg->nPayload, true) != 0)
             {
                 // message recipient is not this node (or failed)
             };
         };
 
         {
-            LOCK(cs_smsg);
+            LOCK(DigitalNote::SMSG::ext_cs);
             delete it;
         }
 
@@ -783,36 +296,169 @@ void ThreadSecureMsgPow()
     };
 };
 
-int SecureMsgBuildBucketSet()
+static int _InsertAddress(CKeyID& hashKey, CPubKey& pubKey, DigitalNote::SMSG::DB& addrpkdb)
+{
+    /* insert key hash and public key to addressdb
+
+        should have LOCK(DigitalNote::SMSG::ext_cs) where db is opened
+
+        returns
+            0 success
+            1 error
+            4 address is already in db
+    */
+
+
+    if (addrpkdb.ExistsPK(hashKey))
+    {
+        //LogPrint("smsg", "DB already contains public key for address.\n");
+        CPubKey cpkCheck;
+        if (!addrpkdb.ReadPK(hashKey, cpkCheck))
+        {
+            LogPrint("smsg", "addrpkdb.Read failed.\n");
+        } else
+        {
+            if (cpkCheck != pubKey)
+                LogPrint("smsg", "DB already contains existing public key that does not match .\n");
+        };
+        return 4;
+    };
+
+    if (!addrpkdb.WritePK(hashKey, pubKey))
+    {
+        LogPrint("smsg", "Write pair failed.\n");
+        return 1;
+    };
+
+    return 0;
+};
+
+static bool _ScanBlock(CBlock& block, CTxDB& txdb, DigitalNote::SMSG::DB& addrpkdb,
+    uint32_t& nTransactions, uint32_t& nElements, uint32_t& nPubkeys, uint32_t& nDuplicates)
+{
+    AssertLockHeld(DigitalNote::SMSG::ext_cs_db);
+    
+    valtype vch;
+    opcodetype opcode;
+    
+    // -- only scan inputs of standard txns and coinstakes
+    
+    BOOST_FOREACH(CTransaction& tx, block.vtx)
+    {
+    std::string sReason;
+        // - harvest public keys from coinstake txns
+        if (tx.IsCoinStake())
+        {
+            const CTxOut& txout = tx.vout[1];
+            CScript::const_iterator pc = txout.scriptPubKey.begin();
+            while (pc < txout.scriptPubKey.end())
+            {
+                if (!txout.scriptPubKey.GetOp(pc, opcode, vch))
+                    break;
+                
+                if (vch.size() == 33) // pubkey
+                {
+                    CPubKey pubKey(vch);
+                    
+                    if (!pubKey.IsValid()
+                        || !pubKey.IsCompressed())
+                    {
+                        LogPrint("smsg", "Public key is invalid %s.\n", HexStr(pubKey).c_str());
+                        continue;
+                    };
+                    
+                    CKeyID addrKey = pubKey.GetID();
+                    switch (DigitalNote::SMSG::_InsertAddress(addrKey, pubKey, addrpkdb))
+                    {
+                        case 0: nPubkeys++; break;      // added key
+                        case 4: nDuplicates++; break;   // duplicate key
+                    }
+                    break;
+                };
+            };
+            nElements++;
+        } else
+        if (IsStandardTx(tx, sReason))
+        {
+            for (uint32_t i = 0; i < tx.vin.size(); i++)
+            {
+                CScript *script = &tx.vin[i].scriptSig;
+                CScript::const_iterator pc = script->begin();
+                CScript::const_iterator pend = script->end();
+
+                uint256 prevoutHash;
+                CKey key;
+
+                while (pc < pend)
+                {
+                    if (!script->GetOp(pc, opcode, vch))
+                        break;
+                    // - opcode is the length of the following data, compressed public key is always 33
+                    if (opcode == 33)
+                    {
+                        CPubKey pubKey(vch);
+                        
+                        if (!pubKey.IsValid()
+                            || !pubKey.IsCompressed())
+                        {
+                            LogPrint("smsg", "Public key is invalid %s.\n", HexStr(pubKey).c_str());
+                            continue;
+                        };
+                        
+                        CKeyID addrKey = pubKey.GetID();
+                        switch (DigitalNote::SMSG::_InsertAddress(addrKey, pubKey, addrpkdb))
+                        {
+                            case 0: nPubkeys++; break;      // added key
+                            case 4: nDuplicates++; break;   // duplicate key
+                        }
+                        break;
+                    };
+
+                    //LogPrint("smsg", "opcode %d, %s, value %s.\n", opcode, GetOpName(opcode), ValueString(vch).c_str());
+                };
+                nElements++;
+            };
+        };
+        nTransactions++;
+
+        if (nTransactions % 10000 == 0) // for ScanChainForPublicKeys
+        {
+            LogPrint("smsg", "Scanning transaction no. %u.\n", nTransactions);
+        };
+    };
+    return true;
+};
+
+int BuildBucketSet()
 {
     /*
         Build the bucket set by scanning the files in the smsgStore dir.
 
-        smsgBuckets should be empty
+        DigitalNote::SMSG::ext_buckets should be empty
     */
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgBuildBucketSet()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::BuildBucketSet()\n");
 
     int64_t  now            = GetTime();
     uint32_t nFiles         = 0;
     uint32_t nMessages      = 0;
 
-    fs::path pathSmsgDir = GetDataDir() / "smsgStore";
-    fs::directory_iterator itend;
+    boost::filesystem::path pathSmsgDir = GetDataDir() / "smsgStore";
+    boost::filesystem::directory_iterator itend;
 
 
-    if (!fs::exists(pathSmsgDir)
-        || !fs::is_directory(pathSmsgDir))
+    if (!boost::filesystem::exists(pathSmsgDir)
+        || !boost::filesystem::is_directory(pathSmsgDir))
     {
-        LogPrint("smessage", "Message store directory does not exist.\n");
+        LogPrint("smsg", "Message store directory does not exist.\n");
         return 0; // not an error
     }
 
 
-    for (fs::directory_iterator itd(pathSmsgDir) ; itd != itend ; ++itd)
+    for (boost::filesystem::directory_iterator itd(pathSmsgDir) ; itd != itend ; ++itd)
     {
-        if (!fs::is_regular_file(itd->status()))
+        if (!boost::filesystem::is_regular_file(itd->status()))
             continue;
 
         std::string fileType = (*itd).path().extension().string();
@@ -824,7 +470,7 @@ int SecureMsgBuildBucketSet()
 
 
         if (fDebugSmsg)
-            LogPrint("smessage", "Processing file: %s.\n", fileName.c_str());
+            LogPrint("smsg", "Processing file: %s.\n", fileName.c_str());
 
         nFiles++;
 
@@ -840,12 +486,12 @@ int SecureMsgBuildBucketSet()
 
         if (fileTime < now - SMSG_RETENTION)
         {
-            LogPrint("smessage", "Dropping file %s, expired.\n", fileName.c_str());
+            LogPrint("smsg", "Dropping file %s, expired.\n", fileName.c_str());
             try {
-                fs::remove((*itd).path());
-            } catch (const fs::filesystem_error& ex)
+                boost::filesystem::remove((*itd).path());
+            } catch (const boost::filesystem::filesystem_error& ex)
             {
-                LogPrint("smessage", "Error removing bucket file %s, %s.\n", fileName.c_str(), ex.what());
+                LogPrint("smsg", "Error removing bucket file %s, %s.\n", fileName.c_str(), ex.what());
             };
             continue;
         };
@@ -853,39 +499,39 @@ int SecureMsgBuildBucketSet()
         if (boost::algorithm::ends_with(fileName, "_wl.dat"))
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "Skipping wallet locked file: %s.\n", fileName.c_str());
+                LogPrint("smsg", "Skipping wallet locked file: %s.\n", fileName.c_str());
             continue;
         };
 
         size_t nTokenSetSize = 0;
         SecureMessage smsg;
         {
-            LOCK(cs_smsg);
+            LOCK(DigitalNote::SMSG::ext_cs);
             
-            std::set<SecMsgToken>& tokenSet = smsgBuckets[fileTime].setTokens;
+            std::set<DigitalNote::SMSG::Token>& tokenSet = DigitalNote::SMSG::ext_buckets[fileTime].setTokens;
             
             FILE *fp;
 
             if (!(fp = fopen((*itd).path().string().c_str(), "rb")))
             {
-                LogPrint("smessage", "Error opening file: %s\n", strerror(errno));
+                LogPrint("smsg", "Error opening file: %s\n", strerror(errno));
                 continue;
             };
 
             for (;;)
             {
                 long int ofs = ftell(fp);
-                SecMsgToken token;
+                DigitalNote::SMSG::Token token;
                 token.offset = ofs;
                 errno = 0;
                 if (fread(&smsg.hash[0], sizeof(uint8_t), SMSG_HDR_LEN, fp) != (size_t)SMSG_HDR_LEN)
                 {
                     if (errno != 0)
                     {
-                        LogPrint("smessage", "fread header failed: %s\n", strerror(errno));
+                        LogPrint("smsg", "fread header failed: %s\n", strerror(errno));
                     } else
                     {
-                        //LogPrint("smessage", "End of file.\n");
+                        //LogPrint("smsg", "End of file.\n");
                     };
                     break;
                 };
@@ -896,13 +542,13 @@ int SecureMsgBuildBucketSet()
 
                 if (fread(token.sample, sizeof(uint8_t), 8, fp) != 8)
                 {
-                    LogPrint("smessage", "fread data failed: %s\n", strerror(errno));
+                    LogPrint("smsg", "fread data failed: %s\n", strerror(errno));
                     break;
                 };
 
                 if (fseek(fp, smsg.nPayload-8, SEEK_CUR) != 0)
                 {
-                    LogPrint("smessage", "fseek, strerror: %s.\n", strerror(errno));
+                    LogPrint("smsg", "fseek, strerror: %s.\n", strerror(errno));
                     break;
                 };
 
@@ -911,25 +557,25 @@ int SecureMsgBuildBucketSet()
 
             fclose(fp);
             
-            smsgBuckets[fileTime].hashBucket();
+            DigitalNote::SMSG::ext_buckets[fileTime].hashBucket();
             
             nTokenSetSize = tokenSet.size();
-        } // LOCK(cs_smsg);
+        } // LOCK(DigitalNote::SMSG::ext_cs);
         
         nMessages += nTokenSetSize;
         if (fDebugSmsg)
-            LogPrint("smessage", "Bucket %d contains %u messages.\n", fileTime, nTokenSetSize);
+            LogPrint("smsg", "Bucket %d contains %u messages.\n", fileTime, nTokenSetSize);
     };
 
-    LogPrint("smessage", "Processed %u files, loaded %u buckets containing %u messages.\n", nFiles, smsgBuckets.size(), nMessages);
+    LogPrint("smsg", "Processed %u files, loaded %u buckets containing %u messages.\n", nFiles, DigitalNote::SMSG::ext_buckets.size(), nMessages);
 
     return 0;
 };
 
-int SecureMsgAddWalletAddresses()
+int AddWalletAddresses()
 {
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgAddWalletAddresses()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::AddWalletAddresses()\n");
 
     std::string sAnonPrefix("ao ");
 
@@ -954,7 +600,7 @@ int SecureMsgAddWalletAddresses()
         address = coinAddress.ToString();
 
         bool fExists        = 0;
-        for (std::vector<SecMsgAddress>::iterator it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+        for (std::vector<DigitalNote::SMSG::Address>::iterator it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (address != it->sAddress)
                 continue;
@@ -968,33 +614,32 @@ int SecureMsgAddWalletAddresses()
         bool recvEnabled    = 1;
         bool recvAnon       = 1;
 
-        smsgAddresses.push_back(SecMsgAddress(address, recvEnabled, recvAnon));
+        DigitalNote::SMSG::ext_addresses.push_back(DigitalNote::SMSG::Address(address, recvEnabled, recvAnon));
         nAdded++;
     };
 
     if (fDebugSmsg)
-        LogPrint("smessage", "Added %u addresses to whitelist.\n", nAdded);
+        LogPrint("smsg", "Added %u addresses to whitelist.\n", nAdded);
 
     return 0;
 };
 
-
-int SecureMsgReadIni()
+int ReadIni()
 {
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         return false;
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgReadIni()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::ReadIni()\n");
 
-    fs::path fullpath = GetDataDir() / "smsg.ini";
+    boost::filesystem::path fullpath = GetDataDir() / "smsg.ini";
 
 
     FILE *fp;
     errno = 0;
     if (!(fp = fopen(fullpath.string().c_str(), "r")))
     {
-        LogPrint("smessage", "Error opening file: %s\n", strerror(errno));
+        LogPrint("smsg", "Error opening file: %s\n", strerror(errno));
         return 1;
     };
 
@@ -1020,85 +665,85 @@ int SecureMsgReadIni()
 
         if (strcmp(pName, "newAddressRecv") == 0)
         {
-            smsgOptions.fNewAddressRecv = (strcmp(pValue, "true") == 0) ? true : false;
+            DigitalNote::SMSG::ext_options.fNewAddressRecv = (strcmp(pValue, "true") == 0) ? true : false;
         } else
         if (strcmp(pName, "newAddressAnon") == 0)
         {
-            smsgOptions.fNewAddressAnon = (strcmp(pValue, "true") == 0) ? true : false;
+            DigitalNote::SMSG::ext_options.fNewAddressAnon = (strcmp(pValue, "true") == 0) ? true : false;
         } else
         if (strcmp(pName, "scanIncoming") == 0)
         {
-            smsgOptions.fScanIncoming = (strcmp(pValue, "true") == 0) ? true : false;
+            DigitalNote::SMSG::ext_options.fScanIncoming = (strcmp(pValue, "true") == 0) ? true : false;
         } else
         if (strcmp(pName, "key") == 0)
         {
             int rv = sscanf(pValue, "%64[^|]|%d|%d", cAddress, &addrRecv, &addrRecvAnon);
             if (rv == 3)
             {
-                smsgAddresses.push_back(SecMsgAddress(std::string(cAddress), addrRecv, addrRecvAnon));
+                DigitalNote::SMSG::ext_addresses.push_back(DigitalNote::SMSG::Address(std::string(cAddress), addrRecv, addrRecvAnon));
             } else
             {
-                LogPrint("smessage", "Could not parse key line %s, rv %d.\n", pValue, rv);
+                LogPrint("smsg", "Could not parse key line %s, rv %d.\n", pValue, rv);
             }
         } else
         {
-            LogPrint("smessage", "Unknown setting name: '%s'.", pName);
+            LogPrint("smsg", "Unknown setting name: '%s'.", pName);
         };
     };
 
-    LogPrint("smessage", "Loaded %u addresses.\n", smsgAddresses.size());
+    LogPrint("smsg", "Loaded %u addresses.\n", DigitalNote::SMSG::ext_addresses.size());
 
     fclose(fp);
 
     return 0;
 };
 
-int SecureMsgWriteIni()
+int WriteIni()
 {
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         return false;
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgWriteIni()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::WriteIni()\n");
 
-    fs::path fullpath = GetDataDir() / "smsg.ini~";
+    boost::filesystem::path fullpath = GetDataDir() / "smsg.ini~";
 
     FILE *fp;
     errno = 0;
     if (!(fp = fopen(fullpath.string().c_str(), "w")))
     {
-        LogPrint("smessage", "Error opening file: %s\n", strerror(errno));
+        LogPrint("smsg", "Error opening file: %s\n", strerror(errno));
         return 1;
     };
 
     if (fwrite("[Options]\n", sizeof(char), 10, fp) != 10)
     {
-        LogPrint("smessage", "fwrite error: %s\n", strerror(errno));
+        LogPrint("smsg", "fwrite error: %s\n", strerror(errno));
         fclose(fp);
         return false;
     };
 
-    if (fprintf(fp, "newAddressRecv=%s\n", smsgOptions.fNewAddressRecv ? "true" : "false") < 0
-        || fprintf(fp, "newAddressAnon=%s\n", smsgOptions.fNewAddressAnon ? "true" : "false") < 0
-        || fprintf(fp, "scanIncoming=%s\n", smsgOptions.fScanIncoming ? "true" : "false") < 0)
+    if (fprintf(fp, "newAddressRecv=%s\n", DigitalNote::SMSG::ext_options.fNewAddressRecv ? "true" : "false") < 0
+        || fprintf(fp, "newAddressAnon=%s\n", DigitalNote::SMSG::ext_options.fNewAddressAnon ? "true" : "false") < 0
+        || fprintf(fp, "scanIncoming=%s\n", DigitalNote::SMSG::ext_options.fScanIncoming ? "true" : "false") < 0)
     {
-        LogPrint("smessage", "fprintf error: %s\n", strerror(errno));
+        LogPrint("smsg", "fprintf error: %s\n", strerror(errno));
         fclose(fp);
         return false;
     }
 
     if (fwrite("\n[Keys]\n", sizeof(char), 8, fp) != 8)
     {
-        LogPrint("smessage", "fwrite error: %s\n", strerror(errno));
+        LogPrint("smsg", "fwrite error: %s\n", strerror(errno));
         fclose(fp);
         return false;
     };
-    for (std::vector<SecMsgAddress>::iterator it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+    for (std::vector<DigitalNote::SMSG::Address>::iterator it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
     {
         errno = 0;
         if (fprintf(fp, "key=%s|%d|%d\n", it->sAddress.c_str(), it->fReceiveEnabled, it->fReceiveAnon) < 0)
         {
-            LogPrint("smessage", "fprintf error: %s\n", strerror(errno));
+            LogPrint("smsg", "fprintf error: %s\n", strerror(errno));
             continue;
         };
     };
@@ -1108,120 +753,119 @@ int SecureMsgWriteIni()
 
 
     try {
-        fs::path finalpath = GetDataDir() / "smsg.ini";
-        fs::rename(fullpath, finalpath);
-    } catch (const fs::filesystem_error& ex)
+        boost::filesystem::path finalpath = GetDataDir() / "smsg.ini";
+        boost::filesystem::rename(fullpath, finalpath);
+    } catch (const boost::filesystem::filesystem_error& ex)
     {
-        LogPrint("smessage", "Error renaming file %s, %s.\n", fullpath.string().c_str(), ex.what());
+        LogPrint("smsg", "Error renaming file %s, %s.\n", fullpath.string().c_str(), ex.what());
     };
     return 0;
 };
 
-
 /** called from AppInit2() in init.cpp */
-bool SecureMsgStart(bool fDontStart, bool fScanChain)
+bool Start(bool fDontStart, bool fScanChain)
 {
     if (fDontStart)
     {
-        LogPrint("smessage", "Secure messaging not started.\n");
+        LogPrint("smsg", "Secure messaging not started.\n");
         return false;
     };
 
-    LogPrint("smessage", "Secure messaging starting.\n");
+    LogPrint("smsg", "Secure messaging starting.\n");
 
-    fSecMsgEnabled = true;
+    DigitalNote::SMSG::ext_enabled = true;
 
-    if (SecureMsgReadIni() != 0)
-        LogPrint("smessage", "Failed to read smsg.ini\n");
+    if (DigitalNote::SMSG::ReadIni() != 0)
+        LogPrint("smsg", "Failed to read smsg.ini\n");
 
-    if (SecureMsgAddWalletAddresses() != 0)
-        LogPrint("smessage", "Failed to load addresses from wallet.\n");
+    if (DigitalNote::SMSG::AddWalletAddresses() != 0)
+        LogPrint("smsg", "Failed to load addresses from wallet.\n");
 
     if (fScanChain)
     {
-        SecureMsgScanBlockChain();
+        DigitalNote::SMSG::ScanBlockChain();
     };
 
-    if (SecureMsgBuildBucketSet() != 0)
+    if (DigitalNote::SMSG::BuildBucketSet() != 0)
     {
-        LogPrint("smessage", "SecureMsg could not load bucket sets, secure messaging disabled.\n");
-        fSecMsgEnabled = false;
+        LogPrint("smsg", "SecureMsg could not load bucket sets, secure messaging disabled.\n");
+        DigitalNote::SMSG::ext_enabled = false;
         return false;
     };
     
-    threadGroupSmsg.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg", &ThreadSecureMsg));
-    threadGroupSmsg.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg-pow", &ThreadSecureMsgPow));
+    DigitalNote::SMSG::ext_thread_group.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg", &DigitalNote::SMSG::Thread));
+    DigitalNote::SMSG::ext_thread_group.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg-pow", &DigitalNote::SMSG::Thread_Pow));
     
     return true;
 };
 
-bool SecureMsgShutdown()
+bool Shutdown()
 {
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         return false;
 
-    LogPrint("smessage", "Stopping secure messaging.\n");
+    LogPrint("smsg", "Stopping secure messaging.\n");
 
 
-    if (SecureMsgWriteIni() != 0)
-        LogPrint("smessage", "Failed to save smsg.ini\n");
+    if (DigitalNote::SMSG::WriteIni() != 0)
+        LogPrint("smsg", "Failed to save smsg.ini\n");
 
-    fSecMsgEnabled = false;
+    DigitalNote::SMSG::ext_enabled = false;
     
-    threadGroupSmsg.interrupt_all();
-    threadGroupSmsg.join_all();
+    DigitalNote::SMSG::ext_thread_group.interrupt_all();
+    DigitalNote::SMSG::ext_thread_group.join_all();
 
-    if (smsgDB)
+    if (DigitalNote::SMSG::ext_db)
     {
-        LOCK(cs_smsgDB);
-        delete smsgDB;
-        smsgDB = NULL;
+        LOCK(DigitalNote::SMSG::ext_cs_db);
+        delete DigitalNote::SMSG::ext_db;
+        DigitalNote::SMSG::ext_db = NULL;
     };
 
     return true;
 };
 
-bool SecureMsgEnable()
+bool Enable()
 {
     // -- start secure messaging at runtime
-    if (fSecMsgEnabled)
+    if (DigitalNote::SMSG::ext_enabled)
     {
-        LogPrint("smessage", "SecureMsgEnable: secure messaging is already enabled.\n");
+        LogPrint("smsg", "DigitalNote::SMSG::Enable: secure messaging is already enabled.\n");
         return false;
     };
 
     {
-        LOCK(cs_smsg);
-        fSecMsgEnabled = true;
+        LOCK(DigitalNote::SMSG::ext_cs);
+        DigitalNote::SMSG::ext_enabled = true;
 
-        smsgAddresses.clear(); // should be empty already
-        if (SecureMsgReadIni() != 0)
-            LogPrint("smessage", "Failed to read smsg.ini\n");
+        DigitalNote::SMSG::ext_addresses.clear(); // should be empty already
+        if (DigitalNote::SMSG::ReadIni() != 0)
+            LogPrint("smsg", "Failed to read smsg.ini\n");
 
-        if (SecureMsgAddWalletAddresses() != 0)
-            LogPrint("smessage", "Failed to load addresses from wallet.\n");
+        if (DigitalNote::SMSG::AddWalletAddresses() != 0)
+            LogPrint("smsg", "Failed to load addresses from wallet.\n");
 
-        smsgBuckets.clear(); // should be empty already
+        DigitalNote::SMSG::ext_buckets.clear(); // should be empty already
 
-        if (SecureMsgBuildBucketSet() != 0)
+        if (DigitalNote::SMSG::BuildBucketSet() != 0)
         {
-            LogPrint("smessage", "SecureMsgEnable: could not load bucket sets, secure messaging disabled.\n");
-            fSecMsgEnabled = false;
+            LogPrint("smsg", "DigitalNote::SMSG::Enable: could not load bucket sets, secure messaging disabled.\n");
+            DigitalNote::SMSG::ext_enabled = false;
             return false;
         };
 
-    } // cs_smsg
+    } // DigitalNote::SMSG::ext_cs
     
     // -- start threads
-    threadGroupSmsg.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg", &ThreadSecureMsg));
-    threadGroupSmsg.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg-pow", &ThreadSecureMsgPow));
+    DigitalNote::SMSG::ext_thread_group.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg", &DigitalNote::SMSG::Thread));
+    DigitalNote::SMSG::ext_thread_group.create_thread(boost::bind(&TraceThread<void (*)()>, "smsg-pow", &DigitalNote::SMSG::Thread_Pow));
     
     /*
-    if (!NewThread(ThreadSecureMsg, NULL)
-        || !NewThread(ThreadSecureMsgPow, NULL))
+    if (!NewThread(DigitalNote::SMSG::Thread, NULL)
+        || !NewThread(DigitalNote::SMSG::Thread_Pow, NULL))
     {
-        LogPrint("smessage", "SecureMsgEnable could not start threads, secure messaging disabled.\n");
-        fSecMsgEnabled = false;
+        LogPrint("smsg", "DigitalNote::SMSG::Enable could not start threads, secure messaging disabled.\n");
+        DigitalNote::SMSG::ext_enabled = false;
         return false;
     };
     */
@@ -1234,36 +878,36 @@ bool SecureMsgEnable()
             pnode->PushMessage("smsgPong"); // Send pong as have missed initial ping sent by peer when it connected
         };
     } // cs_vNodes
-    LogPrint("smessage", "Secure messaging enabled.\n");
+    LogPrint("smsg", "Secure messaging enabled.\n");
     return true;
 };
 
-bool SecureMsgDisable()
+bool Disable()
 {
     // -- stop secure messaging at runtime
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
     {
-        LogPrint("smessage", "SecureMsgDisable: secure messaging is already disabled.\n");
+        LogPrint("smsg", "DigitalNote::SMSG::Disable: secure messaging is already disabled.\n");
         return false;
     };
     
     {
-        LOCK(cs_smsg);
-        fSecMsgEnabled = false;
+        LOCK(DigitalNote::SMSG::ext_cs);
+        DigitalNote::SMSG::ext_enabled = false;
         
-        threadGroupSmsg.interrupt_all();
-        threadGroupSmsg.join_all();
+        DigitalNote::SMSG::ext_thread_group.interrupt_all();
+        DigitalNote::SMSG::ext_thread_group.join_all();
         
-        // -- clear smsgBuckets
-        std::map<int64_t, SecMsgBucket>::iterator it;
-        it = smsgBuckets.begin();
-        for (it = smsgBuckets.begin(); it != smsgBuckets.end(); ++it)
+        // -- clear DigitalNote::SMSG::ext_buckets
+        std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it;
+        it = DigitalNote::SMSG::ext_buckets.begin();
+        for (it = DigitalNote::SMSG::ext_buckets.begin(); it != DigitalNote::SMSG::ext_buckets.end(); ++it)
         {
             it->second.setTokens.clear();
         };
-        smsgBuckets.clear();
-        smsgAddresses.clear();
-    } // cs_smsg
+        DigitalNote::SMSG::ext_buckets.clear();
+        DigitalNote::SMSG::ext_addresses.clear();
+    } // DigitalNote::SMSG::ext_cs
     
     // -- tell each smsg enabled peer that this node is disabling
     {
@@ -1279,27 +923,26 @@ bool SecureMsgDisable()
     } // cs_vNodes
 
 
-    if (SecureMsgWriteIni() != 0)
-        LogPrint("smessage", "Failed to save smsg.ini\n");
+    if (DigitalNote::SMSG::WriteIni() != 0)
+        LogPrint("smsg", "Failed to save smsg.ini\n");
 
     // -- allow time for threads to stop
     MilliSleep(3000); // seconds
     // TODO be certain that threads have stopped
 
-    if (smsgDB)
+    if (DigitalNote::SMSG::ext_db)
     {
-        LOCK(cs_smsgDB);
-        delete smsgDB;
-        smsgDB = NULL;
+        LOCK(DigitalNote::SMSG::ext_cs_db);
+        delete DigitalNote::SMSG::ext_db;
+        DigitalNote::SMSG::ext_db = NULL;
     };
 
 
-    LogPrint("smessage", "Secure messaging disabled.\n");
+    LogPrint("smsg", "Secure messaging disabled.\n");
     return true;
 };
 
-
-bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStream& vRecv)
+bool ReceiveData(CNode* pfrom, const std::string &strCommand, CDataStream& vRecv)
 {
     /*
         Called from ProcessMessage
@@ -1307,7 +950,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
     */
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgReceiveData() %s %s.\n", pfrom->addrName.c_str(), strCommand.c_str());
+        LogPrint("smsg", "DigitalNote::SMSG::ReceiveData() %s %s.\n", pfrom->addrName.c_str(), strCommand.c_str());
     
     
     
@@ -1330,30 +973,30 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             if (now < pfrom->smsgData.ignoreUntil)
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Node is ignoring peer %d until %d.\n", pfrom->id, pfrom->smsgData.ignoreUntil);
+                    LogPrint("smsg", "Node is ignoring peer %d until %d.\n", pfrom->id, pfrom->smsgData.ignoreUntil);
                 return false;
             };
         }
         
-        uint32_t nBuckets       = smsgBuckets.size();
+        uint32_t nBuckets       = DigitalNote::SMSG::ext_buckets.size();
         uint32_t nLocked        = 0;    // no. of locked buckets on this node
         uint32_t nInvBuckets;           // no. of bucket headers sent by peer in smsgInv
         memcpy(&nInvBuckets, &vchData[0], 4);
         if (fDebugSmsg)
-            LogPrint("smessage", "Remote node sent %d bucket headers, this has %d.\n", nInvBuckets, nBuckets);
+            LogPrint("smsg", "Remote node sent %d bucket headers, this has %d.\n", nInvBuckets, nBuckets);
 
 
         // -- Check no of buckets:
         if (nInvBuckets > (SMSG_RETENTION / SMSG_BUCKET_LEN) + 1) // +1 for some leeway
         {
-            LogPrint("smessage", "Peer sent more bucket headers than possible %u, %u.\n", nInvBuckets, (SMSG_RETENTION / SMSG_BUCKET_LEN));
+            LogPrint("smsg", "Peer sent more bucket headers than possible %u, %u.\n", nInvBuckets, (SMSG_RETENTION / SMSG_BUCKET_LEN));
             Misbehaving(pfrom->GetId(), 1);
             return false;
         };
 
         if (vchData.size() < 4 + nInvBuckets*16)
         {
-            LogPrint("smessage", "Remote node did not send enough data.\n");
+            LogPrint("smsg", "Remote node did not send enough data.\n");
             Misbehaving(pfrom->GetId(), 1);
             return false;
         };
@@ -1379,7 +1022,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             if (time < now - SMSG_RETENTION)
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Not interested in peer bucket %d, has expired.\n", time);
+                    LogPrint("smsg", "Not interested in peer bucket %d, has expired.\n", time);
 
                 if (time < now - SMSG_RETENTION - SMSG_TIME_LEEWAY)
                     Misbehaving(pfrom->GetId(), 1);
@@ -1388,7 +1031,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             if (time > now + SMSG_TIME_LEEWAY)
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Not interested in peer bucket %d, in the future.\n", time);
+                    LogPrint("smsg", "Not interested in peer bucket %d, in the future.\n", time);
                 Misbehaving(pfrom->GetId(), 1);
                 continue;
             };
@@ -1396,33 +1039,38 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             if (ncontent < 1)
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Peer sent empty bucket, ignore %d %u %u.\n", time, ncontent, hash);
+                    LogPrint("smsg", "Peer sent empty bucket, ignore %d %u %u.\n", time, ncontent, hash);
                 continue;
             };
 
             if (fDebugSmsg)
             {
-                LogPrint("smessage", "peer bucket %d %u %u.\n", time, ncontent, hash);
-                LogPrint("smessage", "this bucket %d %u %u.\n", time, smsgBuckets[time].setTokens.size(), smsgBuckets[time].hash);
+                LogPrint("smsg", "peer bucket %d %u %u.\n", time, ncontent, hash);
+                LogPrint("smsg", "this bucket %d %u %u.\n", time, DigitalNote::SMSG::ext_buckets[time].setTokens.size(), DigitalNote::SMSG::ext_buckets[time].hash);
             };
             {
-            LOCK(cs_smsg);
-                if (smsgBuckets[time].nLockCount > 0)
+            LOCK(DigitalNote::SMSG::ext_cs);
+                if (DigitalNote::SMSG::ext_buckets[time].nLockCount > 0)
                 {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Bucket is locked %u, waiting for peer %u to send data.\n", smsgBuckets[time].nLockCount, smsgBuckets[time].nLockPeerId);
+                        LogPrint(
+							"smsg",
+							"Bucket is locked %u, waiting for peer %u to send data.\n",
+							DigitalNote::SMSG::ext_buckets[time].nLockCount,
+							DigitalNote::SMSG::ext_buckets[time].nLockPeerId
+						);
                     nLocked++;
                     continue;
                 };
 
                 // -- if this node has more than the peer node, peer node will pull from this
                 //    if then peer node has more this node will pull fom peer
-                if (smsgBuckets[time].setTokens.size() < ncontent
-                    || (smsgBuckets[time].setTokens.size() == ncontent
-                        && smsgBuckets[time].hash != hash)) // if same amount in buckets check hash
+                if (DigitalNote::SMSG::ext_buckets[time].setTokens.size() < ncontent
+                    || (DigitalNote::SMSG::ext_buckets[time].setTokens.size() == ncontent
+                        && DigitalNote::SMSG::ext_buckets[time].hash != hash)) // if same amount in buckets check hash
                 {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Requesting contents of bucket %d.\n", time);
+                        LogPrint("smsg", "Requesting contents of bucket %d.\n", time);
 
                     uint32_t sz = vchDataOut.size();
                     vchDataOut.resize(sz + 8);
@@ -1430,7 +1078,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
 
                     nShowBuckets++;
                 };
-            } // LOCK(cs_smsg);
+            } // LOCK(DigitalNote::SMSG::ext_cs);
         };
 
         // TODO: should include hash?
@@ -1447,7 +1095,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             memcpy(&vchDataOut[0], &now, 8);
             pfrom->PushMessage("smsgMatch", vchDataOut);
             if (fDebugSmsg)
-                LogPrint("smessage", "Sending smsgMatch, %d.\n", now);
+                LogPrint("smsg", "Sending smsgMatch, %d.\n", now);
         };
 
     } else
@@ -1466,10 +1114,10 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             return false;
 
         if (fDebugSmsg)
-            LogPrint("smessage", "smsgShow: peer wants to see content of %u buckets.\n", nBuckets);
+            LogPrint("smsg", "smsgShow: peer wants to see content of %u buckets.\n", nBuckets);
         
-        std::map<int64_t, SecMsgBucket>::iterator itb;
-        std::set<SecMsgToken>::iterator it;
+        std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator itb;
+        std::set<DigitalNote::SMSG::Token>::iterator it;
 
         std::vector<uint8_t> vchDataOut;
         int64_t time;
@@ -1479,20 +1127,20 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             memcpy(&time, pIn, 8);
             
             {
-                LOCK(cs_smsg);
-                itb = smsgBuckets.find(time);
-                if (itb == smsgBuckets.end())
+                LOCK(DigitalNote::SMSG::ext_cs);
+                itb = DigitalNote::SMSG::ext_buckets.find(time);
+                if (itb == DigitalNote::SMSG::ext_buckets.end())
                 {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Don't have bucket %d.\n", time);
+                        LogPrint("smsg", "Don't have bucket %d.\n", time);
                     continue;
                 };
 
-                std::set<SecMsgToken>& tokenSet = (*itb).second.setTokens;
+                std::set<DigitalNote::SMSG::Token>& tokenSet = (*itb).second.setTokens;
 
                 try { vchDataOut.resize(8 + 16 * tokenSet.size()); } catch (std::exception& e)
                 {
-                    LogPrint("smessage", "vchDataOut.resize %u threw: %s.\n", 8 + 16 * tokenSet.size(), e.what());
+                    LogPrint("smsg", "vchDataOut.resize %u threw: %s.\n", 8 + 16 * tokenSet.size(), e.what());
                     continue;
                 };
                 memcpy(&vchDataOut[0], &time, 8);
@@ -1530,13 +1178,13 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         if (time < now - SMSG_RETENTION)
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "Not interested in peer bucket %d, has expired.\n", time);
+                LogPrint("smsg", "Not interested in peer bucket %d, has expired.\n", time);
             return false;
         };
         if (time > now + SMSG_TIME_LEEWAY)
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "Not interested in peer bucket %d, in the future.\n", time);
+                LogPrint("smsg", "Not interested in peer bucket %d, in the future.\n", time);
             Misbehaving(pfrom->GetId(), 1);
             return false;
         };
@@ -1544,23 +1192,23 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         std::vector<uint8_t> vchDataOut;
         
         {
-            LOCK(cs_smsg);
-            if (smsgBuckets[time].nLockCount > 0)
+            LOCK(DigitalNote::SMSG::ext_cs);
+            if (DigitalNote::SMSG::ext_buckets[time].nLockCount > 0)
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Bucket %d lock count %u, waiting for message data from peer %u.\n", time, smsgBuckets[time].nLockCount, smsgBuckets[time].nLockPeerId);
+                    LogPrint("smsg", "Bucket %d lock count %u, waiting for message data from peer %u.\n", time, DigitalNote::SMSG::ext_buckets[time].nLockCount, DigitalNote::SMSG::ext_buckets[time].nLockPeerId);
                 return false;
             };
 
             if (fDebugSmsg)
-                LogPrint("smessage", "Sifting through bucket %d.\n", time);
+                LogPrint("smsg", "Sifting through bucket %d.\n", time);
             
             vchDataOut.resize(8);
             memcpy(&vchDataOut[0], &vchData[0], 8);
 
-            std::set<SecMsgToken>& tokenSet = smsgBuckets[time].setTokens;
-            std::set<SecMsgToken>::iterator it;
-            SecMsgToken token;
+            std::set<DigitalNote::SMSG::Token>& tokenSet = DigitalNote::SMSG::ext_buckets[time].setTokens;
+            std::set<DigitalNote::SMSG::Token>::iterator it;
+            DigitalNote::SMSG::Token token;
             uint8_t* p = &vchData[8];
 
             for (int i = 0; i < n; ++i)
@@ -1575,7 +1223,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
                     try {
                         vchDataOut.resize(nd + 16);
                     } catch (std::exception& e) {
-                        LogPrint("smessage", "vchDataOut.resize %d threw: %s.\n", nd + 16, e.what());
+                        LogPrint("smsg", "vchDataOut.resize %d threw: %s.\n", nd + 16, e.what());
                         continue;
                     };
 
@@ -1590,13 +1238,13 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         {
             if (fDebugSmsg)
             {
-                LogPrint("smessage", "Asking peer for %u messages.\n", (vchDataOut.size() - 8) / 16);
-                LogPrint("smessage", "Locking bucket %u for peer %d.\n", time, pfrom->id);
+                LogPrint("smsg", "Asking peer for %u messages.\n", (vchDataOut.size() - 8) / 16);
+                LogPrint("smsg", "Locking bucket %u for peer %d.\n", time, pfrom->id);
             };
             {
-                LOCK(cs_smsg);
-                smsgBuckets[time].nLockCount   = 3; // lock this bucket for at most 3 * SMSG_THREAD_DELAY seconds, unset when peer sends smsgMsg
-                smsgBuckets[time].nLockPeerId  = pfrom->id;
+                LOCK(DigitalNote::SMSG::ext_cs);
+                DigitalNote::SMSG::ext_buckets[time].nLockCount   = 3; // lock this bucket for at most 3 * SMSG_THREAD_DELAY seconds, unset when peer sends smsgMsg
+                DigitalNote::SMSG::ext_buckets[time].nLockPeerId  = pfrom->id;
             }
             pfrom->PushMessage("smsgWant", vchDataOut);
         };
@@ -1621,21 +1269,21 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         memcpy(&time, &vchData[0], 8);
         
         
-        std::map<int64_t, SecMsgBucket>::iterator itb;
+        std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator itb;
         
         {
-            LOCK(cs_smsg);
-            itb = smsgBuckets.find(time);
-            if (itb == smsgBuckets.end())
+            LOCK(DigitalNote::SMSG::ext_cs);
+            itb = DigitalNote::SMSG::ext_buckets.find(time);
+            if (itb == DigitalNote::SMSG::ext_buckets.end())
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Don't have bucket %d.\n", time);
+                    LogPrint("smsg", "Don't have bucket %d.\n", time);
                 return false;
             };
 
-            std::set<SecMsgToken>& tokenSet = itb->second.setTokens;
-            std::set<SecMsgToken>::iterator it;
-            SecMsgToken token;
+            std::set<DigitalNote::SMSG::Token>& tokenSet = itb->second.setTokens;
+            std::set<DigitalNote::SMSG::Token>::iterator it;
+            DigitalNote::SMSG::Token token;
             uint8_t* p = &vchData[8];
             for (int i = 0; i < n; ++i)
             {
@@ -1646,39 +1294,39 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
                 if (it == tokenSet.end())
                 {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Don't have wanted message %d.\n", token.timestamp);
+                        LogPrint("smsg", "Don't have wanted message %d.\n", token.timestamp);
                 } else
                 {
-                    //LogPrint("smessage", "Have message at %d.\n", it->offset); // DEBUG
+                    //LogPrint("smsg", "Have message at %d.\n", it->offset); // DEBUG
                     token.offset = it->offset;
-                    //LogPrint("smessage", "winb before SecureMsgRetrieve %d.\n", token.timestamp);
+                    //LogPrint("smsg", "winb before DigitalNote::SMSG::Retrieve %d.\n", token.timestamp);
 
-                    // -- place in vchOne so if SecureMsgRetrieve fails it won't corrupt vchBunch
-                    if (SecureMsgRetrieve(token, vchOne) == 0)
+                    // -- place in vchOne so if DigitalNote::SMSG::Retrieve fails it won't corrupt vchBunch
+                    if (DigitalNote::SMSG::Retrieve(token, vchOne) == 0)
                     {
                         nBunch++;
                         vchBunch.insert(vchBunch.end(), vchOne.begin(), vchOne.end()); // append
                     } else
                     {
-                        LogPrint("smessage", "SecureMsgRetrieve failed %d.\n", token.timestamp);
+                        LogPrint("smsg", "DigitalNote::SMSG::Retrieve failed %d.\n", token.timestamp);
                     };
 
                     if (nBunch >= 500
                         || vchBunch.size() >= 96000)
                     {
                         if (fDebugSmsg)
-                            LogPrint("smessage", "Break bunch %u, %u.\n", nBunch, vchBunch.size());
+                            LogPrint("smsg", "Break bunch %u, %u.\n", nBunch, vchBunch.size());
                         break; // end here, peer will send more want messages if needed.
                     };
                 };
                 p += 16;
             };
-        } // LOCK(cs_smsg);
+        } // LOCK(DigitalNote::SMSG::ext_cs);
         
         if (nBunch > 0)
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "Sending block of %u messages for bucket %d.\n", nBunch, time);
+                LogPrint("smsg", "Sending block of %u messages for bucket %d.\n", nBunch, time);
 
             memcpy(&vchBunch[0], &nBunch, 4);
             memcpy(&vchBunch[4], &time, 8);
@@ -1691,9 +1339,9 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         vRecv >> vchData;
 
         if (fDebugSmsg)
-            LogPrint("smessage", "smsgMsg vchData.size() %u.\n", vchData.size());
+            LogPrint("smsg", "smsgMsg vchData.size() %u.\n", vchData.size());
 
-        SecureMsgReceive(pfrom, vchData);
+        DigitalNote::SMSG::Receive(pfrom, vchData);
     } else
     if (strCommand == "smsgMatch")
     {
@@ -1703,7 +1351,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
 
         if (vchData.size() < 8)
         {
-            LogPrint("smessage", "smsgMatch, not enough data %u.\n", vchData.size());
+            LogPrint("smsg", "smsgMatch, not enough data %u.\n", vchData.size());
             Misbehaving(pfrom->GetId(), 1);
             return false;
         };
@@ -1714,9 +1362,9 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         int64_t now = GetTime();
         if (time > now + SMSG_TIME_LEEWAY)
         {
-            LogPrint("smessage", "Warning: Peer buckets matched in the future: %d.\nEither this node or the peer node has the incorrect time set.\n", time);
+            LogPrint("smsg", "Warning: Peer buckets matched in the future: %d.\nEither this node or the peer node has the incorrect time set.\n", time);
             if (fDebugSmsg)
-                LogPrint("smessage", "Peer match time set to now.\n");
+                LogPrint("smsg", "Peer match time set to now.\n");
             time = now;
         };
         
@@ -1725,7 +1373,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
             pfrom->smsgData.lastMatched = time;
         }
         if (fDebugSmsg)
-            LogPrint("smessage", "Peer buckets matched at %d.\n", time);
+            LogPrint("smsg", "Peer buckets matched at %d.\n", time);
 
     } else
     if (strCommand == "smsgPing")
@@ -1736,7 +1384,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
     if (strCommand == "smsgPong")
     {
         if (fDebugSmsg)
-             LogPrint("smessage", "Peer replied, secure messaging enabled.\n");
+             LogPrint("smsg", "Peer replied, secure messaging enabled.\n");
         
         {
             LOCK(pfrom->smsgData.cs_smsg_net);
@@ -1754,7 +1402,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         }
         
         if (fDebugSmsg)
-            LogPrint("smessage", "Peer %d has disabled secure messaging.\n", pfrom->id);
+            LogPrint("smsg", "Peer %d has disabled secure messaging.\n", pfrom->id);
 
     } else
     if (strCommand == "smsgIgnore")
@@ -1766,7 +1414,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
 
         if (vchData.size() < 8)
         {
-            LogPrint("smessage", "smsgIgnore, not enough data %u.\n", vchData.size());
+            LogPrint("smsg", "smsgIgnore, not enough data %u.\n", vchData.size());
             Misbehaving(pfrom->GetId(), 1);
             return false;
         };
@@ -1781,7 +1429,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
         
 
         if (fDebugSmsg)
-            LogPrint("smessage", "Peer %d is ignoring this node until %d, ignore peer too.\n", pfrom->id, time);
+            LogPrint("smsg", "Peer %d is ignoring this node until %d, ignore peer too.\n", pfrom->id, time);
     } else
     {
         // Unknown message
@@ -1790,7 +1438,7 @@ bool SecureMsgReceiveData(CNode* pfrom, const std::string &strCommand, CDataStre
     return true;
 };
 
-bool SecureMsgSendData(CNode* pto, bool fSendTrickle)
+bool SendData(CNode* pto, bool fSendTrickle)
 {
     /*
         Called from ProcessMessage
@@ -1799,7 +1447,7 @@ bool SecureMsgSendData(CNode* pto, bool fSendTrickle)
     
     LOCK(pto->smsgData.cs_smsg_net);
 
-    //LogPrint("smessage", "SecureMsgSendData() %s.\n", pto->addrName.c_str());
+    //LogPrint("smsg", "DigitalNote::SMSG::SendData() %s.\n", pto->addrName.c_str());
     
     int64_t now = GetTime();
 
@@ -1807,7 +1455,7 @@ bool SecureMsgSendData(CNode* pto, bool fSendTrickle)
     {
         // -- first contact
         if (fDebugSmsg)
-            LogPrint("smessage", "SecureMsgSendData() new node %s, peer id %u.\n", pto->addrName.c_str(), pto->id);
+            LogPrint("smsg", "DigitalNote::SMSG::SendData() new node %s, peer id %u.\n", pto->addrName.c_str(), pto->id);
         // -- Send smsgPing once, do nothing until receive 1st smsgPong (then set fEnabled)
         pto->PushMessage("smsgPing");
         pto->smsgData.lastSeen = GetTime();
@@ -1827,16 +1475,16 @@ bool SecureMsgSendData(CNode* pto, bool fSendTrickle)
         pto->smsgData.nWakeCounter = 10 + GetRandInt(300);  // set to a random time between [10, 300] * SMSG_SEND_DELAY seconds
 
         if (fDebugSmsg)
-            LogPrint("smessage", "SecureMsgSendData(): nWakeCounter expired, sending bucket inventory to %s.\n"
+            LogPrint("smsg", "DigitalNote::SMSG::SendData(): nWakeCounter expired, sending bucket inventory to %s.\n"
             "Now %d next wake counter %u\n", pto->addrName.c_str(), now, pto->smsgData.nWakeCounter);
     };
     pto->smsgData.nWakeCounter--;
 
     {
-        LOCK(cs_smsg);
-        std::map<int64_t, SecMsgBucket>::iterator it;
+        LOCK(DigitalNote::SMSG::ext_cs);
+        std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it;
 
-        uint32_t nBuckets = smsgBuckets.size();
+        uint32_t nBuckets = DigitalNote::SMSG::ext_buckets.size();
         if (nBuckets > 0) // no need to send keep alive pkts, coin messages already do that
         {
             std::vector<uint8_t> vchData;
@@ -1847,9 +1495,9 @@ bool SecureMsgSendData(CNode* pto, bool fSendTrickle)
             vchData.resize(4);
 
             uint8_t* p = &vchData[4];
-            for (it = smsgBuckets.begin(); it != smsgBuckets.end(); ++it)
+            for (it = DigitalNote::SMSG::ext_buckets.begin(); it != DigitalNote::SMSG::ext_buckets.end(); ++it)
             {
-                SecMsgBucket &bkt = it->second;
+                DigitalNote::SMSG::Bucket &bkt = it->second;
 
                 uint32_t nMessages = bkt.setTokens.size();
 
@@ -1862,7 +1510,7 @@ bool SecureMsgSendData(CNode* pto, bool fSendTrickle)
 
                 try { vchData.resize(vchData.size() + 16); } catch (std::exception& e)
                 {
-                    LogPrint("smessage", "vchData.resize %u threw: %s.\n", vchData.size() + 16, e.what());
+                    LogPrint("smsg", "vchData.resize %u threw: %s.\n", vchData.size() + 16, e.what());
                     continue;
                 };
                 memcpy(p, &it->first, 8);
@@ -1872,187 +1520,49 @@ bool SecureMsgSendData(CNode* pto, bool fSendTrickle)
                 p += 16;
                 nBucketsShown++;
                 //if (fDebug)
-                //    LogPrint("smessage", "Sending bucket %d, size %d \n", it->first, it->second.size());
+                //    LogPrint("smsg", "Sending bucket %d, size %d \n", it->first, it->second.size());
             };
 
             if (vchData.size() > 4)
             {
                 memcpy(&vchData[0], &nBucketsShown, 4);
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Sending %d bucket headers.\n", nBucketsShown);
+                    LogPrint("smsg", "Sending %d bucket headers.\n", nBucketsShown);
 
                 pto->PushMessage("smsgInv", vchData);
             };
         };
-    } // cs_smsg
+    } // DigitalNote::SMSG::ext_cs
 
     pto->smsgData.lastSeen = GetTime();
 
     return true;
 };
 
-
-static int SecureMsgInsertAddress(CKeyID& hashKey, CPubKey& pubKey, SecMsgDB& addrpkdb)
-{
-    /* insert key hash and public key to addressdb
-
-        should have LOCK(cs_smsg) where db is opened
-
-        returns
-            0 success
-            1 error
-            4 address is already in db
-    */
-
-
-    if (addrpkdb.ExistsPK(hashKey))
-    {
-        //LogPrint("smessage", "DB already contains public key for address.\n");
-        CPubKey cpkCheck;
-        if (!addrpkdb.ReadPK(hashKey, cpkCheck))
-        {
-            LogPrint("smessage", "addrpkdb.Read failed.\n");
-        } else
-        {
-            if (cpkCheck != pubKey)
-                LogPrint("smessage", "DB already contains existing public key that does not match .\n");
-        };
-        return 4;
-    };
-
-    if (!addrpkdb.WritePK(hashKey, pubKey))
-    {
-        LogPrint("smessage", "Write pair failed.\n");
-        return 1;
-    };
-
-    return 0;
-};
-
-int SecureMsgInsertAddress(CKeyID& hashKey, CPubKey& pubKey)
+int InsertAddress(CKeyID& hashKey, CPubKey& pubKey)
 {
     int rv;
     {
-        LOCK(cs_smsgDB);
-        SecMsgDB addrpkdb;
+        LOCK(DigitalNote::SMSG::ext_cs_db);
+        DigitalNote::SMSG::DB addrpkdb;
 
         if (!addrpkdb.Open("cr+"))
             return 1;
 
-        rv = SecureMsgInsertAddress(hashKey, pubKey, addrpkdb);
+        rv = DigitalNote::SMSG::_InsertAddress(hashKey, pubKey, addrpkdb);
     }
     return rv;
 };
 
-
-static bool ScanBlock(CBlock& block, CTxDB& txdb, SecMsgDB& addrpkdb,
-    uint32_t& nTransactions, uint32_t& nElements, uint32_t& nPubkeys, uint32_t& nDuplicates)
-
-
-{
-    AssertLockHeld(cs_smsgDB);
-    
-    valtype vch;
-    opcodetype opcode;
-    
-    // -- only scan inputs of standard txns and coinstakes
-    
-    BOOST_FOREACH(CTransaction& tx, block.vtx)
-    {
-    std::string sReason;
-        // - harvest public keys from coinstake txns
-        if (tx.IsCoinStake())
-        {
-            const CTxOut& txout = tx.vout[1];
-            CScript::const_iterator pc = txout.scriptPubKey.begin();
-            while (pc < txout.scriptPubKey.end())
-            {
-                if (!txout.scriptPubKey.GetOp(pc, opcode, vch))
-                    break;
-                
-                if (vch.size() == 33) // pubkey
-                {
-                    CPubKey pubKey(vch);
-                    
-                    if (!pubKey.IsValid()
-                        || !pubKey.IsCompressed())
-                    {
-                        LogPrint("smessage", "Public key is invalid %s.\n", HexStr(pubKey).c_str());
-                        continue;
-                    };
-                    
-                    CKeyID addrKey = pubKey.GetID();
-                    switch (SecureMsgInsertAddress(addrKey, pubKey, addrpkdb))
-                    {
-                        case 0: nPubkeys++; break;      // added key
-                        case 4: nDuplicates++; break;   // duplicate key
-                    }
-                    break;
-                };
-            };
-            nElements++;
-        } else
-        if (IsStandardTx(tx, sReason))
-        {
-            for (uint32_t i = 0; i < tx.vin.size(); i++)
-            {
-                CScript *script = &tx.vin[i].scriptSig;
-                CScript::const_iterator pc = script->begin();
-                CScript::const_iterator pend = script->end();
-
-                uint256 prevoutHash;
-                CKey key;
-
-                while (pc < pend)
-                {
-                    if (!script->GetOp(pc, opcode, vch))
-                        break;
-                    // - opcode is the length of the following data, compressed public key is always 33
-                    if (opcode == 33)
-                    {
-                        CPubKey pubKey(vch);
-                        
-                        if (!pubKey.IsValid()
-                            || !pubKey.IsCompressed())
-                        {
-                            LogPrint("smessage", "Public key is invalid %s.\n", HexStr(pubKey).c_str());
-                            continue;
-                        };
-                        
-                        CKeyID addrKey = pubKey.GetID();
-                        switch (SecureMsgInsertAddress(addrKey, pubKey, addrpkdb))
-                        {
-                            case 0: nPubkeys++; break;      // added key
-                            case 4: nDuplicates++; break;   // duplicate key
-                        }
-                        break;
-                    };
-
-                    //LogPrint("smessage", "opcode %d, %s, value %s.\n", opcode, GetOpName(opcode), ValueString(vch).c_str());
-                };
-                nElements++;
-            };
-        };
-        nTransactions++;
-
-        if (nTransactions % 10000 == 0) // for ScanChainForPublicKeys
-        {
-            LogPrint("smessage", "Scanning transaction no. %u.\n", nTransactions);
-        };
-    };
-    return true;
-};
-
-
-bool SecureMsgScanBlock(CBlock& block)
+bool ScanBlock(CBlock& block)
 {
     // - scan block for public key addresses
     
-    if (!smsgOptions.fScanIncoming)
+    if (!DigitalNote::SMSG::ext_options.fScanIncoming)
         return true;
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgScanBlock().\n");
+        LogPrint("smsg", "DigitalNote::SMSG::ScanBlock().\n");
 
     uint32_t nTransactions  = 0;
     uint32_t nElements      = 0;
@@ -2060,33 +1570,33 @@ bool SecureMsgScanBlock(CBlock& block)
     uint32_t nDuplicates    = 0;
 
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
         CTxDB txdb("r");
 
-        SecMsgDB addrpkdb;
+        DigitalNote::SMSG::DB addrpkdb;
         if (!addrpkdb.Open("cw")
             || !addrpkdb.TxnBegin())
             return false;
 
-        ScanBlock(block, txdb, addrpkdb,
+        _ScanBlock(block, txdb, addrpkdb,
             nTransactions, nElements, nPubkeys, nDuplicates);
 
         addrpkdb.TxnCommit();
-    } // cs_smsgDB
+    } // DigitalNote::SMSG::ext_cs_db
 
     if (fDebugSmsg)
-        LogPrint("smessage", "Found %u transactions, %u elements, %u new public keys, %u duplicates.\n", nTransactions, nElements, nPubkeys, nDuplicates);
+        LogPrint("smsg", "Found %u transactions, %u elements, %u new public keys, %u duplicates.\n", nTransactions, nElements, nPubkeys, nDuplicates);
 
     return true;
 };
 
 bool ScanChainForPublicKeys(CBlockIndex* pindexStart)
 {
-    LogPrint("smessage", "Scanning block chain for public keys.\n");
+    LogPrint("smsg", "Scanning block chain for public keys.\n");
     int64_t nStart = GetTimeMillis();
 
     if (fDebugSmsg)
-        LogPrint("smessage", "From height %u.\n", pindexStart->nHeight);
+        LogPrint("smsg", "From height %u.\n", pindexStart->nHeight);
 
     // -- public keys are in txin.scriptSig
     //    matching addresses are in scriptPubKey of txin's referenced output
@@ -2098,11 +1608,11 @@ bool ScanChainForPublicKeys(CBlockIndex* pindexStart)
     uint32_t nDuplicates    = 0;
 
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
 
         CTxDB txdb("r");
 
-        SecMsgDB addrpkdb;
+        DigitalNote::SMSG::DB addrpkdb;
         if (!addrpkdb.Open("cw")
             || !addrpkdb.TxnBegin())
             return false;
@@ -2114,23 +1624,23 @@ bool ScanChainForPublicKeys(CBlockIndex* pindexStart)
             CBlock block;
             block.ReadFromDisk(pindex, true);
 
-            ScanBlock(block, txdb, addrpkdb,
+            _ScanBlock(block, txdb, addrpkdb,
                 nTransactions, nInputs, nPubkeys, nDuplicates);
 
             pindex = pindex->pnext;
         };
 
         addrpkdb.TxnCommit();
-    } // cs_smsgDB
+    } // DigitalNote::SMSG::ext_cs_db
 
-    LogPrint("smessage", "Scanned %u blocks, %u transactions, %u inputs\n", nBlocks, nTransactions, nInputs);
-    LogPrint("smessage", "Found %u public keys, %u duplicates.\n", nPubkeys, nDuplicates);
-    LogPrint("smessage", "Took %d ms\n", GetTimeMillis() - nStart);
+    LogPrint("smsg", "Scanned %u blocks, %u transactions, %u inputs\n", nBlocks, nTransactions, nInputs);
+    LogPrint("smsg", "Found %u public keys, %u duplicates.\n", nPubkeys, nDuplicates);
+    LogPrint("smsg", "Took %d ms\n", GetTimeMillis() - nStart);
 
     return true;
 };
 
-bool SecureMsgScanBlockChain()
+bool ScanBlockChain()
 {
     TRY_LOCK(cs_main, lockMain);
     if (lockMain)
@@ -2138,34 +1648,34 @@ bool SecureMsgScanBlockChain()
         CBlockIndex *pindexScan = pindexGenesisBlock;
         if (pindexScan == NULL)
         {
-            LogPrint("smessage", "Error: pindexGenesisBlock not set.\n");
+            LogPrint("smsg", "Error: pindexGenesisBlock not set.\n");
             return false;
         };
 
 
         try { // -- in try to catch errors opening db,
-            if (!ScanChainForPublicKeys(pindexScan))
+            if (!DigitalNote::SMSG::ScanChainForPublicKeys(pindexScan))
                 return false;
         } catch (std::exception& e)
         {
-            LogPrint("smessage", "ScanChainForPublicKeys() threw: %s.\n", e.what());
+            LogPrint("smsg", "DigitalNote::SMSG::ScanChainForPublicKeys() threw: %s.\n", e.what());
             return false;
         };
     } else
     {
-        LogPrint("smessage", "ScanChainForPublicKeys() Could not lock main.\n");
+        LogPrint("smsg", "DigitalNote::SMSG::ScanChainForPublicKeys() Could not lock main.\n");
         return false;
     };
 
     return true;
 };
 
-bool SecureMsgScanBuckets()
+bool ScanBuckets()
 {
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgScanBuckets()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::ScanBuckets()\n");
 
-    if (!fSecMsgEnabled
+    if (!DigitalNote::SMSG::ext_enabled
         || pwalletMain->IsLocked())
         return false;
 
@@ -2175,22 +1685,22 @@ bool SecureMsgScanBuckets()
     uint32_t nMessages      = 0;
     uint32_t nFoundMessages = 0;
 
-    fs::path pathSmsgDir = GetDataDir() / "smsgStore";
-    fs::directory_iterator itend;
+    boost::filesystem::path pathSmsgDir = GetDataDir() / "smsgStore";
+    boost::filesystem::directory_iterator itend;
 
-    if (!fs::exists(pathSmsgDir)
-        || !fs::is_directory(pathSmsgDir))
+    if (!boost::filesystem::exists(pathSmsgDir)
+        || !boost::filesystem::is_directory(pathSmsgDir))
     {
-        LogPrint("smessage", "Message store directory does not exist.\n");
+        LogPrint("smsg", "Message store directory does not exist.\n");
         return 0; // not an error
     };
 
-    SecureMessage smsg;
+    DigitalNote::SMSG::SecureMessage smsg;
     std::vector<uint8_t> vchData;
 
-    for (fs::directory_iterator itd(pathSmsgDir) ; itd != itend ; ++itd)
+    for (boost::filesystem::directory_iterator itd(pathSmsgDir) ; itd != itend ; ++itd)
     {
-        if (!fs::is_regular_file(itd->status()))
+        if (!boost::filesystem::is_regular_file(itd->status()))
             continue;
 
         std::string fileType = (*itd).path().extension().string();
@@ -2202,7 +1712,7 @@ bool SecureMsgScanBuckets()
 
 
         if (fDebugSmsg)
-            LogPrint("smessage", "Processing file: %s.\n", fileName.c_str());
+            LogPrint("smsg", "Processing file: %s.\n", fileName.c_str());
 
         nFiles++;
 
@@ -2218,12 +1728,12 @@ bool SecureMsgScanBuckets()
 
         if (fileTime < now - SMSG_RETENTION)
         {
-            LogPrint("smessage", "Dropping file %s, expired.\n", fileName.c_str());
+            LogPrint("smsg", "Dropping file %s, expired.\n", fileName.c_str());
             try {
-                fs::remove((*itd).path());
-            } catch (const fs::filesystem_error& ex)
+                boost::filesystem::remove((*itd).path());
+            } catch (const boost::filesystem::filesystem_error& ex)
             {
-                LogPrint("smessage", "Error removing bucket file %s, %s.\n", fileName.c_str(), ex.what());
+                LogPrint("smsg", "Error removing bucket file %s, %s.\n", fileName.c_str(), ex.what());
             };
             continue;
         };
@@ -2231,17 +1741,17 @@ bool SecureMsgScanBuckets()
         if (boost::algorithm::ends_with(fileName, "_wl.dat"))
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "Skipping wallet locked file: %s.\n", fileName.c_str());
+                LogPrint("smsg", "Skipping wallet locked file: %s.\n", fileName.c_str());
             continue;
         };
 
         {
-            LOCK(cs_smsg);
+            LOCK(DigitalNote::SMSG::ext_cs);
             FILE *fp;
             errno = 0;
             if (!(fp = fopen((*itd).path().string().c_str(), "rb")))
             {
-                LogPrint("smessage", "Error opening file: %s\n", strerror(errno));
+                LogPrint("smsg", "Error opening file: %s\n", strerror(errno));
                 continue;
             };
 
@@ -2252,29 +1762,29 @@ bool SecureMsgScanBuckets()
                 {
                     if (errno != 0)
                     {
-                        LogPrint("smessage", "fread header failed: %s\n", strerror(errno));
+                        LogPrint("smsg", "fread header failed: %s\n", strerror(errno));
                     } else
                     {
-                        //LogPrint("smessage", "End of file.\n");
+                        //LogPrint("smsg", "End of file.\n");
                     };
                     break;
                 };
 
                 try { vchData.resize(smsg.nPayload); } catch (std::exception& e)
                 {
-                    LogPrint("smessage", "SecureMsgWalletUnlocked(): Could not resize vchData, %u, %s\n", smsg.nPayload, e.what());
+                    LogPrint("smsg", "DigitalNote::SMSG::WalletUnlocked(): Could not resize vchData, %u, %s\n", smsg.nPayload, e.what());
                     fclose(fp);
                     return 1;
                 };
 
                 if (fread(&vchData[0], sizeof(uint8_t), smsg.nPayload, fp) != smsg.nPayload)
                 {
-                    LogPrint("smessage", "fread data failed: %s\n", strerror(errno));
+                    LogPrint("smsg", "fread data failed: %s\n", strerror(errno));
                     break;
                 };
 
                 // -- don't report to gui,
-                int rv = SecureMsgScanMessage(&smsg.hash[0], &vchData[0], smsg.nPayload, false);
+                int rv = DigitalNote::SMSG::ScanMessage(&smsg.hash[0], &vchData[0], smsg.nPayload, false);
 
                 if (rv == 0)
                 {
@@ -2282,7 +1792,7 @@ bool SecureMsgScanBuckets()
                 } else
                 if (rv != 0)
                 {
-                    // SecureMsgScanMessage failed
+                    // DigitalNote::SMSG::ScanMessage failed
                 };
 
                 nMessages ++;
@@ -2292,35 +1802,34 @@ bool SecureMsgScanBuckets()
 
             // -- remove wl file when scanned
             try {
-                fs::remove((*itd).path());
+                boost::filesystem::remove((*itd).path());
             } catch (const boost::filesystem::filesystem_error& ex)
             {
-                LogPrint("smessage", "Error removing wl file %s - %s\n", fileName.c_str(), ex.what());
+                LogPrint("smsg", "Error removing wl file %s - %s\n", fileName.c_str(), ex.what());
                 return 1;
             };
-        } // cs_smsg
+        } // DigitalNote::SMSG::ext_cs
     };
 
-    LogPrint("smessage", "Processed %u files, scanned %u messages, received %u messages.\n", nFiles, nMessages, nFoundMessages);
-    LogPrint("smessage", "Took %d ms\n", GetTimeMillis() - mStart);
+    LogPrint("smsg", "Processed %u files, scanned %u messages, received %u messages.\n", nFiles, nMessages, nFoundMessages);
+    LogPrint("smsg", "Took %d ms\n", GetTimeMillis() - mStart);
 
     return true;
 }
 
-
-int SecureMsgWalletUnlocked()
+int WalletUnlocked()
 {
     /*
     When the wallet is unlocked, scan messages received while wallet was locked.
     */
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         return 0;
 
-    LogPrint("smessage", "SecureMsgWalletUnlocked()\n");
+    LogPrint("smsg", "DigitalNote::SMSG::WalletUnlocked()\n");
 
     if (pwalletMain->IsLocked())
     {
-        LogPrint("smessage", "Error: Wallet is locked.\n");
+        LogPrint("smsg", "Error: Wallet is locked.\n");
         return 1;
     };
 
@@ -2329,22 +1838,22 @@ int SecureMsgWalletUnlocked()
     uint32_t nMessages      = 0;
     uint32_t nFoundMessages = 0;
 
-    fs::path pathSmsgDir = GetDataDir() / "smsgStore";
-    fs::directory_iterator itend;
+    boost::filesystem::path pathSmsgDir = GetDataDir() / "smsgStore";
+    boost::filesystem::directory_iterator itend;
 
-    if (!fs::exists(pathSmsgDir)
-        || !fs::is_directory(pathSmsgDir))
+    if (!boost::filesystem::exists(pathSmsgDir)
+        || !boost::filesystem::is_directory(pathSmsgDir))
     {
-        LogPrint("smessage", "Message store directory does not exist.\n");
+        LogPrint("smsg", "Message store directory does not exist.\n");
         return 0; // not an error
     };
 
-    SecureMessage smsg;
+    DigitalNote::SMSG::SecureMessage smsg;
     std::vector<uint8_t> vchData;
 
-    for (fs::directory_iterator itd(pathSmsgDir) ; itd != itend ; ++itd)
+    for (boost::filesystem::directory_iterator itd(pathSmsgDir) ; itd != itend ; ++itd)
     {
-        if (!fs::is_regular_file(itd->status()))
+        if (!boost::filesystem::is_regular_file(itd->status()))
             continue;
 
         std::string fileName = (*itd).path().filename().string();
@@ -2353,7 +1862,7 @@ int SecureMsgWalletUnlocked()
             continue;
 
         if (fDebugSmsg)
-            LogPrint("smessage", "Processing file: %s.\n", fileName.c_str());
+            LogPrint("smsg", "Processing file: %s.\n", fileName.c_str());
 
         nFiles++;
 
@@ -2369,24 +1878,24 @@ int SecureMsgWalletUnlocked()
 
         if (fileTime < now - SMSG_RETENTION)
         {
-            LogPrint("smessage", "Dropping wallet locked file %s, expired.\n", fileName.c_str());
+            LogPrint("smsg", "Dropping wallet locked file %s, expired.\n", fileName.c_str());
             try {
-                fs::remove((*itd).path());
+                boost::filesystem::remove((*itd).path());
             } catch (const boost::filesystem::filesystem_error& ex)
             {
-                LogPrint("smessage", "Error removing wl file %s - %s\n", fileName.c_str(), ex.what());
+                LogPrint("smsg", "Error removing wl file %s - %s\n", fileName.c_str(), ex.what());
                 return 1;
             };
             continue;
         };
 
         {
-            LOCK(cs_smsg);
+            LOCK(DigitalNote::SMSG::ext_cs);
             FILE *fp;
             errno = 0;
             if (!(fp = fopen((*itd).path().string().c_str(), "rb")))
             {
-                LogPrint("smessage", "Error opening file: %s\n", strerror(errno));
+                LogPrint("smsg", "Error opening file: %s\n", strerror(errno));
                 continue;
             };
 
@@ -2397,29 +1906,29 @@ int SecureMsgWalletUnlocked()
                 {
                     if (errno != 0)
                     {
-                        LogPrint("smessage", "fread header failed: %s\n", strerror(errno));
+                        LogPrint("smsg", "fread header failed: %s\n", strerror(errno));
                     } else
                     {
-                        //LogPrint("smessage", "End of file.\n");
+                        //LogPrint("smsg", "End of file.\n");
                     };
                     break;
                 };
 
                 try { vchData.resize(smsg.nPayload); } catch (std::exception& e)
                 {
-                    LogPrint("smessage", "SecureMsgWalletUnlocked(): Could not resize vchData, %u, %s\n", smsg.nPayload, e.what());
+                    LogPrint("smsg", "DigitalNote::SMSG::WalletUnlocked(): Could not resize vchData, %u, %s\n", smsg.nPayload, e.what());
                     fclose(fp);
                     return 1;
                 };
 
                 if (fread(&vchData[0], sizeof(uint8_t), smsg.nPayload, fp) != smsg.nPayload)
                 {
-                    LogPrint("smessage", "fread data failed: %s\n", strerror(errno));
+                    LogPrint("smsg", "fread data failed: %s\n", strerror(errno));
                     break;
                 };
 
                 // -- don't report to gui,
-                int rv = SecureMsgScanMessage(&smsg.hash[0], &vchData[0], smsg.nPayload, false);
+                int rv = DigitalNote::SMSG::ScanMessage(&smsg.hash[0], &vchData[0], smsg.nPayload, false);
 
                 if (rv == 0)
                 {
@@ -2427,7 +1936,7 @@ int SecureMsgWalletUnlocked()
                 } else
                 if (rv != 0)
                 {
-                    // SecureMsgScanMessage failed
+                    // DigitalNote::SMSG::ScanMessage failed
                 };
 
                 nMessages ++;
@@ -2437,45 +1946,45 @@ int SecureMsgWalletUnlocked()
 
             // -- remove wl file when scanned
             try {
-                fs::remove((*itd).path());
+                boost::filesystem::remove((*itd).path());
             } catch (const boost::filesystem::filesystem_error& ex)
             {
-                LogPrint("smessage", "Error removing wl file %s - %s\n", fileName.c_str(), ex.what());
+                LogPrint("smsg", "Error removing wl file %s - %s\n", fileName.c_str(), ex.what());
                 return 1;
             };
-        } // cs_smsg
+        } // DigitalNote::SMSG::ext_cs
     };
 
-    LogPrint("smessage", "Processed %u files, scanned %u messages, received %u messages.\n", nFiles, nMessages, nFoundMessages);
+    LogPrint("smsg", "Processed %u files, scanned %u messages, received %u messages.\n", nFiles, nMessages, nFoundMessages);
     
     // -- notify gui
-    NotifySecMsgWalletUnlocked();
+    DigitalNote::SMSG::ext_signal_NotifyWalletUnlocked();
     return 0;
 };
 
-int SecureMsgWalletKeyChanged(std::string sAddress, std::string sLabel, ChangeType mode)
+int WalletKeyChanged(std::string sAddress, std::string sLabel, ChangeType mode)
 {
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
         return 0;
 
-    LogPrint("smessage", "SecureMsgWalletKeyChanged()\n");
+    LogPrint("smsg", "DigitalNote::SMSG::WalletKeyChanged()\n");
 
     // TODO: default recv and recvAnon
 
     {
-        LOCK(cs_smsg);
+        LOCK(DigitalNote::SMSG::ext_cs);
 
         switch(mode)
         {
             case CT_NEW:
-                smsgAddresses.push_back(SecMsgAddress(sAddress, smsgOptions.fNewAddressRecv, smsgOptions.fNewAddressAnon));
+                DigitalNote::SMSG::ext_addresses.push_back(DigitalNote::SMSG::Address(sAddress, DigitalNote::SMSG::ext_options.fNewAddressRecv, DigitalNote::SMSG::ext_options.fNewAddressAnon));
                 break;
             case CT_DELETED:
-                for (std::vector<SecMsgAddress>::iterator it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+                for (std::vector<DigitalNote::SMSG::Address>::iterator it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
                 {
                     if (sAddress != it->sAddress)
                         continue;
-                    smsgAddresses.erase(it);
+                    DigitalNote::SMSG::ext_addresses.erase(it);
                     break;
                 };
                 break;
@@ -2483,19 +1992,19 @@ int SecureMsgWalletKeyChanged(std::string sAddress, std::string sLabel, ChangeTy
                 break;
         }
 
-    } // cs_smsg
+    } // DigitalNote::SMSG::ext_cs
 
 
     return 0;
 };
 
-int SecureMsgScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool reportToGui)
+int ScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool reportToGui)
 {
     /*
     Check if message belongs to this node.
     If so add to inbox db.
 
-    if !reportToGui don't fire NotifySecMsgInboxChanged
+    if !reportToGui don't fire DigitalNote::SMSG::ext_signal_NotifyInboxChanged
      - loads messages received when wallet locked in bulk.
 
     returns
@@ -2506,25 +2015,25 @@ int SecureMsgScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload,
     */
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgScanMessage()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::ScanMessage()\n");
 
     if (pwalletMain->IsLocked())
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "ScanMessage: Wallet is locked, storing message to scan later.\n");
+            LogPrint("smsg", "ScanMessage: Wallet is locked, storing message to scan later.\n");
 
         int rv;
-        if ((rv = SecureMsgStoreUnscanned(pHeader, pPayload, nPayload)) != 0)
+        if ((rv = DigitalNote::SMSG::StoreUnscanned(pHeader, pPayload, nPayload)) != 0)
             return 1;
 
         return 3;
     };
 
     std::string addressTo;
-    MessageData msg;
+    DigitalNote::SMSG::Message msg;
     bool fOwnMessage = false;
 
-    for (std::vector<SecMsgAddress>::iterator it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+    for (std::vector<DigitalNote::SMSG::Address>::iterator it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
     {
         if (!it->fReceiveEnabled)
             continue;
@@ -2535,10 +2044,10 @@ int SecureMsgScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload,
         if (!it->fReceiveAnon)
         {
             // -- have to do full decrypt to see address from
-            if (SecureMsgDecrypt(false, addressTo, pHeader, pPayload, nPayload, msg) == 0)
+            if (DigitalNote::SMSG::Decrypt(false, addressTo, pHeader, pPayload, nPayload, msg) == 0)
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Decrypted message with %s.\n", addressTo.c_str());
+                    LogPrint("smsg", "Decrypted message with %s.\n", addressTo.c_str());
 
                 if (msg.sFromAddress.compare("anon") != 0)
                     fOwnMessage = true;
@@ -2547,10 +2056,10 @@ int SecureMsgScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload,
         } else
         {
 
-            if (SecureMsgDecrypt(false, addressTo, pHeader, pPayload, nPayload, msg) == 0)
+            if (DigitalNote::SMSG::Decrypt(false, addressTo, pHeader, pPayload, nPayload, msg) == 0)
             {
                 if (fDebugSmsg)
-                    LogPrint("smessage", "Decrypted message with %s.\n", addressTo.c_str());
+                    LogPrint("smsg", "Decrypted message with %s.\n", addressTo.c_str());
 
                 fOwnMessage = true;
                 break;
@@ -2561,14 +2070,14 @@ int SecureMsgScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload,
     if (fOwnMessage)
     {
         // -- save to inbox
-        SecureMessage* psmsg = (SecureMessage*) pHeader;
+        DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) pHeader;
         std::string sPrefix("im");
         uint8_t chKey[18];
         memcpy(&chKey[0],  sPrefix.data(),    2);
         memcpy(&chKey[2],  &psmsg->timestamp, 8);
         memcpy(&chKey[10], pPayload,          8);
 
-        SecMsgStored smsgInbox;
+        DigitalNote::SMSG::Stored smsgInbox;
         smsgInbox.timeReceived  = GetTime();
         smsgInbox.status        = (SMSG_MASK_UNREAD) & 0xFF;
         smsgInbox.sAddrTo       = addressTo;
@@ -2577,57 +2086,57 @@ int SecureMsgScanMessage(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload,
         try {
             smsgInbox.vchMessage.resize(SMSG_HDR_LEN + nPayload);
         } catch (std::exception& e) {
-            LogPrint("smessage", "SecureMsgScanMessage(): Could not resize vchData, %u, %s\n", SMSG_HDR_LEN + nPayload, e.what());
+            LogPrint("smsg", "DigitalNote::SMSG::ScanMessage(): Could not resize vchData, %u, %s\n", SMSG_HDR_LEN + nPayload, e.what());
             return 1;
         };
         memcpy(&smsgInbox.vchMessage[0], pHeader, SMSG_HDR_LEN);
         memcpy(&smsgInbox.vchMessage[SMSG_HDR_LEN], pPayload, nPayload);
 
         {
-            LOCK(cs_smsgDB);
-            SecMsgDB dbInbox;
+            LOCK(DigitalNote::SMSG::ext_cs_db);
+            DigitalNote::SMSG::DB dbInbox;
 
             if (dbInbox.Open("cw"))
             {
                 if (dbInbox.ExistsSmesg(chKey))
                 {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Message already exists in inbox db.\n");
+                        LogPrint("smsg", "Message already exists in inbox db.\n");
                 } else
                 {
                     dbInbox.WriteSmesg(chKey, smsgInbox);
 
                     if (reportToGui) {
-                        NotifySecMsgInboxChanged(smsgInbox);
+                        DigitalNote::SMSG::ext_signal_NotifyInboxChanged(smsgInbox);
 
                         LogPrint("webwallet", "webwallet: Sending update message in update to webwallet \n");
                         char cbuf[256];
-                        Object messageObject;
-                        messageObject.push_back(Pair("received", getTimeString(smsgInbox.timeReceived, cbuf, sizeof(cbuf))));
-                        messageObject.push_back(Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
-                        messageObject.push_back(Pair("from", msg.sFromAddress));
-                        messageObject.push_back(Pair("to", smsgInbox.sAddrTo));
-                        messageObject.push_back(Pair("text", (char*)&msg.vchMessage[0]));
+                        json_spirit::Object messageObject;
+                        messageObject.push_back(json_spirit::Pair("received", getTimeString(smsgInbox.timeReceived, cbuf, sizeof(cbuf))));
+                        messageObject.push_back(json_spirit::Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
+                        messageObject.push_back(json_spirit::Pair("from", msg.sFromAddress));
+                        messageObject.push_back(json_spirit::Pair("to", smsgInbox.sAddrTo));
+                        messageObject.push_back(json_spirit::Pair("text", (char*)&msg.vchMessage[0]));
 
-                        Object payload;
-                        payload.push_back(Pair("type", "messagesIn"));
-                        payload.push_back(Pair("data", messageObject));
-                        NotifySecMsgInboxChangedJson(payload);
+                        json_spirit::Object payload;
+                        payload.push_back(json_spirit::Pair("type", "messagesIn"));
+                        payload.push_back(json_spirit::Pair("data", messageObject));
+                        DigitalNote::SMSG::ext_signal_NotifyInboxChangedJson(payload);
                         LogPrint("webwallet", "webwallet: Finished sending update message in update to webwallet \n");
                     }
-                    LogPrint("smessage", "SecureMsg saved to inbox, received with %s.\n", addressTo.c_str());
+                    LogPrint("smsg", "SecureMsg saved to inbox, received with %s.\n", addressTo.c_str());
                 };
             };
-        } // cs_smsgDB
+        } // DigitalNote::SMSG::ext_cs_db
     };
 
     return 0;
 };
 
-int SecureMsgGetLocalKey(CKeyID& ckid, CPubKey& cpkOut)
+int GetLocalKey(CKeyID& ckid, CPubKey& cpkOut)
 {
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgGetLocalKey()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::GetLocalKey()\n");
 
     if (!pwalletMain->GetPubKey(ckid, cpkOut))
         return 4;
@@ -2635,14 +2144,14 @@ int SecureMsgGetLocalKey(CKeyID& ckid, CPubKey& cpkOut)
     if (!cpkOut.IsValid()
         || !cpkOut.IsCompressed())
     {
-        LogPrint("smessage", "Public key is invalid %s.\n", HexStr(cpkOut).c_str());
+        LogPrint("smsg", "Public key is invalid %s.\n", HexStr(cpkOut).c_str());
         return 1;
     };
     
     return 0;
 };
 
-int SecureMsgGetLocalPublicKey(std::string& strAddress, std::string& strPublicKey)
+int GetLocalPublicKey(std::string& strAddress, std::string& strPublicKey)
 {
     /* returns
         0 success,
@@ -2652,7 +2161,7 @@ int SecureMsgGetLocalPublicKey(std::string& strAddress, std::string& strPublicKe
         4 address not in wallet
     */
     //if (fDebugSmsg)
-    //   LogPrint("smessage", "SecureMsgGetLocalPublicKey().\n");
+    //   LogPrint("smsg", "DigitalNote::SMSG::GetLocalPublicKey().\n");
 
     CDigitalNoteAddress address;
     if (!address.SetString(strAddress))
@@ -2664,7 +2173,7 @@ int SecureMsgGetLocalPublicKey(std::string& strAddress, std::string& strPublicKe
 
     int rv;
     CPubKey pubKey;
-    if ((rv = SecureMsgGetLocalKey(keyID, pubKey)) != 0)
+    if ((rv = DigitalNote::SMSG::GetLocalKey(keyID, pubKey)) != 0)
         return rv;
 
     strPublicKey = EncodeBase58(pubKey.begin(), pubKey.end());
@@ -2672,7 +2181,7 @@ int SecureMsgGetLocalPublicKey(std::string& strAddress, std::string& strPublicKe
     return 0;
 };
 
-int SecureMsgGetStoredKey(CKeyID& ckid, CPubKey& cpkOut)
+int GetStoredKey(CKeyID& ckid, CPubKey& cpkOut)
 {
     /* returns
         0 success,
@@ -2680,26 +2189,26 @@ int SecureMsgGetStoredKey(CKeyID& ckid, CPubKey& cpkOut)
         2 public key not in database
     */
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgGetStoredKey().\n");
+        LogPrint("smsg", "DigitalNote::SMSG::GetStoredKey().\n");
 
     {
-        LOCK(cs_smsgDB);
-        SecMsgDB addrpkdb;
+        LOCK(DigitalNote::SMSG::ext_cs_db);
+        DigitalNote::SMSG::DB addrpkdb;
 
         if (!addrpkdb.Open("r"))
             return 1;
 
         if (!addrpkdb.ReadPK(ckid, cpkOut))
         {
-            //LogPrint("smessage", "addrpkdb.Read failed: %s.\n", coinAddress.ToString().c_str());
+            //LogPrint("smsg", "addrpkdb.Read failed: %s.\n", coinAddress.ToString().c_str());
             return 2;
         };
-    } // cs_smsgDB
+    } // DigitalNote::SMSG::ext_cs_db
 
     return 0;
 };
 
-int SecureMsgAddAddress(std::string& address, std::string& publicKey)
+int AddAddress(std::string& address, std::string& publicKey)
 {
     /*
         Add address and matching public key to the database
@@ -2718,7 +2227,7 @@ int SecureMsgAddAddress(std::string& address, std::string& publicKey)
 
     if (!coinAddress.IsValid())
     {
-        LogPrint("smessage", "%s - Address is not valid: %s.\n", __func__, address.c_str());
+        LogPrint("smsg", "%s - Address is not valid: %s.\n", __func__, address.c_str());
         return 5;
     };
 
@@ -2726,7 +2235,7 @@ int SecureMsgAddAddress(std::string& address, std::string& publicKey)
 
     if (!coinAddress.GetKeyID(hashKey))
     {
-        LogPrint("smessage", "%s - coinAddress.GetKeyID failed: %s.\n", __func__, coinAddress.ToString().c_str());
+        LogPrint("smsg", "%s - coinAddress.GetKeyID failed: %s.\n", __func__, coinAddress.ToString().c_str());
         return 5;
     };
 
@@ -2738,7 +2247,7 @@ int SecureMsgAddAddress(std::string& address, std::string& publicKey)
     CPubKey pubKeyT(pubKey);
     if (!pubKeyT.IsValid())
     {
-        LogPrint("smessage", "%s - Invalid PubKey.\n", __func__);
+        LogPrint("smsg", "%s - Invalid PubKey.\n", __func__);
         return 2;
     };
     
@@ -2747,52 +2256,52 @@ int SecureMsgAddAddress(std::string& address, std::string& publicKey)
 
     if (addressT.ToString().compare(address) != 0)
     {
-        LogPrint("smessage", "%s - Public key does not hash to address, addressT %s.\n", __func__, addressT.ToString().c_str());
+        LogPrint("smsg", "%s - Public key does not hash to address, addressT %s.\n", __func__, addressT.ToString().c_str());
         return 3;
     };
 
-    return SecureMsgInsertAddress(hashKey, pubKey);
+    return DigitalNote::SMSG::InsertAddress(hashKey, pubKey);
 };
 
-int SecureMsgRetrieve(SecMsgToken &token, std::vector<uint8_t>& vchData)
+int Retrieve(DigitalNote::SMSG::Token &token, std::vector<uint8_t>& vchData)
 {
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgRetrieve() %d.\n", token.timestamp);
+        LogPrint("smsg", "DigitalNote::SMSG::Retrieve() %d.\n", token.timestamp);
 
-    // -- has cs_smsg lock from SecureMsgReceiveData
+    // -- has DigitalNote::SMSG::ext_cs lock from DigitalNote::SMSG::ReceiveData
 
-    fs::path pathSmsgDir = GetDataDir() / "smsgStore";
+    boost::filesystem::path pathSmsgDir = GetDataDir() / "smsgStore";
 
-    //LogPrint("smessage", "token.offset %d.\n", token.offset); // DEBUG
+    //LogPrint("smsg", "token.offset %d.\n", token.offset); // DEBUG
     int64_t bucket = token.timestamp - (token.timestamp % SMSG_BUCKET_LEN);
     std::string fileName = boost::lexical_cast<std::string>(bucket) + "_01.dat";
-    fs::path fullpath = pathSmsgDir / fileName;
+    boost::filesystem::path fullpath = pathSmsgDir / fileName;
 
-    //LogPrint("smessage", "bucket %d.\n", bucket);
-    //LogPrint("smessage", "bucket d %d.\n", bucket);
-    //LogPrint("smessage", "fileName %s.\n", fileName.c_str());
+    //LogPrint("smsg", "bucket %d.\n", bucket);
+    //LogPrint("smsg", "bucket d %d.\n", bucket);
+    //LogPrint("smsg", "fileName %s.\n", fileName.c_str());
 
     FILE *fp;
     errno = 0;
     if (!(fp = fopen(fullpath.string().c_str(), "rb")))
     {
-        LogPrint("smessage", "Error opening file: %s\nPath %s\n", strerror(errno), fullpath.string().c_str());
+        LogPrint("smsg", "Error opening file: %s\nPath %s\n", strerror(errno), fullpath.string().c_str());
         return 1;
     };
 
     errno = 0;
     if (fseek(fp, token.offset, SEEK_SET) != 0)
     {
-        LogPrint("smessage", "fseek, strerror: %s.\n", strerror(errno));
+        LogPrint("smsg", "fseek, strerror: %s.\n", strerror(errno));
         fclose(fp);
         return 1;
     };
 
-    SecureMessage smsg;
+    DigitalNote::SMSG::SecureMessage smsg;
     errno = 0;
     if (fread(&smsg.hash[0], sizeof(uint8_t), SMSG_HDR_LEN, fp) != (size_t)SMSG_HDR_LEN)
     {
-        LogPrint("smessage", "fread header failed: %s\n", strerror(errno));
+        LogPrint("smsg", "fread header failed: %s\n", strerror(errno));
         fclose(fp);
         return 1;
     };
@@ -2800,7 +2309,7 @@ int SecureMsgRetrieve(SecMsgToken &token, std::vector<uint8_t>& vchData)
     try {
         vchData.resize(SMSG_HDR_LEN + smsg.nPayload);
     } catch (std::exception& e) {
-        LogPrint("smessage", "SecureMsgRetrieve(): Could not resize vchData, %u, %s\n", SMSG_HDR_LEN + smsg.nPayload, e.what());
+        LogPrint("smsg", "DigitalNote::SMSG::Retrieve(): Could not resize vchData, %u, %s\n", SMSG_HDR_LEN + smsg.nPayload, e.what());
         return 1;
     };
 
@@ -2808,7 +2317,7 @@ int SecureMsgRetrieve(SecMsgToken &token, std::vector<uint8_t>& vchData)
     errno = 0;
     if (fread(&vchData[SMSG_HDR_LEN], sizeof(uint8_t), smsg.nPayload, fp) != smsg.nPayload)
     {
-        LogPrint("smessage", "fread data failed: %s. Wanted %u bytes.\n", strerror(errno), smsg.nPayload);
+        LogPrint("smsg", "fread data failed: %s. Wanted %u bytes.\n", strerror(errno), smsg.nPayload);
         fclose(fp);
         return 1;
     };
@@ -2819,14 +2328,14 @@ int SecureMsgRetrieve(SecMsgToken &token, std::vector<uint8_t>& vchData)
     return 0;
 };
 
-int SecureMsgReceive(CNode* pfrom, std::vector<uint8_t>& vchData)
+int Receive(CNode* pfrom, std::vector<uint8_t>& vchData)
 {
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgReceive().\n");
+        LogPrint("smsg", "DigitalNote::SMSG::Receive().\n");
 
     if (vchData.size() < 12) // nBunch4 + timestamp8
     {
-        LogPrint("smessage", "Error: not enough data.\n");
+        LogPrint("smsg", "Error: not enough data.\n");
         return 1;
     };
 
@@ -2843,32 +2352,32 @@ int SecureMsgReceive(CNode* pfrom, std::vector<uint8_t>& vchData)
     if (bktTime > now + SMSG_TIME_LEEWAY)
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "bktTime > now.\n");
+            LogPrint("smsg", "bktTime > now.\n");
         // misbehave?
         return 1;
     } else
     if (bktTime < now - SMSG_RETENTION)
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "bktTime < now - SMSG_RETENTION.\n");
+            LogPrint("smsg", "bktTime < now - SMSG_RETENTION.\n");
         // misbehave?
         return 1;
     };
 
-    std::map<int64_t, SecMsgBucket>::iterator itb;
+    std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator itb;
 
     if (nBunch == 0 || nBunch > 500)
     {
-        LogPrint("smessage", "Error: Invalid no. messages received in bunch %u, for bucket %d.\n", nBunch, bktTime);
+        LogPrint("smsg", "Error: Invalid no. messages received in bunch %u, for bucket %d.\n", nBunch, bktTime);
         Misbehaving(pfrom->GetId(), 1);
         
         {
-            LOCK(cs_smsg);
+            LOCK(DigitalNote::SMSG::ext_cs);
             // -- release lock on bucket if it exists
-            itb = smsgBuckets.find(bktTime);
-            if (itb != smsgBuckets.end())
+            itb = DigitalNote::SMSG::ext_buckets.find(bktTime);
+            if (itb != DigitalNote::SMSG::ext_buckets.end())
                 itb->second.nLockCount = 0;
-        } // cs_smsg
+        } // DigitalNote::SMSG::ext_cs
         return 1;
     };
 
@@ -2878,14 +2387,14 @@ int SecureMsgReceive(CNode* pfrom, std::vector<uint8_t>& vchData)
     {
         if (vchData.size() - n < SMSG_HDR_LEN)
         {
-            LogPrint("smessage", "Error: not enough data sent, n = %u.\n", n);
+            LogPrint("smsg", "Error: not enough data sent, n = %u.\n", n);
             break;
         };
 
-        SecureMessage *psmsg = (SecureMessage*) &vchData[n];
+        DigitalNote::SMSG::SecureMessage *psmsg = (DigitalNote::SMSG::SecureMessage*) &vchData[n];
 
         int rv;
-        if ((rv = SecureMsgValidate(&vchData[n], &vchData[n + SMSG_HDR_LEN], psmsg->nPayload)) != 0)
+        if ((rv = DigitalNote::SMSG::Validate(&vchData[n], &vchData[n + SMSG_HDR_LEN], psmsg->nPayload)) != 0)
         {
             // message dropped
             if (rv == 2) // invalid proof of work
@@ -2899,98 +2408,98 @@ int SecureMsgReceive(CNode* pfrom, std::vector<uint8_t>& vchData)
         };
         
         {
-            LOCK(cs_smsg);
+            LOCK(DigitalNote::SMSG::ext_cs);
             // -- store message, but don't hash bucket
-            if (SecureMsgStore(&vchData[n], &vchData[n + SMSG_HDR_LEN], psmsg->nPayload, false) != 0)
+            if (DigitalNote::SMSG::Store(&vchData[n], &vchData[n + SMSG_HDR_LEN], psmsg->nPayload, false) != 0)
             {
                 // message dropped
                 break; // continue?
             };
 
-            if (SecureMsgScanMessage(&vchData[n], &vchData[n + SMSG_HDR_LEN], psmsg->nPayload, true) != 0)
+            if (DigitalNote::SMSG::ScanMessage(&vchData[n], &vchData[n + SMSG_HDR_LEN], psmsg->nPayload, true) != 0)
             {
                 // message recipient is not this node (or failed)
             };
-        } // cs_smsg
+        } // DigitalNote::SMSG::ext_cs
         
         n += SMSG_HDR_LEN + psmsg->nPayload;
     };
     
     {
-        LOCK(cs_smsg);
+        LOCK(DigitalNote::SMSG::ext_cs);
         // -- if messages have been added, bucket must exist now
-        itb = smsgBuckets.find(bktTime);
-        if (itb == smsgBuckets.end())
+        itb = DigitalNote::SMSG::ext_buckets.find(bktTime);
+        if (itb == DigitalNote::SMSG::ext_buckets.end())
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "Don't have bucket %d.\n", bktTime);
+                LogPrint("smsg", "Don't have bucket %d.\n", bktTime);
             return 1;
         };
 
         itb->second.nLockCount  = 0; // this node has received data from peer, release lock
         itb->second.nLockPeerId = 0;
         itb->second.hashBucket();
-    } // cs_smsg
+    } // DigitalNote::SMSG::ext_cs
     return 0;
 };
 
-int SecureMsgStoreUnscanned(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
+int StoreUnscanned(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
 {
     /*
     When the wallet is locked a copy of each received message is stored to be scanned later if wallet is unlocked
     */
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgStoreUnscanned()\n");
+        LogPrint("smsg", "DigitalNote::SMSG::StoreUnscanned()\n");
 
     if (!pHeader
         || !pPayload)
     {
-        LogPrint("smessage", "Error: null pointer to header or payload.\n");
+        LogPrint("smsg", "Error: null pointer to header or payload.\n");
         return 1;
     };
 
-    SecureMessage* psmsg = (SecureMessage*) pHeader;
+    DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) pHeader;
 
-    fs::path pathSmsgDir;
+    boost::filesystem::path pathSmsgDir;
     try {
         pathSmsgDir = GetDataDir() / "smsgStore";
-        fs::create_directory(pathSmsgDir);
+        boost::filesystem::create_directory(pathSmsgDir);
     } catch (const boost::filesystem::filesystem_error& ex)
     {
-        LogPrint("smessage", "Error: Failed to create directory %s - %s\n", pathSmsgDir.string().c_str(), ex.what());
+        LogPrint("smsg", "Error: Failed to create directory %s - %s\n", pathSmsgDir.string().c_str(), ex.what());
         return 1;
     };
 
     int64_t now = GetTime();
     if (psmsg->timestamp > now + SMSG_TIME_LEEWAY)
     {
-        LogPrint("smessage", "Message > now.\n");
+        LogPrint("smsg", "Message > now.\n");
         return 1;
     } else
     if (psmsg->timestamp < now - SMSG_RETENTION)
     {
-        LogPrint("smessage", "Message < SMSG_RETENTION.\n");
+        LogPrint("smsg", "Message < SMSG_RETENTION.\n");
         return 1;
     };
 
     int64_t bucket = psmsg->timestamp - (psmsg->timestamp % SMSG_BUCKET_LEN);
 
     std::string fileName = boost::lexical_cast<std::string>(bucket) + "_01_wl.dat";
-    fs::path fullpath = pathSmsgDir / fileName;
+    boost::filesystem::path fullpath = pathSmsgDir / fileName;
 
     FILE *fp;
     errno = 0;
     if (!(fp = fopen(fullpath.string().c_str(), "ab")))
     {
-        LogPrint("smessage", "Error opening file: %s\n", strerror(errno));
+        LogPrint("smsg", "Error opening file: %s\n", strerror(errno));
         return 1;
     };
 
     if (fwrite(pHeader, sizeof(uint8_t), SMSG_HDR_LEN, fp) != (size_t)SMSG_HDR_LEN
         || fwrite(pPayload, sizeof(uint8_t), nPayload, fp) != nPayload)
     {
-        LogPrint("smessage", "fwrite failed: %s\n", strerror(errno));
+        LogPrint("smsg", "fwrite failed: %s\n", strerror(errno));
         fclose(fp);
         return 1;
     };
@@ -3000,13 +2509,12 @@ int SecureMsgStoreUnscanned(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPaylo
     return 0;
 };
 
-
-int SecureMsgStore(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool fUpdateBucket)
+int Store(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool fUpdateBucket)
 {
     if (fDebugSmsg)
     {
-        LogPrint("smessage", "SecureMsgStore()\n");
-        AssertLockHeld(cs_smsg);
+        LogPrint("smsg", "DigitalNote::SMSG::Store()\n");
+        AssertLockHeld(DigitalNote::SMSG::ext_cs);
     };
     
     
@@ -3016,14 +2524,14 @@ int SecureMsgStore(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool 
         return errorN(1, "null pointer to header or payload.");
     };
 
-    SecureMessage* psmsg = (SecureMessage*) pHeader;
+    DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) pHeader;
 
 
     long int ofs;
-    fs::path pathSmsgDir;
+    boost::filesystem::path pathSmsgDir;
     try {
         pathSmsgDir = GetDataDir() / "smsgStore";
-        fs::create_directory(pathSmsgDir);
+        boost::filesystem::create_directory(pathSmsgDir);
     } catch (const boost::filesystem::filesystem_error& ex)
     {
         return errorN(1, "Failed to create directory %s - %s.", pathSmsgDir.string().c_str(), ex.what());
@@ -3032,43 +2540,43 @@ int SecureMsgStore(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool 
     int64_t now = GetTime();
     if (psmsg->timestamp > now + SMSG_TIME_LEEWAY)
     {
-        LogPrint("smessage", "Message > now.\n");
+        LogPrint("smsg", "Message > now.\n");
         return 1;
     } else
     if (psmsg->timestamp < now - SMSG_RETENTION)
     {
-        LogPrint("smessage", "Message < SMSG_RETENTION.\n");
+        LogPrint("smsg", "Message < SMSG_RETENTION.\n");
         return 1;
     };
 
     int64_t bucket = psmsg->timestamp - (psmsg->timestamp % SMSG_BUCKET_LEN);
 
-    SecMsgToken token(psmsg->timestamp, pPayload, nPayload, 0);
+    DigitalNote::SMSG::Token token(psmsg->timestamp, pPayload, nPayload, 0);
 
-    std::set<SecMsgToken>& tokenSet = smsgBuckets[bucket].setTokens;
-    std::set<SecMsgToken>::iterator it;
+    std::set<DigitalNote::SMSG::Token>& tokenSet = DigitalNote::SMSG::ext_buckets[bucket].setTokens;
+    std::set<DigitalNote::SMSG::Token>::iterator it;
     it = tokenSet.find(token);
     if (it != tokenSet.end())
     {
-        LogPrint("smessage", "Already have message.\n");
+        LogPrint("smsg", "Already have message.\n");
         if (fDebugSmsg)
         {
-            LogPrint("smessage", "nPayload: %u\n", nPayload);
-            LogPrint("smessage", "bucket: %d\n", bucket);
+            LogPrint("smsg", "nPayload: %u\n", nPayload);
+            LogPrint("smsg", "bucket: %d\n", bucket);
 
-            LogPrint("smessage", "message ts: %d", token.timestamp);
+            LogPrint("smsg", "message ts: %d", token.timestamp);
             std::vector<uint8_t> vchShow;
             vchShow.resize(8);
             memcpy(&vchShow[0], token.sample, 8);
-            LogPrint("smessage", " sample %s\n", ValueString(vchShow).c_str());
+            LogPrint("smsg", " sample %s\n", ValueString(vchShow).c_str());
             /*
-            LogPrint("smessage", "\nmessages in bucket:\n");
+            LogPrint("smsg", "\nmessages in bucket:\n");
             for (it = tokenSet.begin(); it != tokenSet.end(); ++it)
             {
-                LogPrint("smessage", "message ts: %d", (*it).timestamp);
+                LogPrint("smsg", "message ts: %d", (*it).timestamp);
                 vchShow.resize(8);
                 memcpy(&vchShow[0], (*it).sample, 8);
-                LogPrint("smessage", " sample %s\n", ValueString(vchShow).c_str());
+                LogPrint("smsg", " sample %s\n", ValueString(vchShow).c_str());
             };
             */
         };
@@ -3076,7 +2584,7 @@ int SecureMsgStore(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool 
     };
 
     std::string fileName = boost::lexical_cast<std::string>(bucket) + "_01.dat";
-    fs::path fullpath = pathSmsgDir / fileName;
+    boost::filesystem::path fullpath = pathSmsgDir / fileName;
 
     FILE *fp;
     errno = 0;
@@ -3106,23 +2614,23 @@ int SecureMsgStore(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, bool 
 
     token.offset = ofs;
 
-    //LogPrint("smessage", "token.offset: %d\n", token.offset); // DEBUG
+    //LogPrint("smsg", "token.offset: %d\n", token.offset); // DEBUG
     tokenSet.insert(token);
 
     if (fUpdateBucket)
-        smsgBuckets[bucket].hashBucket();
+        DigitalNote::SMSG::ext_buckets[bucket].hashBucket();
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsg added to bucket %d.\n", bucket);
+        LogPrint("smsg", "SecureMsg added to bucket %d.\n", bucket);
     return 0;
 };
 
-int SecureMsgStore(SecureMessage& smsg, bool fUpdateBucket)
+int Store(DigitalNote::SMSG::SecureMessage& smsg, bool fUpdateBucket)
 {
-    return SecureMsgStore(&smsg.hash[0], smsg.pPayload, smsg.nPayload, fUpdateBucket);
+    return DigitalNote::SMSG::Store(&smsg.hash[0], smsg.pPayload, smsg.nPayload, fUpdateBucket);
 };
 
-int SecureMsgValidate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
+int Validate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
 {
     /*
     returns
@@ -3133,7 +2641,7 @@ int SecureMsgValidate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
         4 invalid version
         5 payload is too large
     */
-    SecureMessage *psmsg = (SecureMessage*) pHeader;
+    DigitalNote::SMSG::SecureMessage *psmsg = (DigitalNote::SMSG::SecureMessage*) pHeader;
 
     if (psmsg->version[0] != 1)
         return 4;
@@ -3149,7 +2657,7 @@ int SecureMsgValidate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
     memcpy(&nonse, &psmsg->nonse[0], 4);
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgValidate() nonse %u.\n", nonse);
+        LogPrint("smsg", "DigitalNote::SMSG::Validate() nonse %u.\n", nonse);
 
     for (int i = 0; i < 32; i+=4)
         memcpy(civ+i, &nonse, 4);
@@ -3170,7 +2678,7 @@ int SecureMsgValidate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
         || nBytes != 32)
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "HMAC error.\n");
+            LogPrint("smsg", "HMAC error.\n");
         rv = 1; // error
     } else
     {
@@ -3179,14 +2687,14 @@ int SecureMsgValidate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
             && (~(sha256Hash[29]) & ((1<<0) | (1<<1) | (1<<2)) ))
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "Hash Valid.\n");
+                LogPrint("smsg", "Hash Valid.\n");
             rv = 0; // smsg is valid
         };
 
         if (memcmp(psmsg->hash, sha256Hash, 4) != 0)
         {
              if (fDebugSmsg)
-                LogPrint("smessage", "Checksum mismatch.\n");
+                LogPrint("smsg", "Checksum mismatch.\n");
             rv = 3; // checksum mismatch
         }
     }
@@ -3201,7 +2709,7 @@ int SecureMsgValidate(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
     return rv;
 };
 
-int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
+int SetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
 {
     /*  proof of work and checksum
 
@@ -3214,7 +2722,7 @@ int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
 
     */
 
-    SecureMessage* psmsg = (SecureMessage*) pHeader;
+    DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) pHeader;
 
     int64_t nStart = GetTimeMillis();
     uint8_t civ[32];
@@ -3236,7 +2744,7 @@ int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
     // -- break for HMAC_CTX_cleanup
     for (;;)
     {
-        if (!fSecMsgEnabled)
+        if (!DigitalNote::SMSG::ext_enabled)
            break;
 
         //psmsg->timestamp = GetTime();
@@ -3261,7 +2769,7 @@ int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
         {
             found = true;
             if (fDebugSmsg)
-                LogPrint("smessage", "Match %u\n", nonse);
+                LogPrint("smsg", "Match %u\n", nonse);
             break;
         };
         */
@@ -3273,7 +2781,7 @@ int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
         {
             found = true;
             //if (fDebugSmsg)
-            //    LogPrint("smessage", "Match %u\n", nonse);
+            //    LogPrint("smsg", "Match %u\n", nonse);
             break;
         }
 
@@ -3281,7 +2789,7 @@ int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
         if (nonse >= 4294967295U)
         {
             if (fDebugSmsg)
-                LogPrint("smessage", "No match %u\n", nonse);
+                LogPrint("smsg", "No match %u\n", nonse);
             break;
             //return 1;
         }
@@ -3296,17 +2804,17 @@ int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
 #endif
 
 
-    if (!fSecMsgEnabled)
+    if (!DigitalNote::SMSG::ext_enabled)
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "SecureMsgSetHash() stopped, shutdown detected.\n");
+            LogPrint("smsg", "DigitalNote::SMSG::SetHash() stopped, shutdown detected.\n");
         return 2;
     };
 
     if (!found)
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "SecureMsgSetHash() failed, took %d ms, nonse %u\n", GetTimeMillis() - nStart, nonse);
+            LogPrint("smsg", "DigitalNote::SMSG::SetHash() failed, took %d ms, nonse %u\n", GetTimeMillis() - nStart, nonse);
         return 1;
     };
 
@@ -3314,11 +2822,11 @@ int SecureMsgSetHash(uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload)
     //memcpy(psmsg->hash, &vchHash[0], 4);
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgSetHash() took %d ms, nonse %u\n", GetTimeMillis() - nStart, nonse);
+        LogPrint("smsg", "DigitalNote::SMSG::SetHash() took %d ms, nonse %u\n", GetTimeMillis() - nStart, nonse);
     return 0;
 };
 
-int SecureMsgEncrypt(SecureMessage &smsg, const std::string &addressFrom, const std::string &addressTo, const std::string &message)
+int Encrypt(DigitalNote::SMSG::SecureMessage &smsg, const std::string &addressFrom, const std::string &addressTo, const std::string &message)
 {
     /* Create a secure message
 
@@ -3344,7 +2852,7 @@ int SecureMsgEncrypt(SecureMessage &smsg, const std::string &addressFrom, const 
     */
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgEncrypt(%s, %s, ...)\n", addressFrom.c_str(), addressTo.c_str());
+        LogPrint("smsg", "DigitalNote::SMSG::Encrypt(%s, %s, ...)\n", addressFrom.c_str(), addressTo.c_str());
 
 
     if (message.size() > SMSG_MAX_MSG_BYTES)
@@ -3397,8 +2905,8 @@ int SecureMsgEncrypt(SecureMessage &smsg, const std::string &addressFrom, const 
 
     // -- public key K is the destination address
     CPubKey cpkDestK;
-    if (SecureMsgGetStoredKey(ckidDest, cpkDestK) != 0
-        && SecureMsgGetLocalKey(ckidDest, cpkDestK) != 0) // maybe it's a local key (outbox?)
+    if (DigitalNote::SMSG::GetStoredKey(ckidDest, cpkDestK) != 0
+        && DigitalNote::SMSG::GetLocalKey(ckidDest, cpkDestK) != 0) // maybe it's a local key (outbox?)
     {
         return errorN(5, "%s: Could not get public key for destination address.", __func__);
     };
@@ -3432,7 +2940,7 @@ int SecureMsgEncrypt(SecureMessage &smsg, const std::string &addressFrom, const 
     // always seems to be 32, worth checking?
     //int field_size = EC_GROUP_get_degree(EC_KEY_get0_group(pkeyr));
     //int secret_len = (field_size+7)/8;
-    //LogPrint("smessage", "secret_len %d.\n", secret_len);
+    //LogPrint("smsg", "secret_len %d.\n", secret_len);
 
     // -- ECDH_compute_key returns the same P if fed compressed or uncompressed public keys
     #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -3529,15 +3037,15 @@ int SecureMsgEncrypt(SecureMessage &smsg, const std::string &addressFrom, const 
         keyFrom.SignCompact(Hash(message.begin(), message.end()), vchSignature);
 
         // -- Save some bytes by sending address raw
-        vchPayload[0] = (static_cast<CDigitalNoteAddress_B*>(&coinAddrFrom))->getVersion(); // vchPayload[0] = coinAddrDest.nVersion;
-        memcpy(&vchPayload[1], (static_cast<CKeyID_B*>(&ckidFrom))->GetPPN(), 20); // memcpy(&vchPayload[1], ckidDest.pn, 20);
+        vchPayload[0] = (static_cast<DigitalNote::SMSG::CDigitalNoteAddress_B*>(&coinAddrFrom))->getVersion(); // vchPayload[0] = coinAddrDest.nVersion;
+        memcpy(&vchPayload[1], (static_cast<DigitalNote::SMSG::CKeyID_B*>(&ckidFrom))->GetPPN(), 20); // memcpy(&vchPayload[1], ckidDest.pn, 20);
 
         memcpy(&vchPayload[1+20], &vchSignature[0], vchSignature.size());
         memcpy(&vchPayload[1+20+65], &lenMsg, 4); // length of uncompressed plain text
     };
 
 
-    SecMsgCrypter crypter;
+    DigitalNote::SMSG::Crypter crypter;
     crypter.SetKey(key_e, smsg.iv);
     std::vector<uint8_t> vchCiphertext;
 
@@ -3589,7 +3097,7 @@ int SecureMsgEncrypt(SecureMessage &smsg, const std::string &addressFrom, const 
     return 0;
 };
 
-int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string &message, std::string &sError)
+int Send(std::string &addressFrom, std::string &addressTo, std::string &message, std::string &sError)
 {
     /* Encrypt secure message, and place it on the network
         Make a copy of the message to sender's first address and place in send queue db
@@ -3598,12 +3106,12 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
     */
 
     if (fDebugSmsg)
-        LogPrint("smessage", "SecureMsgSend(%s, %s, ...)\n", addressFrom.c_str(), addressTo.c_str());
+        LogPrint("smsg", "DigitalNote::SMSG::Send(%s, %s, ...)\n", addressFrom.c_str(), addressTo.c_str());
 
     if (pwalletMain->IsLocked())
     {
         sError = "Wallet is locked, wallet must be unlocked to send and recieve messages.";
-        LogPrint("smessage", "Wallet is locked, wallet must be unlocked to send and recieve messages.\n");
+        LogPrint("smsg", "Wallet is locked, wallet must be unlocked to send and recieve messages.\n");
         return 1;
     };
 
@@ -3612,17 +3120,17 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
         std::ostringstream oss;
         oss << message.size() << " > " << SMSG_MAX_MSG_BYTES;
         sError = "Message is too long, " + oss.str();
-        LogPrint("smessage", "Message is too long, %u.\n", message.size());
+        LogPrint("smsg", "Message is too long, %u.\n", message.size());
         return 1;
     };
 
 
     int rv;
-    SecureMessage smsg;
+    DigitalNote::SMSG::SecureMessage smsg;
 
-    if ((rv = SecureMsgEncrypt(smsg, addressFrom, addressTo, message)) != 0)
+    if ((rv = DigitalNote::SMSG::Encrypt(smsg, addressFrom, addressTo, message)) != 0)
     {
-        LogPrint("smessage", "SecureMsgSend(), encrypt for recipient failed.\n");
+        LogPrint("smsg", "DigitalNote::SMSG::Send(), encrypt for recipient failed.\n");
 
         switch(rv)
         {
@@ -3654,14 +3162,14 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
     }
     memcpy(&chKey[10], smsg.pPayload, 8);
 
-    SecMsgStored smsgSQ;
+    DigitalNote::SMSG::Stored smsgSQ;
 
     smsgSQ.timeReceived  = GetTime();
     smsgSQ.sAddrTo       = addressTo;
 
     try { smsgSQ.vchMessage.resize(SMSG_HDR_LEN + smsg.nPayload); } catch (std::exception& e)
     {
-        LogPrint("smessage", "smsgSQ.vchMessage.resize %u threw: %s.\n", SMSG_HDR_LEN + smsg.nPayload, e.what());
+        LogPrint("smsg", "smsgSQ.vchMessage.resize %u threw: %s.\n", SMSG_HDR_LEN + smsg.nPayload, e.what());
         sError = "Could not allocate memory.";
         return 8;
     };
@@ -3670,14 +3178,14 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
     memcpy(&smsgSQ.vchMessage[SMSG_HDR_LEN], smsg.pPayload, smsg.nPayload);
 
     {
-        LOCK(cs_smsgDB);
-        SecMsgDB dbSendQueue;
+        LOCK(DigitalNote::SMSG::ext_cs_db);
+        DigitalNote::SMSG::DB dbSendQueue;
         if (dbSendQueue.Open("cw"))
         {
             dbSendQueue.WriteSmesg(chKey, smsgSQ);
             //NotifySecMsgSendQueueChanged(smsgOutbox);
         };
-    } // cs_smsgDB
+    } // DigitalNote::SMSG::ext_cs_db
 
     // TODO: only update outbox when proof of work thread is done.
 
@@ -3686,7 +3194,7 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
 
 
     if (fDebugSmsg)
-        LogPrint("smessage", "Encrypting message for outbox.\n");
+        LogPrint("smsg", "Encrypting message for outbox.\n");
 
     std::string addressOutbox = "None";
     CDigitalNoteAddress coinAddrOutbox;
@@ -3707,16 +3215,16 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
 
     if (addressOutbox == "None")
     {
-        LogPrint("smessage", "Warning: SecureMsgSend() could not find an address to encrypt outbox message with.\n");
+        LogPrint("smsg", "Warning: DigitalNote::SMSG::Send() could not find an address to encrypt outbox message with.\n");
     } else
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "Encrypting a copy for outbox, using address %s\n", addressOutbox.c_str());
+            LogPrint("smsg", "Encrypting a copy for outbox, using address %s\n", addressOutbox.c_str());
 
-        SecureMessage smsgForOutbox;
-        if ((rv = SecureMsgEncrypt(smsgForOutbox, addressFrom, addressOutbox, message)) != 0)
+        DigitalNote::SMSG::SecureMessage smsgForOutbox;
+        if ((rv = DigitalNote::SMSG::Encrypt(smsgForOutbox, addressFrom, addressOutbox, message)) != 0)
         {
-            LogPrint("smessage", "SecureMsgSend(), encrypt for outbox failed, %d.\n", rv);
+            LogPrint("smsg", "DigitalNote::SMSG::Send(), encrypt for outbox failed, %d.\n", rv);
         } else
         {
             // -- save sent message to db
@@ -3726,7 +3234,7 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
             memcpy(&chKey[2],  &smsgForOutbox.timestamp, 8);
             memcpy(&chKey[10], &smsgForOutbox.pPayload,  8);   // sample
 
-            SecMsgStored smsgOutbox;
+            DigitalNote::SMSG::Stored smsgOutbox;
 
             smsgOutbox.timeReceived  = GetTime();
             smsgOutbox.sAddrTo       = addressTo;
@@ -3735,7 +3243,7 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
             try {
                 smsgOutbox.vchMessage.resize(SMSG_HDR_LEN + smsgForOutbox.nPayload);
             } catch (std::exception& e) {
-                LogPrint("smessage", "smsgOutbox.vchMessage.resize %u threw: %s.\n", SMSG_HDR_LEN + smsgForOutbox.nPayload, e.what());
+                LogPrint("smsg", "smsgOutbox.vchMessage.resize %u threw: %s.\n", SMSG_HDR_LEN + smsgForOutbox.nPayload, e.what());
                 sError = "Could not allocate memory.";
                 return 8;
             };
@@ -3744,48 +3252,47 @@ int SecureMsgSend(std::string &addressFrom, std::string &addressTo, std::string 
 
 
             {
-                LOCK(cs_smsgDB);
-                SecMsgDB dbSent;
+                LOCK(DigitalNote::SMSG::ext_cs_db);
+                DigitalNote::SMSG::DB dbSent;
 
                 if (dbSent.Open("cw"))
                 {
                     dbSent.WriteSmesg(chKey, smsgOutbox);
-                    NotifySecMsgOutboxChanged(smsgOutbox);
+                    DigitalNote::SMSG::ext_signal_NotifyOutboxChanged(smsgOutbox);
 
                     LogPrint("webwallet", "webwallet: Sending update message out update to webwallet \n");
 
                     char cbuf[256];
-                    Object messageObject;
-                    messageObject.push_back(Pair("received", getTimeString(smsgOutbox.timeReceived, cbuf, sizeof(cbuf))));
-                    messageObject.push_back(Pair("from", addressFrom));
-                    messageObject.push_back(Pair("to", addressTo));
-                    messageObject.push_back(Pair("text", message));
+                    json_spirit::Object messageObject;
+                    messageObject.push_back(json_spirit::Pair("received", getTimeString(smsgOutbox.timeReceived, cbuf, sizeof(cbuf))));
+                    messageObject.push_back(json_spirit::Pair("from", addressFrom));
+                    messageObject.push_back(json_spirit::Pair("to", addressTo));
+                    messageObject.push_back(json_spirit::Pair("text", message));
 
-                    Object payload;
-                    payload.push_back(Pair("type", "messagesOut"));
-                    payload.push_back(Pair("data", messageObject));
-                    NotifySecMsgOutboxChangedJson(payload);
+                    json_spirit::Object payload;
+                    payload.push_back(json_spirit::Pair("type", "messagesOut"));
+                    payload.push_back(json_spirit::Pair("data", messageObject));
+                    DigitalNote::SMSG::ext_signal_NotifyOutboxChangedJson(payload);
 
                     LogPrint("webwallet", "webwallet: Finished sending update message out update to webwallet \n");
                 };
-            } // cs_smsgDB
+            } // DigitalNote::SMSG::ext_cs_db
         };
     };
 
     if (fDebugSmsg)
-        LogPrint("smessage", "Secure message queued for sending to %s.\n", addressTo.c_str());
+        LogPrint("smsg", "Secure message queued for sending to %s.\n", addressTo.c_str());
 
     return 0;
 };
 
-
-int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, MessageData &msg)
+int Decrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uint8_t *pPayload, uint32_t nPayload, DigitalNote::SMSG::Message &msg)
 {
     /* Decrypt secure message
 
         address is the owned address to decrypt with.
 
-        validate first in SecureMsgValidate
+        validate first in DigitalNote::SMSG::Validate
 
         returns
             1       Error
@@ -3795,7 +3302,7 @@ int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uin
     */
 
     if (fDebugSmsg)
-        LogPrint("smessage", "%s: using %s, testonly %d.\n", __func__, address.c_str(), fTestOnly);
+        LogPrint("smsg", "%s: using %s, testonly %d.\n", __func__, address.c_str(), fTestOnly);
 
     if (!pHeader
         || !pPayload)
@@ -3803,7 +3310,7 @@ int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uin
         return errorN(1, "%s: null pointer to header or payload.", __func__);
     };
 
-    SecureMessage* psmsg = (SecureMessage*) pHeader;
+    DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) pHeader;
 
 
     if (psmsg->version[0] != 1)
@@ -3909,7 +3416,7 @@ int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uin
     if (memcmp(MAC, psmsg->mac, 32) != 0)
     {
         if (fDebugSmsg)
-            LogPrint("smessage", "MAC does not match.\n"); // expected if message is not to address on node
+            LogPrint("smsg", "MAC does not match.\n"); // expected if message is not to address on node
 
         return 1;
     };
@@ -3917,7 +3424,7 @@ int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uin
     if (fTestOnly)
         return 0;
 
-    SecMsgCrypter crypter;
+    DigitalNote::SMSG::Crypter crypter;
     crypter.SetKey(key_e, psmsg->iv);
     std::vector<uint8_t> vchPayload;
     if (!crypter.Decrypt(pPayload, nPayload, vchPayload))
@@ -4011,22 +3518,22 @@ int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uin
 
         int rv = 5;
         try {
-            rv = SecureMsgInsertAddress(ckidFrom, cpkFromSig);
+            rv = DigitalNote::SMSG::InsertAddress(ckidFrom, cpkFromSig);
         } catch (std::exception& e) {
-            LogPrint("smessage", "SecureMsgInsertAddress(), exception: %s.\n", e.what());
+            LogPrint("smsg", "DigitalNote::SMSG::InsertAddress(), exception: %s.\n", e.what());
             //return 1;
         };
 
         switch(rv)
         {
             case 0:
-                LogPrint("smessage", "Sender public key added to db.\n");
+                LogPrint("smsg", "Sender public key added to db.\n");
                 break;
             case 4:
-                LogPrint("smessage", "Sender public key already in db.\n");
+                LogPrint("smsg", "Sender public key already in db.\n");
                 break;
             default:
-                LogPrint("smessage", "Error adding sender public key to db.\n");
+                LogPrint("smsg", "Error adding sender public key to db.\n");
                 break;
         };
 
@@ -4034,12 +3541,16 @@ int SecureMsgDecrypt(bool fTestOnly, std::string &address, uint8_t *pHeader, uin
     };
 
     if (fDebugSmsg)
-        LogPrint("smessage", "Decrypted message for %s.\n", address.c_str());
+        LogPrint("smsg", "Decrypted message for %s.\n", address.c_str());
 
     return 0;
 };
 
-int SecureMsgDecrypt(bool fTestOnly, std::string &address, SecureMessage &smsg, MessageData &msg)
+int Decrypt(bool fTestOnly, std::string &address, DigitalNote::SMSG::SecureMessage &smsg, DigitalNote::SMSG::Message &msg)
 {
-    return SecureMsgDecrypt(fTestOnly, address, &smsg.hash[0], smsg.pPayload, smsg.nPayload, msg);
+    return DigitalNote::SMSG::Decrypt(fTestOnly, address, &smsg.hash[0], smsg.pPayload, smsg.nPayload, msg);
 };
+
+} // namespace SMSG
+} // namespace DigitalNote
+

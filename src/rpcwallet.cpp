@@ -6,14 +6,12 @@
 #include "base58.h"
 #include "blockparams.h"
 #include "stealth.h"
-#include "smessage.h"
 #include "rpcserver.h"
 #include "init.h"
 #include "net.h"
 #include "netbase.h"
 #include "util.h"
 #include "walletdb.h"
-#include "webwalletconnector.h"
 #include "cwallet.h"
 #include "cwallettx.h"
 #include "caccount.h"
@@ -27,6 +25,7 @@
 #include "wallet.h"
 #include "script.h"
 #include "main_extern.h"
+#include "webwalletconnector.h"
 
 using namespace json_spirit;
 

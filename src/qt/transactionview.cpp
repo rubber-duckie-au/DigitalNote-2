@@ -1,20 +1,3 @@
-#include "transactionview.h"
-
-#include "addresstablemodel.h"
-#include "bitcoinunits.h"
-#include "csvmodelwriter.h"
-#include "editaddressdialog.h"
-#include "guiutil.h"
-#include "optionsmodel.h"
-#include "transactiondescdialog.h"
-#include "transactionfilterproxy.h"
-#include "transactionrecord.h"
-#include "transactiontablemodel.h"
-#include "walletmodel.h"
-#include "smessage.h"
-
-#include "ui_interface.h"
-
 #include <QComboBox>
 #include <QDateTimeEdit>
 #include <QDesktopServices>
@@ -31,8 +14,23 @@
 #include <QTableView>
 #include <QUrl>
 #include <QVBoxLayout>
-
 #include <QMessageBox>
+
+#include "addresstablemodel.h"
+#include "bitcoinunits.h"
+#include "csvmodelwriter.h"
+#include "editaddressdialog.h"
+#include "guiutil.h"
+#include "optionsmodel.h"
+#include "transactiondescdialog.h"
+#include "transactionfilterproxy.h"
+#include "transactionrecord.h"
+#include "transactiontablemodel.h"
+#include "walletmodel.h"
+#include "smsg.h"
+#include "ui_interface.h"
+
+#include "transactionview.h"
 
 TransactionView::TransactionView(QWidget *parent) :
     QWidget(parent), model(0), transactionProxyModel(0),
@@ -416,7 +414,7 @@ void TransactionView::copySmsgInfo()
     } else {
         std::string address = indexes[0].data().toString().toStdString();
         std::string publicKey;
-        SecureMsgGetLocalPublicKey(address, publicKey);
+        DigitalNote::SMSG::GetLocalPublicKey(address, publicKey);
         GUIUtil::setClipboard(QString::fromStdString(address + ":" + publicKey));
     }
 }
