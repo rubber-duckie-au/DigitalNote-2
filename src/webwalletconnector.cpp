@@ -19,9 +19,6 @@
 
 #include "webwalletconnector.h"
 
-using namespace json_spirit;
-
-
 using websocketpp::connection_hdl;
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
@@ -72,9 +69,11 @@ server m_server;
 con_list m_connections;
 boost::thread* m_thread;
 
-class broadcast_server {
+class broadcast_server
+{
 public:
-    broadcast_server() {
+    broadcast_server()
+	{
         // Initialize Asio Transport
         m_server.init_asio();
 
@@ -83,7 +82,8 @@ public:
         m_server.set_close_handler(bind(&broadcast_server::on_close,this,::_1));
     }
 
-    void run(uint16_t port) {
+    void run(uint16_t port)
+	{
         LogPrint("webwallet", "webwallet: run is starting. \n");
 
         // listen on specified port
@@ -93,68 +93,90 @@ public:
         m_server.start_accept();
 
         LogPrint("webwallet", "webwallet: Creating processing thread \n");
+		
         m_thread = new boost::thread(boost::bind(&process_messages));
 
         // Start the ASIO io_service run loop
-        try {
+        try
+		{
             LogPrint("webwallet", "webwallet: m_server is starting. \n");
+			
             m_server.run();
-            LogPrint("webwallet", "webwallet: m_server is now closed. \n");
-        } catch (const std::exception &e) {
+            
+			LogPrint("webwallet", "webwallet: m_server is now closed. \n");
+        }
+		catch (const std::exception &e)
+		{
             LogPrint("webwallet", "webwallet: ERROR: Failed to start websocket. \n");
             LogPrint("webwallet", e.what());
         }
+		
         m_thread->join();
     }
 
-    void stop() {
+    void stop()
+	{
         LogPrint("webwallet", "webwallet: Requesting websocket to stop.\n");
-        {
-            std::lock_guard<std::mutex> guard(m_action_lock);
-            m_actions.push(action(STOP_COMMAND));
-        }
+		
+		std::lock_guard<std::mutex> guard(m_action_lock);
+		
+		m_actions.push(action(STOP_COMMAND));
         m_action_cond.notify_all();
     }
 
-    void on_open(connection_hdl hdl) {
+    void on_open(connection_hdl hdl)
+	{
         {
             std::lock_guard<std::mutex> guard(m_action_lock);
-            m_actions.push(action(SUBSCRIBE,hdl));
+            
+			m_actions.push(action(SUBSCRIBE,hdl));
         }
+		
         m_action_cond.notify_all();
     }
 
-    void on_close(connection_hdl hdl) {
+    void on_close(connection_hdl hdl)
+	{
         {
             std::lock_guard<std::mutex> guard(m_action_lock);
             m_actions.push(action(UNSUBSCRIBE,hdl));
         }
+		
         m_action_cond.notify_all();
     }
 
-    void sendMessage(const std::string &msg) {
-        if (!fWebWalletConnectorEnabled) {
+    void sendMessage(const std::string &msg)
+	{
+        if (!fWebWalletConnectorEnabled)
+		{
             return;
         }
 
         LogPrint("webwallet", "webwallet: Sending sendMessage to queue \n");
         LogPrint("webwallet", "webwallet: %s \n", msg);
-        {
-            std::lock_guard<std::mutex> guard(m_action_lock);
-            m_actions.push(action(MESSAGE, msg));
-            LogPrint("webwallet", "webwallet: m_actions size %d .\n", m_actions.size());
-        }
-        LogPrint("webwallet", "webwallet: notyfing all .\n");
+		
+		std::lock_guard<std::mutex> guard(m_action_lock);
+		
+		m_actions.push(action(MESSAGE, msg));
+		
+		LogPrint("webwallet", "webwallet: m_actions size %d .\n", m_actions.size());
+		LogPrint("webwallet", "webwallet: notyfing all .\n");
+		
         m_action_cond.notify_all();
     }
 
-    static void process_messages() {
-        while(true) {
+    static void process_messages()
+	{
+        while(true)
+		{
             LogPrint("webwallet", "webwallet: Locked m_action_lock.\n");
+			
             std::unique_lock<std::mutex> lock(m_action_lock);
 
-            while(m_actions.empty()) {
+            while(m_actions.empty())
+			{
                 LogPrint("webwallet", "webwallet: Waiting for new actions.\n");
+				
                 m_action_cond.wait(lock);
             }
 
@@ -163,37 +185,57 @@ public:
 
             lock.unlock();
 
-            if (a.type == SUBSCRIBE) {
+            if (a.type == SUBSCRIBE)
+			{
                 LogPrint("webwallet", "webwallet: Connection SUBSCRIBE.\n");
-                std::lock_guard<std::mutex> guard(m_connection_lock);
+                
+				std::lock_guard<std::mutex> guard(m_connection_lock);
+				
                 m_connections.insert(a.hdl);
-            } else if (a.type == UNSUBSCRIBE) {
+            }
+			else if (a.type == UNSUBSCRIBE)
+			{
                 LogPrint("webwallet", "webwallet: Connection SUBSCRIBE.\n");
-                std::lock_guard<std::mutex> guard(m_connection_lock);
-                m_connections.erase(a.hdl);
-            } else if (a.type == MESSAGE) {
+                
+				std::lock_guard<std::mutex> guard(m_connection_lock);
+                
+				m_connections.erase(a.hdl);
+            }
+			else if (a.type == MESSAGE)
+			{
                 LogPrint("webwallet", "webwallet: Connection MESSAGE.\n");
                 std::lock_guard<std::mutex> guard(m_connection_lock);
 
                 con_list::iterator it;
-                for (it = m_connections.begin(); it != m_connections.end(); ++it) {
+                
+				for (it = m_connections.begin(); it != m_connections.end(); ++it)
+				{
                     websocketpp::lib::error_code ec;
                     m_server.send(*it, a.msg, websocketpp::frame::opcode::text, ec);
                 }
-            } else if (a.type == STOP_COMMAND) {
+            }
+			else if (a.type == STOP_COMMAND)
+			{
                 LogPrint("webwallet", "webwallet: STOP_COMMAND.\n");
-                try {
+                
+				try
+				{
                     m_server.stop_listening();
                     LogPrint("webwallet", "webwallet: Websocket server stopped listening. \n");
-                } catch (const std::exception &e) {
+                }
+				catch (const std::exception &e)
+				{
                     LogPrint("webwallet", "webwallet: ERROR: Failed to stop websocket server. \n");
                     LogPrint("webwallet", e.what());
                 }
 
                 std::lock_guard<std::mutex> guard(m_connection_lock);
+				
                 {
                     con_list::iterator it;
-                    for (it = m_connections.begin(); it != m_connections.end(); ++it) {
+                    
+					for (it = m_connections.begin(); it != m_connections.end(); ++it)
+					{
                         connection_hdl hdl = *it;
                         m_server.pause_reading(hdl);
                         m_server.close(hdl, websocketpp::close::status::going_away, "");
@@ -201,36 +243,46 @@ public:
                 }
 
                 LogPrint("webwallet", "webwallet: Sent close request to all connections.\n");
-                break;
+                
+				break;
             }
             else {
                 LogPrint("webwallet", "webwallet: undefined COMMAND.\n");
                 // undefined.
             }
         }
+		
         LogPrint("webwallet", "webwallet: Leaving process_messages.\n");
     }
 };
 
 broadcast_server server_instance;
-void ThreadWebsocketServer() {
-    try {
+void ThreadWebsocketServer()
+{
+    try
+	{
         LogPrint("webwallet", "webwallet: ThreadWebsocketServer before run .\n");
         server_instance.run(7778);
-    } catch (websocketpp::exception const & e) {
+    }
+	catch (websocketpp::exception const & e)
+	{
         LogPrint("webwallet", "webwallet: ERROR: Failed to start ThreadWebsocketServer websocket thread. \n");
         LogPrint("webwallet", e.what());
     }
+	
     LogPrint("webwallet", "webwallet: ThreadWebsocketServer finishing.\n");
 }
 
 /** called from AppInit2() in init.cpp */
 bool WebWalletConnectorStart(bool fDontStart)
 {
-    if (!fDontStart) {
+    if (!fDontStart)
+	{
         LogPrint("webwallet", "webwallet: Web wallet connector not started.\n");
-        return false;
+        
+		return false;
     }
+	
     fWebWalletMode = true;
     fWebWalletConnectorEnabled = true;
 
@@ -239,14 +291,17 @@ bool WebWalletConnectorStart(bool fDontStart)
     subscribeToCoreSignals();
 
     LogPrint("webwallet", "webwallet: Web wallet connector starting.\n");
+	
     return true;
 }
 
 bool WebWalletConnectorShutdown()
 {
-    if (!fWebWalletConnectorEnabled) {
+    if (!fWebWalletConnectorEnabled)
+	{
         return false;
     }
+	
     unsubscribeFromCoreSignals();
     fWebWalletConnectorEnabled = false;
     server_instance.stop();
@@ -256,11 +311,14 @@ bool WebWalletConnectorShutdown()
     threadGroupWebWalletConnector.join_all();
 
     LogPrint("webwallet", "webwallet: Stopping web wallet connector.\n");
+	
     return true;
 }
 
-void SendUpdateToWebWallet(const std::string &msg) {
-    if (fWebWalletConnectorEnabled) {
+void SendUpdateToWebWallet(const std::string &msg)
+{
+    if (fWebWalletConnectorEnabled)
+	{
         server_instance.sendMessage(msg);
     }
 }
@@ -268,13 +326,15 @@ void SendUpdateToWebWallet(const std::string &msg) {
 void NotifySecMsgInbox(json_spirit::Object& msg)
 {
     LogPrint("webwallet", "webwallet: Signal for inbox message. \n");
-    server_instance.sendMessage(write_string(Value(msg), false));
+	
+    server_instance.sendMessage(write_string(json_spirit::Value(msg), false));
 }
 
 void NotifySecMsgOutbox(json_spirit::Object& msg)
 {
     LogPrint("webwallet", "webwallet: Signal for outbox message. \n");
-    server_instance.sendMessage(write_string(Value(msg), false));
+	
+    server_instance.sendMessage(write_string(json_spirit::Value(msg), false));
 }
 
 void subscribeToCoreSignals()
@@ -294,3 +354,4 @@ void unsubscribeFromCoreSignals()
     DigitalNote::SMSG::ext_signal_NotifyInboxChangedJson.disconnect(&NotifySecMsgInbox);
     DigitalNote::SMSG::ext_signal_NotifyOutboxChangedJson.disconnect(&NotifySecMsgOutbox);
 }
+

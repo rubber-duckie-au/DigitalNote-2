@@ -31,6 +31,7 @@ boost::once_flag LockedPageManager::init_flag = BOOST_ONCE_INIT;
 static inline size_t GetSystemPageSize()
 {
     size_t page_size;
+	
 #if defined(WIN32)
     SYSTEM_INFO sSysInfo;
     GetSystemInfo(&sSysInfo);
@@ -40,6 +41,7 @@ static inline size_t GetSystemPageSize()
 #else // assume some POSIX OS
     page_size = sysconf(_SC_PAGESIZE);
 #endif
+
     return page_size;
 }
 
@@ -63,4 +65,5 @@ bool MemoryPageLocker::Unlock(const void *addr, size_t len)
 
 LockedPageManager::LockedPageManager() : LockedPageManagerBase<MemoryPageLocker>(GetSystemPageSize())
 {
+	
 }

@@ -58,6 +58,7 @@ CBigNum::CBigNum(const CBigNum& b) : CBigNum()
 	if (!BN_copy(bn, b.bn))
 	{
 		BN_clear_free(bn);
+		
 		throw bignum_error("CBigNum::CBigNum(const CBigNum&) : BN_copy failed");
 	}
 }
@@ -286,26 +287,40 @@ void CBigNum::setint64(int64_t sn)
 		}
 		*p++ = c;
 	}
+	
 	unsigned int nSize = p - (pch + 4);
 	pch[0] = (nSize >> 24) & 0xff;
 	pch[1] = (nSize >> 16) & 0xff;
 	pch[2] = (nSize >> 8) & 0xff;
 	pch[3] = (nSize) & 0xff;
+	
 	BN_mpi2bn(pch, p - pch, bn);
 }
 
 uint64_t CBigNum::getuint64()
 {
 	unsigned int nSize = BN_bn2mpi(bn, NULL);
+	
 	if (nSize < 4)
+	{
 		return 0;
+	}
+	
 	std::vector<unsigned char> vch(nSize);
+	
 	BN_bn2mpi(bn, &vch[0]);
+	
 	if (vch.size() > 4)
+	{
 		vch[4] &= 0x7f;
+	}
+	
 	uint64_t n = 0;
 	for (unsigned int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+	{
 		((unsigned char*)&n)[i] = vch[j];
+	}
+	
 	return n;
 }
 
@@ -380,6 +395,7 @@ void CBigNum::setuint256(uint256 n)
 	pch[1] = (nSize >> 16) & 0xff;
 	pch[2] = (nSize >> 8) & 0xff;
 	pch[3] = (nSize >> 0) & 0xff;
+	
 	BN_mpi2bn(pch, p - pch, bn);
 }
 
@@ -603,7 +619,9 @@ template<typename Stream>
 void CBigNum::Unserialize(Stream& s, int nType, int nVersion)
 {
 	std::vector<unsigned char> vch;
+	
 	::Unserialize(s, vch, nType, nVersion);
+	
 	setvch(vch);
 }
 
