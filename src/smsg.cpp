@@ -29,40 +29,22 @@ Notes:
         For buckets older than current, only need to store no. messages and hash in memory
 
 */
-
-#include <stdint.h>
-#include <time.h>
-#include <map>
-#include <stdexcept>
-#include <sstream>
-#include <errno.h>
-
-#include <openssl/crypto.h>
-#include <openssl/ec.h>
-#include <openssl/ecdh.h>
-#include <openssl/sha.h>
-#include <openssl/aes.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-
+#include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/foreach.hpp>
+#include <openssl/hmac.h>
 
-#include "base58.h"
-#include "db.h"
-#include "init.h" // pwalletMain
-#include "txdb.h"
-#include "sync.h"
-#include "ecwrapper.h"
 #include "lz4/lz4.c"
-#include "cwallet.h"
-#include "cblock.h"
-#include "script.h"
-#include "net/cnode.h"
+#include "ccriticalblock.h"
+#include "txdb-leveldb.h"
 #include "net.h"
+#include "cblock.h"
+#include "main.h"
 #include "main_extern.h"
-
+#include "key.h"
+#include "init.h"
+#include "cwallet.h"
+#include "ecwrapper.h"
 #include "smsg.h"
 #include "smsg_const.h"
 #include "smsg_extern.h"
@@ -77,11 +59,9 @@ Notes:
 #include "smsg/ckeyid_b.h"
 #include "smsg/crypter.h"
 
-
 namespace DigitalNote {
 namespace SMSG {
 // Extern
-//DigitalNote::SMSG::
 boost::thread_group								ext_thread_group;
 bool											ext_enabled = false;
 std::map<int64_t, DigitalNote::SMSG::Bucket>	ext_buckets;

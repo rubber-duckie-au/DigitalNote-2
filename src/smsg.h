@@ -64,4 +64,3 @@ namespace DigitalNote
 }
 
 #endif // SEC_MESSAGE_H
-
