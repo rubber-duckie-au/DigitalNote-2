@@ -11,6 +11,8 @@
 #include "dberrors.h"
 #include "script.h"
 #include "mapvalue_t.h"
+#include "ckeymetadata.h"
+#include "cstealthkeymetadata.h"
 
 class CWalletDB;
 class CWalletTx;
@@ -18,8 +20,6 @@ class COutPoint;
 class uint256;
 class CCoinControl;
 class CAccountingEntry;
-class CKeyMetadata;
-class CStealthKeyMetadata;
 class COutput;
 class CDigitalNoteSecret;
 class CKeyPool;

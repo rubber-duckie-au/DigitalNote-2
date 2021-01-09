@@ -378,6 +378,8 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
+	src/cstealthkeymetadata.cpp \
+	src/ckeymetadata.cpp \
 	src/smsg/batchscanner.cpp \
 	src/smsg/address.cpp \
 	src/smsg/crypter.cpp \

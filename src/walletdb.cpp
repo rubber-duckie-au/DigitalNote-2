@@ -18,6 +18,9 @@
 #include "cscript.h"
 #include "cwallet.h"
 #include "cwallettx.h"
+#include "cwalletscanstate.h"
+#include "ckeymetadata.h"
+#include "cstealthkeymetadata.h"
 
 #include "walletdb.h"
 
@@ -29,6 +32,11 @@ extern bool fWalletUnlockStakingOnly;
 //
 // CWalletDB
 //
+
+CWalletDB::CWalletDB(const std::string& strFilename, const char* pszMode) : CDB(strFilename, pszMode)
+{
+	
+}
 
 bool CWalletDB::WriteName(const std::string& strAddress, const std::string& strName)
 {
@@ -403,25 +411,6 @@ DBErrors CWalletDB::ReorderTransactions(CWallet* pwallet)
 
     return DB_LOAD_OK;
 }
-
-class CWalletScanState {
-public:
-    unsigned int nKeys;
-    unsigned int nCKeys;
-    unsigned int nKeyMeta;
-    bool fIsEncrypted;
-    bool fAnyUnordered;
-    int nFileVersion;
-    std::vector<uint256> vWalletUpgrade;
-
-    CWalletScanState()
-	{
-        nKeys = nCKeys = nKeyMeta = 0;
-        fIsEncrypted = false;
-        fAnyUnordered = false;
-        nFileVersion = 0;
-    }
-};
 
 bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CWalletScanState &wss,
 		std::string& strType, std::string& strErr)

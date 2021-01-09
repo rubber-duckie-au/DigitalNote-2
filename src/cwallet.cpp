@@ -23,6 +23,8 @@
 #include "txmempool.h"
 #include "webwalletconnector.h"
 #include "smsg.h"
+#include "ckeymetadata.h"
+#include "cstealthkeymetadata.h"
 
 #include "cwallet.h"
 
