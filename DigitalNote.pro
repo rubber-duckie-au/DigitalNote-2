@@ -214,6 +214,7 @@ QMAKE_CXXFLAGS_WARN_ON += -Wstack-protector
 QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-variable
 QMAKE_CXXFLAGS_WARN_ON += -fpermissive
 QMAKE_CXXFLAGS_WARN_ON += -Wfatal-errors
+QMAKE_CXXFLAGS_WARN_ON += -std=c++17
 
 ## Debug header inclusions
 #QMAKE_CXXFLAGS_WARN_ON += -H
@@ -239,7 +240,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/importprivatekeydialog.h \
     src/qt/editconfigdialog.h \
     src/qt/bitcoinaddressvalidator.h \
-    src/alert.h \
+    src/calert.h \
     src/blocksizecalculator.h \
     src/allocators.h \
     src/addrman.h \
@@ -378,6 +379,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
+	src/cunsignedalert.cpp \
 	src/cstealthkeymetadata.cpp \
 	src/ckeymetadata.cpp \
 	src/smsg/batchscanner.cpp \
@@ -437,7 +439,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
 	src/cmerkletx.cpp \
 	src/cdisktxpos.cpp \
 	src/ctransaction.cpp \
-	src/alert.cpp \
+	src/calert.cpp \
     src/blocksizecalculator.cpp \
     src/allocators.cpp \
     src/base58.cpp \

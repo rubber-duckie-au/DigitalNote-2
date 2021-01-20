@@ -43,25 +43,32 @@ enum Network ParseNetwork(std::string net) {
     return NET_UNROUTABLE;
 }
 
-void SplitHostPort(const std::string &in, int &portOut, std::string &hostOut) {
-    size_t colon = in.find_last_of(':');
-    // if a : is found, and it either follows a [...], or no other : is in the string, treat it as port separator
-    bool fHaveColon = colon != in.npos;
-    bool fBracketed = fHaveColon && (in[0]=='[' && in[colon-1]==']'); // if there is a colon, and in[0]=='[', colon is not 0, so in[colon-1] is safe
-    bool fMultiColon = fHaveColon && (in.find_last_of(':',colon-1) != in.npos);
+void SplitHostPort(const std::string &in, int &portOut, std::string &hostOut)
+{
+	std::string _in = in;
+	
+    size_t colon = _in.find_last_of(':');
+    // if a : is found, and it either follows a [...], or no other : is _in the string, treat it as port separator
+    bool fHaveColon = colon != _in.npos;
+    bool fBracketed = fHaveColon && (_in[0]=='[' && _in[colon-1]==']'); // if there is a colon, and _in[0]=='[', colon is not 0, so _in[colon-1] is safe
+    bool fMultiColon = fHaveColon && (_in.find_last_of(':',colon-1) != _in.npos);
     if (fHaveColon && (colon==0 || fBracketed || !fMultiColon)) {
         char *endp = NULL;
-        int n = strtol(in.c_str() + colon + 1, &endp, 10);
+        int n = strtol(_in.c_str() + colon + 1, &endp, 10);
         if (endp && *endp == 0 && n >= 0) {
-            in = in.substr(0, colon);
+            _in = _in.substr(0, colon);
             if (n > 0 && n < 0x10000)
                 portOut = n;
         }
     }
-    if (in.size()>0 && in[0] == '[' && in[in.size()-1] == ']')
-        hostOut = in.substr(1, in.size()-2);
+    if (_in.size()>0 && _in[0] == '[' && _in[_in.size()-1] == ']')
+	{
+        hostOut = _in.substr(1, _in.size()-2);
+	}
     else
-        hostOut = in;
+	{
+        hostOut = _in;
+	}
 }
 
 bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)

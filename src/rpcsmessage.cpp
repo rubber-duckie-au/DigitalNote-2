@@ -163,62 +163,71 @@ Value smsglocalkeys(const Array& params, bool fHelp)
     
     char cbuf[256];
     
-    if (mode == "whitelist"
-        || mode == "all")
+    if (mode == "whitelist" || mode == "all")
     {
         uint32_t nKeys = 0;
         int all = mode == "all" ? 1 : 0;
         for (std::vector<DigitalNote::SMSG::Address>::iterator it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
-            if (!all 
-                && !it->fReceiveEnabled)
+            if (!all && !it->fReceiveEnabled)
+			{
                 continue;
-            
+            }
+			
             CDigitalNoteAddress coinAddress(it->sAddress);
             if (!coinAddress.IsValid())
+			{
                 continue;
-            
+            }
+			
             std::string sPublicKey;
-            
             CKeyID keyID;
+			
             if (!coinAddress.GetKeyID(keyID))
+			{
                 continue;
-            
+            }
+			
             CPubKey pubKey;
             if (!pwalletMain->GetPubKey(keyID, pubKey))
+			{
                 continue;
-            if (!pubKey.IsValid()
-                || !pubKey.IsCompressed())
+			}
+			
+            if (!pubKey.IsValid() || !pubKey.IsCompressed())
             {
                 continue;
-            };
-            
+            }
             
             sPublicKey = EncodeBase58(pubKey.Raw());
             
             std::string sLabel = pwalletMain->mapAddressBook[keyID];
             std::string sInfo;
-            if (all)
+            
+			if (all)
+			{
                 sInfo = std::string("Receive ") + (it->fReceiveEnabled ? "on,  " : "off, ");
-            sInfo += std::string("Anon ") + (it->fReceiveAnon ? "on" : "off");
+            }
+			
+			sInfo += std::string("Anon ") + (it->fReceiveAnon ? "on" : "off");
             result.push_back(Pair("key", it->sAddress + " - " + sPublicKey + " " + sInfo + " - " + sLabel));
             
             nKeys++;
-        };
+        }
         
         
         snprintf(cbuf, sizeof(cbuf), "%u keys listed.", nKeys);
         result.push_back(Pair("result", std::string(cbuf)));
         
-    } else
-    if (mode == "recv")
+    }
+	else if (mode == "recv")
     {
         if (params.size() < 3)
         {
             result.push_back(Pair("result", "Too few parameters."));
             result.push_back(Pair("expected", "recv <+/-> <address>"));
             return result;
-        };
+        }
         
         std::string op      = params[1].get_str();
         std::string addr    = params[2].get_str();
@@ -227,9 +236,12 @@ Value smsglocalkeys(const Array& params, bool fHelp)
         for (it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (addr != it->sAddress)
-                continue;
+			{
+				continue;
+			}
+		
             break;
-        };
+        }
         
         if (it == DigitalNote::SMSG::ext_addresses.end())
         {
@@ -240,32 +252,34 @@ Value smsglocalkeys(const Array& params, bool fHelp)
         if (op == "+" || op == "on"  || op == "add" || op == "a")
         {
             it->fReceiveEnabled = true;
-        } else
-        if (op == "-" || op == "off" || op == "rem" || op == "r")
+        }
+		else if (op == "-" || op == "off" || op == "rem" || op == "r")
         {
             it->fReceiveEnabled = false;
-        } else
+        }
+		else
         {
             result.push_back(Pair("result", "Unknown operation."));
             return result;
-        };
+        }
         
         std::string sInfo;
         sInfo = std::string("Receive ") + (it->fReceiveEnabled ? "on, " : "off,");
         sInfo += std::string("Anon ") + (it->fReceiveAnon ? "on" : "off");
         result.push_back(Pair("result", "Success."));
         result.push_back(Pair("key", it->sAddress + " " + sInfo));
-        return result;
         
-    } else
-    if (mode == "anon")
+		return result;
+    }
+	else if (mode == "anon")
     {
         if (params.size() < 3)
         {
             result.push_back(Pair("result", "Too few parameters."));
             result.push_back(Pair("expected", "anon <+/-> <address>"));
+			
             return result;
-        };
+        }
         
         std::string op      = params[1].get_str();
         std::string addr    = params[2].get_str();
@@ -274,9 +288,12 @@ Value smsglocalkeys(const Array& params, bool fHelp)
         for (it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (addr != it->sAddress)
+			{
                 continue;
+			}
+			
             break;
-        };
+        }
         
         if (it == DigitalNote::SMSG::ext_addresses.end())
         {
@@ -304,49 +321,58 @@ Value smsglocalkeys(const Array& params, bool fHelp)
         result.push_back(Pair("key", it->sAddress + " " + sInfo));
         return result;
         
-    } else
-    if (mode == "wallet")
+    }
+	else if (mode == "wallet")
     {
         uint32_t nKeys = 0;
-        BOOST_FOREACH(const PAIRTYPE(CTxDestination, std::string)& entry, pwalletMain->mapAddressBook)
+        for(const std::pair<CTxDestination, std::string>& entry : pwalletMain->mapAddressBook)
         {
             if (!IsMine(*pwalletMain, entry.first))
+			{
                 continue;
-            
+            }
+			
             CDigitalNoteAddress coinAddress(entry.first);
             if (!coinAddress.IsValid())
+			{
                 continue;
-            
+            }
+			
             std::string address;
             std::string sPublicKey;
             address = coinAddress.ToString();
             
             CKeyID keyID;
             if (!coinAddress.GetKeyID(keyID))
+			{
                 continue;
-            
+            }
+			
             CPubKey pubKey;
             if (!pwalletMain->GetPubKey(keyID, pubKey))
+			{
                 continue;
-            if (!pubKey.IsValid()
-                || !pubKey.IsCompressed())
+			}
+			
+            if (!pubKey.IsValid() || !pubKey.IsCompressed())
             {
                 continue;
-            };
+            }
             
             sPublicKey = EncodeBase58(pubKey.Raw());
             
             result.push_back(Pair("key", address + " - " + sPublicKey + " - " + entry.second));
             nKeys++;
-        };
+        }
         
         snprintf(cbuf, sizeof(cbuf), "%u keys listed from wallet.", nKeys);
         result.push_back(Pair("result", std::string(cbuf)));
-    } else
+    }
+	else
     {
         result.push_back(Pair("result", "Unknown Mode."));
         result.push_back(Pair("expected", "smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]"));
-    };
+    }
     
     return result;
 };
@@ -917,7 +943,9 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
     if (params.size() > 0)
     {
         strAccount = params[0].get_str();
-    } else {
+    }
+	else
+	{
         throw std::runtime_error("Account is required.");
     }
 
@@ -929,12 +957,15 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
     char cbuf[256];
 
     // Find all addresses that have the given account
-    BOOST_FOREACH(const PAIRTYPE(CDigitalNoteAddress, std::string)& item, pwalletMain->mapAddressBook)
+    for(const std::pair<CDigitalNoteAddress, std::string>& item : pwalletMain->mapAddressBook)
     {
         const CDigitalNoteAddress& address = item.first;
         const std::string& strName = item.second;
+		
         if (strName == strAccount)
+		{
             accountAddresses.push_back(address.ToString());
+		}
     }
 
 

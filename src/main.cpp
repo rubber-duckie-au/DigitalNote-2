@@ -13,7 +13,7 @@
 #include <boost/bind.hpp>
 
 #include "addrman.h"
-#include "alert.h"
+#include "calert.h"
 #include "blocksizecalculator.h"
 #include "blockparams.h"
 #include "chainparams.h"
@@ -1071,7 +1071,7 @@ bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock)
             return true;
         }
         // look for transaction in disconnected blocks to find orphaned CoinBase and CoinStake transactions
-        BOOST_FOREACH(PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+        for(std::pair<const uint256, CBlockIndex*>& item : mapBlockIndex)
         {
             CBlockIndex* pindex = item.second;
             if (pindex == pindexBest || pindex->pnext != 0)
@@ -1899,7 +1899,7 @@ std::string GetWarnings(const std::string &strFor)
     // Alerts
     {
         LOCK(cs_mapAlerts);
-        BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
+        for(std::pair<const uint256, CAlert>& item : mapAlerts)
         {
             const CAlert& alert = item.second;
             if (alert.AppliesToMe() && alert.nPriority > nPriority)
@@ -1907,7 +1907,9 @@ std::string GetWarnings(const std::string &strFor)
                 nPriority = alert.nPriority;
                 strStatusBar = alert.strStatusBar;
                 if (nPriority > 1000)
+				{
                     strRPC = strStatusBar;
+				}
             }
         }
     }
@@ -2229,8 +2231,10 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         // Relay alerts
         {
             LOCK(cs_mapAlerts);
-            BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
+            for(std::pair<const uint256, CAlert>& item : mapAlerts)
+			{
                 item.second.RelayTo(pfrom);
+			}
         }
 
         pfrom->fSuccessfullyConnected = true;

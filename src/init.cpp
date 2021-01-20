@@ -622,15 +622,16 @@ bool AppInit2(boost::thread_group& threadGroup)
                 }
                 // Loop backward through backup files and keep the N newest ones (1 <= N <= 10)
                 int counter = 0;
-                BOOST_REVERSE_FOREACH(PAIRTYPE(const std::time_t, boost::filesystem::path) file, folder_set)
+				
+                for(std::multimap<std::time_t, boost::filesystem::path>::reverse_iterator file = folder_set.rbegin(); file != folder_set.rend(); file++)
                 {
                     counter++;
                     if (counter > nWalletBackups)
                     {
                         // More than nWalletBackups backups: delete oldest one(s)
                         try {
-                            boost::filesystem::remove(file.second);
-                            LogPrintf("Old backup deleted: %s\n", file.second);
+                            boost::filesystem::remove((*file).second);
+                            LogPrintf("Old backup deleted: %s\n", (*file).second);
                         } catch(boost::filesystem::filesystem_error &error) {
                             LogPrintf("Failed to delete backup %s\n", error.what());
                         }

@@ -510,9 +510,12 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int64_t nBlockHeight, in
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareValueOnly());
 
     int rank = 0;
-    BOOST_FOREACH (PAIRTYPE(unsigned int, CTxIn)& s, vecMasternodeScores){
+    for(std::pair<unsigned int, CTxIn>& s : vecMasternodeScores)
+	{
         rank++;
-        if(s.second == vin) {
+		
+        if(s.second == vin)
+		{
             return rank;
         }
     }
@@ -549,8 +552,10 @@ std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareValueOnlyMN());
 
     int rank = 0;
-    BOOST_FOREACH (PAIRTYPE(unsigned int, CMasternode)& s, vecMasternodeScores){
+    for(std::pair<unsigned int, CMasternode>& s : vecMasternodeScores)
+	{
         rank++;
+		
         vecMasternodeRanks.push_back(std::make_pair(rank, s.second));
     }
 
@@ -580,9 +585,12 @@ CMasternode* CMasternodeMan::GetMasternodeByRank(int nRank, int64_t nBlockHeight
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareValueOnly());
 
     int rank = 0;
-    BOOST_FOREACH (PAIRTYPE(unsigned int, CTxIn)& s, vecMasternodeScores){
+    for(std::pair<unsigned int, CTxIn>& s : vecMasternodeScores)
+	{
         rank++;
-        if(rank == nRank) {
+		
+        if(rank == nRank)
+		{
             return Find(s.second);
         }
     }

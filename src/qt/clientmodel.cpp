@@ -11,7 +11,7 @@
 #include "peertablemodel.h"
 #include "transactiontablemodel.h"
 #include "chainparams.h"
-#include "alert.h"
+#include "calert.h"
 #include "ui_interface.h"
 #include "masternodeman.h"
 #include "cblock.h"

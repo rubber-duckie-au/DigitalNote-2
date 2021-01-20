@@ -599,9 +599,11 @@ static void ShowProgress(WalletModel *walletmodel, const std::string &title, int
     if (nProgress == 100)
     {
           fQueueNotifications = false;
-        BOOST_FOREACH(const PAIRTYPE(uint256, ChangeType)& notification, vQueueNotifications)
-            NotifyTransactionChanged(walletmodel, NULL, notification.first, notification.second);
-        if (vQueueNotifications.size() > 10) // prevent balloon spam, show maximum 10 balloons
+        for(const std::pair<uint256, ChangeType>& notification : vQueueNotifications)
+        {
+			NotifyTransactionChanged(walletmodel, NULL, notification.first, notification.second);
+		}
+		if (vQueueNotifications.size() > 10) // prevent balloon spam, show maximum 10 balloons
             QMetaObject::invokeMethod(walletmodel, "setProcessingQueuedTransactions", Qt::QueuedConnection, Q_ARG(bool, true));
         for (unsigned int i = 0; i < vQueueNotifications.size(); ++i)
         {

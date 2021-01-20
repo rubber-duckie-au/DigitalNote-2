@@ -15,73 +15,66 @@
 #include "ui_interface.h"
 #include "util.h"
 #include "ccriticalblock.h"
+#include "serialize.h"
 
-#include "alert.h"
+#include "calert.h"
 
 std::map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;
 
-void CUnsignedAlert::SetNull()
+CAlert::CAlert()
 {
-    nVersion = 1;
-    nRelayUntil = 0;
-    nExpiration = 0;
-    nID = 0;
-    nCancel = 0;
-    nMinVer = 0;
-    nMaxVer = 0;
-    nPriority = 0;
-
-    setCancel.clear();
-    setSubVer.clear();
-    strComment.clear();
-    strStatusBar.clear();
-    strReserved.clear();
+	SetNull();
 }
 
-std::string CUnsignedAlert::ToString() const
+unsigned int CAlert::GetSerializeSize(int nType, int nVersion) const
 {
-    std::string strSetCancel;
-    std::string strSetSubVer;
-    
-	BOOST_FOREACH(int n, setCancel)
-	{
-        strSetCancel += strprintf("%d ", n);
-	}
+	CSerActionGetSerializeSize ser_action;
+	const bool fGetSize = true;
+	const bool fWrite = false;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	ser_streamplaceholder s;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	s.nType = nType;
+	s.nVersion = nVersion;
 	
-    BOOST_FOREACH(std::string str, setSubVer)
-	{
-        strSetSubVer += "\"" + str + "\" ";
-	}
+	READWRITE(vchMsg);
+    READWRITE(vchSig);
 	
-    return strprintf(
-        "CAlert(\n"
-        "    nVersion     = %d\n"
-        "    nRelayUntil  = %d\n"
-        "    nExpiration  = %d\n"
-        "    nID          = %d\n"
-        "    nCancel      = %d\n"
-        "    setCancel    = %s\n"
-        "    nMinVer      = %d\n"
-        "    nMaxVer      = %d\n"
-        "    setSubVer    = %s\n"
-        "    nPriority    = %d\n"
-        "    strComment   = \"%s\"\n"
-        "    strStatusBar = \"%s\"\n"
-        ")\n",
-        nVersion,
-        nRelayUntil,
-        nExpiration,
-        nID,
-        nCancel,
-        strSetCancel,
-        nMinVer,
-        nMaxVer,
-        strSetSubVer,
-        nPriority,
-        strComment,
-        strStatusBar);
+	return nSerSize;
 }
+
+template<typename Stream>
+void CAlert::Serialize(Stream& s, int nType, int nVersion) const
+{
+	CSerActionSerialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = true;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(vchMsg);
+    READWRITE(vchSig);
+}
+
+template<typename Stream>
+void CAlert::Unserialize(Stream& s, int nType, int nVersion)
+{
+	CSerActionUnserialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = false;
+	const bool fRead = true;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+	READWRITE(vchMsg);
+    READWRITE(vchSig);
+}
+
+template void CAlert::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void CAlert::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
 
 void CAlert::SetNull()
 {
@@ -214,14 +207,15 @@ bool CAlert::ProcessAlert(bool fThread)
     if (nID == maxInt)
     {
         if (!(
-                nExpiration == maxInt &&
-                nCancel == (maxInt-1) &&
-                nMinVer == 0 &&
-                nMaxVer == maxInt &&
-                setSubVer.empty() &&
-                nPriority == maxInt &&
-                strStatusBar == "URGENT: Alert key compromised, upgrade required"
-                ))
+                nExpiration != maxInt or
+                nCancel != (maxInt-1) or
+                nMinVer != 0 &&
+                nMaxVer != maxInt &&
+                setSubVer.empty() == false &&
+                nPriority != maxInt &&
+                strStatusBar != "URGENT: Alert key compromised, upgrade required"
+                )
+			)
 		{
             return false;
 		}
@@ -256,7 +250,7 @@ bool CAlert::ProcessAlert(bool fThread)
 	}
 
 	// Check if this alert has been cancelled
-	BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
+	for(std::pair<const uint256, CAlert>& item : mapAlerts)
 	{
 		const CAlert& alert = item.second;
 		

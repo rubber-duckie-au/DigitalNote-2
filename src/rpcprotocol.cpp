@@ -45,8 +45,12 @@ std::string HTTPPost(const std::string& strMsg, const std::map<std::string, std:
       << "Content-Length: " << strMsg.size() << "\r\n"
       << "Connection: close\r\n"
       << "Accept: application/json\r\n";
-    BOOST_FOREACH(const PAIRTYPE(std::string, std::string)& item, mapRequestHeaders)
+    
+	for(const std::pair<std::string, std::string>& item : mapRequestHeaders)
+	{
         s << item.first << ": " << item.second << "\r\n";
+	}
+	
     s << "\r\n" << strMsg;
 
     return s.str();

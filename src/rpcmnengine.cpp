@@ -724,37 +724,64 @@ Value masternodelist(const Array& params, bool fHelp)
     }
 
     Object obj;
-    if (strMode == "rank") {
+    if (strMode == "rank")
+	{
         std::vector<std::pair<int, CMasternode> > vMasternodeRanks = mnodeman.GetMasternodeRanks(pindexBest->nHeight);
-        BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
+        
+		for(std::pair<int, CMasternode>& s : vMasternodeRanks)
+		{
             std::string strVin = s.second.vin.prevout.ToStringShort();
-            if(strFilter !="" && strVin.find(strFilter) == std::string::npos) continue;
+            
+			if(strFilter !="" && strVin.find(strFilter) == std::string::npos)
+			{
+				continue;
+			}
+			
             obj.push_back(Pair(strVin,       s.first));
         }
-    } else {
+    }
+	else
+	{
         std::vector<CMasternode> vMasternodes = mnodeman.GetFullMasternodeVector();
-        BOOST_FOREACH(CMasternode& mn, vMasternodes) {
+		
+        BOOST_FOREACH(CMasternode& mn, vMasternodes)
+		{
             std::string strVin = mn.vin.prevout.ToStringShort();
-            if (strMode == "activeseconds") {
-                if(strFilter !="" && strVin.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strVin,       (int64_t)(mn.lastTimeSeen - mn.sigTime)));
-            } else if (strMode == "donation") {
+			
+            if (strMode == "activeseconds")
+			{
+                if(strFilter !="" && strVin.find(strFilter) == std::string::npos)
+				{
+					continue;
+				}
+				
+                obj.push_back(Pair(strVin,(int64_t)(mn.lastTimeSeen - mn.sigTime)));
+            }
+			else if (strMode == "donation")
+			{
                 CTxDestination address1;
                 ExtractDestination(mn.donationAddress, address1);
                 CDigitalNoteAddress address2(address1);
 
                 if(strFilter !="" && address2.ToString().find(strFilter) == std::string::npos &&
-                    strVin.find(strFilter) == std::string::npos) continue;
+                    strVin.find(strFilter) == std::string::npos)
+				{
+					continue;
+				}
 
                 std::string strOut = "";
 
-                if(mn.donationPercentage != 0){
+                if(mn.donationPercentage != 0)
+				{
                     strOut = address2.ToString().c_str();
                     strOut += ":";
                     strOut += boost::lexical_cast<std::string>(mn.donationPercentage);
                 }
+				
                 obj.push_back(Pair(strVin,       strOut.c_str()));
-            } else if (strMode == "full") {
+            }
+			else if (strMode == "full")
+			{
                 CScript pubkey;
                 pubkey.SetDestination(mn.pubkey.GetID());
                 CTxDestination address1;

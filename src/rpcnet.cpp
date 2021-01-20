@@ -5,7 +5,7 @@
 #include <boost/foreach.hpp>
 
 #include "rpcserver.h"
-#include "alert.h"
+#include "calert.h"
 #include "netbase.h"
 #include "protocol.h"
 #include "sync.h"

@@ -81,7 +81,7 @@ void RPCTypeCheck(const Object& o,
                   const std::map<std::string, Value_type>& typesExpected,
                   bool fAllowNull)
 {
-    BOOST_FOREACH(const PAIRTYPE(std::string, Value_type)& t, typesExpected)
+    for(const std::pair<std::string, Value_type>& t : typesExpected)
     {
         const Value& v = find_value(o, t.first);
         if (!fAllowNull && v.type() == null_type)

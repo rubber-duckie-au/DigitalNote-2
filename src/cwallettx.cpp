@@ -612,13 +612,16 @@ void CWalletTx::GetAccountAmounts(const std::string& strAccount, CAmount& nRecei
 
     if (strAccount == strSentAccount)
     {
-        BOOST_FOREACH(const PAIRTYPE(CTxDestination,int64_t)& s, listSent)
+        for(const std::pair<CTxDestination,int64_t>& s : listSent)
+		{
             nSent += s.second;
+		}
+		
         nFee = allFee;
     }
     {
         LOCK(pwallet->cs_wallet);
-        BOOST_FOREACH(const PAIRTYPE(CTxDestination,int64_t)& r, listReceived)
+        for(const std::pair<CTxDestination,int64_t>& r : listReceived)
         {
             if (pwallet->mapAddressBook.count(r.first))
             {
