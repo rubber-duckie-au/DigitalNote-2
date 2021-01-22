@@ -347,23 +347,35 @@ bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
 {
     {
         LOCK(cs_KeyStore);
-        if (!mapCryptedKeys.empty() || IsCrypted())
+        
+		if (!mapCryptedKeys.empty() || IsCrypted())
+		{
             return false;
-
+		}
+		
         fUseCrypto = true;
-        BOOST_FOREACH(KeyMap::value_type& mKey, mapKeys)
+		
+        for(KeyMap::value_type& mKey : mapKeys)
         {
             const CKey &key = mKey.second;
             CPubKey vchPubKey = key.GetPubKey();
             CKeyingMaterial vchSecret(key.begin(), key.end());
             std::vector<unsigned char> vchCryptedSecret;
-            if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret))
+            
+			if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret))
+			{
                 return false;
+			}
+			
             if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
+			{
                 return false;
+			}
         }
-        mapKeys.clear();
+        
+		mapKeys.clear();
     }
+	
     return true;
 }
 

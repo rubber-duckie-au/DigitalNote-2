@@ -135,39 +135,59 @@ double CTransaction::ComputePriority(double dPriorityInputs, unsigned int nTxSiz
     // Providing any more cleanup incentive than making additional inputs free would
     // risk encouraging people to create junk outputs to redeem later.
     if (nTxSize == 0)
+	{
         nTxSize = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
-    BOOST_FOREACH(const CTxIn& txin, vin)
+    }
+	
+	for(const CTxIn& txin : vin)
     {
         unsigned int offset = 41U + std::min(110U, (unsigned int)txin.scriptSig.size());
-        if (nTxSize > offset)
+        
+		if (nTxSize > offset)
+		{
             nTxSize -= offset;
+		}
     }
-    if (nTxSize == 0) return 0.0;
+	
+    if (nTxSize == 0)
+	{
+		return 0.0;
+	}
+	
     return dPriorityInputs / nTxSize;
 }
 
 int64_t CTransaction::GetValueOut() const
 {
 	int64_t nValueOut = 0;
-	BOOST_FOREACH(const CTxOut& txout, vout)
+	
+	for(const CTxOut& txout : vout)
 	{
 		nValueOut += txout.nValue;
+		
 		if (!MoneyRange(txout.nValue) || !MoneyRange(nValueOut))
+		{
 			throw std::runtime_error("CTransaction::GetValueOut() : value out of range");
+		}
 	}
+	
 	return nValueOut;
 }
 
 int64_t CTransaction::GetValueIn(const MapPrevTx& inputs) const
 {
     if (IsCoinBase())
+	{
         return 0;
-
+	}
+	
     int64_t nResult = 0;
-    for (unsigned int i = 0; i < vin.size(); i++)
+    
+	for (unsigned int i = 0; i < vin.size(); i++)
     {
         nResult += GetOutputFor(vin[i], inputs).nValue;
     }
+	
     return nResult;
 
 }
@@ -244,12 +264,17 @@ bool CTransaction::ReadFromDisk(CTxDB& txdb, const uint256& hash, CTxIndex& txin
 bool CTransaction::ReadFromDisk(CTxDB& txdb, COutPoint prevout, CTxIndex& txindexRet)
 {
     if (!ReadFromDisk(txdb, prevout.hash, txindexRet))
-        return false;
-    if (prevout.n >= vout.size())
+	{
+	    return false;
+    }
+	
+	if (prevout.n >= vout.size())
     {
         SetNull();
-        return false;
+        
+		return false;
     }
+	
     return true;
 }
 
@@ -271,24 +296,31 @@ bool CTransaction::DisconnectInputs(CTxDB& txdb)
     // Relinquish previous transactions' spent pointers
     if (!IsCoinBase())
     {
-        BOOST_FOREACH(const CTxIn& txin, vin)
+        for(const CTxIn& txin : vin)
         {
             COutPoint prevout = txin.prevout;
 
             // Get prev txindex from disk
             CTxIndex txindex;
+			
             if (!txdb.ReadTxIndex(prevout.hash, txindex))
+			{
                 return error("DisconnectInputs() : ReadTxIndex failed");
-
+			}
+			
             if (prevout.n >= txindex.vSpent.size())
+			{
                 return error("DisconnectInputs() : prevout.n out of range");
-
+			}
+			
             // Mark outpoint as not spent
             txindex.vSpent[prevout.n].SetNull();
 
             // Write back
             if (!txdb.UpdateTxIndex(prevout.hash, txindex))
+			{
                 return error("DisconnectInputs() : UpdateTxIndex failed");
+			}
         }
     }
 
@@ -311,14 +343,19 @@ bool CTransaction::FetchInputs(CTxDB& txdb, const std::map<uint256, CTxIndex>& m
     fInvalid = false;
 
     if (IsCoinBase())
+	{
         return true; // Coinbase transactions have no inputs to fetch.
-
+	}
+	
     for (unsigned int i = 0; i < vin.size(); i++)
     {
         COutPoint prevout = vin[i].prevout;
+		
         if (inputsRet.count(prevout.hash))
+		{
             continue; // Got it already
-
+		}
+		
         // Read txindex
         CTxIndex& txindex = inputsRet[prevout.hash].first;
         bool fFound = true;
@@ -332,24 +369,35 @@ bool CTransaction::FetchInputs(CTxDB& txdb, const std::map<uint256, CTxIndex>& m
             // Read txindex from txdb
             fFound = txdb.ReadTxIndex(prevout.hash, txindex);
         }
+		
         if (!fFound && (fBlock || fMiner))
+		{
             return fMiner ? false : error("FetchInputs() : %s prev tx %s index entry not found", GetHash().ToString(),  prevout.hash.ToString());
-
+		}
+		
         // Read txPrev
         CTransaction& txPrev = inputsRet[prevout.hash].second;
-        if (!fFound || txindex.pos == CDiskTxPos(1,1,1))
+        
+		if (!fFound || txindex.pos == CDiskTxPos(1,1,1))
         {
             // Get prev tx from single transactions in memory
             if (!mempool.lookup(prevout.hash, txPrev))
+			{
                 return error("FetchInputs() : %s mempool Tx prev not found %s", GetHash().ToString(),  prevout.hash.ToString());
-            if (!fFound)
+            }
+			
+			if (!fFound)
+			{
                 txindex.vSpent.resize(txPrev.vout.size());
+			}
         }
         else
         {
             // Get prev tx from disk
             if (!txPrev.ReadFromDisk(txindex.pos))
+			{
                 return error("FetchInputs() : %s ReadFromDisk prev tx %s failed", GetHash().ToString(),  prevout.hash.ToString());
+			}
         }
     }
 
@@ -365,6 +413,7 @@ bool CTransaction::FetchInputs(CTxDB& txdb, const std::map<uint256, CTxIndex>& m
             // Revisit this if/when transaction replacement is implemented and allows
             // adding inputs:
             fInvalid = true;
+			
             return DoS(100, error("FetchInputs() : %s prevout.n out of range %d %u %u prev tx %s\n%s", GetHash().ToString(), prevout.n, txPrev.vout.size(), txindex.vSpent.size(), prevout.hash.ToString(), txPrev.ToString()));
         }
     }
@@ -495,48 +544,76 @@ bool CTransaction::CheckTransaction() const
 {
     // Basic checks that don't depend on any context
     if (vin.empty())
-        return DoS(10, error("CTransaction::CheckTransaction() : vin empty"));
-    if (vout.empty())
+    {
+		return DoS(10, error("CTransaction::CheckTransaction() : vin empty"));
+    }
+	
+	if (vout.empty())
+	{
         return DoS(10, error("CTransaction::CheckTransaction() : vout empty"));
-    // Size limits
-    if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
-        return DoS(100, error("CTransaction::CheckTransaction() : size limits failed"));
+	}
 
+	// Size limits
+    if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+	{
+        return DoS(100, error("CTransaction::CheckTransaction() : size limits failed"));
+	}
+	
     // Check for negative or overflow output values
     int64_t nValueOut = 0;
-    for (unsigned int i = 0; i < vout.size(); i++)
+    for (const CTxOut& txout : vout)
     {
-        const CTxOut& txout = vout[i];
         if (txout.IsEmpty() && !IsCoinBase() && !IsCoinStake())
-            return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
-        if (txout.nValue < 0)
+        {
+			return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
+        }
+		
+		if (txout.nValue < 0)
+		{
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue negative"));
-        if (txout.nValue > MAX_SINGLE_TX)
+        }
+		
+		if (txout.nValue > MAX_SINGLE_TX)
+		{
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
-        nValueOut += txout.nValue;
-        if (!MoneyRange(nValueOut))
+        }
+		
+		nValueOut += txout.nValue;
+        
+		if (!MoneyRange(nValueOut))
+		{
             return DoS(100, error("CTransaction::CheckTransaction() : txout total out of range"));
+		}
     }
 
     // Check for duplicate inputs
     std::set<COutPoint> vInOutPoints;
-    BOOST_FOREACH(const CTxIn& txin, vin)
+    for(const CTxIn& txin : vin)
     {
         if (vInOutPoints.count(txin.prevout))
+		{
             return false;
+		}
+		
         vInOutPoints.insert(txin.prevout);
     }
 
     if (IsCoinBase())
     {
         if (vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > 100)
+		{
             return DoS(100, error("CTransaction::CheckTransaction() : coinbase script size is invalid"));
+		}
     }
     else
     {
-        BOOST_FOREACH(const CTxIn& txin, vin)
+        for(const CTxIn& txin : vin)
+		{
             if (txin.prevout.IsNull())
+			{
                 return DoS(10, error("CTransaction::CheckTransaction() : prevout is null"));
+			}
+		}
     }
 
     return true;
@@ -555,23 +632,32 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, const CBlockIndex* pindexPrev, uint64
     nCoinAge = 0;
 
     if (IsCoinBase())
+	{
         return true;
-
-    BOOST_FOREACH(const CTxIn& txin, vin)
+	}
+	
+    for(const CTxIn& txin : vin)
     {
         // First try finding the previous transaction in database
         CTransaction txPrev;
         CTxIndex txindex;
+		
         if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
+		{
             continue;  // previous transaction not in main chain
+		}
+		
         if (nTime < txPrev.nTime)
+		{
             return false;  // Transaction timestamp violation
-
+		}
+		
         int nSpendDepth;
         if (IsConfirmedInNPrevBlocks(txindex, pindexPrev, nStakeMinConfirmations - 1, nSpendDepth))
         {
             LogPrint("coinage", "coin age skip nSpendDepth=%d\n", nSpendDepth + 1);
-            continue; // only count coins meeting min confirmations requirement
+            
+			continue; // only count coins meeting min confirmations requirement
         }
 
         int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
@@ -581,20 +667,27 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, const CBlockIndex* pindexPrev, uint64
     }
 
     CBigNum bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
-    LogPrint("coinage", "coin age bnCoinDay=%s\n", bnCoinDay.ToString());
     nCoinAge = bnCoinDay.getuint64();
-    return true;
+	
+    LogPrint("coinage", "coin age bnCoinDay=%s\n", bnCoinDay.ToString());
+    
+	return true;
 }
 
 const CTxOut& CTransaction::GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const
 {
     MapPrevTx::const_iterator mi = inputs.find(input.prevout.hash);
+	
     if (mi == inputs.end())
+	{
         throw std::runtime_error("CTransaction::GetOutputFor() : prevout.hash not found");
-
+	}
+	
     const CTransaction& txPrev = (mi->second).second;
     if (input.prevout.n >= txPrev.vout.size())
+	{
         throw std::runtime_error("CTransaction::GetOutputFor() : prevout.n out of range");
-
+	}
+	
     return txPrev.vout[input.prevout.n];
 }

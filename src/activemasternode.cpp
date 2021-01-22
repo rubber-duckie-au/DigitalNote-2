@@ -436,7 +436,7 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
         int outputIndex = boost::lexical_cast<int>(strOutputIndex);
 		bool found = false;
 		
-		BOOST_FOREACH(COutput& out, possibleCoins)
+		for(COutput& out : possibleCoins)
 		{
 			if(out.tx->GetHash() == txHash && out.i == outputIndex)
 			{
@@ -495,7 +495,7 @@ bool CActiveMasternode::GetMasterNodeVinForPubKey(const std::string &collateralA
         int outputIndex = boost::lexical_cast<int>(strOutputIndex);
 		bool found = false;
 		
-		BOOST_FOREACH(COutput& out, possibleCoins)
+		for(COutput& out : possibleCoins)
 		{
 			if(out.tx->GetHash() == txHash && out.i == outputIndex)
 			{
@@ -572,7 +572,7 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
     pwalletMain->AvailableCoinsMN(vCoins);
 
     // Filter
-    BOOST_FOREACH(const COutput& out, vCoins)
+    for(const COutput& out : vCoins)
     {
         if(out.tx->vout[out.i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN)
 		{ //exactly
@@ -596,7 +596,7 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternodeForPubKey(const std
     pwalletMain->AvailableCoins(vCoins);
 
     // Filter
-    BOOST_FOREACH(const COutput& out, vCoins)
+    for(const COutput& out : vCoins)
     {
         if(out.tx->vout[out.i].scriptPubKey == scriptPubKey && out.tx->vout[out.i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN) { //exactly
         	filteredCoins.push_back(out);

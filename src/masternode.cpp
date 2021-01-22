@@ -15,16 +15,6 @@ std::map<uint256, int> mapSeenMasternodeScanningErrors;
 // cache block hashes as we calculate them
 std::map<int64_t, uint256> mapCacheBlockHashes;
 
-
-struct CompareValueOnly
-{
-    bool operator()(const std::pair<int64_t, CTxIn>& t1,
-                    const std::pair<int64_t, CTxIn>& t2) const
-    {
-        return t1.first < t2.first;
-    }
-};
-
 //Get the last hash that matches the modulus given. Processed in reverse order
 bool GetBlockHash(uint256& hash, int nBlockHeight)
 {

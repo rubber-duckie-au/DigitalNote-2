@@ -18,8 +18,10 @@ void CAffectedKeysVisitor::Process(const CScript &script)
 	int nRequired;
 	if (ExtractDestinations(script, type, vDest, nRequired))
 	{
-		BOOST_FOREACH(const CTxDestination &dest, vDest)
+		for(const CTxDestination &dest : vDest)
+		{
 			boost::apply_visitor(*this, dest);
+		}
 	}
 }
 

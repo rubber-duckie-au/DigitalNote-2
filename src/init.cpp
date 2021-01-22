@@ -322,7 +322,8 @@ std::string HelpMessage()
  */
 bool InitSanityCheck(void)
 {
-    if(!ECC_InitSanityCheck()) {
+    if(!ECC_InitSanityCheck())
+	{
         InitError("OpenSSL appears to lack support for elliptic curve cryptography. For more "
                   "information, visit https://en.bitcoin.it/wiki/OpenSSL_and_EC_Libraries");
         return false;
@@ -358,8 +359,12 @@ bool AppInit2(boost::thread_group& threadGroup)
 #define PROCESS_DEP_ENABLE 0x00000001
 #endif
     typedef BOOL (WINAPI *PSETPROCDEPPOL)(DWORD);
+	
     PSETPROCDEPPOL setProcDEPPol = (PSETPROCDEPPOL)GetProcAddress(GetModuleHandleA("Kernel32.dll"), "SetProcessDEPPolicy");
-    if (setProcDEPPol != NULL) setProcDEPPol(PROCESS_DEP_ENABLE);
+    if (setProcDEPPol != NULL)
+	{
+		setProcDEPPol(PROCESS_DEP_ENABLE);
+	}
 #endif
 #ifndef WIN32
     umask(077);
@@ -569,8 +574,10 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // ********************************************************* Step 5: Backup wallet and verify wallet database integrity
 #ifdef ENABLE_WALLET
-    if (!fDisableWallet) {
+    if (!fDisableWallet)
+	{
         filesystem::path backupDir = GetDataDir() / "backups";
+		
         if (!filesystem::exists(backupDir))
         {
             // Always create backup folder to not confuse the operating system's file browser
@@ -578,36 +585,51 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
         nWalletBackups = GetArg("-createwalletbackups", 10);
         nWalletBackups = std::max(0, std::min(10, nWalletBackups));
-        if(nWalletBackups > 0)
+        
+		if(nWalletBackups > 0)
         {
             std::string sourcePathStr = GetDataDir().string();
             sourcePathStr += "/" + strWalletFileName;
             boost::filesystem::path sourceFile = sourcePathStr;
-            if (filesystem::exists(backupDir) && filesystem::exists(sourceFile))
+            
+			if (filesystem::exists(backupDir) && filesystem::exists(sourceFile))
             {
                 // Create backup of the wallet
                 std::string dateTimeStr = DateTimeStrFormat(".%Y-%m-%d-%H.%M", GetTime());
                 std::string backupPathStr = backupDir.string();
-                backupPathStr += "/" + strWalletFileName;
-                boost::filesystem::path backupFile = backupPathStr + dateTimeStr;
-                sourceFile.make_preferred();
+                
+				backupPathStr += "/" + strWalletFileName;
+                
+				boost::filesystem::path backupFile = backupPathStr + dateTimeStr;
+                
+				sourceFile.make_preferred();
                 backupFile.make_preferred();
-                try {
+                
+				try
+				{
                     LogPrintf("Creating backup of %s -> %s\n", sourceFile, backupFile);
-                    boost::filesystem::copy_file(sourceFile, backupFile);
-                    LogPrintf("Creating backup of %s -> %s\n", sourceFile, backupFile);
-                } catch(boost::filesystem::filesystem_error &error) {
+                    
+					boost::filesystem::copy_file(sourceFile, backupFile);
+                    
+					LogPrintf("Creating backup of %s -> %s\n", sourceFile, backupFile);
+                }
+				catch(boost::filesystem::filesystem_error &error) {
                     LogPrintf("Failed to create backup %s\n", error.what());
                 }
+				
                 // Keep only the last 10 backups, including the new one of course
                 typedef std::multimap<std::time_t, boost::filesystem::path> folder_set_t;
+				
                 folder_set_t folder_set;
                 boost::filesystem::directory_iterator end_iter;
                 boost::filesystem::path backupFolder = backupDir.string();
-                backupFolder.make_preferred();
-                // Build map of backup files for current(!) wallet sorted by last write time
+                
+				backupFolder.make_preferred();
+                
+				// Build map of backup files for current(!) wallet sorted by last write time
                 boost::filesystem::path currentFile;
-                for (boost::filesystem::directory_iterator dir_iter(backupFolder); dir_iter != end_iter; ++dir_iter)
+                
+				for (boost::filesystem::directory_iterator dir_iter(backupFolder); dir_iter != end_iter; ++dir_iter)
                 {
                     // Only check regular files
                     if ( boost::filesystem::is_regular_file(dir_iter->status()))
@@ -620,6 +642,7 @@ bool AppInit2(boost::thread_group& threadGroup)
                         }
                     }
                 }
+				
                 // Loop backward through backup files and keep the N newest ones (1 <= N <= 10)
                 int counter = 0;
 				
@@ -629,10 +652,14 @@ bool AppInit2(boost::thread_group& threadGroup)
                     if (counter > nWalletBackups)
                     {
                         // More than nWalletBackups backups: delete oldest one(s)
-                        try {
+                        try
+						{
                             boost::filesystem::remove((*file).second);
-                            LogPrintf("Old backup deleted: %s\n", (*file).second);
-                        } catch(boost::filesystem::filesystem_error &error) {
+                            
+							LogPrintf("Old backup deleted: %s\n", (*file).second);
+                        }
+						catch(boost::filesystem::filesystem_error &error)
+						{
                             LogPrintf("Failed to delete backup %s\n", error.what());
                         }
                     }
@@ -648,17 +675,24 @@ bool AppInit2(boost::thread_group& threadGroup)
             // try moving the database env out of the way
             boost::filesystem::path pathDatabase = GetDataDir() / "database";
             boost::filesystem::path pathDatabaseBak = GetDataDir() / strprintf("database.%d.bak", GetTime());
-            try {
+            
+			try
+			{
                 boost::filesystem::rename(pathDatabase, pathDatabaseBak);
-                LogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
-            } catch(boost::filesystem::filesystem_error &error) {
+                
+				LogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
+            }
+			catch(boost::filesystem::filesystem_error &error)
+			{
                  // failure is ok (well, not really, but it's not worse than what we started with)
             }
 
             // try again
-            if (!bitdb.Open(GetDataDir())) {
+            if (!bitdb.Open(GetDataDir()))
+			{
                 // if it still fails, it probably means we can't even create the database env
                 std::string msg = strprintf(_("Error initializing wallet database environment %s!"), strDataDir);
+				
                 return InitError(msg);
             }
         }
@@ -667,7 +701,9 @@ bool AppInit2(boost::thread_group& threadGroup)
         {
             // Recover readable keypairs:
             if (!CWalletDB::Recover(bitdb, strWalletFileName, true))
+			{
                 return false;
+			}
         }
 
         if (filesystem::exists(GetDataDir() / strWalletFileName))
@@ -681,10 +717,12 @@ bool AppInit2(boost::thread_group& threadGroup)
                                          " restore from a backup."), strDataDir);
                 InitWarning(msg);
             }
+			
             if (r == CDBEnv::RECOVER_FAIL)
+			{
                 return InitError(_("wallet.dat corrupt, salvage failed"));
+			}
         }
-
     } // (!fDisableWallet)
 #endif // ENABLE_WALLET
     // ********************************************************* Step 6: network initialization
@@ -692,57 +730,102 @@ bool AppInit2(boost::thread_group& threadGroup)
     RegisterNodeSignals(GetNodeSignals());
 
     // format user agent, check total size
-    strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, mapMultiArgs.count("-uacomment") ? mapMultiArgs["-uacomment"] : std::vector<std::string>());
-    if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) {
-        return InitError(strprintf("Total length of network version string %i exceeds maximum of %i characters. Reduce the number and/or size of uacomments.",
-            strSubVersion.size(), MAX_SUBVERSION_LENGTH));
+    strSubVersion = FormatSubVersion(
+		CLIENT_NAME,
+		CLIENT_VERSION,
+		mapMultiArgs.count("-uacomment") ? mapMultiArgs["-uacomment"] : std::vector<std::string>()
+	);
+	
+    if (strSubVersion.size() > MAX_SUBVERSION_LENGTH)
+	{
+        return InitError(
+			strprintf(
+				"Total length of network version string %i exceeds maximum of %i characters. Reduce the number and/or size of uacomments.",
+				strSubVersion.size(),
+				MAX_SUBVERSION_LENGTH
+			)
+		);
     }
     
-    if (mapArgs.count("-onlynet")) {
+    if (mapArgs.count("-onlynet"))
+	{
         std::set<enum Network> nets;
-        BOOST_FOREACH(std::string snet, mapMultiArgs["-onlynet"]) {
+        for(std::string snet : mapMultiArgs["-onlynet"])
+		{
             enum Network net = ParseNetwork(snet);
-	    if(net == NET_TOR)
-		fOnlyTor = true;
-
+			if(net == NET_TOR)
+			{
+				fOnlyTor = true;
+			}
+			
             if (net == NET_UNROUTABLE)
+			{
                 return InitError(strprintf(_("Unknown network specified in -onlynet: '%s'"), snet));
+			}
+			
             nets.insert(net);
         }
-        for (int n = 0; n < NET_MAX; n++) {
+		
+        for (int n = 0; n < NET_MAX; n++)
+		{
             enum Network net = (enum Network)n;
-            if (!nets.count(net))
+            
+			if (!nets.count(net))
+			{
                 SetLimited(net);
-        }
-    } else {
+			}
+		}
+    }
+	else
+	{
         SetReachable(NET_IPV4);
         SetReachable(NET_IPV6);
     }
 
     CService addrProxy;
     bool fProxy = false;
-    if (mapArgs.count("-proxy")) {
+    if (mapArgs.count("-proxy"))
+	{
         addrProxy = CService(mapArgs["-proxy"], 9050);
-        if (!addrProxy.IsValid())
+        
+		if (!addrProxy.IsValid())
+		{
             return InitError(strprintf(_("Invalid -proxy address: '%s'"), mapArgs["-proxy"]));
-
+		}
+		
         if (!IsLimited(NET_IPV4))
+		{
             SetProxy(NET_IPV4, addrProxy);
-        if (!IsLimited(NET_IPV6))
+        }
+		
+		if (!IsLimited(NET_IPV6))
+		{
             SetProxy(NET_IPV6, addrProxy);
+		}
+		
         SetNameProxy(addrProxy);
         fProxy = true;
     }
 
     // -tor can override normal proxy, -notor disables tor entirely
-    if (!(mapArgs.count("-tor") && mapArgs["-tor"] == "0") && (fProxy || mapArgs.count("-tor"))) {
+    if (!(mapArgs.count("-tor") && mapArgs["-tor"] == "0") && (fProxy || mapArgs.count("-tor")))
+	{
         CService addrOnion;
-        if (!mapArgs.count("-tor"))
+        
+		if (!mapArgs.count("-tor"))
+		{
             addrOnion = addrProxy;
+		}
         else
+		{
             addrOnion = CService(mapArgs["-tor"], 9050);
-        if (!addrOnion.IsValid())
+        }
+		
+		if (!addrOnion.IsValid())
+		{
             return InitError(strprintf(_("Invalid -tor address: '%s'"), mapArgs["-tor"]));
+		}
+		
         SetProxy(NET_TOR, addrOnion);
         SetReachable(NET_TOR);
     }
@@ -756,31 +839,53 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (!fNoListen)
     {
         std::string strError;
+		
         if (mapArgs.count("-bind")) {
-            BOOST_FOREACH(std::string strBind, mapMultiArgs["-bind"]) {
+            for(std::string strBind : mapMultiArgs["-bind"])
+			{
                 CService addrBind;
+				
                 if (!Lookup(strBind.c_str(), addrBind, GetListenPort(), false))
+				{
                     return InitError(strprintf(_("Cannot resolve -bind address: '%s'"), strBind));
+				}
+				
                 fBound |= Bind(addrBind);
             }
-        } else {
+        }
+		else
+		{
             struct in_addr inaddr_any;
             inaddr_any.s_addr = INADDR_ANY;
-            if (!IsLimited(NET_IPV6))
+            
+			if (!IsLimited(NET_IPV6))
+			{
                 fBound |= Bind(CService(in6addr_any, GetListenPort()), false);
-            if (!IsLimited(NET_IPV4))
+            }
+			
+			if (!IsLimited(NET_IPV4))
+			{
                 fBound |= Bind(CService(inaddr_any, GetListenPort()), !fBound);
+			}
         }
+		
         if (!fBound)
+		{
             return InitError(_("Failed to listen on any port. Use -listen=0 if you want this."));
+		}
     }
 
     if (mapArgs.count("-externalip"))
     {
-        BOOST_FOREACH(std::string strAddr, mapMultiArgs["-externalip"]) {
+        for(std::string strAddr : mapMultiArgs["-externalip"])
+		{
             CService addrLocal(strAddr, GetListenPort(), fNameLookup);
-            if (!addrLocal.IsValid())
+            
+			if (!addrLocal.IsValid())
+			{
                 return InitError(strprintf(_("Cannot resolve -externalip address: '%s'"), strAddr));
+			}
+			
             AddLocal(CService(strAddr, GetListenPort(), fNameLookup), LOCAL_MANUAL);
         }
     }
@@ -791,22 +896,28 @@ bool AppInit2(boost::thread_group& threadGroup)
         if (!ParseMoney(mapArgs["-reservebalance"], nReserveBalance))
         {
             InitError(_("Invalid amount for -reservebalance=<amount>"));
+			
             return false;
         }
     }
 #endif
 
-    BOOST_FOREACH(std::string strDest, mapMultiArgs["-seednode"])
+    for(std::string strDest : mapMultiArgs["-seednode"])
+	{
         AddOneShot(strDest);
-
+	}
+	
     // ********************************************************* Step 7: load blockchain
 
     maxBlockHeight = GetArg("-maxblockheight", -1);
     uiInterface.InitMessage(_("Loading block index..."));
 
     nStart = GetTimeMillis();
+	
     if (!LoadBlockIndex())
+	{
         return InitError(_("Error loading block database"));
+	}
 
     // as LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill bitcoin-qt during the last operation. If so, exit.
@@ -814,13 +925,16 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (fRequestShutdown)
     {
         LogPrintf("Shutdown requested. Exiting.\n");
-        return false;
+        
+		return false;
     }
+	
     LogPrintf(" block index %15dms\n", GetTimeMillis() - nStart);
 
     if (GetBoolArg("-printblockindex", false) || GetBoolArg("-printblocktree", false))
     {
         PrintBlockTree();
+		
         return false;
     }
 
@@ -828,6 +942,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     {
         std::string strMatch = mapArgs["-printblock"];
         int nFound = 0;
+		
         for (std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.begin(); mi != mapBlockIndex.end(); ++mi)
         {
             uint256 hash = (*mi).first;
@@ -837,20 +952,29 @@ bool AppInit2(boost::thread_group& threadGroup)
                 CBlock block;
                 block.ReadFromDisk(pindex);
                 block.BuildMerkleTree();
+				
                 LogPrintf("%s\n", block.ToString());
-                nFound++;
+                
+				nFound++;
             }
         }
+		
         if (nFound == 0)
+		{
             LogPrintf("No blocks matching %s were found\n", strMatch);
+		}
+		
         return false;
     }
 
     if (mapArgs.count("-backtoblock"))
     {
         strRollbackToBlock = GetArg("-backtoblock", "");
-        LogPrintf("Rolling blocks back...\n");
-        if(!strRollbackToBlock.empty()){
+        
+		LogPrintf("Rolling blocks back...\n");
+		
+        if(!strRollbackToBlock.empty())
+		{
             nNewHeight = GetArg("-backtoblock", 0);
 
             CBlockIndex* pindex = pindexBest;
@@ -859,57 +983,76 @@ bool AppInit2(boost::thread_group& threadGroup)
                 std::ostringstream osHeight;
                 osHeight << pindex->nHeight;
                 std::string strHeight = osHeight.str();
+				
                 uiInterface.InitMessage(strprintf("Rolling blocks back... %s to %i \n", strHeight, nNewHeight));
-                pindex = pindex->pprev;
+                
+				pindex = pindex->pprev;
             }
 
             if (pindex != NULL)
             {
                 LogPrintf("Back to block index %d\n", nNewHeight);
+				
                 CTxDB txdbAddr("rw");
                 CBlock block;
-                block.ReadFromDisk(pindex);
+                
+				block.ReadFromDisk(pindex);
                 block.SetBestChain(txdbAddr, pindex);
             }
         }
-        else {
+        else
+		{
             LogPrintf("Block %d not found\n", nNewHeight);
         }
     }
 
     // ********************************************************* Step 8: load wallet
 #ifdef ENABLE_WALLET
-    if (fDisableWallet) {
+    if (fDisableWallet)
+	{
         pwalletMain = NULL;
-        LogPrintf("Wallet disabled!\n");
-    } else {
+        
+		LogPrintf("Wallet disabled!\n");
+    }
+	else
+	{
         uiInterface.InitMessage(_("Loading wallet..."));
 
         nStart = GetTimeMillis();
         bool fFirstRun = true;
         pwalletMain = new CWallet(strWalletFileName);
         DBErrors nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
-        if (nLoadWalletRet != DB_LOAD_OK)
+        
+		if (nLoadWalletRet != DB_LOAD_OK)
         {
             if (nLoadWalletRet == DB_CORRUPT)
+			{
                 strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
+			}
             else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
             {
                 std::string msg(_("Warning: error reading wallet.dat! All keys read correctly, but transaction data"
                              " or address book entries might be missing or incorrect."));
-                InitWarning(msg);
+                
+				InitWarning(msg);
             }
             else if (nLoadWalletRet == DB_TOO_NEW)
+			{
                 strErrors << _("Error loading wallet.dat: Wallet requires newer version of DigitalNote") << "\n";
+			}
             else if (nLoadWalletRet == DB_NEED_REWRITE)
             {
                 strErrors << _("Wallet needed to be rewritten: restart DigitalNote to complete") << "\n";
-                LogPrintf("%s", strErrors.str());
-                return InitError(strErrors.str());
+                
+				LogPrintf("%s", strErrors.str());
+                
+				return InitError(strErrors.str());
             }
             else
+			{
                 strErrors << _("Error loading wallet.dat") << "\n";
-        }
+			}
+		}
 
         if (GetBoolArg("-upgradewallet", fFirstRun))
         {
@@ -917,13 +1060,21 @@ bool AppInit2(boost::thread_group& threadGroup)
             if (nMaxVersion == 0) // the -upgradewallet without argument case
             {
                 LogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
-                nMaxVersion = CLIENT_VERSION;
-                pwalletMain->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
+                
+				nMaxVersion = CLIENT_VERSION;
+                
+				pwalletMain->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
             }
             else
+			{
                 LogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
+			}
+			
             if (nMaxVersion < pwalletMain->GetVersion())
+			{
                 strErrors << _("Cannot downgrade wallet") << "\n";
+			}
+			
             pwalletMain->SetMaxVersion(nMaxVersion);
         }
 
@@ -933,10 +1084,14 @@ bool AppInit2(boost::thread_group& threadGroup)
             RandAddSeedPerfmon();
 
             CPubKey newDefaultKey;
-            if (pwalletMain->GetKeyFromPool(newDefaultKey)) {
+			if (pwalletMain->GetKeyFromPool(newDefaultKey))
+			{
                 pwalletMain->SetDefaultKey(newDefaultKey);
-                if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultKey.GetID(), ""))
+                
+				if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultKey.GetID(), ""))
+				{
                     strErrors << _("Cannot write default address") << "\n";
+				}
             }
 
             pwalletMain->SetBestChain(CBlockLocator(pindexBest));
@@ -949,27 +1104,39 @@ bool AppInit2(boost::thread_group& threadGroup)
 
         CBlockIndex *pindexRescan = pindexBest;
         if (GetBoolArg("-rescan", false))
+		{
             pindexRescan = pindexGenesisBlock;
+		}
         else
         {
             CWalletDB walletdb(strWalletFileName);
             CBlockLocator locator;
-            if (walletdb.ReadBestBlock(locator))
+            
+			if (walletdb.ReadBestBlock(locator))
+			{
                 pindexRescan = locator.GetBlockIndex();
+			}
             else
+			{
                 pindexRescan = pindexGenesisBlock;
+			}
         }
+		
         if (pindexBest != pindexRescan && pindexBest && pindexRescan && pindexBest->nHeight > pindexRescan->nHeight)
         {
             uiInterface.InitMessage(_("Rescanning..."));
             LogPrintf("Rescanning last %i blocks (from block %i)...\n", pindexBest->nHeight - pindexRescan->nHeight, pindexRescan->nHeight);
-            nStart = GetTimeMillis();
+            
+			nStart = GetTimeMillis();
             pwalletMain->ScanForWalletTransactions(pindexRescan, true);
-            LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
-            pwalletMain->SetBestChain(CBlockLocator(pindexBest));
+            
+			LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
+            
+			pwalletMain->SetBestChain(CBlockLocator(pindexBest));
             nWalletDBUpdated++;
         }
     } // (!fDisableWallet)
+	
 #else // ENABLE_WALLET
     LogPrintf("No wallet compiled in!\n");
 #endif // !ENABLE_WALLET
@@ -978,9 +1145,12 @@ bool AppInit2(boost::thread_group& threadGroup)
     std::vector<boost::filesystem::path> vImportFiles;
     if (mapArgs.count("-loadblock"))
     {
-        BOOST_FOREACH(std::string strFile, mapMultiArgs["-loadblock"])
+        for(std::string strFile : mapMultiArgs["-loadblock"])
+		{
             vImportFiles.push_back(strFile);
+		}
     }
+	
     threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles));
 
     // ********************************************************* Step 10: load peers
@@ -992,11 +1162,16 @@ bool AppInit2(boost::thread_group& threadGroup)
     {
         CAddrDB adb;
         if (!adb.Read(addrman))
+		{
             LogPrintf("Invalid or missing peers.dat; recreating\n");
+		}
     }
 
-    LogPrintf("Loaded %i addresses from peers.dat  %dms\n",
-           addrman.size(), GetTimeMillis() - nStart);
+    LogPrintf(
+		"Loaded %i addresses from peers.dat  %dms\n",
+		addrman.size(),
+		GetTimeMillis() - nStart
+	);
 
     // ********************************************************* Step 10.5: startup secure messaging
 
@@ -1009,19 +1184,29 @@ bool AppInit2(boost::thread_group& threadGroup)
     // ********************************************************* Step 11: start node
 
     if (!CheckDiskSpace())
+	{
         return false;
-
+	}
+	
     if (!strErrors.str().empty())
+	{
         return InitError(strErrors.str());
-
+	}
+	
     // Check toggle switch for experimental feature testing fork
     uiInterface.InitMessage(_("Checking experimental feature toggle..."));
-    strLiveForkToggle = GetArg("-liveforktoggle", "");
-    LogPrintf("Checking for experimental testing feature fork toggle...\n");
-    if(!strLiveForkToggle.empty()){
+    
+	strLiveForkToggle = GetArg("-liveforktoggle", "");
+    
+	LogPrintf("Checking for experimental testing feature fork toggle...\n");
+    
+	if(!strLiveForkToggle.empty())
+	{
         LogPrintf("Verifying height selection for experimental testing feature fork toggle...\n");
-        std::istringstream(strLiveForkToggle) >> nLiveForkToggle;
-        if(nLiveForkToggle == 0)
+        
+		std::istringstream(strLiveForkToggle) >> nLiveForkToggle;
+        
+		if(nLiveForkToggle == 0)
         {
             LogPrintf("Continuing with fork toggle manually disabled by user...\n");
         }
@@ -1033,22 +1218,28 @@ bool AppInit2(boost::thread_group& threadGroup)
         {
             LogPrintf("Continuing with fork toggle set for block: %s | Happy testing!\n", strLiveForkToggle.c_str());
         }
-
     }
-    else {
+    else
+	{
         nLiveForkToggle = 0;
         LogPrintf("No experimental testing feature fork toggle detected... skipping...\n");
     }
 
     // Check toggle switch for masternode advanced relay
     uiInterface.InitMessage(_("Checking masternode advanced relay toggle..."));
-    fMnAdvRelay = GetBoolArg("-mnadvrelay", false);
-    LogPrintf("Checking for masternode advanced relay toggle...\n");
-    if(fMnAdvRelay){
+    
+	fMnAdvRelay = GetBoolArg("-mnadvrelay", false);
+    
+	LogPrintf("Checking for masternode advanced relay toggle...\n");
+    
+	if(fMnAdvRelay)
+	{
         LogPrintf("Continuing with toggle enabled | Happy relaying!\n");
     }
-    else {
+    else
+	{
         fMnAdvRelay = false;
+		
         LogPrintf("No masternode advanced relay toggle detected... skipping...\n");
     }
 
@@ -1056,34 +1247,48 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     CMasternodeDB mndb;
     CMasternodeDB::ReadResult readResult = mndb.Read(mnodeman);
-    if (readResult == CMasternodeDB::FileError)
+    
+	if (readResult == CMasternodeDB::FileError)
+	{
         LogPrintf("Missing masternode cache file - mncache.dat, will try to recreate\n");
+	}
     else if (readResult != CMasternodeDB::Ok)
     {
         LogPrintf("Error reading mncache.dat: ");
+		
         if(readResult == CMasternodeDB::IncorrectFormat)
+		{
             LogPrintf("magic is ok but data has invalid format, will try to recreate\n");
+		}
         else
+		{
             LogPrintf("file format is unknown or invalid, please fix it manually\n");
+		}
     }
 
 
     fMasterNode = GetBoolArg("-masternode", false);
-    if(fMasterNode) {
+    if(fMasterNode)
+	{
         LogPrintf("IS MASTER NODE\n");
+		
         strMasterNodeAddr = GetArg("-masternodeaddr", "");
 
         LogPrintf(" addr %s\n", strMasterNodeAddr.c_str());
 
-        if(!strMasterNodeAddr.empty()){
+        if(!strMasterNodeAddr.empty())
+		{
             CService addrTest = CService(strMasterNodeAddr, fNameLookup);
-            if (!addrTest.IsValid()) {
+			
+            if (!addrTest.IsValid())
+			{
                 return InitError("Invalid -masternodeaddr address: " + strMasterNodeAddr);
             }
         }
 
         strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
-        if(!strMasterNodePrivKey.empty()){
+        if(!strMasterNodePrivKey.empty())
+		{
             std::string errorMessage;
 
             CKey key;
@@ -1096,21 +1301,29 @@ bool AppInit2(boost::thread_group& threadGroup)
 
             activeMasternode.pubKeyMasternode = pubkey;
 
-        } else {
+        }
+		else
+		{
             return InitError(_("You must specify a masternodeprivkey in the configuration. Please see documentation for help."));
         }
 
         activeMasternode.ManageStatus();
     }
 
-    if(GetBoolArg("-mnconflock", false)) {
+    if(GetBoolArg("-mnconflock", false))
+	{
         LogPrintf("Locking Masternodes:\n");
         uint256 mnTxHash;
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+        
+		for(CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries())
+		{
             LogPrintf("  %s %s\n", mne.getTxHash(), mne.getOutputIndex());
-            mnTxHash.SetHex(mne.getTxHash());
-            COutPoint outpoint = COutPoint(mnTxHash, boost::lexical_cast<unsigned int>(mne.getOutputIndex()));
-            pwalletMain->LockCoin(outpoint);
+            
+			mnTxHash.SetHex(mne.getTxHash());
+            
+			COutPoint outpoint = COutPoint(mnTxHash, boost::lexical_cast<unsigned int>(mne.getOutputIndex()));
+            
+			pwalletMain->LockCoin(outpoint);
         }
     }
 
@@ -1120,7 +1333,8 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     //lite mode disables all Masternode related functionality
     fLiteMode = GetBoolArg("-litemode", false);
-    if(fMasterNode && fLiteMode){
+    if(fMasterNode && fLiteMode)
+	{
         return InitError("You can not start a masternode in litemode");
     }
 
@@ -1130,26 +1344,31 @@ bool AppInit2(boost::thread_group& threadGroup)
     mnEnginePool.InitCollateralAddress();
 
     threadGroup.create_thread(boost::bind(&ThreadCheckMNenginePool));
-
-
-
+	
     RandAddSeedPerfmon();
 
     // reindex addresses found in blockchain
     if(GetBoolArg("-reindexaddr", false))
     {
         uiInterface.InitMessage(_("Rebuilding address index..."));
-        CBlockIndex *pblockAddrIndex = pindexBest;
-	CTxDB txdbAddr("rw");
-	while(pblockAddrIndex)
-	{
-	    uiInterface.InitMessage(strprintf("Rebuilding address index, block %i", pblockAddrIndex->nHeight));
-	    bool ReadFromDisk(const CBlockIndex* pindex, bool fReadTransactions=true);
-	    CBlock pblockAddr;
-	    if(pblockAddr.ReadFromDisk(pblockAddrIndex, true))
-	        pblockAddr.RebuildAddressIndex(txdbAddr);
-	    pblockAddrIndex = pblockAddrIndex->pprev;
-	}
+        
+		CBlockIndex *pblockAddrIndex = pindexBest;
+		CTxDB txdbAddr("rw");
+		
+		while(pblockAddrIndex)
+		{
+			uiInterface.InitMessage(strprintf("Rebuilding address index, block %i", pblockAddrIndex->nHeight));
+			
+			bool ReadFromDisk(const CBlockIndex* pindex, bool fReadTransactions=true);
+			CBlock pblockAddr;
+			
+			if(pblockAddr.ReadFromDisk(pblockAddrIndex, true))
+			{
+				pblockAddr.RebuildAddressIndex(txdbAddr);
+			}
+			
+			pblockAddrIndex = pblockAddrIndex->pprev;
+		}
     }
 
     //// debug print
@@ -1172,9 +1391,13 @@ bool AppInit2(boost::thread_group& threadGroup)
 #ifdef ENABLE_WALLET
     // Mine proof-of-stake blocks in the background
     if (!GetBoolArg("-staking", true))
+	{
         LogPrintf("Staking disabled\n");
+	}
     else if (pwalletMain)
+	{
         threadGroup.create_thread(boost::bind(&ThreadStakeMiner, pwalletMain));
+	}
 #endif
 
     // ********************************************************* Step 12: finished
