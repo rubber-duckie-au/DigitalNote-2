@@ -283,7 +283,7 @@ std::vector<uint256> CBlock::GetMerkleBranch(int nIndex) const
 	return vMerkleBranch;
 }
 
-static uint256 CBlock::CheckMerkleBranch(uint256 hash, const std::vector<uint256>& vMerkleBranch, int nIndex)
+uint256 CBlock::CheckMerkleBranch(uint256 hash, const std::vector<uint256>& vMerkleBranch, int nIndex)
 {
 	if (nIndex == -1)
 	{

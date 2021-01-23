@@ -28,12 +28,12 @@ std::string CUnsignedAlert::ToString() const
     std::string strSetCancel;
     std::string strSetSubVer;
     
-	BOOST_FOREACH(int n, setCancel)
+	for(int n : setCancel)
 	{
         strSetCancel += strprintf("%d ", n);
 	}
 	
-    BOOST_FOREACH(std::string str, setSubVer)
+    for(std::string str : setSubVer)
 	{
         strSetSubVer += "\"" + str + "\" ";
 	}

@@ -10,6 +10,20 @@ class CBlockIndex;
 class COutPoint;
 class CTxDB;
 class CWallet;
+class CBlock;
+
+#ifdef __GNUC__
+	#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+	
+	/* Test for GCC < 6.3.0 */
+	#if GCC_VERSION > 60300
+		typedef std::unique_ptr<CBlock> CBlockPtr;
+	#else
+		typedef auto_ptr<CBlock> CBlockPtr;
+	#endif
+#else
+	typedef std::unique_ptr<CBlock> CBlockPtr;
+#endif
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work

@@ -48,11 +48,13 @@ int64_t DecodeDumpTime(const std::string& s)
 {
     bt::ptime pt;
 
-    for(size_t i=0; i<formats_n; ++i)
+    for(size_t i = 0; i< formats_n; ++i)
     {
         std::istringstream is(s);
-        is.imbue(formats[i]);
+        
+		is.imbue(formats[i]);
         is >> pt;
+		
         if(pt != bt::ptime())
 		{
 			break;
@@ -71,7 +73,7 @@ std::string static EncodeDumpString(const std::string &str)
 {
     std::stringstream ret;
 	
-    BOOST_FOREACH(unsigned char c, str)
+    for(unsigned char c : str)
 	{
         if (c <= 32 || c >= 128 || c == '%')
 		{
@@ -118,9 +120,9 @@ public:
 	
     CTxDump(CWalletTx* ptx = NULL, int nOut = -1)
     {
-        pindex = NULL;
-        nValue = 0;
-        fSpent = false;
+        this->pindex = NULL;
+        this->nValue = 0;
+        this->fSpent = false;
         this->ptx = ptx;
         this->nOut = nOut;
     }
@@ -132,7 +134,8 @@ Value importprivkey(const Array& params, bool fHelp)
 	{
         throw std::runtime_error(
             "importprivkey <DigitalNoteprivkey> [label] [rescan=true]\n"
-            "Adds a private key (as returned by dumpprivkey) to your wallet.");
+            "Adds a private key (as returned by dumpprivkey) to your wallet."
+		);
 	}
 	
     std::string strSecret = params[0].get_str();
@@ -199,8 +202,7 @@ Value importprivkey(const Array& params, bool fHelp)
 		pwalletMain->ScanForWalletTransactions(pindexGenesisBlock, true);
 		pwalletMain->ReacceptWalletTransactions();
 	}
-    
-
+	
     return Value::null;
 }
 
@@ -276,8 +278,10 @@ Value importaddress(const Array& params, bool fHelp)
 	pwalletMain->MarkDirty();
 
 	if (!pwalletMain->AddWatchOnly(script))
+	{
 		throw JSONRPCError(RPC_WALLET_ERROR, "Error adding address to wallet");
-
+	}
+	
 	if (fRescan)
 	{
 		pwalletMain->ScanForWalletTransactions(pindexGenesisBlock, true);
@@ -293,7 +297,8 @@ Value importwallet(const Array& params, bool fHelp)
 	{
         throw std::runtime_error(
             "importwallet <filename>\n"
-            "Imports keys from a wallet dump file (see dumpwallet).");
+            "Imports keys from a wallet dump file (see dumpwallet)."
+		);
 	}
 	
     EnsureWalletIsUnlocked();
@@ -306,12 +311,12 @@ Value importwallet(const Array& params, bool fHelp)
 	}
 	
     int64_t nTimeBegin = pindexBest->nTime;
-
     int64_t nFilesize = std::max((int64_t)1, (int64_t)file.tellg());
     bool fGood = true;
 
     pwalletMain->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
-    while (file.good())
+    
+	while (file.good())
 	{
         pwalletMain->ShowProgress("", std::max(1, std::min(99, (int)(((double)file.tellg() / (double)nFilesize) * 100))));
         
@@ -336,21 +341,23 @@ Value importwallet(const Array& params, bool fHelp)
         }
 		
 		CKey key = vchSecret.GetKey();
-        
 		CPubKey pubkey = key.GetPubKey();
-        assert(key.VerifyPubKey(pubkey));
+        
+		assert(key.VerifyPubKey(pubkey));
         
 		CKeyID keyid = pubkey.GetID();
         if (pwalletMain->HaveKey(keyid))
 		{
             LogPrintf("Skipping import of %s (key already present)\n", CDigitalNoteAddress(keyid).ToString());
-            continue;
+            
+			continue;
         }
 		
         int64_t nTime = DecodeDumpTime(vstr[1]);
         std::string strLabel;
         bool fLabel = true;
-        for (unsigned int nStr = 2; nStr < vstr.size(); nStr++)
+        
+		for (unsigned int nStr = 2; nStr < vstr.size(); nStr++)
 		{
             if (boost::algorithm::starts_with(vstr[nStr], "#"))
 			{
@@ -375,9 +382,12 @@ Value importwallet(const Array& params, bool fHelp)
         }
 		
         LogPrintf("Importing %s...\n", CDigitalNoteAddress(keyid).ToString());
-        if (!pwalletMain->AddKey(key)) {
+        
+		if (!pwalletMain->AddKey(key))
+		{
             fGood = false;
-            continue;
+            
+			continue;
         }
 		
         pwalletMain->mapKeyMetadata[keyid].nCreateTime = nTime;
@@ -388,7 +398,8 @@ Value importwallet(const Array& params, bool fHelp)
 		
         nTimeBegin = std::min(nTimeBegin, nTime);
     }
-    file.close();
+    
+	file.close();
     pwalletMain->ShowProgress("", 100); // hide progress dialog in GUI
 
     CBlockIndex *pindex = pindexBest;
@@ -403,7 +414,8 @@ Value importwallet(const Array& params, bool fHelp)
 	}
 	
     LogPrintf("Rescanning last %i blocks\n", pindexBest->nHeight - pindex->nHeight + 1);
-    pwalletMain->ScanForWalletTransactions(pindex);
+    
+	pwalletMain->ScanForWalletTransactions(pindex);
     pwalletMain->ReacceptWalletTransactions();
     pwalletMain->MarkDirty();
 
@@ -421,7 +433,8 @@ Value dumpprivkey(const Array& params, bool fHelp)
 	{
         throw std::runtime_error(
             "dumpprivkey <DigitalNote>\n"
-            "Reveals the private key corresponding to <DigitalNote>.");
+            "Reveals the private key corresponding to <DigitalNote>."
+		);
 	}
 	
     EnsureWalletIsUnlocked();
@@ -459,7 +472,8 @@ Value dumpwallet(const Array& params, bool fHelp)
 	{
         throw std::runtime_error(
             "dumpwallet <filename>\n"
-            "Dumps all wallet keys in a human-readable format.");
+            "Dumps all wallet keys in a human-readable format."
+		);
 	}
 	
     EnsureWalletIsUnlocked();
@@ -472,19 +486,19 @@ Value dumpwallet(const Array& params, bool fHelp)
 	}
 	
     std::map<CKeyID, int64_t> mapKeyBirth;
-
     std::set<CKeyID> setKeyPool;
 
     pwalletMain->GetKeyBirthTimes(mapKeyBirth);
-
     pwalletMain->GetAllReserveKeys(setKeyPool);
 
     // sort time/key pairs
     std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
-    for (std::map<CKeyID, int64_t>::const_iterator it = mapKeyBirth.begin(); it != mapKeyBirth.end(); it++) {
+    for (std::map<CKeyID, int64_t>::const_iterator it = mapKeyBirth.begin(); it != mapKeyBirth.end(); it++)
+	{
         vKeyBirth.push_back(std::make_pair(it->second, it->first));
     }
-    mapKeyBirth.clear();
+    
+	mapKeyBirth.clear();
     std::sort(vKeyBirth.begin(), vKeyBirth.end());
 
     // produce output
@@ -493,7 +507,9 @@ Value dumpwallet(const Array& params, bool fHelp)
     file << strprintf("# * Best block at time of backup was %i (%s),\n", nBestHeight, hashBestChain.ToString());
     file << strprintf("#   mined on %s\n", EncodeDumpTime(pindexBest->nTime));
     file << "\n";
-    for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
+	
+    for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++)
+	{
         const CKeyID &keyid = it->second;
         std::string strTime = EncodeDumpTime(it->first);
         std::string strAddr = CDigitalNoteAddress(keyid).ToString();
@@ -503,9 +519,16 @@ Value dumpwallet(const Array& params, bool fHelp)
 		{
             if (pwalletMain->mapAddressBook.count(keyid))
 			{
-                file << strprintf("%s %s label=%s # addr=%s\n", CDigitalNoteSecret(key).ToString(), strTime, EncodeDumpString(pwalletMain->mapAddressBook[keyid]), strAddr);
+                file << strprintf(
+					"%s %s label=%s # addr=%s\n",
+					CDigitalNoteSecret(key).ToString(),
+					strTime,
+					EncodeDumpString(pwalletMain->mapAddressBook[keyid]),
+					strAddr
+				);
             }
-			else if (setKeyPool.count(keyid)) {
+			else if (setKeyPool.count(keyid))
+			{
                 file << strprintf("%s %s reserve=1 # addr=%s\n", CDigitalNoteSecret(key).ToString(), strTime, strAddr);
             }
 			else
@@ -525,8 +548,9 @@ Value dumpwalletjson(const Array& params, bool fHelp)
     if (fHelp || params.size() != 1)
 	{
         throw std::runtime_error(
-                "dumpwallet <filename> [prettyPrint=false]\n"
-                "Dumps all wallet keys in a JSON format.");
+			"dumpwallet <filename> [prettyPrint=false]\n"
+			"Dumps all wallet keys in a JSON format."
+		);
 	}
 	
     EnsureWalletIsUnlocked();
@@ -545,24 +569,25 @@ Value dumpwalletjson(const Array& params, bool fHelp)
 	}
 	
     std::map<CKeyID, int64_t> mapKeyBirth;
-
     std::set<CKeyID> setKeyPool;
 
     pwalletMain->GetKeyBirthTimes(mapKeyBirth);
-
     pwalletMain->GetAllReserveKeys(setKeyPool);
 
     // sort time/key pairs
     std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
-    for (std::map<CKeyID, int64_t>::const_iterator it = mapKeyBirth.begin(); it != mapKeyBirth.end(); it++) {
+    for (std::map<CKeyID, int64_t>::const_iterator it = mapKeyBirth.begin(); it != mapKeyBirth.end(); it++)
+	{
         vKeyBirth.push_back(std::make_pair(it->second, it->first));
     }
-    mapKeyBirth.clear();
+    
+	mapKeyBirth.clear();
     std::sort(vKeyBirth.begin(), vKeyBirth.end());
 
     Object payload;
     Array privateKeys;
-    for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
+    for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++)
+	{
         const CKeyID &keyid = it->second;
 
         CKey key;
@@ -571,9 +596,12 @@ Value dumpwalletjson(const Array& params, bool fHelp)
             privateKeys.push_back(CDigitalNoteSecret(key).ToString());
         }
     }
-    payload.push_back(Pair("privateKeys", privateKeys));
-    file << write_string(Value(payload), prettyPrint);
+    
+	payload.push_back(Pair("privateKeys", privateKeys));
+    
+	file << write_string(Value(payload), prettyPrint);
     file.close();
+	
     return Value::null;
 }
 
@@ -582,8 +610,9 @@ Value getaddressfromprivkey(const Array& params, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 3)
 	{
         throw std::runtime_error(
-                "getaddressfromprivkey <DigitalNoteprivkey>\n"
-                "Returns DigitalNote address from private key.");
+			"getaddressfromprivkey <DigitalNoteprivkey>\n"
+			"Returns DigitalNote address from private key."
+		);
 	}
 	
     std::string strSecret = params[0].get_str();
@@ -603,11 +632,14 @@ Value getaddressfromprivkey(const Array& params, bool fHelp)
 	
     CKey key = vchSecret.GetKey();
     CPubKey pubkey = key.GetPubKey();
-    assert(key.VerifyPubKey(pubkey));
-    CKeyID vchAddress = pubkey.GetID();
+    
+	assert(key.VerifyPubKey(pubkey));
+    
+	CKeyID vchAddress = pubkey.GetID();
 
     Object payload;
     payload.push_back(Pair("address", CDigitalNoteAddress(vchAddress).ToString()));
+	
     return Value(payload);
 }
 

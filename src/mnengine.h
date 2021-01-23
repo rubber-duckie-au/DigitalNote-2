@@ -111,14 +111,21 @@ public:
     /// Add entries to use for MNengine
     bool Add(const std::vector<CTxIn> vinIn, int64_t amountIn, const CTransaction collateralIn, const std::vector<CTxOut> voutIn)
     {
-        if(isSet){return false;}
+        if(isSet)
+		{
+			return false;
+		}
 
-        BOOST_FOREACH(const CTxIn& in, vinIn)
+        for(const CTxIn& in : vinIn)
+		{
             sev.push_back(in);
-
-        BOOST_FOREACH(const CTxOut& out, voutIn)
+		}
+		
+        for(const CTxOut& out : voutIn)
+		{
             vout.push_back(out);
-
+		}
+		
         amount = amountIn;
         collateral = collateralIn;
         isSet = true;
@@ -129,9 +136,15 @@ public:
 
     bool AddSig(const CTxIn& vin)
     {
-        BOOST_FOREACH(CTxDSIn& s, sev) {
-            if(s.prevout == vin.prevout && s.nSequence == vin.nSequence){
-                if(s.fHasSig){return false;}
+        for(CTxDSIn& s : sev)
+		{
+            if(s.prevout == vin.prevout && s.nSequence == vin.nSequence)
+			{
+                if(s.fHasSig)
+				{
+					return false;
+				}
+				
                 s.scriptSig = vin.scriptSig;
                 s.prevPubKey = vin.prevPubKey;
                 s.fHasSig = true;
