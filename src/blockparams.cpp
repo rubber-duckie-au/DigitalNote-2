@@ -634,6 +634,7 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 //
 // Masternode Select Payout Toggle
 //
+/*
 bool fMNselect(int nHeight)
 {
     // Try to get frist masternode in our list
@@ -662,6 +663,7 @@ bool fMNselect(int nHeight)
 	
     return false;
 }
+*/
 
 //
 // PoW coin base reward

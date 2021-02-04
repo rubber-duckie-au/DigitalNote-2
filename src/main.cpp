@@ -1946,10 +1946,8 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         mapOrphanBlocksByPrev.erase(hashPrev);
     }
 
-    // Try to get frist masternode in our list
-    CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
     // If initial sync or we can't find a masternode in our list
-    if(!IsInitialBlockDownload() || winningNode){
+    if(!IsInitialBlockDownload()){
 
         CScript payee;
         CTxIn vin;
@@ -1957,7 +1955,7 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         // If we're in LiteMode disable mnengine features without disabling masternodes
         if (!fLiteMode && !fImporting && !fReindex && pindexBest->nHeight > Checkpoints::GetTotalBlocksEstimate()){
 
-            if(masternodePayments.GetWinningMasternode(pindexBest->nHeight, payee, vin)){
+            if(masternodePayments.GetBlockPayee(pindexBest->nHeight, payee, vin)){
                 //UPDATE MASTERNODE LAST PAID TIME
                 CMasternode* pmn = mnodeman.Find(vin);
                 if(pmn != NULL) {
@@ -1969,10 +1967,11 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 
             mnEnginePool.CheckTimeout();
             mnEnginePool.NewBlock();
+			masternodePayments.ProcessBlock(GetHeight()+10);
 
         } else if (fLiteMode && !fImporting && !fReindex && pindexBest->nHeight > Checkpoints::GetTotalBlocksEstimate())
         {
-            if(masternodePayments.GetWinningMasternode(pindexBest->nHeight, payee, vin)){
+            if(masternodePayments.GetBlockPayee(pindexBest->nHeight, payee, vin)){
                 //UPDATE MASTERNODE LAST PAID TIME
                 CMasternode* pmn = mnodeman.Find(vin);
                 if(pmn != NULL) {
@@ -1981,6 +1980,8 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 
                 LogPrintf("ProcessBlock() : Update Masternode Last Paid Time - %d\n", pindexBest->nHeight);
             }
+			
+			masternodePayments.ProcessBlock(GetHeight()+10);
         }
     }
 

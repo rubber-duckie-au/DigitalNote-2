@@ -307,7 +307,7 @@ void CMNenginePool::CheckFinalTransaction()
             LogPrintf("CMNenginePool::Check() - ERROR: Invalid Masternodeprivkey: '%s'\n", strError);
             LogPrintf("CMNenginePool::Check() - FORCE BYPASS - SetKey checks!!!\n");
             
-			//return;
+			return;
         }
 
         if(!mnEngineSigner.SignMessage(strMessage, strError, vchSig, key2))
@@ -315,7 +315,7 @@ void CMNenginePool::CheckFinalTransaction()
             LogPrintf("CMNenginePool::Check() - Sign message failed\n");
             LogPrintf("CMNenginePool::Check() - FORCE BYPASS - Sign message checks!!!\n");
             
-			//return;
+			return;
         }
 
         if(!mnEngineSigner.VerifyMessage(pubkey2, vchSig, strMessage, strError))
@@ -323,7 +323,7 @@ void CMNenginePool::CheckFinalTransaction()
             LogPrintf("CMNenginePool::Check() - Verify message failed\n");
             LogPrintf("CMNenginePool::Check() - FORCE BYPASS - Verify message checks!!!\n");
             
-			//return;
+			return;
         }
 
         std::string txHash = txNew.GetHash().ToString().c_str();
@@ -1357,7 +1357,8 @@ bool CMNengineSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey){
     uint256 hash;
 	
     payee2 = GetScriptForDestination(pubkey.GetID());
-
+	
+	//if(GetTransaction(vin.prevout.hash, txVin, hash, true)){
     if(GetTransaction(vin.prevout.hash, txVin, hash))
 	{
         for(CTxOut out : txVin.vout)
@@ -1379,16 +1380,12 @@ bool CMNengineSigner::SetKey(const std::string &strSecret, std::string& errorMes
 
     if (!fGood)
 	{
-        LogPrintf("CMNengineSetKey(): WARNING - SetKey failed to verify submitted key \n");
-        
 		errorMessage = _("");//NOTE: previous message contents - Invalid private key.
         
-		return true;
+		return false;
     }
     
-	// TODO: correct keys to succesfully be set
-    // for now we do not get to this section even with a good key
-    key = vchSecret.GetKey();
+	key = vchSecret.GetKey();
     pubkey = key.GetPubKey();
     
 	LogPrintf("CMNengineSetKey(): SetKey now set successfully \n");
@@ -1452,7 +1449,7 @@ bool CMNengineQueue::Sign()
         LogPrintf("CMNengineQueue():Relay - ERROR: Invalid Masternodeprivkey: '%s'\n", errorMessage);
         LogPrintf("CMNengineQueue():Relay - FORCE BYPASS - SetKey checks!!!\n");
         
-		//return false;
+		return false;
     }
 
     if(!mnEngineSigner.SignMessage(strMessage, errorMessage, vchSig, key2))
@@ -1460,7 +1457,7 @@ bool CMNengineQueue::Sign()
         LogPrintf("CMNengineQueue():Relay - Sign message failed\n");
         LogPrintf("CMNengineQueue():Relay - FORCE BYPASS - SignMessage checks!!!\n");
         
-		//return false;
+		return false;
     }
 
     if(!mnEngineSigner.VerifyMessage(pubkey2, vchSig, strMessage, errorMessage))
@@ -1468,7 +1465,7 @@ bool CMNengineQueue::Sign()
         LogPrintf("CMNengineQueue():Relay - Verify message failed\n");
         LogPrintf("CMNengineQueue():Relay - FORCE BYPASS - VerifyMessage checks!!!\n");
         
-		//return false;
+		return false;
     }
 
     return true;
@@ -1499,7 +1496,7 @@ bool CMNengineQueue::CheckSignature()
 		{
             LogPrintf("CMNengineQueue::CheckSignature() - WARNING - Could not verify masternode address signature %s \n", vin.ToString().c_str());
             
-			//return error("CMNengineQueue::CheckSignature() - Got bad Masternode address signature %s \n", vin.ToString().c_str());
+			return error("CMNengineQueue::CheckSignature() - Got bad Masternode address signature %s \n", vin.ToString().c_str());
         }
 
         return true;

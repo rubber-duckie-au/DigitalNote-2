@@ -476,7 +476,7 @@ void CWallet::AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed, 
                 
 				if(coin_type == ONLY_NOT10000IFMN)
 				{
-                    found = !(fMasterNode || pcoin->vout[i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN);
+                    found = !(fMasterNode && pcoin->vout[i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN);
                 }
 				else if (coin_type == ONLY_NONDENOMINATED_NOT10000IFMN)
 				{
@@ -485,9 +485,9 @@ void CWallet::AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed, 
 						continue; // do not use collateral amounts
                     }
 					
-					if(pcoin->vout[i].nValue != MasternodeCollateral(pindexBest->nHeight)*COIN)
+					if(fMasterNode)
 					{
-						found = pcoin->vout[i].nValue; // do not use any MN funds
+						found = pcoin->vout[i].nValue != MasternodeCollateral(pindexBest->nHeight)*COIN; // do not use Hot MN funds
 					}
                 }
 				else
@@ -571,7 +571,7 @@ void CWallet::AvailableCoinsMN(std::vector<COutput>& vCoins, bool fOnlyConfirmed
                 
 				if(coin_type == ONLY_NOT10000IFMN)
 				{
-                    found = !(fMasterNode || pcoin->vout[i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN);
+                    found = !(fMasterNode && pcoin->vout[i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN);
                 }
 				else if (coin_type == ONLY_NONDENOMINATED_NOT10000IFMN)
 				{
@@ -580,9 +580,9 @@ void CWallet::AvailableCoinsMN(std::vector<COutput>& vCoins, bool fOnlyConfirmed
 						continue; // do not use collateral amounts
                     }
 					
-					if(pcoin->vout[i].nValue != MasternodeCollateral(pindexBest->nHeight)*COIN)
+					if(fMasterNode)
 					{
-						found = pcoin->vout[i].nValue; // do not use any MN funds
+						found = pcoin->vout[i].nValue != MasternodeCollateral(pindexBest->nHeight)*COIN; // do not use Hot MN funds
 					}
                 }
 				else
@@ -2732,29 +2732,18 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     if(bMasterNodePayment)
 	{
         //spork
-        // Try to get frist masternode in our list
-        CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
-        
-		// If initial sync or we can't find a masternode in our list
-        if(winningNode && fMNselect(pindexPrev->nHeight+1))
+        if(!masternodePayments.GetBlockPayee(pindexPrev->nHeight+1, payee, vin))
 		{
-            //spork
-            if(masternodePayments.GetWinningMasternode(pindexPrev->nHeight+1, payee, vin))
+            CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
+            
+			if(winningNode)
 			{
-                LogPrintf("CreateCoinStake : Found relayed MasterNode winner!\n");
-            }
+                payee = GetScriptForDestination(winningNode->pubkey.GetID());
+			}
 			else
 			{
-                LogPrintf("CreateCoinStake : WARNING : Could not find relayed Masternode winner!\n");
-                
-				payee = GetScriptForDestination(devopaddress.Get());
+                payee = GetScriptForDestination(devopaddress.Get());
             }
-        }
-		else
-		{
-            LogPrintf("CreateCoinStake : WARNING : No MasterNodes online to pay!\n");
-            
-			payee = GetScriptForDestination(devopaddress.Get());
         }
     }
 	else

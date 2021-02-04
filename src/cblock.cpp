@@ -1002,7 +1002,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 
                     CScript payee;
                     CTxIn vin;
-                    if(!masternodePayments.GetWinningMasternode(pindexBest->nHeight+1, payee, vin) || payee == CScript())
+					if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee, vin) || payee == CScript())
 					{
                         foundPayee = true; //doesn't require a specific payee
                         foundPaymentAmount = true;
@@ -1248,7 +1248,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                 // Check for PoS masternode payment
                 if (i == nProofOfIndexMasternode)
 				{
-                   if (mnodeman.IsPayeeAValidMasternode(rawPayee) && fMNselect(pindexBest->nHeight))
+                   if (mnodeman.IsPayeeAValidMasternode(rawPayee))
 				   {
                        LogPrintf("CheckBlock() : PoS Recipient masternode address validity succesfully verified\n");
                    }
@@ -1345,7 +1345,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                 // Check for PoW masternode payment
                 if (i == nProofOfIndexMasternode)
 				{
-                   if (mnodeman.IsPayeeAValidMasternode(rawPayee) && fMNselect(pindexBest->nHeight))
+                   if (mnodeman.IsPayeeAValidMasternode(rawPayee))
 				   {
                       LogPrintf("CheckBlock() : PoW Recipient masternode address validity succesfully verified\n");
                    }

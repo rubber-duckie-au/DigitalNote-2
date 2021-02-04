@@ -1179,11 +1179,11 @@ void ThreadSocketHandler()
                             int nErr = WSAGetLastError();
                             if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                             {
-                                if (!pnode->fDisconnect)
-								{
-                                    LogPrintf("socket recv error %d, %s\n", nErr, strerror(nErr));
+                                {
+                                    LogPrintf("ThreadSocketHandler() : (ERROR) invalid data from peer %d, socket recv error %s \n", pnode->addr.ToString(), nErr);
                                 }
-								
+                                // Disconnect from node that sent us invalid data
+                                // This is not a ban
 								pnode->CloseSocketDisconnect();
                             }
                         }
