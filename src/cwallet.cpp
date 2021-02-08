@@ -1,4 +1,5 @@
 #include <boost/algorithm/string/replace.hpp>
+#include <algorithm>
 
 #include "walletmodel.h"
 #include "coincontrol.h"
