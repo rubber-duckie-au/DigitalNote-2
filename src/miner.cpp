@@ -784,7 +784,7 @@ void ThreadStakeMiner(CWallet *pwallet)
 			#if GCC_VERSION > 60300
 				std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
 			#else
-				auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+				std::auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
 			#endif
         #else
             std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
