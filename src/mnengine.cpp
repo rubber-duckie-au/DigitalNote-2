@@ -227,8 +227,8 @@ void CMNenginePool::Check()
             }
 
             // shuffle the outputs for improved anonymity
-            std::shuffle ( txNew.vin.begin(),  txNew.vin.end(),  randomizeList);
-            std::shuffle ( txNew.vout.begin(), txNew.vout.end(), randomizeList);
+            std::shuffle ( txNew.vin.begin(),  txNew.vin.end(),  std::mt19937(std::random_device()()));
+            std::shuffle ( txNew.vout.begin(), txNew.vout.end(), std::mt19937(std::random_device()()));
 			
             LogPrint("mnengine", "Transaction 1: %s\n", txNew.ToString());
             
