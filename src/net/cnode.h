@@ -6,12 +6,12 @@
 #include "sync.h"
 #include "net/secmsgnode.h"
 #include "net/banreason.h"
+#include "net/cnetmessage.h"
 
 class CSubNet;
 class CBanEntry;
 class CBlockIndex;
 class CNodeStats;
-class CNetMessage;
 struct CNodeSignals;
 
 typedef int NodeId;

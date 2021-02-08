@@ -776,21 +776,28 @@ void ThreadStakeMiner(CWallet *pwallet)
         // Create new block
         //
         int64_t nFees;
-        #ifdef __GNUC__
-			#define GCC_VERSION (__GNUC__ * 10000 \
-								+ __GNUC_MINOR__ * 100 \
-								+ __GNUC_PATCHLEVEL__)
-
-			/* Test for GCC < 6.3.0 */
-			#if GCC_VERSION > 60300
-				std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-			#else
-				std::auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-			#endif
-        #else
-            std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-        #endif
+		std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+		
+		//
+		// Legacy code
+		//
+		//
+        //#ifdef __GNUC__
+		//	#define GCC_VERSION (__GNUC__ * 10000 \
+		//						+ __GNUC_MINOR__ * 100 \
+		//						+ __GNUC_PATCHLEVEL__)
+		//
+		//	/* Test for GCC < 6.3.0 */
+		//	#if GCC_VERSION > 60300
+		//		std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+		//	#else
+		//		std::auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+		//	#endif
+        //#else
+        //    std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+        //#endif
         
+		
 		if (!pblock.get())
 		{
             return;
