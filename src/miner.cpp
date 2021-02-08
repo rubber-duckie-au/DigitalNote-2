@@ -5,6 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <boost/foreach.hpp>
+#include <memory>
 
 #include "blockparams.h"
 #include "txdb.h"

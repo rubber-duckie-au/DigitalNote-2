@@ -2,6 +2,7 @@
 #define CBLOCK_H
 
 #include <vector>
+#include <memory>
 
 #include "uint/uint256.h"
 #include "ctransaction.h"
