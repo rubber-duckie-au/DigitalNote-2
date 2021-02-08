@@ -19,7 +19,7 @@ class CBlock;
 	#if GCC_VERSION > 60300
 		typedef std::unique_ptr<CBlock> CBlockPtr;
 	#else
-		typedef auto_ptr<CBlock> CBlockPtr;
+		typedef std::auto_ptr<CBlock> CBlockPtr;
 	#endif
 #else
 	typedef std::unique_ptr<CBlock> CBlockPtr;

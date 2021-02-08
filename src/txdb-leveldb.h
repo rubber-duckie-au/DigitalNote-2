@@ -15,6 +15,7 @@
 #include "util.h"
 #include "cdiskblockindex.h"
 #include "ctxindex.h"
+#include "uint/uint160.h"
 
 class CBigNum;
 class CTransaction;
