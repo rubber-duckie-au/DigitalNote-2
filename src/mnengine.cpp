@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <algorithm>
+#include <random>
 #include <openssl/rand.h>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
