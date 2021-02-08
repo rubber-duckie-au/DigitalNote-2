@@ -364,6 +364,6 @@ static void ApproximateBestSubset(std::vector<std::pair<int64_t, std::pair<const
 		int64_t nTotalLower, int64_t nTargetValue, std::vector<char>& vfBest, int64_t& nBest, int iterations = 1000);
 
 extern int64_t GetStakeCombineThreshold();
-int64_t GetStakeSplitThreshold();
+static int64_t GetStakeSplitThreshold();
 
 #endif // CWALLET_H
