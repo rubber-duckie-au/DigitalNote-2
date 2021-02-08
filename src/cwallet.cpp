@@ -1,5 +1,6 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <algorithm>
+#include <random>
 
 #include "walletmodel.h"
 #include "coincontrol.h"
@@ -630,8 +631,8 @@ bool CWallet::SelectCoinsMinConf(int64_t nTargetValue, unsigned int nSpendTime, 
     std::vector<std::pair<int64_t, std::pair<const CWalletTx*,unsigned int> > > vValue;
     int64_t nTotalLower = 0;
 
-    std::random_shuffle(vCoins.begin(), vCoins.end(), GetRandInt);
-
+    std::shuffle(vCoins.begin(), vCoins.end(), GetRandInt);
+	
     for(const COutput &output : vCoins)
     {
         if (!output.fSpendable)
@@ -3344,6 +3345,7 @@ bool CWallet::CreateStealthTransaction(CScript scriptPubKey, int64_t nValue, std
 
     // -- shuffle inputs, change output won't mix enough as it must be not fully random for plantext narrations
     std::random_shuffle(vecSend.begin(), vecSend.end());
+	std::shuffle(vecSend.begin(), vecSend.end(), std::mt19937(std::random_device()())););
 
     int nChangePos;
     std::string strFailReason;
