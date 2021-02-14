@@ -4,9 +4,11 @@
 #include <string>
 
 /** Capture information about block/transaction validation */
-class CValidationState {
+class CValidationState
+{
 private:
-    enum mode_state {
+    enum mode_state
+	{
         MODE_VALID,   //! everything ok
         MODE_INVALID, //! network rule violation (DoS value may be set)
         MODE_ERROR,   //! run-time error
@@ -20,8 +22,7 @@ private:
 public:
     CValidationState();
 	
-    bool DoS(int level, bool ret = false, unsigned char chRejectCodeIn=0, std::string strRejectReasonIn="",
-             bool corruptionIn=false);
+    bool DoS(int level, bool ret = false, unsigned char chRejectCodeIn=0, std::string strRejectReasonIn="", bool corruptionIn=false);
     bool Invalid(bool ret = false, unsigned char _chRejectCode=0, std::string _strRejectReason="");
     bool Error(std::string strRejectReasonIn="");
     bool Abort(const std::string &msg);

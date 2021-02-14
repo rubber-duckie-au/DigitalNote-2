@@ -4,8 +4,7 @@
 
 #include "cvalidationstate.h"
 
-CValidationState::CValidationState()
-	: mode(MODE_VALID), nDoS(0), chRejectCode(0), corruptionPossible(false)
+CValidationState::CValidationState() : mode(MODE_VALID), nDoS(0), chRejectCode(0), corruptionPossible(false)
 {
 	
 }
@@ -47,6 +46,7 @@ bool CValidationState::Error(std::string strRejectReasonIn)
 bool CValidationState::Abort(const std::string &msg)
 {
 	AbortNode(msg);
+	
 	return Error(msg);
 }
 
@@ -67,10 +67,13 @@ bool CValidationState::IsError() const
 
 bool CValidationState::IsInvalid(int &nDoSOut) const
 {
-	if (IsInvalid()) {
+	if (IsInvalid())
+	{
 		nDoSOut = nDoS;
+		
 		return true;
 	}
+	
 	return false;
 }
 

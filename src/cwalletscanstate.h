@@ -1,7 +1,8 @@
 #ifndef CWALLETSCANSTATE_H
 #define CWALLETSCANSTATE_H
 
-class CWalletScanState {
+class CWalletScanState
+{
 public:
     unsigned int nKeys;
     unsigned int nCKeys;
