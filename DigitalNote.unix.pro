@@ -4,18 +4,18 @@ TEMPLATE = app
 TARGET = DigitalNote-qt
 VERSION = 1.0.3.4
 
-OBJECTS_DIR = build
-MOC_DIR = build 
-UI_DIR = build
+OBJECTS_DIR = build/App
+MOC_DIR = build/App
+UI_DIR = build/App
 
-include(include/qt_settings.pri)
-include(include/compiler_settings.pri)
-
-include(include/sources.pri)
-include(include/headers.pri)
-include(include/forums.pri)
-include(include/resources.pri)
-include(include/translations.pri)
+include(include/app/qt_settings.pri)
+include(include/app/compiler_settings.pri)
+include(include/app/forums.pri)
+include(include/app/headers.pri)
+include(include/app/other_files.pri)
+include(include/app/resources.pri)
+include(include/app/sources.pri)
+include(include/app/translations.pri)
 
 include(include/security.pri)
 
@@ -32,6 +32,5 @@ include(include/fix/msse2.pri)
 
 include(include/extra/leveldb.pri)
 include(include/extra/secp256k1.pri)
-##include(include/extra/TSQM.pri)
 
 system($$QMAKE_LRELEASE -silent $$_PRO_FILE_)

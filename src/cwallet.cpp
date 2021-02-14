@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <random>
 
-#include "walletmodel.h"
 #include "coincontrol.h"
 #include "kernel.h"
 #include "txdb-leveldb.h"
