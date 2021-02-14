@@ -2,7 +2,6 @@ src/*.exe
 src/DigitalNote
 src/DigitalNoted
 src/test_DigitalNote
-src/build.h
 .*.swp
 *.*~*
 *.bak
