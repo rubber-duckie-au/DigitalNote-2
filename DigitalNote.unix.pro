@@ -37,5 +37,7 @@ include(include/fix/msse2.pri)
 
 include(include/extra/leveldb.pri)
 include(include/extra/secp256k1.pri)
+include(include/extra/openssl.pri)
+include(include/extra/gmp.pri)
 
 system($$QMAKE_LRELEASE -silent $$_PRO_FILE_)

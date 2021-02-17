@@ -20,7 +20,6 @@ LIBS += -lboost_thread$$BOOST_LIB_SUFFIX
 LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
 LIBS += -ldb_cxx$$BDB_LIB_SUFFIX
 LIBS += -levent
-LIBS += -lgmp
 LIBS += -lz
 
 DEPENDPATH += src
