@@ -31,5 +31,6 @@ Makefile.Release
 object_script.DigitalNote.Debug
 object_script.DigitalNote.Release
 release
+DigitalNote
 
 !src/leveldb/Makefile
