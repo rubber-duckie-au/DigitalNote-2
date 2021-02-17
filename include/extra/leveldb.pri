@@ -1,10 +1,18 @@
 COMPILE_LEVELDB = 0
 
+
 exists($$PROJECT_PWD/src/leveldb/libleveldb.a) : exists($$PROJECT_PWD/src/leveldb/libmemenv.a) {
 	message("found libleveldb lib")
 	message("found libmemenv lib")
 } else {
-	COMPILE_LEVELDB = 1
+	!win32 {
+		COMPILE_LEVELDB = 1
+	} else {
+		message("You need to compile leveldb yourself with msys2.")
+		message("Use the following command to compile:")
+		message("	cd src/leveldb")
+		message("	TARGET_OS=NATIVE_WINDOWS make libleveldb.a libmemenv.a")
+	}
 }
 
 contains(COMPILE_LEVELDB, 1) {
@@ -19,3 +27,7 @@ contains(COMPILE_LEVELDB, 1) {
 	# Gross ugly hack that depends on qmake internals, unfortunately there is no other way to do it.
 	QMAKE_CLEAN += $$PROJECT_PWD/src/leveldb/libleveldb.a; cd $$PROJECT_PWD/src/leveldb ; $(MAKE) clean
 }
+
+QMAKE_LIBDIR += src/leveldb
+LIBS += -lleveldb
+LIBS += -lmemenv

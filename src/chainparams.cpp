@@ -5,7 +5,9 @@
 
 #include <boost/assign/list_of.hpp>
 
-#include <netinet/in.h>
+#ifndef WIN32
+	#include <netinet/in.h>
+#endif // WIN32
 
 #include "assert.h"
 #include "chainparams.h"

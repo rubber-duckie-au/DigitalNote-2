@@ -17,6 +17,11 @@
 #include "netbase.h"
 #include "net/cnode.h"
 
+#ifndef WIN32
+#include <arpa/inet.h>
+typedef u_int SOCKET;
+#endif
+
 class CAddrMan;
 class CBlockIndex;
 class CTransaction;
@@ -36,7 +41,6 @@ namespace boost {
 
 
 typedef std::map<CSubNet, CBanEntry> banmap_t;
-typedef u_int SOCKET;
 
 enum
 {

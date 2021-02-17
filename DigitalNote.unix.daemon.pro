@@ -6,6 +6,11 @@ VERSION = 1.0.3.4
 
 OBJECTS_DIR = build/daemon
 
+DEFINES += LINUX
+
+LIBS += -ldl
+LIBS += -lrt
+
 include(include/daemon/qt_settings.pri)
 include(include/daemon/compiler_settings.pri)
 include(include/daemon/headers.pri)

@@ -3,7 +3,16 @@ COMPILE_SECP256K1 = 0
 exists($$PROJECT_PWD/src/secp256k1/.libs/libsecp256k1.a) {
 	message("found libsecp256k1 lib")
 } else {
-	COMPILE_secp256k1 = 1
+	!win32 {
+		COMPILE_secp256k1 = 1
+	} else {
+		message("You need to compile secp256k1 yourself with msys2.")
+		message("Use the following command to compile:")
+		message("	cd src/libsecp256k1")
+		message("	./autogen.sh")
+		message("	./configure --enable-module-recovery --prefix $PWD")
+		message("	make")
+	}
 }
 
 contains(COMPILE_SECP256K1, 1) {
@@ -16,3 +25,5 @@ contains(COMPILE_SECP256K1, 1) {
 	PRE_TARGETDEPS += $$PROJECT_PWD/src/secp256k1/.libs/libsecp256k1.a
 	QMAKE_EXTRA_TARGETS += extra_secp256k1
 }
+
+LIBS += src/secp256k1/.libs/libsecp256k1.a

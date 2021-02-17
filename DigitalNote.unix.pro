@@ -8,6 +8,11 @@ OBJECTS_DIR = build/App
 MOC_DIR = build/App
 UI_DIR = build/App
 
+DEFINES += LINUX
+
+LIBS += -ldl
+LIBS += -lrt
+
 include(include/app/qt_settings.pri)
 include(include/app/compiler_settings.pri)
 include(include/app/forums.pri)

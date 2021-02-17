@@ -33,6 +33,9 @@ Notes:
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <openssl/hmac.h>
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	#include <openssl/ecdh.h>
+#endif
 
 #include "lz4/lz4.c"
 #include "ccriticalblock.h"
