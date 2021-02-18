@@ -13,7 +13,8 @@ src/test_DigitalNote
 .DigitalNote
 #compilation and Qt preprocessor part
 .qmake.stash
-Makefile
+
+DigitalNote
 DigitalNote-qt
 DigitalNote-Qt.dmg
 DigitalNote-Qt.app
@@ -23,14 +24,10 @@ qrc_*.cpp
 *.pro.user
 #mac specific
 .DS_Store
-build
-
 DigitalNote_resource.rc
-Makefile.Debug
-Makefile.Release
-object_script.DigitalNote.Debug
-object_script.DigitalNote.Release
+Makefile
+Makefile.*
+build
 release
-DigitalNote
-
+object_script.*
 !src/leveldb/Makefile
