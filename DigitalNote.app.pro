@@ -26,11 +26,10 @@ include(include/app/sources.pri)
 include(include/app/translations.pri)
 
 ## Compile Options
-include(include/options/use_qrcode.pri)
 include(include/options/use_0.pri)
-include(include/options/use_dbus.pri)
-include(include/options/use_upnp.pri)
 include(include/options/use_build_info.pri)
+include(include/options/use_qrcode.pri)
+include(include/options/use_dbus.pri)
 
 ## Libraries
 include(include/libs.pri)

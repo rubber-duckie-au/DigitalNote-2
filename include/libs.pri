@@ -12,6 +12,7 @@ include(libs/gmp.pri)
 include(libs/boost.pri)
 include(libs/event.pri)
 include(libs/bdb.pri)
+include(libs/miniupnpc.pri)
 
 win32 {
 	LIBS += -lshlwapi
