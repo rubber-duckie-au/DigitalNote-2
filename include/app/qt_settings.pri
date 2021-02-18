@@ -12,3 +12,6 @@ QT += gui
 QT += widgets
 QT += network
 QT += printsupport
+
+DEFINES += QT_GUI
+DEFINES += QT_NO_VERSION_TAGGING

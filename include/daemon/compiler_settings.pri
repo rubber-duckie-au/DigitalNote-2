@@ -13,15 +13,6 @@ QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-variable
 QMAKE_CXXFLAGS_WARN_ON += -Wno-ignored-qualifiers
 QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-local-typedefs
 
-LIBS += -lboost_system$$BOOST_LIB_SUFFIX
-LIBS += -lboost_filesystem$$BOOST_LIB_SUFFIX
-LIBS += -lboost_program_options$$BOOST_LIB_SUFFIX
-LIBS += -lboost_thread$$BOOST_LIB_SUFFIX
-LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
-LIBS += -ldb_cxx$$BDB_LIB_SUFFIX
-LIBS += -levent
-LIBS += -lz
-
 DEPENDPATH += src
 DEPENDPATH += src/json
 DEPENDPATH += src/qt
@@ -34,8 +25,3 @@ INCLUDEPATH += src/leveldb/include
 INCLUDEPATH += src/leveldb/helpers
 INCLUDEPATH += src/secp256k1/include
 INCLUDEPATH += src/websocketapp
-
-DEFINES += ENABLE_WALLET
-DEFINES += BOOST_THREAD_USE_LIB
-DEFINES += BOOST_SPIRIT_THREADSAFE
-DEFINES += QT_NO_VERSION_TAGGING
