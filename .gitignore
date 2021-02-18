@@ -24,10 +24,8 @@ qrc_*.cpp
 *.pro.user
 #mac specific
 .DS_Store
-DigitalNote_resource.rc
 Makefile
 Makefile.*
 build
 release
-object_script.*
 !src/leveldb/Makefile

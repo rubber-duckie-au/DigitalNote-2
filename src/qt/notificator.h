@@ -7,7 +7,7 @@
 QT_BEGIN_NAMESPACE
 class QSystemTrayIcon;
 #ifdef USE_DBUS
-class QDBusInterface;
+#include <QDBusInterface>
 #endif
 QT_END_NAMESPACE
 

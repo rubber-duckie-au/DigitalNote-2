@@ -7,6 +7,8 @@ VERSION = 1.0.3.4
 OBJECTS_DIR = build/app
 MOC_DIR = build/app
 UI_DIR = build/app
+RCC_DIR = build/app
+QMAKE_LINK_OBJECT_SCRIPT = build/app/object_script
 
 QMAKE_LIBDIR += ../libs/boost_1_75_0/stage/lib
 QMAKE_LIBDIR += ../libs/openssl-1.0.2u
