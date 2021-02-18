@@ -13,6 +13,7 @@ include(libs/boost.pri)
 include(libs/event.pri)
 include(libs/bdb.pri)
 include(libs/miniupnpc.pri)
+include(libs/qrencode.pri)
 
 win32 {
 	LIBS += -lshlwapi
