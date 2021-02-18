@@ -19,7 +19,7 @@ contains(USE_UPNP, -) {
 			message("You need to compile lib MiniUPNP yourself.")
 			message("Also you need to configure the following variables:")
 			message("	DIGITALNOTE_LIB_DIR = $${DOLLAR}$${DOLLAR}DIGITALNOTE_PATH/../libs")
-			message("	DIGITALNOTE_LIB_MINIUPNP_NAME = miniupnpc")
+			message("	DIGITALNOTE_LIB_MINIUPNP_NAME = miniupnpc-2.1")
 		}
 		
 		QMAKE_LIBDIR += $${LIB_PATH}
