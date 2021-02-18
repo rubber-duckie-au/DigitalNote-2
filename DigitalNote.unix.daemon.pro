@@ -22,7 +22,6 @@ include(include/security.pri)
 
 include(include/options/use_qrcode.pri)
 include(include/options/use_0.pri)
-include(include/options/use_dbus.pri)
 include(include/options/use_upnp.pri)
 include(include/options/use_build_info.pri)
 
