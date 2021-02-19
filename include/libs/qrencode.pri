@@ -20,4 +20,7 @@ contains(USE_QRCODE, 1) {
 	DEFINES += USE_QRCODE
 	INCLUDEPATH += $${LIB_PATH}
     LIBS += -lqrencode
+	HEADERS += src/qt/qrcodedialog.h
+	SOURCES += src/qt/qrcodedialog.cpp
+	FORMS += src/qt/forms/qrcodedialog.ui
 }

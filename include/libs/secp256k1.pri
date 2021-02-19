@@ -26,3 +26,4 @@ contains(COMPILE_SECP256K1, 1) {
 ## We dont use -l<name> because at linux the gcc compiler takes .so.1 file first instead we need to .a lib file.
 ##
 LIBS += $${LIB_PATH}/.libs/libsecp256k1.a
+INCLUDEPATH += src/secp256k1/include

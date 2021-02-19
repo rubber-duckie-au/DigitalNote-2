@@ -28,3 +28,5 @@ contains(COMPILE_LEVELDB, 1) {
 QMAKE_LIBDIR += $${LIB_PATH}
 LIBS += -lleveldb
 LIBS += -lmemenv
+INCLUDEPATH += src/leveldb/include
+INCLUDEPATH += src/leveldb/helpers

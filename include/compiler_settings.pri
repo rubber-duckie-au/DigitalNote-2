@@ -21,7 +21,4 @@ INCLUDEPATH += src
 INCLUDEPATH += src/json
 INCLUDEPATH += src/qt
 INCLUDEPATH += src/qt/plugins/mrichtexteditor
-INCLUDEPATH += src/leveldb/include
-INCLUDEPATH += src/leveldb/helpers
-INCLUDEPATH += src/secp256k1/include
 INCLUDEPATH += src/websocketapp
