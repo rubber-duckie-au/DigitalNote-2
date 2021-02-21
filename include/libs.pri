@@ -5,7 +5,8 @@
 
 LIBS += -lz
 
-include(libs/leveldb.pri)
+#include(libs/leveldb.pri)
+include(libs/leveldb-2.11.pri)
 include(libs/secp256k1.pri)
 include(libs/openssl.pri)
 include(libs/gmp.pri)
@@ -13,8 +14,10 @@ include(libs/boost.pri)
 include(libs/event.pri)
 include(libs/bdb.pri)
 include(libs/miniupnpc.pri)
-include(libs/qrencode.pri)
 
+contains(DIGITALNOTE_APP_NAME, app) {
+	include(libs/qrencode.pri)
+}
 win32 {
 	LIBS += -lshlwapi
 	LIBS += -lws2_32

@@ -1,7 +1,11 @@
+## Ignore directories
+build
+release
+
+## Ignore files
 src/*.exe
 src/DigitalNote
 src/DigitalNoted
-src/test_DigitalNote
 .*.swp
 *.*~*
 *.bak
@@ -11,21 +15,16 @@ src/test_DigitalNote
 *.patch
 *.gch
 .DigitalNote
-#compilation and Qt preprocessor part
-.qmake.stash
-
 DigitalNote
 DigitalNote-qt
 DigitalNote-Qt.dmg
 DigitalNote-Qt.app
-#resources cpp
-qrc_*.cpp
-#qt creator
 *.pro.user
-#mac specific
 .DS_Store
 Makefile
 Makefile.*
-build
-release
+.qmake.stash
+
+## leveldb lib
 !src/leveldb/Makefile
+src/leveldb-2.11/build
