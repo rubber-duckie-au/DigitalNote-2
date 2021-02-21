@@ -11,7 +11,6 @@
 #include "sync.h"
 #include "base58.h"
 #include "rpcvelocity.h"
-#include "db.h"
 #include "ui_interface.h"
 #include "main_extern.h"
 

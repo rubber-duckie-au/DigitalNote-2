@@ -6,7 +6,6 @@
 #include <fstream>
 #include <boost/lexical_cast.hpp>
 
-#include "db.h"
 #include "init.h"
 #include "activemasternode.h"
 #include "masternodeman.h"

@@ -1,3 +1,5 @@
+SOURCES += src/cdb.cpp
+SOURCES += src/cdbenv.cpp
 SOURCES += src/bignum.cpp
 SOURCES += src/cinpoint.cpp
 SOURCES += src/coutpoint.cpp

@@ -11,7 +11,6 @@
 #include "chainparams.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
-#include "db.h"
 #include "txdb.h"
 #include "init.h"
 #include "miner.h"

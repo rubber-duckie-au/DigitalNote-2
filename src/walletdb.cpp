@@ -21,6 +21,8 @@
 #include "cwalletscanstate.h"
 #include "ckeymetadata.h"
 #include "cstealthkeymetadata.h"
+#include "db.h"
+#include "cdbenv.h"
 
 #include "walletdb.h"
 

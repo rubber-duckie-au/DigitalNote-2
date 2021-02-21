@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "db.h"
+#include "cdb.h"
 #include "dberrors.h"
 #include "cprivkey.h"
 
@@ -28,6 +28,7 @@ class CKeyMetadata;
 class CStealthKeyMetadata;
 class CKeyID;
 class CPubKey;
+class CDBEnv;
 
 /** Access to the wallet database (wallet.dat) */
 class CWalletDB : public CDB

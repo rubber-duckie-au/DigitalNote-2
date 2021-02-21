@@ -17,7 +17,6 @@
 
 #include <boost/filesystem.hpp>
 
-#include "db.h"
 #include "addrman.h"
 #include "chainparams.h"
 #include "ui_interface.h"
