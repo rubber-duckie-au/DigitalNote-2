@@ -12,6 +12,7 @@ win32 {
 	
 	QMAKE_LIBDIR += $${LIB_PATH}/.libs
 	INCLUDEPATH += $${LIB_PATH}
+	DEPENDPATH += $${LIB_PATH}
 }
 
 LIBS += -lgmp

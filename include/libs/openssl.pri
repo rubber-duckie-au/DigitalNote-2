@@ -23,6 +23,7 @@ win32 {
 	
 	QMAKE_LIBDIR += $${LIB_PATH}
 	INCLUDEPATH += $${LIB_PATH}/include
+	DEPENDPATH += $${LIB_PATH}/include
 }
 
 LIBS += -lssl

@@ -9,7 +9,7 @@
 #include <QMenu>
 
 #include "sendmessagesdialog.h"
-#include "mrichtextedit.h"
+#include "qt/plugins/mrichtexteditor/mrichtextedit.h"
 #include "messagemodel.h"
 #include "bitcoingui.h"
 #include "csvmodelwriter.h"

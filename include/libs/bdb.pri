@@ -12,6 +12,7 @@ win32 {
 	
 	QMAKE_LIBDIR += $${LIB_PATH}/build_unix
 	INCLUDEPATH += $${LIB_PATH}/build_unix
+	DEPENDPATH += $${LIB_PATH}/build_unix
 }
 
 LIBS += -ldb_cxx$${BDB_LIB_SUFFIX}

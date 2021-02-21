@@ -24,6 +24,7 @@ contains(USE_UPNP, -) {
 		
 		QMAKE_LIBDIR += $${LIB_PATH}
 		INCLUDEPATH += $${LIB_PATH}/../
+		DEPENDPATH += $${LIB_PATH}/../
 		LIBS += -liphlpapi
 	}
 }

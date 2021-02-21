@@ -42,6 +42,7 @@ win32 {
 	
 	QMAKE_LIBDIR += $${LIB_PATH}/stage/lib
 	INCLUDEPATH += $${LIB_PATH}
+	DEPENDPATH += $${LIB_PATH}
 }
 
 LIBS += -lboost_system$${DIGITALNOTE_LIB_BOOST_SUFFIX}

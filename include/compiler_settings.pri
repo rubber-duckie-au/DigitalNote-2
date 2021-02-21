@@ -14,11 +14,4 @@ QMAKE_CXXFLAGS_WARN_ON += -Wno-ignored-qualifiers
 QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-local-typedefs
 
 DEPENDPATH += src
-DEPENDPATH += src/json
-DEPENDPATH += src/qt
-
 INCLUDEPATH += src
-INCLUDEPATH += src/json
-INCLUDEPATH += src/qt
-INCLUDEPATH += src/qt/plugins/mrichtexteditor
-INCLUDEPATH += src/websocketapp
