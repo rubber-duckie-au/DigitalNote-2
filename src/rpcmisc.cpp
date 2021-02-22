@@ -24,6 +24,7 @@
 #include "main_const.h"
 #include "main_extern.h"
 #include "chashwriter.h"
+#include "cscript.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"

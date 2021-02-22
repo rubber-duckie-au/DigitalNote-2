@@ -27,6 +27,8 @@
 #include "main_extern.h"
 #include "webwalletconnector.h"
 #include "chashwriter.h"
+#include "ccriticalblock.h"
+#include "key.h"
 
 using namespace json_spirit;
 

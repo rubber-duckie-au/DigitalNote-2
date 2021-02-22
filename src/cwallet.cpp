@@ -27,6 +27,8 @@
 #include "ckeymetadata.h"
 #include "cstealthkeymetadata.h"
 #include "comparevalueonly.h"
+#include "ccrypter.h"
+#include "cmasterkey.h"
 
 #include "cwallet.h"
 

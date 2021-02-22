@@ -12,10 +12,10 @@
 #include "caccount.h"
 #include "ckeypool.h"
 #include "cblocklocator.h"
-#include "crypter.h"
 #include "cstealthkeymetadata.h"
 #include "cwallettx.h"
 #include "cdbenv.h"
+#include "cmasterkey.h"
 
 #include "cdb.h"
 

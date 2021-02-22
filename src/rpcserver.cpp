@@ -13,6 +13,7 @@
 #include "rpcvelocity.h"
 #include "ui_interface.h"
 #include "main_extern.h"
+#include "ccriticalblock.h"
 
 #ifdef ENABLE_WALLET
 #include "cwallet.h"

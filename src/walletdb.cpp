@@ -23,6 +23,9 @@
 #include "cstealthkeymetadata.h"
 #include "db.h"
 #include "cdbenv.h"
+#include "ccriticalblock.h"
+#include "key.h"
+#include "cmasterkey.h"
 
 #include "walletdb.h"
 

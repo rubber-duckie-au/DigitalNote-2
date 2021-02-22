@@ -4,7 +4,6 @@
 #include <set>
 #include <map>
 
-#include "crypter.h"
 #include "cwalletinterface.h"
 #include "sync.h"
 #include "ui_interface.h"
@@ -13,6 +12,7 @@
 #include "mapvalue_t.h"
 #include "ckeymetadata.h"
 #include "cstealthkeymetadata.h"
+#include "ccryptokeystore.h"
 
 class CWalletDB;
 class CWalletTx;
@@ -23,6 +23,7 @@ class CAccountingEntry;
 class COutput;
 class CDigitalNoteSecret;
 class CKeyPool;
+class CMasterKey;
 
 typedef int64_t CAmount;
 

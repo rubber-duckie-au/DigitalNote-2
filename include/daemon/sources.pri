@@ -1,5 +1,8 @@
 SOURCES += src/bitcoind.cpp
 
+SOURCES += src/ccryptokeystore.cpp
+SOURCES += src/ccrypter.cpp
+SOURCES += src/cmasterkey.cpp
 SOURCES += src/ckeystore.cpp
 SOURCES += src/cbasickeystore.cpp
 SOURCES += src/chash256.cpp

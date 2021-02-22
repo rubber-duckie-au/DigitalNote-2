@@ -47,6 +47,7 @@
 #include "webwalletconnector.h"
 #include "smsg.h"
 #include "cdbenv.h"
+#include "cmasterkey.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"
