@@ -5,7 +5,6 @@
 
 #include "netbase.h"
 
-#include "hash.h"
 #include "crypto/bmw/bmw512.h"
 #include "sync.h"
 #include "uint/uint256.h"

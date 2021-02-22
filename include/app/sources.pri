@@ -1,3 +1,5 @@
+SOURCES += src/ckeystore.cpp
+SOURCES += src/cbasickeystore.cpp
 SOURCES += src/chash256.cpp
 SOURCES += src/chash160.cpp
 SOURCES += src/chashwriter.cpp

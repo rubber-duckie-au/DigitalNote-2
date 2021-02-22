@@ -25,6 +25,7 @@
 #include "chash160.h"
 #include "chash256.h"
 #include "chashwriter.h"
+#include "key.h"
 
 #include "script.h"
 

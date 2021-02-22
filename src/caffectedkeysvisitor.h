@@ -4,7 +4,7 @@
 #include <boost/variant/static_visitor.hpp>
 #include <vector>
 
-#include "keystore.h"
+#include "ckeystore.h"
 
 class CKeyID;
 class CScript;

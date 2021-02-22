@@ -4,11 +4,15 @@
 #ifndef __CRYPTER_H__
 #define __CRYPTER_H__
 
+#include <boost/signals2/signal.hpp>
+
 #include "allocators.h" /* for SecureString */
 #include "key.h"
 #include "serialize.h"
 #include "keystore.h"
 #include "cscript.h"
+#include "ccriticalblock.h"
+#include "cbasickeystore.h"
 
 const unsigned int WALLET_CRYPTO_KEY_SIZE = 32;
 const unsigned int WALLET_CRYPTO_SALT_SIZE = 8;
@@ -50,6 +54,7 @@ public:
         READWRITE(nDeriveIterations);
         READWRITE(vchOtherDerivationParameters);
     )
+	
     CMasterKey()
     {
         // 25000 rounds is just under 0.1 seconds on a 1.86 GHz Pentium M

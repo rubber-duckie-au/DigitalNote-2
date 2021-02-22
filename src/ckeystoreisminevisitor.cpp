@@ -1,5 +1,4 @@
-#include "keystore.h"
-
+#include "ckeystore.h"
 #include "stealth.h"
 #include "cstealthaddress.h"
 
