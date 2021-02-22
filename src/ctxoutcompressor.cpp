@@ -1,6 +1,7 @@
 #include "serialize.h"
 #include "ctxout.h"
 #include "cscriptcompressor.h"
+#include "chashwriter.h"
 
 #include "ctxoutcompressor.h"
 

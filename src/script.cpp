@@ -7,6 +7,10 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
 
+#include <openssl/ripemd.h>
+#include "crypto/common/ripemd160.h"
+#include "crypto/common/sha256.h"
+
 #include "bignum.h"
 #include "crypto/common/sha1.h"
 #include "signaturechecker.h"
@@ -18,6 +22,9 @@
 #include "ctransaction.h"
 #include "tinyformat.h"
 #include "util.h"
+#include "chash160.h"
+#include "chash256.h"
+#include "chashwriter.h"
 
 #include "script.h"
 

@@ -1,6 +1,7 @@
 #include "tinyformat.h"
 #include "serialize.h"
 #include "hash.h"
+#include "chashwriter.h"
 
 #include "coutpoint.h"
 

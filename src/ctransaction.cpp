@@ -10,6 +10,7 @@
 #include "main_extern.h"
 #include "main_const.h"
 #include "txmempool.h"
+#include "chashwriter.h"
 
 #include "ctransaction.h"
 

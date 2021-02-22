@@ -2,6 +2,7 @@
 #include "cblockindex.h"
 #include "serialize.h"
 #include "main_extern.h"
+#include "chashwriter.h"
 
 #include "ctxindex.h"
 

@@ -12,6 +12,7 @@
 #include "hash.h"
 #include "crypto/bmw/bmw512.h"
 #include "serialize.h"
+#include "uint/uint160.h"
 
 class uint256;
 

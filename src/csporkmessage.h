@@ -22,16 +22,16 @@ public:
 
     uint256 GetHash();
 	
-    ADD_SERIALIZE_METHODS;
-
+    size_t GetSerializeSize(int nType, int nVersion) const;
+    
+	template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+	
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
+	
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-		unsigned int nSerSize = 0;
-        READWRITE(nSporkID);
-        READWRITE(nValue);
-        READWRITE(nTimeSigned);
-        READWRITE(vchSig);
-	}
+    void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion);
 };
 
 #endif // CSPORKMESSAGE_H

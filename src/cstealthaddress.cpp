@@ -1,5 +1,6 @@
 #include "base58.h"
 #include "serialize.h"
+#include "chashwriter.h"
 
 #include "cstealthaddress.h"
 

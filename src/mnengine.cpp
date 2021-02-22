@@ -23,6 +23,7 @@
 #include "creservekey.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "chashwriter.h"
 
 #include "mnengine.h"
 

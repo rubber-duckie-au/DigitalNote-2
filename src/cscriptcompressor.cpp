@@ -1,4 +1,5 @@
 #include "cscript.h"
+#include "chashwriter.h"
 
 #include "cscriptcompressor.h"
 

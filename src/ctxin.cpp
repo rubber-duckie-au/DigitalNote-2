@@ -1,5 +1,6 @@
 #include "util.h"
 #include "serialize.h"
+#include "chashwriter.h"
 
 #include "ctxin.h"
 

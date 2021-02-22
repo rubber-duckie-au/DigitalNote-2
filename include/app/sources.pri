@@ -1,3 +1,6 @@
+SOURCES += src/chash256.cpp
+SOURCES += src/chash160.cpp
+SOURCES += src/chashwriter.cpp
 SOURCES += src/cdb.cpp
 SOURCES += src/cdbenv.cpp
 SOURCES += src/bignum.cpp

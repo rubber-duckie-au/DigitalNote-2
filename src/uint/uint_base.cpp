@@ -2,6 +2,7 @@
 #include "serialize.h"
 #include "util.h"
 #include "hash.h"
+#include "chashwriter.h"
 
 #include "uint_base.h"
 
