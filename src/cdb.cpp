@@ -186,7 +186,8 @@ bool CDB::Read(const K& key, T& value)
 	return (ret == 0);
 }
 
-template bool CDB::Read<std::pair<std::string, long>, CKeyPool>(std::pair<std::string, long> const&, CKeyPool&);
+template bool CDB::Read<std::pair<std::string, long>, CKeyPool>(const std::pair<std::string, long>&, CKeyPool&);
+template bool CDB::Read<std::pair<std::string, long long>, CKeyPool>(const std::pair<std::string, long long>&, CKeyPool&);
 template bool CDB::Read<std::pair<std::string, std::string>, CAccount>(const std::pair<std::string, std::string>&, CAccount&);
 template bool CDB::Read<std::pair<std::string, ec_point>, CStealthAddress>(const std::pair<std::string, ec_point>&, CStealthAddress&);
 template bool CDB::Read<std::string, CBlockLocator>(std::string const&, CBlockLocator&);
@@ -231,19 +232,22 @@ bool CDB::Write(const K& key, const T& value, bool fOverwrite)
 }
 
 template bool CDB::Write<std::pair<std::string, long>, CKeyPool>(const std::pair<std::string, long>&, const CKeyPool&, bool);
+template bool CDB::Write<std::pair<std::string, long long>, CKeyPool>(const std::pair<std::string, long long>&, const CKeyPool&, bool);
 template bool CDB::Write<std::pair<std::string, unsigned int>, CMasterKey>(const std::pair<std::string, unsigned int>&, const CMasterKey&, bool);
-template bool CDB::Write<std::pair<std::string, std::string>, std::string>(const std::pair<std::string, std::string>&, std::string const&, bool);
+template bool CDB::Write<std::pair<std::string, std::string>, std::string>(const std::pair<std::string, std::string>&, const std::string&, bool);
 template bool CDB::Write<std::pair<std::string, std::string>, CAccount>(const std::pair<std::string, std::string>&, const CAccount&, bool);
 template bool CDB::Write<std::pair<std::string, CPubKey>, CKeyMetadata>(const std::pair<std::string, CPubKey>&,	const CKeyMetadata&, bool);
 template bool CDB::Write<std::pair<std::string, CPubKey>, std::pair<CPrivKey, uint256>>(const std::pair<std::string, CPubKey>&, const std::pair<CPrivKey, uint256>&, bool);
 template bool CDB::Write<std::pair<std::string, CPubKey>, std::vector<unsigned char>>(const std::pair<std::string, CPubKey>&, const std::vector<unsigned char>&, bool);
 template bool CDB::Write<std::pair<std::string, ec_point>, CStealthAddress>(const std::pair<std::string, ec_point>&, const CStealthAddress&, bool);
 template bool CDB::Write<std::pair<std::string, CScript>, char>(const std::pair<std::string, CScript>&, const char&, bool);
-template bool CDB::Write<std::pair<std::string, CKeyID>, CStealthKeyMetadata>(std::pair<std::string, CKeyID> const&, CStealthKeyMetadata const&, bool);
+template bool CDB::Write<std::pair<std::string, CKeyID>, CStealthKeyMetadata>(const std::pair<std::string, CKeyID>&, const CStealthKeyMetadata&, bool);
 template bool CDB::Write<std::pair<std::string, uint160>, CScript>(const std::pair<std::string, uint160>&, const CScript&, bool);
-template bool CDB::Write<std::pair<std::string, uint256>, CWalletTx>(std::pair<std::string, uint256> const&, CWalletTx const&, bool);
+template bool CDB::Write<std::pair<std::string, uint256>, CWalletTx>(std::pair<std::string, uint256> const&, const CWalletTx&, bool);
 template bool CDB::Write<boost::tuples::tuple<std::string, std::string, unsigned long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>, CAccountingEntry>(const boost::tuples::tuple<std::string, std::string, unsigned long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>&, const CAccountingEntry&, bool);
+template bool CDB::Write<boost::tuples::tuple<std::string, std::string, unsigned long long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>, CAccountingEntry>(const boost::tuples::tuple<std::string, std::string, unsigned long long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>&, const CAccountingEntry&, bool);
 template bool CDB::Write<std::string, long>(const std::string&, const long&, bool);
+template bool CDB::Write<std::string, long long>(const std::string&, const long long&, bool);
 template bool CDB::Write<std::string, CPubKey>(const std::string&, const CPubKey&, bool);
 template bool CDB::Write<std::string, CBlockLocator>(const std::string&, const CBlockLocator&, bool);
 
@@ -278,6 +282,7 @@ bool CDB::Erase(const K& key)
 }
 
 template bool CDB::Erase<std::pair<std::string, long>>(const std::pair<std::string, long>&);
+template bool CDB::Erase<std::pair<std::string, long long>>(const std::pair<std::string, long long>&);
 template bool CDB::Erase<std::pair<std::string, std::string>>(const std::pair<std::string, std::string>&);
 template bool CDB::Erase<std::pair<std::string, CScript>>(const std::pair<std::string, CScript>&);
 template bool CDB::Erase<std::pair<std::string, CPubKey>>(const std::pair<std::string, CPubKey>&);
