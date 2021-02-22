@@ -8,6 +8,7 @@
 #include "stealth.h"
 #include "script.h"
 #include "cscript.h"
+#include "ccriticalblock.h"
 
 #include "addresstablemodel.h"
 

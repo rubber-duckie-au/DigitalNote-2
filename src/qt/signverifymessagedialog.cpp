@@ -10,6 +10,7 @@
 #include "walletmodel.h"
 #include "cscript.h"
 #include "main_extern.h"
+#include "key.h"
 
 #include "signverifymessagedialog.h"
 #include "ui_signverifymessagedialog.h"

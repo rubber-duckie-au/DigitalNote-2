@@ -26,6 +26,7 @@
 #include "smsg/stored.h"
 #include "smsg/messagedata.h"
 #include "smsg/securemessage.h"
+#include "ccriticalblock.h"
 
 #include "messagemodel.h"
 

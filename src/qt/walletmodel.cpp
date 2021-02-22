@@ -26,6 +26,7 @@
 #include "script.h"
 #include "main_extern.h"
 #include "main_const.h"
+#include "ccriticalblock.h"
 
 #include "walletmodel.h"
 
