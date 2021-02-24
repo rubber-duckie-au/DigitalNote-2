@@ -23,7 +23,7 @@
 #include "txdb.h"
 #include "rpcserver.h"
 #include "net.h"
-#include "key.h"
+#include "ckey.h"
 #include "pubkey.h"
 #include "util.h"
 #include "ui_interface.h"

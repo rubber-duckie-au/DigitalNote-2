@@ -13,6 +13,7 @@
 #include "mining.h"
 #include "script.h"
 #include "net.h"
+#include "ckey.h"
 
 #include "activemasternode.h"
 

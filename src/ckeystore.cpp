@@ -1,5 +1,6 @@
 #include "ccriticalblock.h"
-#include "key.h"
+#include "pubkey.h"
+#include "ckey.h"
 
 #include "ckeystore.h"
 

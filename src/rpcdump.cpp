@@ -17,8 +17,8 @@
 #include "cblockindex.h"
 #include "wallet.h"
 #include "main_extern.h"
-#include "key.h"
 #include "ccriticalblock.h"
+#include "ckey.h"
 
 using namespace json_spirit;
 

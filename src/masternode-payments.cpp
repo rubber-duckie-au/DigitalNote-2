@@ -13,6 +13,7 @@
 #include "script.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "ckey.h"
 
 #include "masternode-payments.h"
 

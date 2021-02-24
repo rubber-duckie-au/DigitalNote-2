@@ -19,6 +19,7 @@
 #include "script.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "ckey.h"
 
 using namespace json_spirit;
 

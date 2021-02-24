@@ -61,14 +61,6 @@ public:
     static const int CURRENT_VERSION = 1;
     int nVersion;
 
-    size_t GetSerializeSize(int nType, int nVersion) const;
-
-	template<typename Stream>
-    void Serialize(Stream& s, int nType, int nVersion) const;
-
-    template<typename Stream>
-    void Unserialize(Stream& s, int nType, int nVersion);
-
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         std::string sAddress = address.toStdString();

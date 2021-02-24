@@ -7,6 +7,7 @@
 #include "pubkey.h"
 #include "mnengine.h"
 #include "net.h"
+#include "ckey.h"
 
 #include "csporkmanager.h"
 

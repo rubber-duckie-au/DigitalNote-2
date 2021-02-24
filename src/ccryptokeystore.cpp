@@ -1,7 +1,7 @@
 #include "ccriticalblock.h"
 #include "pubkey.h"
-#include "key.h"
 #include "cscript.h"
+#include "ckey.h"
 
 #include "ccryptokeystore.h"
 

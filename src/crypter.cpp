@@ -8,7 +8,6 @@
 
 #include "crypter.h"
 /*
-#include "key.h"
 #include "serialize.h"
 #include "keystore.h"
 #include "cscript.h"

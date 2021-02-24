@@ -22,6 +22,7 @@
 #include "masternodeman.h"
 #include "serialize.h"
 #include "txmempool.h"
+#include "ckey.h"
 
 #include "cblock.h"
 

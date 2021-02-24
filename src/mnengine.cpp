@@ -24,6 +24,7 @@
 #include "net/cnode.h"
 #include "net.h"
 #include "chashwriter.h"
+#include "ckey.h"
 
 #include "mnengine.h"
 

@@ -1,3 +1,5 @@
+SOURCES += src/ckey.cpp
+SOURCES += src/cextkey.cpp
 SOURCES += src/ccryptokeystore.cpp
 SOURCES += src/ccrypter.cpp
 SOURCES += src/cmasterkey.cpp

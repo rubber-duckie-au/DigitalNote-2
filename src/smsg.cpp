@@ -44,7 +44,6 @@ Notes:
 #include "cblock.h"
 #include "main.h"
 #include "main_extern.h"
-#include "key.h"
 #include "init.h"
 #include "cwallet.h"
 #include "ecwrapper.h"
@@ -61,6 +60,7 @@ Notes:
 #include "smsg/cdigitalnoteaddress_b.h"
 #include "smsg/ckeyid_b.h"
 #include "smsg/crypter.h"
+#include "ckey.h"
 
 namespace DigitalNote {
 namespace SMSG {

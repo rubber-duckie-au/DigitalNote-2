@@ -4,6 +4,7 @@
 #include "masternodeman.h"
 #include "mnengine.h"
 #include "serialize.h"
+#include "ckey.h"
 
 #include "cconsensusvote.h"
 

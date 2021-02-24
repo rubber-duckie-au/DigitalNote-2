@@ -7,7 +7,7 @@
 #include "walletdb.h"
 #include "ui_interface.h"
 #include "util.h"
-#include "key.h"
+#include "ckey.h"
 #include "init.h"
 #include "base58.h"
 #include <QMessageBox>

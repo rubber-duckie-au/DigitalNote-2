@@ -12,7 +12,7 @@
 #include "uint/uint256.h"
 #include "chainparams.h"
 #include "script.h"
-#include "key.h"
+#include "ckey.h"
 
 #include "base58.h"
 

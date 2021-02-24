@@ -13,7 +13,7 @@
 #include "script.h"
 #include "net.h"
 #include "main_extern.h"
-#include "key.h"
+#include "ckey.h"
 
 #ifdef ENABLE_WALLET
 #include "coutput.h"

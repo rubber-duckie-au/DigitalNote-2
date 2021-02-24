@@ -5,7 +5,6 @@
 #define MASTERNODE_PAYMENTS_H
 
 #include "sync.h"
-#include "key.h"
 #include "util.h"
 #include "base58.h"
 #include "masternode.h"

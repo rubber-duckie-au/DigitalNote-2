@@ -7,7 +7,6 @@
 
 #include "uint/uint256.h"
 #include "sync.h"
-#include "key.h"
 #include "masternode.h"
 #include "init.h"
 #include "mnengine.h"

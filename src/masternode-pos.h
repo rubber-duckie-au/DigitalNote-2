@@ -6,7 +6,6 @@
 
 #include "bignum.h"
 #include "sync.h"
-#include "key.h"
 #include "core.h"
 #include "util.h"
 #include "base58.h"

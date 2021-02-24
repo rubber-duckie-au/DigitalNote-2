@@ -29,6 +29,8 @@
 #include "comparevalueonly.h"
 #include "ccrypter.h"
 #include "cmasterkey.h"
+#include "csecret.h"
+#include "ckey.h"
 
 #include "cwallet.h"
 
