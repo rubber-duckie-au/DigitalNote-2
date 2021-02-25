@@ -1,7 +1,7 @@
 #ifndef CKEYPOOL_H
 #define CKEYPOOL_H
 
-#include "pubkey.h"
+#include "cpubkey.h"
 
 /** A key pool entry */
 class CKeyPool

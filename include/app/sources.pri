@@ -1,3 +1,7 @@
+SOURCES += src/eccverifyhandle.cpp
+SOURCES += src/cextpubkey.cpp
+SOURCES += src/secp256k1_context_verify.cpp
+SOURCES += src/cpubkey.cpp
 SOURCES += src/ckey.cpp
 SOURCES += src/cextkey.cpp
 SOURCES += src/ccryptokeystore.cpp

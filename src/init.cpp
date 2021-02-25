@@ -24,7 +24,6 @@
 #include "rpcserver.h"
 #include "net.h"
 #include "ckey.h"
-#include "pubkey.h"
 #include "util.h"
 #include "ui_interface.h"
 #include "checkpoints.h"
@@ -48,6 +47,7 @@
 #include "smsg.h"
 #include "cdbenv.h"
 #include "cmasterkey.h"
+#include "eccverifyhandle.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

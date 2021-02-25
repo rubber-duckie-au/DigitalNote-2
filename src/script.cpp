@@ -26,6 +26,9 @@
 #include "chash256.h"
 #include "chashwriter.h"
 #include "ckey.h"
+#include "cpubkey.h"
+#include "hash.h"
+#include "crypto/bmw/bmw512.h"
 
 #include "script.h"
 

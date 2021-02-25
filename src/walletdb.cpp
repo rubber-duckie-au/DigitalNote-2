@@ -26,6 +26,7 @@
 #include "ccriticalblock.h"
 #include "cmasterkey.h"
 #include "ckey.h"
+#include "hash.h"
 
 #include "walletdb.h"
 

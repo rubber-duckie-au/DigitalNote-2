@@ -1,7 +1,7 @@
 #ifndef CSTEALTHKEYMETADATA_H
 #define CSTEALTHKEYMETADATA_H
 
-#include "pubkey.h"
+#include "cpubkey.h"
 
 class CStealthKeyMetadata
 {

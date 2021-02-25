@@ -4,7 +4,6 @@
 #include "csporkmessage.h"
 #include "util.h"
 #include "uint/uint256.h"
-#include "pubkey.h"
 #include "mnengine.h"
 #include "net.h"
 #include "ckey.h"

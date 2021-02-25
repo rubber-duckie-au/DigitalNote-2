@@ -1,9 +1,10 @@
-#include "csignaturecache.h"
+#include <boost/tuple/tuple_comparison.hpp>
 
 #include "uint/uint256.h"
-#include "pubkey.h"
 #include "util.h"
-#include <boost/tuple/tuple_comparison.hpp>
+#include "cpubkey.h"
+
+#include "csignaturecache.h"
 
 bool CSignatureCache::Get(const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubKey)
 {

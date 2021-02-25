@@ -1,6 +1,6 @@
 #include "ccriticalblock.h"
-#include "pubkey.h"
 #include "ckey.h"
+#include "cpubkey.h"
 
 #include "ckeystore.h"
 

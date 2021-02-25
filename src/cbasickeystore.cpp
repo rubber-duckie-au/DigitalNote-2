@@ -1,8 +1,8 @@
 #include "ccriticalblock.h"
-#include "pubkey.h"
 #include "cscript.h"
 #include "util.h"
 #include "ckey.h"
+#include "cpubkey.h"
 
 #include "cbasickeystore.h"
 

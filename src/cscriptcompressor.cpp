@@ -1,5 +1,7 @@
 #include "cscript.h"
 #include "chashwriter.h"
+#include "cpubkey.h"
+#include "serialize.h"
 
 #include "cscriptcompressor.h"
 

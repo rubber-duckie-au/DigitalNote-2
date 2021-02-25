@@ -13,6 +13,7 @@
 #include "chainparams.h"
 #include "script.h"
 #include "ckey.h"
+#include "crypto/bmw/bmw512.h"
 
 #include "base58.h"
 

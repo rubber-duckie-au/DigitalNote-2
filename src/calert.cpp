@@ -11,11 +11,12 @@
 
 #include "net/cnode.h"
 #include "chainparams.h"
-#include "pubkey.h"
 #include "ui_interface.h"
 #include "util.h"
 #include "ccriticalblock.h"
 #include "serialize.h"
+#include "crypto/bmw/bmw512.h"
+#include "cpubkey.h"
 
 #include "calert.h"
 

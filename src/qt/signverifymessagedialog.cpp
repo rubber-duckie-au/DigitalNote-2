@@ -11,6 +11,7 @@
 #include "cscript.h"
 #include "main_extern.h"
 #include "ckey.h"
+#include "crypto/bmw/bmw512.h"
 
 #include "signverifymessagedialog.h"
 #include "ui_signverifymessagedialog.h"

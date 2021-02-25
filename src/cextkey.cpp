@@ -1,13 +1,17 @@
-#include "cextkey.h"
-
 #include "crypto/common/common.h"
 #include "crypto/common/hmac_sha512.h"
-#include "pubkey.h"
 
 #include <secp256k1.h>
 #include <secp256k1_recovery.h>
 #include "util.h"
 #include "chash256.h"
+#include "ckeyid.h"
+#include "cpubkey.h"
+#include "cextpubkey.h"
+#include "hmac_sha512_ctx.h"
+#include "hash.h"
+
+#include "cextkey.h"
 
 bool CExtKey::Derive(CExtKey &out, unsigned int nChild) const
 {

@@ -9,6 +9,7 @@
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
+#include <openssl/sha.h>
 
 template <typename T, typename Iterator>
 T from_big_endian(Iterator in)

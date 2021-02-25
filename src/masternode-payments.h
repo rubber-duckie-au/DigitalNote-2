@@ -8,6 +8,7 @@
 #include "util.h"
 #include "base58.h"
 #include "masternode.h"
+#include "hash.h"
 
 class CMasternodePayments;
 class CMasternodePaymentWinner;

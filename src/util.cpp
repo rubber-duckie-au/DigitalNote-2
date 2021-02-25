@@ -5,7 +5,6 @@
 
 #include "util.h"
 
-#include "pubkey.h"
 #include "chainparams.h"
 #include "sync.h"
 #include "ui_interface.h"

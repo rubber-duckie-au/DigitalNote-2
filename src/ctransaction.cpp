@@ -11,6 +11,7 @@
 #include "main_const.h"
 #include "txmempool.h"
 #include "chashwriter.h"
+#include "hash.h"
 
 #include "ctransaction.h"
 

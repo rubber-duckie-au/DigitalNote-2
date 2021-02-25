@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "pubkey.h"
+#include "ckeyid.h"
 
 namespace DigitalNote {
 namespace SMSG {

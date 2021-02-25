@@ -1,6 +1,8 @@
 #include "util.h"
 #include "serialize.h"
 #include "chashwriter.h"
+#include "uint/uint256.h"
+#include "hash.h"
 
 #include "ctxout.h"
 

@@ -3,8 +3,10 @@
 #include "crypto/common/common.h"
 
 #include "util.h"
-#include "pubkey.h"
 #include "chash256.h"
+#include "uint/uint256.h"
+#include "cpubkey.h"
+#include "hash.h"
 
 #include "ckey.h"
 

@@ -1,6 +1,8 @@
 #ifndef COINCONTROL_H
 #define COINCONTROL_H
 
+#include <set>
+
 #include "script.h"
 #include "coutpoint.h"
 

@@ -2,7 +2,6 @@
 #include "db.h"
 #include "serialize.h"
 #include "ccriticalblock.h"
-#include "pubkey.h"
 #include "ckeymetadata.h"
 #include "cstealthaddress.h"
 #include "cprivkey.h"

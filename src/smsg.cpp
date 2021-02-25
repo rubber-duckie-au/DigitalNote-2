@@ -33,6 +33,7 @@ Notes:
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <openssl/hmac.h>
+#include <openssl/sha.h>
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	#include <openssl/ecdh.h>
 #endif
@@ -61,6 +62,7 @@ Notes:
 #include "smsg/ckeyid_b.h"
 #include "smsg/crypter.h"
 #include "ckey.h"
+#include "hash.h"
 
 namespace DigitalNote {
 namespace SMSG {

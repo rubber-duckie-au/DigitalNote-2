@@ -20,6 +20,7 @@
 #include "ccriticalblock.h"
 #include "main.h"
 #include "ckey.h"
+#include "hash.h"
 
 using namespace json_spirit;
 

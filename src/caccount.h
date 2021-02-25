@@ -1,7 +1,7 @@
 #ifndef CACCOUNT_H
 #define CACCOUNT_H
 
-#include "pubkey.h"
+#include "cpubkey.h"
 
 /** Account information.
  * Stored in wallet with key "acc"+string account name.

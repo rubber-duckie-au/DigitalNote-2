@@ -4,6 +4,9 @@
 #include "bignum.h"
 #include "cscriptvisitor.h"
 #include "script.h"
+#include "uint/uint256.h"
+#include "cpubkey.h"
+#include "hash.h"
 
 #include "cscript.h"
 

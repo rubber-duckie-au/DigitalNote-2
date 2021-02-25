@@ -1,10 +1,11 @@
 #include <boost/filesystem.hpp>
 
 #include "util.h"
-#include "pubkey.h"
 #include "smsg_extern.h"
 #include "smsg/batchscanner.h"
 #include "smsg/stored.h"
+#include "ckeyid.h"
+#include "cpubkey.h"
 
 #include "smsg/db.h"
 
