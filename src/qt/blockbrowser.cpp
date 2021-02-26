@@ -12,6 +12,8 @@
 #include "script.h"
 #include "main_extern.h"
 #include "main_const.h"
+#include "ctxin.h"
+#include "ctxout.h"
 
 #include "blockbrowser.h"
 

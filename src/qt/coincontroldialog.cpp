@@ -23,6 +23,7 @@
 #include "cwallettx.h"
 #include "wallet.h"
 #include "script.h"
+#include "ctxin.h"
 #include "ctxout.h"
 #include "main_const.h"
 

@@ -27,6 +27,10 @@
 #include "main_extern.h"
 #include "main_const.h"
 #include "ccriticalblock.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "coutpoint.h"
+#include "coutput.h"
 
 #include "walletmodel.h"
 

@@ -4,6 +4,8 @@
 
 #include "cwallettx.h"
 #include "creservekey.h"
+#include "ctxin.h"
+#include "ctxout.h"
 
 #include "walletmodeltransaction.h"
 
