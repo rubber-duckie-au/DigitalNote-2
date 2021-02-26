@@ -20,10 +20,14 @@ class CKeyStore;
 class CTransaction;
 class BaseSignatureChecker;
 class CNoDestination;
+class CKeyID;
+class CScriptID;
+class CStealthAddress;
 class CScriptNum;
 class CScript;
 class CScriptCompressor;
-class CStealthAddress;
+class uint256;
+class uint160;
 
 typedef std::vector<unsigned char> valtype;
 
@@ -81,7 +85,7 @@ typedef enum ScriptError_t
  *  * CScriptID: TX_SCRIPTHASH destination
  *  A CTxDestination is the internal data type encoded in a CDigitalNoteAddress
  */
-typedef boost::variant<CNoDestination, CKeyID, CScriptID, CStealthAddress> CTxDestination;
+using CTxDestination = boost::variant<CNoDestination, CKeyID, CScriptID, CStealthAddress>;
 
 /** Signature hash types/flags */
 enum

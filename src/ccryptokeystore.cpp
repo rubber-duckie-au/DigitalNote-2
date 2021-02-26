@@ -3,6 +3,8 @@
 #include "ckey.h"
 #include "cpubkey.h"
 #include "uint/uint256.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
 
 #include "ccryptokeystore.h"
 

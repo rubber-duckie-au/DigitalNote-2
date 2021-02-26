@@ -20,6 +20,7 @@
 #include "smsg/stored.h"
 #include "smsg/messagedata.h"
 #include "ccriticalblock.h"
+#include "util.h"
 
 using namespace json_spirit;
 

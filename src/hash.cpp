@@ -3,6 +3,7 @@
 #include "ctransaction.h"
 #include "ctxout.h"
 #include "chashwriter.h"
+#include "uint/uint256.h"
 
 #include "hash.h"
 

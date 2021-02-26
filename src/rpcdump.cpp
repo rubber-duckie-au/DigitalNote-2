@@ -19,6 +19,8 @@
 #include "main_extern.h"
 #include "ccriticalblock.h"
 #include "ckey.h"
+#include "cscript.h"
+#include "util.h"
 
 using namespace json_spirit;
 

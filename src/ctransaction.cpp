@@ -12,6 +12,8 @@
 #include "txmempool.h"
 #include "chashwriter.h"
 #include "hash.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 #include "ctransaction.h"
 

@@ -13,6 +13,9 @@
 #include "cblock.h"
 #include "ctxindex.h"
 #include "wallet.h"
+#include "ctxout.h"
+#include "ctxin.h"
+#include "util.h"
 
 #include "velocity.h"
 

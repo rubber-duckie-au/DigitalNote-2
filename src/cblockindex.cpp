@@ -5,6 +5,8 @@
 #include "main_extern.h"
 #include "main_const.h"
 #include "util.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 #include "cblockindex.h"
 

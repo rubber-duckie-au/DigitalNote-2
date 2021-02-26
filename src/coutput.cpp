@@ -1,6 +1,7 @@
 #include "cwallettx.h"
 #include "main_const.h"
 #include "util.h"
+#include "ctxout.h"
 
 #include "coutput.h"
 

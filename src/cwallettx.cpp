@@ -10,6 +10,8 @@
 #include "serialize.h"
 #include "txmempool.h"
 #include "main_extern.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 #include "cwallettx.h"
 

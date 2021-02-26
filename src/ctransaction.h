@@ -4,10 +4,7 @@
 #include <vector>
 #include <map>
 
-#include "serialize.h"
 #include "script.h"
-#include "ctxin.h"
-#include "ctxout.h"
 
 class CDiskTxPos;
 class uint256;

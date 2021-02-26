@@ -23,6 +23,7 @@
 #include "script.h"
 #include "net.h"
 #include "txmempool.h"
+#include "ctxout.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

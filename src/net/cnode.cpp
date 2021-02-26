@@ -6,6 +6,7 @@
 #include "crypto/bmw/bmw512.h"
 #include "net.h"
 #include "ccriticalblock.h"
+#include "util.h"
 
 #include "net/cnode.h"
 

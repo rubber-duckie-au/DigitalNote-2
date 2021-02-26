@@ -31,6 +31,7 @@
 #include "cmasterkey.h"
 #include "csecret.h"
 #include "ckey.h"
+#include "ctxout.h"
 
 #include "cwallet.h"
 

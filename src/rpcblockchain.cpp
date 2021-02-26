@@ -14,6 +14,8 @@
 #include "main.h"
 #include "main_extern.h"
 #include "txmempool.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 using namespace json_spirit;
 

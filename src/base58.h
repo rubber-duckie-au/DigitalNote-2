@@ -17,6 +17,7 @@
 #include "chainparams.h"
 #include "script.h"
 #include "cextpubkey.h"
+#include "allocators.h"
 
 #include <string>
 #include <vector>

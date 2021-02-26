@@ -27,6 +27,9 @@
 #include "cmasterkey.h"
 #include "ckey.h"
 #include "hash.h"
+#include "ctxout.h"
+#include "ctxin.h"
+#include "util.h"
 
 #include "walletdb.h"
 

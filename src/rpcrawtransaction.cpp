@@ -14,6 +14,8 @@
 #include "net.h"
 #include "main_extern.h"
 #include "ckey.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 #ifdef ENABLE_WALLET
 #include "coutput.h"

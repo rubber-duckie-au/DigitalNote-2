@@ -5,6 +5,7 @@
 #include "mnengine.h"
 #include "serialize.h"
 #include "ckey.h"
+#include "cscriptid.h"
 
 #include "cconsensusvote.h"
 

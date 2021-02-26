@@ -11,6 +11,8 @@
 #include <openssl/obj_mac.h>
 #include <openssl/sha.h>
 
+#include "util.h"
+
 template <typename T, typename Iterator>
 T from_big_endian(Iterator in)
 {

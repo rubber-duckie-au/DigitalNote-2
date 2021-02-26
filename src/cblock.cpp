@@ -23,6 +23,7 @@
 #include "serialize.h"
 #include "txmempool.h"
 #include "ckey.h"
+#include "ctxout.h"
 
 #include "cblock.h"
 

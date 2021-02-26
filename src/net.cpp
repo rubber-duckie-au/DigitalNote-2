@@ -29,6 +29,7 @@
 #include "net/cnetcleanup.h"
 #include "net/cnetmessage.h"
 #include "txmempool.h"
+#include "cdnsseeddata.h"
 
 #include "net.h"
 

@@ -1,3 +1,7 @@
+SOURCES += src/cregtestparams.cpp
+SOURCES += src/ctestnetparams.cpp
+SOURCES += src/cmainparams.cpp
+SOURCES += src/cchainparams.cpp
 SOURCES += src/eccverifyhandle.cpp
 SOURCES += src/cextpubkey.cpp
 SOURCES += src/secp256k1_context_verify.cpp

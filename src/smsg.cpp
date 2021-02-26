@@ -63,6 +63,8 @@ Notes:
 #include "smsg/crypter.h"
 #include "ckey.h"
 #include "hash.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 namespace DigitalNote {
 namespace SMSG {

@@ -7,6 +7,8 @@
 
 #include "ctransaction.h"
 #include "cinpoint.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 #include "txmempool.h"
 

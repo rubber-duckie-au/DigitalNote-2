@@ -3,6 +3,8 @@
 #include "serialize.h"
 #include "main_extern.h"
 #include "chashwriter.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 #include "ctxindex.h"
 

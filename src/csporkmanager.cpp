@@ -1,5 +1,6 @@
 #include <boost/lexical_cast.hpp>
 
+#include "cscriptid.h"
 #include "spork.h"
 #include "csporkmessage.h"
 #include "util.h"

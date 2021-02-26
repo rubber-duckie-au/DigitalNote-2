@@ -15,6 +15,7 @@
 #include "cwallettx.h"
 #include "cdbenv.h"
 #include "cmasterkey.h"
+#include "ckeyid.h"
 
 #include "cdb.h"
 

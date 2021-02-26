@@ -29,6 +29,8 @@
 #include "chashwriter.h"
 #include "ccriticalblock.h"
 #include "ckey.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 using namespace json_spirit;
 

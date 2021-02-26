@@ -29,6 +29,8 @@
 #include "cpubkey.h"
 #include "hash.h"
 #include "crypto/bmw/bmw512.h"
+#include "ctxout.h"
+#include "ctxin.h"
 
 #include "script.h"
 
