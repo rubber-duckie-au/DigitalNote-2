@@ -7,7 +7,6 @@
 #include <boost/foreach.hpp>
 
 #include "base58.h"
-#include "protocol.h"
 #include "serialize.h"
 #include "sync.h"
 #include "caccount.h"

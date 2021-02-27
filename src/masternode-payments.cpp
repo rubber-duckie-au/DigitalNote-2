@@ -14,6 +14,7 @@
 #include "net/cnode.h"
 #include "net.h"
 #include "ckey.h"
+#include "cinv.h"
 
 #include "masternode-payments.h"
 

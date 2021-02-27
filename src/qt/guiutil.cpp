@@ -7,9 +7,9 @@
 #include "walletmodel.h"
 
 #include "init.h"
-#include "protocol.h"
 #include "util.h"
 #include "cscript.h"
+#include "protocol.h"
 
 #ifdef WIN32
 #ifdef _WIN32_WINNT

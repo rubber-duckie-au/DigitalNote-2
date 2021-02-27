@@ -6,12 +6,12 @@
 
 #include "uint/uint256.h"
 #include "bignum.h"
+#include "message_start_size.h"
 
 struct CDNSSeedData;
 class CBlock;
 class CAddress;
 
-#define MESSAGE_START_SIZE 4
 typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
 
 /**

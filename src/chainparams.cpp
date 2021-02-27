@@ -9,9 +9,9 @@
 #include "cmainparams.h"
 #include "ctestnetparams.h"
 #include "cregtestparams.h"
-#include "protocol.h"
 #include "ctxin.h"
 #include "ctxout.h"
+#include "caddress.h"
 
 #include "chainparams.h"
 

@@ -2,7 +2,7 @@
 #define CNETMESSAGE_H
 
 #include "serialize.h"
-#include "protocol.h"
+#include "cmessageheader.h"
 
 class CNetMessage {
 public:

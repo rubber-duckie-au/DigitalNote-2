@@ -1,17 +1,19 @@
 #ifndef CNODE_H
 #define CNODE_H
 
-#include "protocol.h"
 #include "mruset.h"
 #include "sync.h"
 #include "net/secmsgnode.h"
 #include "net/banreason.h"
 #include "net/cnetmessage.h"
+#include "caddress.h"
+#include "uint/uint256.h"
 
 class CSubNet;
 class CBanEntry;
 class CBlockIndex;
 class CNodeStats;
+class CInv;
 struct CNodeSignals;
 
 typedef int NodeId;

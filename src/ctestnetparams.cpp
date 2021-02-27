@@ -6,6 +6,7 @@
 #include "genesis.h"
 #include "cdnsseeddata.h"
 #include "protocol.h"
+#include "caddress.h"
 
 #include "ctestnetparams.h"
 

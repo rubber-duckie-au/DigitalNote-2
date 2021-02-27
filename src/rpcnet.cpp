@@ -7,7 +7,6 @@
 #include "rpcserver.h"
 #include "calert.h"
 #include "netbase.h"
-#include "protocol.h"
 #include "sync.h"
 #include "ui_interface.h"
 #include "cnodestatestats.h"
@@ -21,6 +20,7 @@
 #include "main.h"
 #include "ckey.h"
 #include "hash.h"
+#include "chainparams.h"
 
 using namespace json_spirit;
 

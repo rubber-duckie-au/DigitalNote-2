@@ -4,7 +4,6 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "protocol.h"
 #include "masternodeman.h"
 #include "clientversion.h"
 #include "cwallet.h"

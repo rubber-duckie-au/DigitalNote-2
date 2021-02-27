@@ -5,18 +5,18 @@
 #ifndef _BITCOIN_ADDRMAN
 #define _BITCOIN_ADDRMAN 1
 
-#include "netbase.h"
-#include "protocol.h"
-#include "sync.h"
-#include "util.h"
-#include "ccriticalblock.h"
-
 #include <map>
 #include <set>
 #include <stdint.h>
 #include <vector>
 
 #include <openssl/rand.h>
+
+#include "netbase.h"
+#include "sync.h"
+#include "util.h"
+#include "ccriticalblock.h"
+#include "caddress.h"
 
 /** Extended statistics about a CAddress */
 class CAddrInfo : public CAddress

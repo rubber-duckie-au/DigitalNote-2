@@ -25,6 +25,7 @@
 #include "net.h"
 #include "chashwriter.h"
 #include "ckey.h"
+#include "cinv.h"
 
 #include "mnengine.h"
 

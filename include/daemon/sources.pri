@@ -1,5 +1,8 @@
 SOURCES += src/bitcoind.cpp
 
+SOURCES += src/cinv.cpp
+SOURCES += src/caddress.cpp
+SOURCES += src/cmessageheader.cpp
 SOURCES += src/cregtestparams.cpp
 SOURCES += src/ctestnetparams.cpp
 SOURCES += src/cmainparams.cpp

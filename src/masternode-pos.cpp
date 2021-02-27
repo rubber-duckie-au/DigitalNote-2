@@ -2,7 +2,6 @@
 #include "sync.h"
 #include "util.h"
 #include "base58.h"
-#include "protocol.h"
 #include "activemasternode.h"
 #include "masternodeman.h"
 #include "spork.h"

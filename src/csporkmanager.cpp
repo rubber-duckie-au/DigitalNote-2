@@ -8,6 +8,7 @@
 #include "mnengine.h"
 #include "net.h"
 #include "ckey.h"
+#include "cinv.h"
 
 #include "csporkmanager.h"
 

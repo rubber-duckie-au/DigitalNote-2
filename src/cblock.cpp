@@ -24,6 +24,7 @@
 #include "txmempool.h"
 #include "ckey.h"
 #include "ctxout.h"
+#include "cinv.h"
 
 #include "cblock.h"
 

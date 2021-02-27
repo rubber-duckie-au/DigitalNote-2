@@ -12,7 +12,7 @@
 #include "chainparamsseeds.h"
 #include "cdnsseeddata.h"
 #include "netbase.h"
-#include "protocol.h"
+#include "caddress.h"
 
 #include "cmainparams.h"
 

@@ -7,6 +7,7 @@
 #include "net.h"
 #include "ccriticalblock.h"
 #include "util.h"
+#include "cinv.h"
 
 #include "net/cnode.h"
 

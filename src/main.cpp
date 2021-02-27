@@ -48,6 +48,8 @@
 #include "smsg.h"
 #include "smsg_extern.h"
 #include "crypto/bmw/bmw512.h"
+#include "protocol.h"
+#include "cinv.h"
 
 #include "main.h"
 
