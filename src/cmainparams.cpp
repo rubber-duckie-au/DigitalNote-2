@@ -11,7 +11,6 @@
 #include "genesis.h"
 #include "chainparamsseeds.h"
 #include "cdnsseeddata.h"
-#include "netbase.h"
 #include "caddress.h"
 
 #include "cmainparams.h"

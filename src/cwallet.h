@@ -361,10 +361,10 @@ public:
     int GetInputMNengineRounds(CTxIn in) const;
 };
 
-static void ApproximateBestSubset(std::vector<std::pair<int64_t, std::pair<const CWalletTx*,unsigned int> > >vValue,
+void ApproximateBestSubset(std::vector<std::pair<int64_t, std::pair<const CWalletTx*,unsigned int> > >vValue,
 		int64_t nTotalLower, int64_t nTargetValue, std::vector<char>& vfBest, int64_t& nBest, int iterations = 1000);
 
 extern int64_t GetStakeCombineThreshold();
-static int64_t GetStakeSplitThreshold();
+int64_t GetStakeSplitThreshold();
 
 #endif // CWALLET_H

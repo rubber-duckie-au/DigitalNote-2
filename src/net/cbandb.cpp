@@ -1,8 +1,8 @@
 #include "util.h"
 #include "chainparams.h"
-#include "netbase.h"
 #include "net/cbanentry.h"
 #include "hash.h"
+#include "net/csubnet.h"
 
 #include "net/cbandb.h"
 

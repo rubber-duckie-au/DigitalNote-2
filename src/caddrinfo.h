@@ -2,7 +2,6 @@
 #define CADDRESINFO_H
 
 #include "caddress.h"
-#include "netbase.h"
 #include "util.h"
 
 /** Extended statistics about a CAddress */

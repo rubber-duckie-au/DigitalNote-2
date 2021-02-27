@@ -20,6 +20,7 @@
 #include "rpcclient.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "netbase.h"
 
 #include "rpcconsole.h"
 

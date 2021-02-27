@@ -1,4 +1,3 @@
-#include "netbase.h"
 #include "caddrinfo.h"
 #include "addrman.h"
 #include "ccriticalblock.h"

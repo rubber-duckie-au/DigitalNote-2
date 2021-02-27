@@ -12,10 +12,10 @@
 #include "cblockindex.h"
 #include "ccriticalsection.h"
 #include "ctxin.h"
-#include "netbase.h"
 #include "ccriticalblock.h"
 #include "main_extern.h"
 #include "main.h"
+#include "net/cservice.h"
 
 #include "masternode.h"
 

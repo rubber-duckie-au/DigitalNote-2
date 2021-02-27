@@ -4753,7 +4753,7 @@ void CWallet::DisableTransaction(const CTransaction &tx)
 /**
 	Extra function
 */
-static void ApproximateBestSubset(std::vector<std::pair<int64_t, std::pair<const CWalletTx*,unsigned int> > >vValue, int64_t nTotalLower,
+void ApproximateBestSubset(std::vector<std::pair<int64_t, std::pair<const CWalletTx*,unsigned int> > >vValue, int64_t nTotalLower,
 		int64_t nTargetValue, std::vector<char>& vfBest, int64_t& nBest, int iterations)
 {
     std::vector<char> vfIncluded;
@@ -4804,7 +4804,7 @@ int64_t GetStakeCombineThreshold()
 	return GetArg("-stakethreshold", 1000) * COIN;
 }
 
-static int64_t GetStakeSplitThreshold()
+int64_t GetStakeSplitThreshold()
 {
 	return 2 * GetStakeCombineThreshold();
 }

@@ -14,7 +14,6 @@
 #include "sync.h"
 #include "limitedmap.h"
 #include "serialize.h"
-#include "netbase.h"
 #include "net/cnode.h"
 
 #ifndef WIN32

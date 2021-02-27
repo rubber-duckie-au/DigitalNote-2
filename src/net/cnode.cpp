@@ -8,6 +8,8 @@
 #include "ccriticalblock.h"
 #include "util.h"
 #include "cinv.h"
+#include "netbase.h"
+#include "net/csubnet.h"
 
 #include "net/cnode.h"
 

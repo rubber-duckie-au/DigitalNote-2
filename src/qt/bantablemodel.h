@@ -8,7 +8,7 @@
 #include <QAbstractTableModel>
 #include <QStringList>
 
-#include "netbase.h"
+#include "net/csubnet.h"
 #include "net/cbanentry.h"
 
 class ClientModel;

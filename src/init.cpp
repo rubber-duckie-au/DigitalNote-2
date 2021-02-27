@@ -48,6 +48,7 @@
 #include "cdbenv.h"
 #include "cmasterkey.h"
 #include "eccverifyhandle.h"
+#include "netbase.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

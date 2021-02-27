@@ -2,7 +2,7 @@
 #define CADDRESS_H
 
 #include "protocol.h"
-#include "netbase.h"
+#include "net/cservice.h"
 
 /** A CService with information about it as peer */
 class CAddress : public CService

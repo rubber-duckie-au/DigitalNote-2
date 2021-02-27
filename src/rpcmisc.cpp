@@ -12,7 +12,6 @@
 
 #include "base58.h"
 #include "init.h"
-#include "netbase.h"
 #include "rpcserver.h"
 #include "util.h"
 #include "stealth.h"
@@ -25,6 +24,8 @@
 #include "main_extern.h"
 #include "chashwriter.h"
 #include "cscript.h"
+#include "netbase.h"
+#include "net/proxytype.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"
