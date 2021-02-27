@@ -3,7 +3,6 @@
 #include "mnengine.h"
 #include "sync.h"
 #include "util.h"
-#include "addrman.h"
 #include "cvalidationstate.h"
 #include "mining.h"
 

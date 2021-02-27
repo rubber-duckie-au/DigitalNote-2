@@ -9,7 +9,6 @@
 #include "util.h"
 #include "sync.h"
 #include "spork.h"
-#include "addrman.h"
 #include "script.h"
 #include "net/cnode.h"
 #include "net.h"

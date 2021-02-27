@@ -18,7 +18,7 @@
 #endif
 
 #include "init.h"
-#include "addrman.h"
+#include "caddrman.h"
 #include "chainparams.h"
 #include "txdb.h"
 #include "rpcserver.h"

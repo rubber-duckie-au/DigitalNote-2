@@ -5,7 +5,7 @@
 #include "activemasternode.h"
 #include "mnengine.h"
 #include "util.h"
-#include "addrman.h"
+#include "caddrman.h"
 #include "cvalidationstate.h"
 #include "mining.h"
 #include "net/cnode.h"

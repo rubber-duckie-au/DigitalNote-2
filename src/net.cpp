@@ -17,7 +17,6 @@
 
 #include <boost/filesystem.hpp>
 
-#include "addrman.h"
 #include "chainparams.h"
 #include "ui_interface.h"
 #include "mnengine.h"
@@ -32,6 +31,8 @@
 #include "cdnsseeddata.h"
 #include "protocol.h"
 #include "cinv.h"
+#include "caddrman.h"
+#include "caddrinfo.h"
 
 #include "net.h"
 

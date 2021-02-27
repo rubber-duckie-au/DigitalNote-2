@@ -1,3 +1,5 @@
+SOURCES += src/caddrman.cpp
+SOURCES += src/caddrinfo.cpp
 SOURCES += src/cinv.cpp
 SOURCES += src/caddress.cpp
 SOURCES += src/cmessageheader.cpp

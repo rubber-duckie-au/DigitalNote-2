@@ -1,7 +1,7 @@
 #include "util.h"
 #include "chainparams.h"
 #include "hash.h"
-#include "addrman.h"
+#include "caddrman.h"
 
 #include "net/caddrdb.h"
 

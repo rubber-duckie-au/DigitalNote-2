@@ -12,13 +12,11 @@
 #include <boost/assign/list_of.hpp>
 #include <boost/bind.hpp>
 
-#include "addrman.h"
 #include "calert.h"
 #include "blocksizecalculator.h"
 #include "blockparams.h"
 #include "chainparams.h"
 #include "checkpoints.h"
-
 #include "init.h"
 #include "kernel.h"
 #include "net.h"
@@ -50,6 +48,7 @@
 #include "crypto/bmw/bmw512.h"
 #include "protocol.h"
 #include "cinv.h"
+#include "caddrman.h"
 
 #include "main.h"
 
