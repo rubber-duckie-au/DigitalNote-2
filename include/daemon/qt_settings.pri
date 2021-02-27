@@ -4,6 +4,7 @@ CONFIG += thread
 CONFIG += openssl
 CONFIG += static
 CONFIG -= qt
+CONFIG -= app_bundle
 
 QT -= core
 QT -= gui

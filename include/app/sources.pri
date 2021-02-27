@@ -136,6 +136,9 @@ SOURCES += src/smsg/token.cpp
 SOURCES += src/smsg/stored.cpp
 SOURCES += src/smsg/securemessage.cpp
 
+SOURCES += src/net/cservice.cpp
+SOURCES += src/net/csubnet.cpp
+SOURCES += src/net/cnetaddr.cpp
 SOURCES += src/net/caddrdb.cpp
 SOURCES += src/net/cbandb.cpp
 SOURCES += src/net/cbanentry.cpp
