@@ -16,6 +16,8 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "util.h"
+#include "mapprevtx.h"
+#include "ctransaction.h"
 
 #include "velocity.h"
 

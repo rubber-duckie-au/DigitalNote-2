@@ -5,10 +5,11 @@
 #ifndef BITCOIN_MAIN_H
 #define BITCOIN_MAIN_H
 
+#include <vector>
 #include <boost/filesystem.hpp>
-#include <map>
 
 #include "script.h"
+#include "mapprevtx.h"
 
 struct CNodeStateStats;
 class CValidationState;
@@ -33,7 +34,6 @@ class CTxOut;
 struct CNodeSignals;
 
 typedef int NodeId;
-typedef std::map<uint256, std::pair<CTxIndex, CTransaction>> MapPrevTx;
 
 enum GetMinFee_mode
 {

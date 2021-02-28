@@ -5,6 +5,7 @@
 #include "chashwriter.h"
 #include "ctxout.h"
 #include "ctxin.h"
+#include "ctransaction.h"
 
 #include "ctxindex.h"
 

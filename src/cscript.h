@@ -24,7 +24,13 @@ public:
 
     CScript& operator+=(const CScript& b);
     friend CScript operator+(const CScript& a, const CScript& b);
-
+	
+	//
+	// Issue: implicitly-declared '[...]::operator=([...])' is deprecated.
+	// Fix: https://github.com/tsduck/tsduck/issues/205
+	//
+	CScript& operator=(const CScript& other) = default;
+	
     //explicit CScript(char b) is not portable.  Use 'signed char' or 'unsigned char'.
     explicit CScript(signed char b);
     explicit CScript(short b);

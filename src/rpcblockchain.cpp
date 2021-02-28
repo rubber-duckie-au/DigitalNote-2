@@ -16,6 +16,7 @@
 #include "txmempool.h"
 #include "ctxout.h"
 #include "ctxin.h"
+#include "ctransaction.h"
 
 using namespace json_spirit;
 

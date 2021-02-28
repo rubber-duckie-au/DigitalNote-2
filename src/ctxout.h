@@ -37,6 +37,8 @@ public:
     bool IsDust(int64_t MIN_RELAY_TX_FEE) const;
     friend bool operator==(const CTxOut& a, const CTxOut& b);
     friend bool operator!=(const CTxOut& a, const CTxOut& b);
+	//CTxOut& operator=(const CTxOut&) {};
+	
     std::string ToString() const;
 };
 

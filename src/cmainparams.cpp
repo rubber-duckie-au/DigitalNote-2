@@ -12,6 +12,7 @@
 #include "chainparamsseeds.h"
 #include "cdnsseeddata.h"
 #include "caddress.h"
+#include "ctransaction.h"
 
 #include "cmainparams.h"
 

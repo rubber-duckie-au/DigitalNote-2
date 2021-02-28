@@ -24,6 +24,7 @@
 #include "net.h"
 #include "txmempool.h"
 #include "ctxout.h"
+#include "ctransaction.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

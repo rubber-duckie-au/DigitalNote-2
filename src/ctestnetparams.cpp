@@ -7,6 +7,7 @@
 #include "cdnsseeddata.h"
 #include "protocol.h"
 #include "caddress.h"
+#include "ctransaction.h"
 
 #include "ctestnetparams.h"
 

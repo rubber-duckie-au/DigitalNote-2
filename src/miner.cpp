@@ -22,6 +22,7 @@
 #include "main_const.h"
 #include "txmempool.h"
 #include "ctxout.h"
+#include "ctransaction.h"
 
 #include "miner.h"
 

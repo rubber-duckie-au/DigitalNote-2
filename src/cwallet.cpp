@@ -4500,19 +4500,23 @@ bool CWallet::SetAddressAccountIdAssociation(const CTxDestination& address, cons
         return true;
     }
 
-    bool fUpdated = false;
     {
         LOCK(cs_wallet);
-        std::map<CTxDestination, std::string>::iterator mi = mapAddressBook.find(address);
-        fUpdated = mi != mapAddressBook.end();
+        
+		std::map<CTxDestination, std::string>::iterator mi = mapAddressBook.find(address);
+        
         // only allow to create association
-        if (mapAddressBook[address] == "") {
+        if (mapAddressBook[address] == "")
+		{
             mapAddressBook[address] = strName;
         }
     }
 
     if (!fFileBacked)
+	{
         return false;
+	}
+	
     return CWalletDB(strWalletFile).WriteName(CDigitalNoteAddress(address).ToString(), strName);
 }
 

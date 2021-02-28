@@ -83,11 +83,11 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
 
         bool fMissingInputs = false;
         CValidationState state;
-        CBlockIndex* pindex;
         CBlock block;
         CTxDB txdb("r");
 
         bool fAccepted = false;
+		
         {
             LOCK(cs_main);
 			
@@ -141,7 +141,6 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
                         LogPrintf("ProcessMessageInstantX::txlreq - Found Existing Complete IX Lock\n");
 
                         //reprocess the last 15 blocks
-                        block.DisconnectBlock(txdb, pindex);
                         tx.DisconnectInputs(txdb);
                     }
                 }
@@ -411,7 +410,6 @@ bool ProcessConsensusVote(CNode* pnode, CConsensusVote& ctx)
         LogPrint("instantx", "InstantX::ProcessConsensusVote - Transaction Lock Exists %s !\n", ctx.txHash.ToString().c_str());
     }
 
-    CBlockIndex* pindex;
     CBlock block;
     CTxDB txdb("r");
     //compile consessus vote
@@ -471,7 +469,6 @@ bool ProcessConsensusVote(CNode* pnode, CConsensusVote& ctx)
                 if(mapTxLockReqRejected.count((*i).second.txHash))
 				{
                     //reprocess the last 15 blocks
-                    block.DisconnectBlock(txdb, pindex);
                     tx.DisconnectInputs(txdb);
                 }
             }

@@ -65,6 +65,7 @@ Notes:
 #include "hash.h"
 #include "ctxout.h"
 #include "ctxin.h"
+#include "ctransaction.h"
 
 namespace DigitalNote {
 namespace SMSG {

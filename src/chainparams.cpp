@@ -12,6 +12,7 @@
 #include "ctxin.h"
 #include "ctxout.h"
 #include "caddress.h"
+#include "ctransaction.h"
 
 #include "chainparams.h"
 

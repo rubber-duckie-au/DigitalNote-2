@@ -3,6 +3,7 @@
 #include "genesis.h"
 #include "cdnsseeddata.h"
 #include "caddress.h"
+#include "ctransaction.h"
 
 #include "cregtestparams.h"
 

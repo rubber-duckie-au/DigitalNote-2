@@ -5,13 +5,13 @@
 #include <memory>
 
 #include "uint/uint256.h"
-#include "ctransaction.h"
 
 class CBlockIndex;
 class COutPoint;
 class CTxDB;
 class CWallet;
 class CBlock;
+class CTransaction;
 
 typedef std::unique_ptr<CBlock> CBlockPtr;
 
