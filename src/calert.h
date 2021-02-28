@@ -6,7 +6,7 @@
 #ifndef _BITCOINALERT_H_
 #define _BITCOINALERT_H_ 1
 
-#include <set>
+#include <vector>
 #include <string>
 
 #include "cunsignedalert.h"
