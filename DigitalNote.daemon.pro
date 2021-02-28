@@ -9,6 +9,7 @@ include(include/base.pri)
 
 TARGET = DigitalNote
 
+DEFINES += DIGITALNOTE_DAEMON
 DEFINES += ENABLE_WALLET
 
 include(include/compiler_settings.pri)
