@@ -9,7 +9,6 @@ include(include/base.pri)
 
 TARGET = DigitalNote-qt
 
-DEFINES += DIGITALNOTE_APP
 DEFINES += ENABLE_WALLET
 
 include(include/compiler_settings.pri)

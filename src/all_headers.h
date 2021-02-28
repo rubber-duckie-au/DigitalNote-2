@@ -1,5 +1,5 @@
 #ifdef __cplusplus
-	#ifdef DIGITALNOTE_APP
+	#ifdef QT_GUI
 		#include <QApplication>
 		#include <QMenuBar>
 		#include <QMenu>
@@ -27,7 +27,7 @@
 		#include <QScroller>
 		#include <QTextDocument>
 		#include <QInputDialog>
-	#endif // DIGITALNOTE_APP
+	#endif // QT_GUI
 	
 	#include <string>
     #include <set>
