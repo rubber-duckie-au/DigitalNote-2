@@ -14,6 +14,7 @@
 #include "main_const.h"
 #include "ctxin.h"
 #include "ctxout.h"
+#include "ctransaction.h"
 
 #include "blockbrowser.h"
 
