@@ -5,6 +5,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
 
 #include "base58.h"
 #include "serialize.h"
