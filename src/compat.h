@@ -29,6 +29,8 @@
 	#include <winsock2.h>
 	#include <windows.h>
 	#include <ws2tcpip.h>
+	
+	#define MSG_DONTWAIT        0
 #else // WIN32
 	#include <sys/fcntl.h>
 	#include <sys/mman.h>
@@ -45,11 +47,7 @@
 	#include <errno.h>
 	
 	typedef u_int SOCKET;
-#endif // WIN32
-
-#ifdef WIN32
-	#define MSG_DONTWAIT        0
-#else // WIN32
+	
 	#define WSAGetLastError()   errno
 	#define WSAEINVAL           EINVAL
 	#define WSAEALREADY         EALREADY
@@ -63,4 +61,4 @@
 	#define SOCKET_ERROR        -1
 #endif // WIN32
 
-#endif
+#endif // _BITCOIN_COMPAT_H
