@@ -1,5 +1,6 @@
 #include <sstream>
 #include <string>
+#include <iomanip>
 
 #include "ui_blockbrowser.h"
 #include "base58.h"

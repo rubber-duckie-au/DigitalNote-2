@@ -12,6 +12,7 @@
 #include <QLibraryInfo>
 
 #include <boost/filesystem.hpp>
+#include <boost/thread.hpp>
 
 #include "bitcoingui.h"
 #include "clientmodel.h"
