@@ -31,8 +31,10 @@ public:
     CKey(const CKey &secret);
 	~CKey();
 	
+	constexpr CKey& operator=(const CKey&) = default;
+	
     friend bool operator==(const CKey &a, const CKey &b);
-
+	
     // Initialize using begin and end iterators to byte data.
     template<typename T>
     void Set(const T pbegin, const T pend, bool fCompressedIn);
