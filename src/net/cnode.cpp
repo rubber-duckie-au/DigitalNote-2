@@ -12,6 +12,7 @@
 #include "cinv.h"
 #include "netbase.h"
 #include "net/csubnet.h"
+#include "net/myclosesocket.h"
 
 #include "net/cnode.h"
 

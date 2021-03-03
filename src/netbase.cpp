@@ -16,6 +16,7 @@
 #include "ccriticalsection.h"
 #include "ccriticalblock.h"
 #include "net/cservice.h"
+#include "net/myclosesocket.h"
 
 #include "netbase.h"
 

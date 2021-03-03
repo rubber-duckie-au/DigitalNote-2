@@ -1,4 +1,6 @@
 #ifdef __cplusplus
+	#include "compat.h"
+	
 	#ifdef QT_GUI
 		#include <QApplication>
 		#include <QMenuBar>
@@ -99,7 +101,6 @@
 	#include "cmerkletx.h"
 	#include "cnodestatestats.h"
 	#include "coincontrol.h"
-	#include "compat.h"
 	#include "coutpoint.h"
 	#include "coutput.h"
 	#include "cprivkey.h"

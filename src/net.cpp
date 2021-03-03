@@ -40,6 +40,7 @@
 #include "net/have_msg_nosignal.h"
 #include "net/csubnet.h"
 #include "netbase.h"
+#include "net/myclosesocket.h"
 
 #include "net.h"
 

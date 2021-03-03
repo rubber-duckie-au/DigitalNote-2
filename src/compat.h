@@ -29,7 +29,10 @@
 	#include <winsock2.h>
 	#include <windows.h>
 	#include <ws2tcpip.h>
-#else
+	
+	typedef u_int SOCKET;
+
+#else // WIN32
 	#include <sys/fcntl.h>
 	#include <sys/mman.h>
 	#include <sys/socket.h>
@@ -42,13 +45,12 @@
 	#include <limits.h>
 	#include <netdb.h>
 	#include <unistd.h>
-#endif
+	#include <errno.h>
+#endif // WIN32
 
 #ifdef WIN32
 	#define MSG_DONTWAIT        0
 #else // WIN32
-	typedef u_int SOCKET;
-	#include "errno.h"
 	#define WSAGetLastError()   errno
 	#define WSAEINVAL           EINVAL
 	#define WSAEALREADY         EALREADY
@@ -61,19 +63,5 @@
 	#define INVALID_SOCKET      (SOCKET)(~0)
 	#define SOCKET_ERROR        -1
 #endif // WIN32
-
-inline int myclosesocket(SOCKET& hSocket)
-{
-    if (hSocket == INVALID_SOCKET)
-        return WSAENOTSOCK;
-#ifdef WIN32
-    int ret = closesocket(hSocket);
-#else
-    int ret = close(hSocket);
-#endif
-    hSocket = INVALID_SOCKET;
-    return ret;
-}
-#define closesocket(s)      myclosesocket(s)
 
 #endif

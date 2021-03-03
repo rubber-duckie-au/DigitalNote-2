@@ -4,6 +4,7 @@
 #include <boost/foreach.hpp>
 
 #include "net.h"
+#include "net/myclosesocket.h"
 
 class CNetCleanup
 {
