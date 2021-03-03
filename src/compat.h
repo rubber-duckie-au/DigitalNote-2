@@ -29,9 +29,6 @@
 	#include <winsock2.h>
 	#include <windows.h>
 	#include <ws2tcpip.h>
-	
-	typedef u_int SOCKET;
-
 #else // WIN32
 	#include <sys/fcntl.h>
 	#include <sys/mman.h>
@@ -46,6 +43,8 @@
 	#include <netdb.h>
 	#include <unistd.h>
 	#include <errno.h>
+	
+	typedef u_int SOCKET;
 #endif // WIN32
 
 #ifdef WIN32
