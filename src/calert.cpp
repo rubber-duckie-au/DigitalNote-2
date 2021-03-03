@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <algorithm>
 #include <map>
+#include <boost/thread.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
@@ -208,8 +209,8 @@ bool CAlert::ProcessAlert(bool fThread)
     if (nID == maxInt)
     {
         if (!(
-                nExpiration != maxInt or
-                nCancel != (maxInt-1) or
+                nExpiration != maxInt &&
+                nCancel != (maxInt-1) &&
                 nMinVer != 0 &&
                 nMaxVer != maxInt &&
                 setSubVer.empty() == false &&

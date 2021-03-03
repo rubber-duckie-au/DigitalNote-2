@@ -15,6 +15,7 @@
 #include <miniupnpc-2.1/upnperrors.h>
 #endif
 
+#include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 
 #include "chainparams.h"
@@ -310,8 +311,9 @@ void SetReachable(enum Network net, bool fFlag)
 // learn a new local address
 bool AddLocal(const CService& addr, int nScore)
 {
-    if (!addr.IsRoutable() ||
-		!fDiscover && nScore < LOCAL_MANUAL ||
+    if (
+		!addr.IsRoutable() ||
+		(!fDiscover && nScore < LOCAL_MANUAL) ||
 		IsLimited(addr)
 	)
 	{
@@ -735,8 +737,8 @@ void RefreshRecentConnections(int RefreshMinutes)
                 // only consider very recently tried nodes after 30 failed attempts
                 // do not allow non-default ports, unless after 50 invalid addresses selected already
                 if (IsLimited(addr) ||
-					nANow - addr.nLastTry < 600 && nTries < 30 ||
-					addr.GetPort() != Params().GetDefaultPort() && nTries < 50
+					(nANow - addr.nLastTry < 600 && nTries < 30) ||
+					(addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
 				)
                 {
                     continue;
@@ -1663,8 +1665,8 @@ void ThreadOpenConnections()
             // only consider very recently tried nodes after 30 failed attempts
             // do not allow non-default ports, unless after 50 invalid addresses selected already
             if (IsLimited(addr) ||
-				nANow - addr.nLastTry < 600 && nTries < 30 ||
-                addr.GetPort() != Params().GetDefaultPort() && nTries < 50
+				(nANow - addr.nLastTry < 600 && nTries < 30) ||
+                (addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
 			)
 			{
                 continue;

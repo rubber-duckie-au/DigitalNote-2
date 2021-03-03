@@ -16,6 +16,13 @@
 #include "main_const.h"
 #include "net/cnetaddr.h"
 
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
+#include <openssl/crypto.h> // for OPENSSL_cleanse()
+#include <openssl/rand.h>
+#include <openssl/bn.h>
+
 #include <algorithm>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -115,6 +122,27 @@ int64_t nMasterNodeChecksDelayBaseTime = 0;
 //MasterNode peer IP advanced relay system toggle
 bool fMnAdvRelay = false;
 int maxBlockHeight = -1;
+
+void MilliSleep(int64_t n)
+{
+#if BOOST_VERSION >= 105000
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
+#else
+    boost::this_thread::sleep(boost::posix_time::milliseconds(n));
+#endif
+}
+
+int64_t GetTimeMillis()
+{
+    return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
+            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_milliseconds();
+}
+
+int64_t GetTimeMicros()
+{
+    return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
+            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_microseconds();
+}
 
 // Init OpenSSL library multithreading support
 static CCriticalSection** ppmutexOpenSSL;
@@ -1477,6 +1505,21 @@ void runCommand(std::string strCommand)
         LogPrintf("runCommand error: system(%s) returned %d\n", strCommand, nErr);
 }
 
+void SetThreadPriority(int nPriority)
+{
+#ifdef WIN32
+    SetThreadPriority(GetCurrentThread(), nPriority);
+#else // WIN32
+
+#ifdef PRIO_THREAD
+    setpriority(PRIO_THREAD, 0, nPriority);
+#else // PRIO_THREAD
+    setpriority(PRIO_PROCESS, 0, nPriority);
+#endif // PRIO_THREAD
+
+#endif // WIN32
+}
+
 void RenameThread(const char* name)
 {
 #if defined(PR_SET_NAME)
@@ -1552,3 +1595,85 @@ long hex2long(const char* hexString)
 
     return ret;
 }
+
+uint32_t ByteReverse(uint32_t value)
+{
+    value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
+    return (value<<16) | (value>>16);
+}
+
+// Standard wrapper for do-something-forever thread functions.
+// "Forever" really means until the thread is interrupted.
+// Use it like:
+//   new boost::thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, 900000));
+// or maybe:
+//    boost::function<void()> f = boost::bind(&FunctionWithArg, argument);
+//    threadGroup.create_thread(boost::bind(&LoopForever<boost::function<void()> >, "nothing", f, milliseconds));
+template <typename Callable>
+void LoopForever(const char* name, Callable func, int64_t msecs)
+{
+    std::string s = strprintf("DigitalNote-%s", name);
+    RenameThread(s.c_str());
+    
+	LogPrintf("%s thread start\n", name);
+    
+	try
+    {
+        while (1)
+        {
+            MilliSleep(msecs);
+            
+			func();
+        }
+    }
+    catch (boost::thread_interrupted)
+    {
+        LogPrintf("%s thread stop\n", name);
+        
+		throw;
+    }
+    catch (std::exception& e)
+	{
+        PrintException(&e, name);
+    }
+    catch (...)
+	{
+        PrintException(NULL, name);
+    }
+}
+
+template void LoopForever<void (*)()>(char const*, void (*)(), long);
+
+// .. and a wrapper that just calls func once
+template <typename Callable>
+void TraceThread(const char* name,  Callable func)
+{
+    std::string s = strprintf("DigitalNote-%s", name);
+	
+    RenameThread(s.c_str());
+    
+	try
+    {
+        LogPrintf("%s thread start\n", name);
+        
+		func();
+        
+		LogPrintf("%s thread exit\n", name);
+    }
+    catch (boost::thread_interrupted)
+    {
+        LogPrintf("%s thread interrupt\n", name);
+        
+		throw;
+    }
+    catch (std::exception& e)
+	{
+        PrintException(&e, name);
+    }
+    catch (...)
+	{
+        PrintException(NULL, name);
+    }
+}
+
+template void TraceThread<void (*)()>(char const*, void (*)());

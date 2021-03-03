@@ -9,7 +9,11 @@
 #include <QString>
 #include <QTableView>
 
-#include <boost/filesystem.hpp>
+namespace boost {
+	namespace filesystem {
+		class path;
+	}
+}
 
 class SendCoinsRecipient;
 

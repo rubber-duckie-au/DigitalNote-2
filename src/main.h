@@ -5,11 +5,13 @@
 #ifndef BITCOIN_MAIN_H
 #define BITCOIN_MAIN_H
 
+#include <cstdint>
+#include <cstdio>
+#include <string>
 #include <vector>
-#include <boost/filesystem.hpp>
 
-#include "script.h"
 #include "mapprevtx.h"
+#include "ctxdestination.h"
 
 struct CNodeStateStats;
 class CValidationState;
@@ -30,6 +32,7 @@ class CTxMemPool;
 class COrphanBlock;
 class CTxIn;
 class CTxOut;
+class CScript;
 
 struct CNodeSignals;
 
@@ -41,6 +44,14 @@ enum GetMinFee_mode
     GMF_RELAY,
     GMF_SEND,
 };
+
+namespace boost
+{
+	namespace filesystem
+	{
+		class path;
+	}
+}
 
 /** Moneyrange params */
 bool MoneyRange(int64_t nValue);

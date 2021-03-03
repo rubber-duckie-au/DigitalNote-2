@@ -20,7 +20,8 @@ class CMasternodeConfig
 
 public:
 
-    class CMasternodeEntry {
+    class CMasternodeEntry
+	{
 
     private:
         std::string alias;

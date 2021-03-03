@@ -4,6 +4,8 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/foreach.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "rpcserver.h"
 #include "init.h" // pwalletMain

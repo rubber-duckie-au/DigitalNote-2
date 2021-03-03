@@ -10,6 +10,7 @@
 #include "util.h"
 #include "base58.h"
 #include "masternode.h"
+#include <boost/filesystem/path.hpp>
 
 #define MASTERNODES_DUMP_SECONDS               (15*60)
 #define MASTERNODES_DSEG_SECONDS               (3*60*60)

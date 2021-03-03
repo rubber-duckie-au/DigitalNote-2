@@ -1,3 +1,4 @@
+#include <boost/thread.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <algorithm>
 #include <random>
@@ -4502,8 +4503,6 @@ bool CWallet::SetAddressAccountIdAssociation(const CTxDestination& address, cons
 
     {
         LOCK(cs_wallet);
-        
-		std::map<CTxDestination, std::string>::iterator mi = mapAddressBook.find(address);
         
         // only allow to create association
         if (mapAddressBook[address] == "")

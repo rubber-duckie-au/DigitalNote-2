@@ -9,12 +9,9 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
-#include <boost/variant.hpp>
 
-#include "stealth.h"
-#include "cstealthaddress.h"
-#include "ckeyid.h"
-#include "cscriptid.h"
+//#include "stealth.h"
+#include "ctxdestination.h"
 
 class CKeyStore;
 class CTransaction;
@@ -78,14 +75,6 @@ typedef enum ScriptError_t
     SCRIPT_ERR_ERROR_COUNT
 } ScriptError;
 #define SCRIPT_ERR_LAST SCRIPT_ERR_ERROR_COUNT
-
-/** A txout script template with a specific destination. It is either:
- *  * CNoDestination: no destination set
- *  * CKeyID: TX_PUBKEYHASH destination
- *  * CScriptID: TX_SCRIPTHASH destination
- *  A CTxDestination is the internal data type encoded in a CDigitalNoteAddress
- */
-using CTxDestination = boost::variant<CNoDestination, CKeyID, CScriptID, CStealthAddress>;
 
 /** Signature hash types/flags */
 enum
@@ -326,19 +315,6 @@ static const unsigned int STANDARD_SCRIPT_VERIFY_FLAGS = MANDATORY_SCRIPT_VERIFY
 
 // For convenience, standard but not mandatory verify flags.
 static const unsigned int STANDARD_NOT_MANDATORY_VERIFY_FLAGS = STANDARD_SCRIPT_VERIFY_FLAGS & ~MANDATORY_SCRIPT_VERIFY_FLAGS;
-
-class CNoDestination {
-public:
-    friend bool operator==(const CNoDestination &a, const CNoDestination &b)
-	{
-		return true;
-	}
-	
-    friend bool operator<(const CNoDestination &a, const CNoDestination &b)
-	{
-		return true;
-	}
-};
 
 template <typename T>
 std::vector<unsigned char> ToByteVector(const T& in);

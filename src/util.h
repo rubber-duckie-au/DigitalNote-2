@@ -12,19 +12,6 @@
 #include <string>
 #include <stdint.h>
 
-#include <boost/thread.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/date_time/gregorian/gregorian_types.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
-
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/buffer.h>
-#include <openssl/crypto.h> // for OPENSSL_cleanse()
-#include <openssl/rand.h>
-#include <openssl/bn.h>
-
 #ifndef WIN32
 #include <sys/types.h>
 #include <sys/time.h>
@@ -36,6 +23,14 @@
 
 #include "serialize.h"
 #include "tinyformat.h"
+
+namespace boost
+{
+	namespace filesystem
+	{
+		class path;
+	}
+}
 
 class CNetAddr;
 class uint256;
@@ -82,8 +77,10 @@ T* alignup(T* p)
         T* ptr;
         size_t n;
     } u;
-    u.ptr = p;
+    
+	u.ptr = p;
     u.n = (u.n + (nBytes-1)) & ~(nBytes-1);
+	
     return u.ptr;
 }
 
@@ -99,14 +96,7 @@ T* alignup(T* p)
 #define MAX_PATH            1024
 #endif
 
-inline void MilliSleep(int64_t n)
-{
-#if BOOST_VERSION >= 105000
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
-#else
-    boost::this_thread::sleep(boost::posix_time::milliseconds(n));
-#endif
-}
+void MilliSleep(int64_t n);
 
 //Dark features
 extern bool fMasterNode;
@@ -193,22 +183,31 @@ TINYFORMAT_FOREACH_ARGNUM(MAKE_ERROR_AND_LOG_FUNC)
  */
 static inline int LogPrint(const char* category, const char* format)
 {
-    if(!LogAcceptCategory(category)) return 0;
-    return LogPrintStr(format);
+    if(!LogAcceptCategory(category))
+	{
+		return 0;
+    }
+	
+	return LogPrintStr(format);
 }
+
 static inline bool error(const char* format)
 {
     LogPrintStr(std::string("ERROR: ") + format + "\n");
-    return false;
+    
+	return false;
 }
+
 static inline int errorN(int n, const char* format)
 {
     LogPrintStr(std::string("ERROR: ") + format + "\n");
+	
     return n;
 }
 
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+extern const signed char p_util_hexdigit[256];
 
 void RandAddSeed();
 void RandAddSeedPerfmon();
@@ -302,8 +301,6 @@ std::string HexStr(const T& vch, bool fSpaces=false)
     return HexStr(vch.begin(), vch.end(), fSpaces);
 }
 
-extern const signed char p_util_hexdigit[256];
-
 signed char HexDigit(char c);
 
 inline std::string i64tostr(int64_t n)
@@ -377,17 +374,8 @@ inline int64_t GetPerformanceCounter()
     return nCounter;
 }
 
-inline int64_t GetTimeMillis()
-{
-    return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
-            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_milliseconds();
-}
-
-inline int64_t GetTimeMicros()
-{
-    return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
-            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_microseconds();
-}
+int64_t GetTimeMillis();
+int64_t GetTimeMicros();
 
 std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime);
 
@@ -499,7 +487,8 @@ bool TimingResistantEqual(const T& a, const T& b)
 /** Median filter over a stream of values.
  * Returns the median of the last N numbers
  */
-template <typename T> class CMedianFilter
+template <typename T>
+class CMedianFilter
 {
 private:
     std::vector<T> vValues;
@@ -552,93 +541,21 @@ public:
     }
 };
 
-#ifdef WIN32
-inline void SetThreadPriority(int nPriority)
-{
-    SetThreadPriority(GetCurrentThread(), nPriority);
-}
-#else
-
+#ifndef WIN32
 #define THREAD_PRIORITY_LOWEST          PRIO_MAX
 #define THREAD_PRIORITY_BELOW_NORMAL    2
 #define THREAD_PRIORITY_NORMAL          0
 #define THREAD_PRIORITY_ABOVE_NORMAL    0
-
-inline void SetThreadPriority(int nPriority)
-{
-    // It's unclear if it's even possible to change thread priorities on Linux,
-    // but we really and truly need it for the generation threads.
-#ifdef PRIO_THREAD
-    setpriority(PRIO_THREAD, 0, nPriority);
-#else
-    setpriority(PRIO_PROCESS, 0, nPriority);
 #endif
-}
-#endif
+void SetThreadPriority(int nPriority);
 
 void RenameThread(const char* name);
+uint32_t ByteReverse(uint32_t value);
 
-inline uint32_t ByteReverse(uint32_t value)
-{
-    value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
-    return (value<<16) | (value>>16);
-}
-
-// Standard wrapper for do-something-forever thread functions.
-// "Forever" really means until the thread is interrupted.
-// Use it like:
-//   new boost::thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, 900000));
-// or maybe:
-//    boost::function<void()> f = boost::bind(&FunctionWithArg, argument);
-//    threadGroup.create_thread(boost::bind(&LoopForever<boost::function<void()> >, "nothing", f, milliseconds));
 template <typename Callable>
-void LoopForever(const char* name, Callable func, int64_t msecs)
-{
-    std::string s = strprintf("DigitalNote-%s", name);
-    RenameThread(s.c_str());
-    LogPrintf("%s thread start\n", name);
-    try
-    {
-        while (1)
-        {
-            MilliSleep(msecs);
-            func();
-        }
-    }
-    catch (boost::thread_interrupted)
-    {
-        LogPrintf("%s thread stop\n", name);
-        throw;
-    }
-    catch (std::exception& e) {
-        PrintException(&e, name);
-    }
-    catch (...) {
-        PrintException(NULL, name);
-    }
-}
-// .. and a wrapper that just calls func once
-template <typename Callable> void TraceThread(const char* name,  Callable func)
-{
-    std::string s = strprintf("DigitalNote-%s", name);
-    RenameThread(s.c_str());
-    try
-    {
-        LogPrintf("%s thread start\n", name);
-        func();
-        LogPrintf("%s thread exit\n", name);
-    }
-    catch (boost::thread_interrupted)
-    {
-        LogPrintf("%s thread interrupt\n", name);
-        throw;
-    }
-    catch (std::exception& e) {
-        PrintException(&e, name);
-    }
-    catch (...) {
-        PrintException(NULL, name);
-    }
-}
+void LoopForever(const char* name, Callable func, int64_t msecs);
+
+template <typename Callable>
+void TraceThread(const char* name,  Callable func);
 
 #endif

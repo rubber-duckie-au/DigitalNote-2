@@ -32,8 +32,12 @@ Notes:
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
+#include <openssl/rand.h>
+
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	#include <openssl/ecdh.h>
 #endif

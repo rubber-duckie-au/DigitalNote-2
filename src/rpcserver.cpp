@@ -19,6 +19,7 @@
 #include "cwallet.h"
 #endif
 
+#include <boost/thread.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/v6_only.hpp>

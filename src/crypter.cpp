@@ -2,18 +2,12 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <openssl/aes.h>
+#include <openssl/evp.h>
 
 #include "util.h"
 #include "ccrypter.h"
 
 #include "crypter.h"
-/*
-#include "serialize.h"
-#include "keystore.h"
-#include "cscript.h"
-#include "ccriticalblock.h"
-#include "cbasickeystore.h"
-*/
 
 bool EncryptSecret(const CKeyingMaterial& vMasterKey, const CKeyingMaterial &vchPlaintext, const uint256& nIV, std::vector<unsigned char> &vchCiphertext)
 {
