@@ -1,3 +1,5 @@
+#include <boost/thread.hpp>
+
 #include "util.h"
 #include "ccriticalblock.h"
 
