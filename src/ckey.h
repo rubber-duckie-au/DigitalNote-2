@@ -31,7 +31,7 @@ public:
     CKey(const CKey &secret);
 	~CKey();
 	
-	constexpr CKey& operator=(const CKey&) = default;
+	CKey& operator=(const CKey&) = default;
 	
     friend bool operator==(const CKey &a, const CKey &b);
 	
