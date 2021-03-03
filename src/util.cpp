@@ -1642,7 +1642,7 @@ void LoopForever(const char* name, Callable func, int64_t msecs)
     }
 }
 
-template void LoopForever<void (*)()>(char const*, void (*)(), long);
+template void LoopForever<void (*)()>(const char*, void (*)(), int64_t);
 
 // .. and a wrapper that just calls func once
 template <typename Callable>
@@ -1676,4 +1676,4 @@ void TraceThread(const char* name,  Callable func)
     }
 }
 
-template void TraceThread<void (*)()>(char const*, void (*)());
+template void TraceThread<void (*)()>(const char*, void (*)());
