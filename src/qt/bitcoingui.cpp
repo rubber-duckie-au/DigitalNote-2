@@ -35,6 +35,8 @@
 #include <QTextDocument>
 #include <QInputDialog>
 
+#include <boost/filesystem/path.hpp>
+
 #include "transactiontablemodel.h"
 #include "addressbookpage.h"
 #include "sendcoinsdialog.h"

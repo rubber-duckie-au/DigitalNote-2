@@ -11,6 +11,8 @@
 #include <QSplashScreen>
 #include <QLibraryInfo>
 
+#include <boost/filesystem.hpp>
+
 #include "bitcoingui.h"
 #include "clientmodel.h"
 #include "walletmodel.h"
