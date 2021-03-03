@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "util.h"
 #include "xxhash/xxhash.h"
 #include "xxhash/xxhash.c"

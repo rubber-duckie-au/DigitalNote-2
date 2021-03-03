@@ -1,6 +1,8 @@
 #ifndef TRANSACTIONFILTERPROXY_H
 #define TRANSACTIONFILTERPROXY_H
 
+#include "compat.h"
+
 #include "util.h"
 
 #include <QSortFilterProxyModel>

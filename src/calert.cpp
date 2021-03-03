@@ -1,6 +1,7 @@
 //
 // Alert system
 //
+#include "compat.h"
 
 #include <stdint.h>
 #include <algorithm>

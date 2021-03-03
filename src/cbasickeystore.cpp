@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "ccriticalblock.h"
 #include "cscript.h"
 #include "util.h"

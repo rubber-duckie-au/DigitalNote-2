@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "txdb-leveldb.h"
 #include "blockparams.h"
 #include "spork.h"

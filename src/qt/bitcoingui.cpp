@@ -5,6 +5,8 @@
  * The DigitalNote Developers 2018-2020
  */
 
+#include "compat.h"
+
 #include <iostream>
 
 #include <QApplication>

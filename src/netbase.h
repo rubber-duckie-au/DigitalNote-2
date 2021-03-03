@@ -4,8 +4,6 @@
 #ifndef BITCOIN_NETBASE_H
 #define BITCOIN_NETBASE_H
 
-#include "compat.h"
-
 #include <string>
 #include <vector>
 

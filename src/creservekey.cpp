@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "cwallet.h"
 #include "ckeypool.h"
 #include "cscript.h"

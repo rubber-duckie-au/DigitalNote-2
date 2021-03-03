@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "qrcodedialog.h"
 #include "ui_qrcodedialog.h"
 

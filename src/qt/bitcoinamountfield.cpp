@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "bitcoinamountfield.h"
 
 #include "qvaluecombobox.h"

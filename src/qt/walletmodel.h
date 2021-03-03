@@ -5,6 +5,8 @@
 #ifndef WALLETMODEL_H
 #define WALLETMODEL_H
 
+#include "compat.h"
+
 #include <map>
 #include <vector>
 

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <boost/thread.hpp>
 
 #include "util.h"

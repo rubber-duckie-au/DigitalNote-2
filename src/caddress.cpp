@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "serialize.h"
 
 #include "caddress.h"

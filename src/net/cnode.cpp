@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <boost/foreach.hpp>
 
 #include "net/cbanentry.h"

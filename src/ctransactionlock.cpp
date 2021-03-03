@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <boost/foreach.hpp>
 
 #include "cconsensusvote.h"

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "sendcoinsentry.h"
 #include "ui_sendcoinsentry.h"
 

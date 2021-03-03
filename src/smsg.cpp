@@ -29,6 +29,8 @@ Notes:
         For buckets older than current, only need to store no. messages and hash in memory
 
 */
+#include "compat.h"
+
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>

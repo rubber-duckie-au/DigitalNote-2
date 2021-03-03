@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "optionsdialog.h"
 #include "ui_optionsdialog.h"
 

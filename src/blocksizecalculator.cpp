@@ -3,6 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
 #include "cblockindex.h"
 #include "cdiskblockpos.h"
 #include "cscript.h"

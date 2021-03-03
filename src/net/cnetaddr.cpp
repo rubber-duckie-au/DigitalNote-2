@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <cstring>
 #include <cassert>
 

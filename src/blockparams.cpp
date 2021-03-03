@@ -5,6 +5,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 

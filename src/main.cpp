@@ -3,6 +3,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>

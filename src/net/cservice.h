@@ -5,7 +5,6 @@
 #include <string>
 
 #include "net/cnetaddr.h"
-#include "compat.h"
 
 #ifdef WIN32
 	// In MSVC, this is defined as a macro, undefine it to prevent a compile and link error

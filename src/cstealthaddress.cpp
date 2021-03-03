@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "base58.h"
 #include "serialize.h"
 #include "chashwriter.h"

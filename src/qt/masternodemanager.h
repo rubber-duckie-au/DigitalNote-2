@@ -1,6 +1,8 @@
 #ifndef MASTERNODEMANAGER_H
 #define MASTERNODEMANAGER_H
 
+#include "compat.h"
+
 #include <QMenu>
 #include <QWidget>
 #include <QTimer>

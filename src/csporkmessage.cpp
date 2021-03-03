@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "uint/uint256.h"
 #include "util.h"
 #include "hash.h"

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "transactiondesc.h"
 
 #include "bitcoinunits.h"

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "cwallettx.h"
 #include "main_const.h"
 #include "util.h"

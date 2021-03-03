@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <QClipboard>
 #include <QTime>
 #include <QThread>

@@ -1,4 +1,7 @@
+#include "compat.h"
+
 #include <boost/lexical_cast.hpp>
+
 #include "masternodeman.h"
 #include "mnengine.h"
 #include "sync.h"

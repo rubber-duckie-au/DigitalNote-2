@@ -3,6 +3,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
 #include <boost/algorithm/string/case_conv.hpp> // for to_lower()
 #include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
 

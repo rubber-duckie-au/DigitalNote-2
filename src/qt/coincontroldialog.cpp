@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <ctime>
 #include <QMessageBox>
 #include <QApplication>

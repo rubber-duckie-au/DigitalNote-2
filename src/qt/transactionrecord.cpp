@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <stdint.h>
 
 #include "base58.h"

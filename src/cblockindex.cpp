@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "cblock.h"
 #include "ctransaction.h"
 #include "cdiskblockpos.h"

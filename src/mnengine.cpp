@@ -2,6 +2,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
 #include <algorithm>
 #include <random>
 #include <openssl/rand.h>

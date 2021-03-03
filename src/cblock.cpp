@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <boost/thread.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/replace.hpp>

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "serialize.h"
 #include "crypto/bmw/bmw512.h"
 #include "addrman.h"

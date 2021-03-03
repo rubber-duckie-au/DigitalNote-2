@@ -1,3 +1,4 @@
+#include "compat.h"
 
 #include "net.h"
 #include "masternodeconfig.h"

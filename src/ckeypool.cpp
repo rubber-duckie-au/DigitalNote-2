@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "util.h"
 #include "serialize.h"
 

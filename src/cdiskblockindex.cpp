@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "cblock.h"
 #include "bignum.h"
 #include "serialize.h"

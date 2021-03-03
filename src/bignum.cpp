@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <limits>
 #include <algorithm>
 

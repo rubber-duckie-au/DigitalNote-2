@@ -1,8 +1,6 @@
-#include <boost/assign/list_of.hpp>
+#include "compat.h"
 
-#ifndef WIN32
-	#include <netinet/in.h>
-#endif // WIN32
+#include <boost/assign/list_of.hpp>
 
 #include "util.h"
 #include "ctxin.h"

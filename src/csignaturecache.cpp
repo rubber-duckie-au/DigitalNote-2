@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <boost/tuple/tuple_comparison.hpp>
 
 #include "uint/uint256.h"

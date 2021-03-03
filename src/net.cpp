@@ -2,6 +2,9 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+#include "compat.h"
+
 #ifdef WIN32
 #include <string.h>
 #else

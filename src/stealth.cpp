@@ -2,9 +2,6 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
-#include "stealth.h"
-#include "base58.h"
-
 #include <openssl/rand.h>
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
@@ -12,6 +9,9 @@
 #include <openssl/sha.h>
 
 #include "util.h"
+#include "base58.h"
+
+#include "stealth.h"
 
 template <typename T, typename Iterator>
 T from_big_endian(Iterator in)

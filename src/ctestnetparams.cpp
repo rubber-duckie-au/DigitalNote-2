@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <boost/assign/list_of.hpp>
 
 #include "util.h"

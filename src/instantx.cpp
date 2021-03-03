@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <map>
 
 #include "util.h"

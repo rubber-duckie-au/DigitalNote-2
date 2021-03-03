@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "caddrinfo.h"
 #include "addrman.h"
 #include "ccriticalblock.h"

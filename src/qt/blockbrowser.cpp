@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <sstream>
 #include <string>
 #include <iomanip>

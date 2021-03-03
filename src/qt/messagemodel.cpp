@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <QSet>
 #include <QTimer>
 #include <QDateTime>

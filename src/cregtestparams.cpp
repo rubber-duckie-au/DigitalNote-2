@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "ctxin.h"
 #include "ctxout.h"
 #include "genesis.h"

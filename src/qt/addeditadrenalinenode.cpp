@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "addeditadrenalinenode.h"
 #include "ui_addeditadrenalinenode.h"
 #include "masternodeconfig.h"

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <boost/filesystem.hpp>
 
 #include "util.h"

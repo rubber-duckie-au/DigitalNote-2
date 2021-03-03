@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <QFont>
 #include <QDebug>
 #include <boost/foreach.hpp>

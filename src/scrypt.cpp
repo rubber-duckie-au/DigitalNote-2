@@ -27,6 +27,8 @@
  * online backup system.
  */
 
+#include "compat.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 
