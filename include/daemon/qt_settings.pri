@@ -7,9 +7,6 @@ CONFIG -= qt
 CONFIG -= app_bundle
 CONFIG -= debug_and_release
 
-CONFIG += strict_c++
-CONFIG += c++17
-
 QT -= core
 QT -= gui
 QT -= dbus

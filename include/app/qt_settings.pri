@@ -4,10 +4,6 @@ CONFIG += thread
 CONFIG += widgets
 CONFIG += openssl
 CONFIG += static
-
-CONFIG += strict_c++
-CONFIG += c++17
-
 CONFIG -= debug_and_release
 
 CODECFORTR = UTF-8
