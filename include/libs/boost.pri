@@ -1,32 +1,31 @@
 win32 {
-	LIB_PATH = $${DIGITALNOTE_LIB_DIR}/$${DIGITALNOTE_LIB_BOOST_NAME}
 	FAIL = 0
 	
-	exists($${LIB_PATH}/stage/lib/libboost_system$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
+	exists($${DIGITALNOTE_LIB_BOOST_DIR}/stage/lib/libboost_system$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
 		message("found boost system lib")
 	} else {
 		FAIL = 1
 	}
 	
-	exists($${LIB_PATH}/stage/lib/libboost_filesystem$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
+	exists($${DIGITALNOTE_LIB_BOOST_DIR}/stage/lib/libboost_filesystem$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
 		message("found boost filesystem lib")
 	} else {
 		FAIL = 1
 	}
 	
-	exists($${LIB_PATH}/stage/lib/libboost_program_options$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
+	exists($${DIGITALNOTE_LIB_BOOST_DIR}/stage/lib/libboost_program_options$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
 		message("found boost program options lib")
 	} else {
 		FAIL = 1
 	}
 	
-	exists($${LIB_PATH}/stage/lib/libboost_thread$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
+	exists($${DIGITALNOTE_LIB_BOOST_DIR}/stage/lib/libboost_thread$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
 		message("found boost thread lib")
 	} else {
 		FAIL = 1
 	}
 	
-	exists($${LIB_PATH}/stage/lib/libboost_chrono$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
+	exists($${DIGITALNOTE_LIB_BOOST_DIR}/stage/lib/libboost_chrono$${DIGITALNOTE_LIB_BOOST_SUFFIX}.a) {
 		message("found boost chrono lib")
 	} else {
 		FAIL = 1
@@ -40,9 +39,15 @@ win32 {
 		message("	DIGITALNOTE_LIB_BOOST_SUFFIX = -mgw7-mt-d-x64-1_75")
 	}
 	
-	QMAKE_LIBDIR += $${LIB_PATH}/stage/lib
-	INCLUDEPATH += $${LIB_PATH}
-	DEPENDPATH += $${LIB_PATH}
+	QMAKE_LIBDIR += $${DIGITALNOTE_LIB_BOOST_DIR}/stage/lib
+	INCLUDEPATH += $${DIGITALNOTE_LIB_BOOST_DIR}
+	DEPENDPATH += $${DIGITALNOTE_LIB_BOOST_DIR}
+}
+
+macx {
+	QMAKE_LIBDIR += $${DIGITALNOTE_LIB_BOOST_DIR}/lib
+	INCLUDEPATH += $${DIGITALNOTE_LIB_BOOST_DIR}/include
+	DEPENDPATH += $${DIGITALNOTE_LIB_BOOST_DIR}/include
 }
 
 LIBS += -lboost_system$${DIGITALNOTE_LIB_BOOST_SUFFIX}

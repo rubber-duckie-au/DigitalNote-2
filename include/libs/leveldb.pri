@@ -1,7 +1,6 @@
-LIB_PATH = $${DIGITALNOTE_PATH}/src/leveldb
 COMPILE_LEVELDB = 0
 
-exists($${LIB_PATH}/libleveldb.a) : exists($${LIB_PATH}/libmemenv.a) {
+exists($${DIGITALNOTE_LIB_LEVELDB_DIR}/libleveldb.a) : exists($${DIGITALNOTE_LIB_LEVELDB_DIR}/libmemenv.a) {
 	message("found leveldb lib")
 	message("found memenv lib")
 } else {
@@ -14,21 +13,23 @@ exists($${LIB_PATH}/libleveldb.a) : exists($${LIB_PATH}/libmemenv.a) {
 
 contains(COMPILE_LEVELDB, 1) {
 	# we use QMAKE_CXXFLAGS_RELEASE even without RELEASE=1 because we use RELEASE to indicate linking preferences not -O preferences
-	extra_leveldb.commands = cd $${LIB_PATH} && CC=$$QMAKE_CC CXX=$$QMAKE_CXX $(MAKE) OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a
-	extra_leveldb.target = $${LIB_PATH}/libleveldb.a
+	extra_leveldb.commands = cd $${DIGITALNOTE_LIB_LEVELDB_DIR} && CC=$$QMAKE_CC CXX=$$QMAKE_CXX $(MAKE) OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a
+	extra_leveldb.target = $${DIGITALNOTE_LIB_LEVELDB_DIR}/libleveldb.a
 	extra_leveldb.depends = FORCE
 
-	PRE_TARGETDEPS += $${LIB_PATH}/libleveldb.a
+	PRE_TARGETDEPS += $${DIGITALNOTE_LIB_LEVELDB_DIR}/libleveldb.a
 	QMAKE_EXTRA_TARGETS += extra_leveldb
 
 	# Gross ugly hack that depends on qmake internals, unfortunately there is no other way to do it.
-	QMAKE_CLEAN += $${LIB_PATH}/libleveldb.a; cd $${LIB_PATH}; $(MAKE) clean
+	QMAKE_CLEAN += $${DIGITALNOTE_LIB_LEVELDB_DIR}/libleveldb.a; cd $${DIGITALNOTE_LIB_LEVELDB_DIR}; $(MAKE) clean
 }
 
-QMAKE_LIBDIR += $${LIB_PATH}
+QMAKE_LIBDIR += $${DIGITALNOTE_LIB_LEVELDB_DIR}
+
 LIBS += -lleveldb
 LIBS += -lmemenv
-INCLUDEPATH += $${LIB_PATH}/include
-DEPENDPATH += $${LIB_PATH}/include
-INCLUDEPATH += $${LIB_PATH}/helpers
-DEPENDPATH += $${LIB_PATH}/helpers
+
+INCLUDEPATH += $${DIGITALNOTE_LIB_LEVELDB_DIR}/include
+DEPENDPATH += $${DIGITALNOTE_LIB_LEVELDB_DIR}/include
+INCLUDEPATH += $${DIGITALNOTE_LIB_LEVELDB_DIR}/helpers
+DEPENDPATH += $${DIGITALNOTE_LIB_LEVELDB_DIR}/helpers

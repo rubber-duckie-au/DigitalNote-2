@@ -6,6 +6,10 @@ CONFIG += static
 CONFIG -= qt
 CONFIG -= app_bundle
 
+CONFIG -= c++17
+CONFIG -= c++14
+CONFIG -= c++11
+
 QT -= core
 QT -= gui
 QT -= dbus

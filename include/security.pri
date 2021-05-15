@@ -1,7 +1,7 @@
 !win32 {
 	# for extra security against potential buffer overflows: enable GCCs Stack Smashing Protection
-	QMAKE_CXXFLAGS += -fstack-protector-all --param ssp-buffer-size=1
-	QMAKE_LFLAGS += -fstack-protector-all --param ssp-buffer-size=1
+	QMAKE_CXXFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
+	QMAKE_LFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
 } else {
 	# for extra security on Windows: enable ASLR and DEP via GCC linker flags
 	QMAKE_LFLAGS += -Wl,--dynamicbase

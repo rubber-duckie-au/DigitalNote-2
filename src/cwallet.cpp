@@ -533,80 +533,80 @@ void CWallet::AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed, 
 void CWallet::AvailableCoinsMN(std::vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl,
 		AvailableCoinsType coin_type, bool useIX) const
 {
-    vCoins.clear();
+	vCoins.clear();
 
-    {
-        LOCK2(cs_main, cs_wallet);
-		
-        for (std::map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
-        {
-            const CWalletTx* pcoin = &(*it).second;
+	{
+		LOCK2(cs_main, cs_wallet);
 
-            if (!IsFinalTx(*pcoin))
+		for (std::map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+		{
+			const CWalletTx* pcoin = &(*it).second;
+
+			if (!IsFinalTx(*pcoin))
 			{
-                continue;
+				continue;
+			}
+
+			if (fOnlyConfirmed && !pcoin->IsTrusted())
+			{
+				continue;
+			}
+
+			if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+			{
+				continue;
+			}
+
+			if(pcoin->IsCoinStake() && pcoin->GetBlocksToMaturity() > 0)
+			{
+				continue;
 			}
 			
-            if (fOnlyConfirmed && !pcoin->IsTrusted())
+			int nDepth = pcoin->GetDepthInMainChain();
+			if (nDepth <= 0) // NOTE: coincontrol fix / ignore 0 confirm
 			{
-                continue;
+				continue;
 			}
 			
-            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+			// do not use IX for inputs that have less then 6 blockchain confirmations
+			if (useIX && nDepth < 10)
 			{
-                continue;
+				continue;
 			}
 			
-            if(pcoin->IsCoinStake() && pcoin->GetBlocksToMaturity() > 0)
+			for (unsigned int i = 0; i < pcoin->vout.size(); i++)
 			{
-                continue;
-			}
-			
-            int nDepth = pcoin->GetDepthInMainChain();
-            if (nDepth <= 0) // NOTE: coincontrol fix / ignore 0 confirm
-			{
-                continue;
-			}
-			
-            // do not use IX for inputs that have less then 6 blockchain confirmations
-            if (useIX && nDepth < 10)
-			{
-                continue;
-			}
-			
-            for (unsigned int i = 0; i < pcoin->vout.size(); i++)
-			{
-                bool found = false;
-                
+				bool found = false;
+
 				if(coin_type == ONLY_NOT10000IFMN)
 				{
-                    found = !(fMasterNode && pcoin->vout[i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN);
-                }
+					found = !(fMasterNode && pcoin->vout[i].nValue == MasternodeCollateral(pindexBest->nHeight)*COIN);
+				}
 				else if (coin_type == ONLY_NONDENOMINATED_NOT10000IFMN)
 				{
-                    if (IsCollateralAmount(pcoin->vout[i].nValue))
+					if (IsCollateralAmount(pcoin->vout[i].nValue))
 					{
 						continue; // do not use collateral amounts
-                    }
+					}
 					
 					if(fMasterNode)
 					{
 						found = pcoin->vout[i].nValue != MasternodeCollateral(pindexBest->nHeight)*COIN; // do not use Hot MN funds
 					}
-                }
+				}
 				else
 				{
-                    found = true;
-                }
-                
+					found = true;
+				}
+				
 				if(!found)
 				{
 					continue;
 				}
 				
-                isminetype mine = IsMine(pcoin->vout[i]);
-
-                if (
+				isminetype mine = IsMine(pcoin->vout[i]);
+				
+				if (
 					!(pcoin->IsSpent(i)) &&
 					mine != ISMINE_NO &&
 					!IsLockedCoin((*it).first, i) &&
@@ -617,12 +617,12 @@ void CWallet::AvailableCoinsMN(std::vector<COutput>& vCoins, bool fOnlyConfirmed
 						coinControl->IsSelected((*it).first, i)
 					)
 				)
-                {
+				{
 					vCoins.push_back(COutput(pcoin, i, nDepth, (mine & ISMINE_SPENDABLE) != ISMINE_NO));
 				}
-            }
-        }
-    }
+			}
+		}
+	}
 }
 
 bool CWallet::SelectCoinsMinConf(int64_t nTargetValue, unsigned int nSpendTime, int nConfMine, int nConfTheirs,

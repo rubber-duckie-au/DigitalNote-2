@@ -5,6 +5,10 @@ CONFIG += widgets
 CONFIG += openssl
 CONFIG += static
 
+CONFIG -= c++17
+CONFIG -= c++14
+CONFIG -= c++11
+
 CODECFORTR = UTF-8
 
 QT += core

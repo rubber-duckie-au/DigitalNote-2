@@ -7,7 +7,7 @@ include(DigitalNote_config.pri)
 
 include(include/base.pri)
 
-TARGET = DigitalNote
+TARGET = DigitalNoted
 
 DEFINES += ENABLE_WALLET
 

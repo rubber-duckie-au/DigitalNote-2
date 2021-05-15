@@ -1,32 +1,37 @@
-LIB_PATH = $${DIGITALNOTE_PATH}/src/leveldb-2.11
-COMPILE_LEVELDB = 0
-
-exists($${LIB_PATH}/build/libleveldb.a) {
-	message("found leveldb lib")
-} else {
-	!win32 {
+!win32 {
+	COMPILE_LEVELDB = 0
+	
+	exists($${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/build/libleveldb.so) {
+		message("found leveldb lib")
+	} else {
 		COMPILE_LEVELDB = 1
+	}
+	
+	contains(COMPILE_LEVELDB, 1) {
+		# we use QMAKE_CXXFLAGS_RELEASE even without RELEASE=1 because we use RELEASE to indicate linking preferences not -O preferences
+		extra_leveldb.commands = cd $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}; mkdir -p build && cd build; cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 .. && cmake --build .
+		extra_leveldb.target = $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/build/libleveldb.so
+		extra_leveldb.depends = FORCE
+
+		PRE_TARGETDEPS += $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/build/libleveldb.so
+		QMAKE_EXTRA_TARGETS += extra_leveldb
+
+		# Gross ugly hack that depends on qmake internals, unfortunately there is no other way to do it.
+		#QMAKE_CLEAN += 
+	}
+}
+
+win32 {
+	exists($${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/build/libleveldb.a) {
+		message("found leveldb lib")
 	} else {
 		message("You need to compile leveldb yourself with msys2.")
 	}
 }
 
-contains(COMPILE_LEVELDB, 1) {
-	# we use QMAKE_CXXFLAGS_RELEASE even without RELEASE=1 because we use RELEASE to indicate linking preferences not -O preferences
-	extra_leveldb.commands = cd $${LIB_PATH}; mkdir -p build && cd build; cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build .
-	extra_leveldb.target = $${LIB_PATH}/build/libleveldb.a
-	extra_leveldb.depends = FORCE
-
-	PRE_TARGETDEPS += $${LIB_PATH}/build/libleveldb.a
-	QMAKE_EXTRA_TARGETS += extra_leveldb
-
-	# Gross ugly hack that depends on qmake internals, unfortunately there is no other way to do it.
-	#QMAKE_CLEAN += 
-}
-
-QMAKE_LIBDIR += $${LIB_PATH}/build
+QMAKE_LIBDIR += $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/build
 LIBS += -lleveldb
-INCLUDEPATH += $${LIB_PATH}/include
-DEPENDPATH += $${LIB_PATH}/include
-INCLUDEPATH += $${LIB_PATH}/helpers
-DEPENDPATH += $${LIB_PATH}/helpers
+INCLUDEPATH += $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/include
+DEPENDPATH += $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/include
+INCLUDEPATH += $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/helpers
+DEPENDPATH += $${DIGITALNOTE_LIB_LEVELDB_NEW_DIR}/helpers

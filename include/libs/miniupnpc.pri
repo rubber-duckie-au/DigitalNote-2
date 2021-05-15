@@ -11,9 +11,7 @@ contains(USE_UPNP, -) {
 	LIBS += -lminiupnpc
 	
 	win32 {
-		LIB_PATH = $${DIGITALNOTE_LIB_DIR}/$${DIGITALNOTE_LIB_MINIUPNP_NAME}
-		
-		exists($${LIB_PATH}/libminiupnpc.a) {
+		exists($${DIGITALNOTE_LIB_MINIUPNP_DIR}/libminiupnpc.a) {
 			message("found MiniUPNP lib")
 		} else {
 			message("You need to compile lib MiniUPNP yourself.")
@@ -22,9 +20,9 @@ contains(USE_UPNP, -) {
 			message("	DIGITALNOTE_LIB_MINIUPNP_NAME = miniupnpc-2.1")
 		}
 		
-		QMAKE_LIBDIR += $${LIB_PATH}
-		INCLUDEPATH += $${LIB_PATH}/../
-		DEPENDPATH += $${LIB_PATH}/../
+		QMAKE_LIBDIR += $${DIGITALNOTE_LIB_MINIUPNP_DIR}
+		INCLUDEPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
+		DEPENDPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
 		LIBS += -liphlpapi
 	}
 }

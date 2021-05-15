@@ -3,9 +3,7 @@ contains(USE_QRCODE, 1) {
     message(Building with QRCode support)
     
 	win32 {
-		LIB_PATH = $${DIGITALNOTE_LIB_DIR}/$${DIGITALNOTE_LIB_QRENCODE_NAME}
-		
-		exists($${LIB_PATH}/.libs/libqrencode.a) {
+		exists($${DIGITALNOTE_LIB_QRENCODE_DIR}/.libs/libqrencode.a) {
 			message("found QREncode lib.")
 		} else {
 			message("You need to compile lib QREncode yourself with msys2.")
@@ -14,13 +12,16 @@ contains(USE_QRCODE, 1) {
 			message("	DIGITALNOTE_LIB_QRENCODE_NAME = qrencode-4.1.1")
 		}
 		
-		QMAKE_LIBDIR += $${LIB_PATH}/.libs
+		QMAKE_LIBDIR += $${DIGITALNOTE_LIB_QRENCODE_DIR}/.libs
 	}
 	
 	DEFINES += USE_QRCODE
-	INCLUDEPATH += $${LIB_PATH}
-	DEPENDPATH += $${LIB_PATH}
-    LIBS += -lqrencode
+	
+	INCLUDEPATH += $${DIGITALNOTE_LIB_QRENCODE_DIR}
+	DEPENDPATH += $${DIGITALNOTE_LIB_QRENCODE_DIR}
+    
+	LIBS += -lqrencode
+	
 	HEADERS += src/qt/qrcodedialog.h
 	SOURCES += src/qt/qrcodedialog.cpp
 	FORMS += src/qt/forms/qrcodedialog.ui

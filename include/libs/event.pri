@@ -1,7 +1,5 @@
 win32 {
-	LIB_PATH = $${DIGITALNOTE_LIB_DIR}/$${DIGITALNOTE_LIB_EVENT_NAME}
-	
-	exists($${LIB_PATH}/.libs/libevent.a) {
+	exists($${DIGITALNOTE_LIB_EVENT_DIR}/.libs/libevent.a) {
 		message("found event lib")
 	} else {
 		message("You need to compile lib event yourself.")
@@ -10,9 +8,9 @@ win32 {
 		message("	DIGITALNOTE_LIB_EVENT_NAME = libevent-2.1.11-stable")
 	}
 	
-	QMAKE_LIBDIR += $${LIB_PATH}/.libs
-	INCLUDEPATH += $${LIB_PATH}/include
-	DEPENDPATH += $${LIB_PATH}/include
+	QMAKE_LIBDIR += $${DIGITALNOTE_LIB_EVENT_DIR}/.libs
+	INCLUDEPATH += $${DIGITALNOTE_LIB_EVENT_DIR}/include
+	DEPENDPATH += $${DIGITALNOTE_LIB_EVENT_DIR}/include
 }
 
 LIBS += -levent

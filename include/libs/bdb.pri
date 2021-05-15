@@ -1,7 +1,5 @@
 win32 {
-	LIB_PATH = $${DIGITALNOTE_LIB_DIR}/$${DIGITALNOTE_LIB_BDB_NAME}
-	
-	exists($${LIB_PATH}/build_unix/libdb_cxx$${BDB_LIB_SUFFIX}.a) {
+	exists($${DIGITALNOTE_LIB_BDB_DIR}/build_unix/libdb_cxx$${BDB_LIB_SUFFIX}.a) {
 		message("found BerkeleyDB lib")
 	} else {
 		message("You need to compile lib BerkeleyDB yourself.")
@@ -10,9 +8,9 @@ win32 {
 		message("	DIGITALNOTE_LIB_BDB_NAME = db-6.2.32.NC")
 	}
 	
-	QMAKE_LIBDIR += $${LIB_PATH}/build_unix
-	INCLUDEPATH += $${LIB_PATH}/build_unix
-	DEPENDPATH += $${LIB_PATH}/build_unix
+	QMAKE_LIBDIR += $${DIGITALNOTE_LIB_BDB_DIR}/build_unix
+	INCLUDEPATH += $${DIGITALNOTE_LIB_BDB_DIR}/build_unix
+	DEPENDPATH += $${DIGITALNOTE_LIB_BDB_DIR}/build_unix
 }
 
 LIBS += -ldb_cxx$${BDB_LIB_SUFFIX}

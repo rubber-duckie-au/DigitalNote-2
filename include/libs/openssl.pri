@@ -1,14 +1,13 @@
 win32 {
-	LIB_PATH = $${DIGITALNOTE_LIB_DIR}/$${DIGITALNOTE_LIB_OPENSSL_NAME}
 	FAIL = 0
 	
-	exists($${LIB_PATH}/libssl.a) {
+	exists($${DIGITALNOTE_LIB_OPENSSL_DIR}/libssl.a) {
 		message("found ssl lib")
 	} else {
 		FAIL = 1
 	}
 	
-	exists($${LIB_PATH}/libcrypto.a) {
+	exists($${DIGITALNOTE_LIB_OPENSSL_DIR}/libcrypto.a) {
 		message("found crypto lib")
 	} else {
 		FAIL = 1
@@ -21,9 +20,15 @@ win32 {
 		message("	DIGITALNOTE_LIB_OPENSSL_NAME = openssl-1.0.2u")
 	}
 	
-	QMAKE_LIBDIR += $${LIB_PATH}
-	INCLUDEPATH += $${LIB_PATH}/include
-	DEPENDPATH += $${LIB_PATH}/include
+	QMAKE_LIBDIR += $${DIGITALNOTE_LIB_OPENSSL_DIR}
+	INCLUDEPATH += $${DIGITALNOTE_LIB_OPENSSL_DIR}/include
+	DEPENDPATH += $${DIGITALNOTE_LIB_OPENSSL_DIR}/include
+}
+
+macx {
+	QMAKE_LIBDIR += $${DIGITALNOTE_LIB_OPENSSL_DIR}/lib
+	INCLUDEPATH += $${DIGITALNOTE_LIB_OPENSSL_DIR}/include
+	DEPENDPATH += $${DIGITALNOTE_LIB_OPENSSL_DIR}/include
 }
 
 LIBS += -lssl
