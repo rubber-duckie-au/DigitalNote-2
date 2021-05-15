@@ -5,10 +5,10 @@ CONFIG += openssl
 CONFIG += static
 CONFIG -= qt
 CONFIG -= app_bundle
+CONFIG -= debug_and_release
 
-CONFIG -= c++17
-CONFIG -= c++14
-CONFIG -= c++11
+CONFIG += strict_c++
+CONFIG += c++17
 
 QT -= core
 QT -= gui

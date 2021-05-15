@@ -14,6 +14,7 @@ src/DigitalNoted
 *.o
 *.patch
 *.gch
+*.exe
 .DigitalNote
 DigitalNote
 DigitalNote-qt

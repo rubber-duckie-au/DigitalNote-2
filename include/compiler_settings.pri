@@ -1,7 +1,6 @@
 QMAKE_CXXFLAGS = 
 
 QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option
-QMAKE_CXXFLAGS_WARN_ON += -std=c++17
 QMAKE_CXXFLAGS_WARN_ON += -fpermissive
 #QMAKE_CXXFLAGS_WARN_ON += -Wall
 #QMAKE_CXXFLAGS_WARN_ON += -Wextra

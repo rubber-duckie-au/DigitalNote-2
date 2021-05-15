@@ -5,9 +5,10 @@ CONFIG += widgets
 CONFIG += openssl
 CONFIG += static
 
-CONFIG -= c++17
-CONFIG -= c++14
-CONFIG -= c++11
+CONFIG += strict_c++
+CONFIG += c++17
+
+CONFIG -= debug_and_release
 
 CODECFORTR = UTF-8
 
