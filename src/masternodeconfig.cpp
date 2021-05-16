@@ -1,5 +1,6 @@
 #include "compat.h"
 
+#include "cinv.h"
 #include "net.h"
 #include "masternodeconfig.h"
 #include "util.h"
