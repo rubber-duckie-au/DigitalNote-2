@@ -2,6 +2,7 @@
 
 #include <boost/foreach.hpp>
 
+#include "cinv.h"
 #include "net/cbanentry.h"
 #include "net/cnodestats.h"
 #include "net/cnetmessage.h"
@@ -9,7 +10,6 @@
 #include "net.h"
 #include "ccriticalblock.h"
 #include "util.h"
-#include "cinv.h"
 #include "netbase.h"
 #include "net/csubnet.h"
 #include "net/myclosesocket.h"
