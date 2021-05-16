@@ -1,3 +1,10 @@
+macx {
+	LIBS += -framework Foundation
+	LIBS += -framework ApplicationServices
+	LIBS += -framework AppKit
+	LIBS += -framework CoreServices
+}
+
 !win32 {
 	LIBS += -ldl
 	LIBS += -lrt

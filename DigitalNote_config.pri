@@ -37,16 +37,11 @@ macx {
 	QMAKE_LFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
 	QMAKE_OBJECTIVE_CFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
 	
-	HEADERS += src/qt/macdockiconhandler.h
-	HEADERS += src/qt/macnotificationhandler.h
+	#HEADERS += src/qt/macdockiconhandler.h
+	#HEADERS += src/qt/macnotificationhandler.h
 	
-	OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
-	OBJECTIVE_SOURCES += src/qt/macnotificationhandler.mm
-	
-	LIBS += -framework Foundation
-	LIBS += -framework ApplicationServices
-	LIBS += -framework AppKit
-	LIBS += -framework CoreServices
+	#OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
+	#OBJECTIVE_SOURCES += src/qt/macnotificationhandler.mm
 	
 	DEFINES += MAC_OSX
 	DEFINES += MSG_NOSIGNAL=0
