@@ -1,5 +1,6 @@
 #include "compat.h"
 
+#include "cinv.h"
 #include "cwallet.h"
 #include "cblockindex.h"
 #include "mining.h"
