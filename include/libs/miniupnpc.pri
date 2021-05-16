@@ -6,10 +6,6 @@
 contains(USE_UPNP, -) {
 	message(Building without UPNP support)
 } else {
-	DEFINES += MINIUPNP_STATICLIB
-	DEFINES += USE_UPNP
-	LIBS += -lminiupnpc
-	
 	win32 {
 		exists($${DIGITALNOTE_LIB_MINIUPNP_DIR}/libminiupnpc.a) {
 			message("found MiniUPNP lib")
@@ -21,8 +17,21 @@ contains(USE_UPNP, -) {
 		}
 		
 		QMAKE_LIBDIR += $${DIGITALNOTE_LIB_MINIUPNP_DIR}
+		
 		INCLUDEPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
 		DEPENDPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
+		
 		LIBS += -liphlpapi
 	}
+	
+	macx {
+		QMAKE_LIBDIR += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/lib
+		INCLUDEPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/include
+		DEPENDPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/include
+	}
+	
+	LIBS += -lminiupnpc
+	
+	DEFINES += MINIUPNP_STATICLIB
+	DEFINES += USE_UPNP
 }
