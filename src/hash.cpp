@@ -81,9 +81,9 @@ uint256 Hash(const T1 p1begin, const T1 p1end, const T2 p2begin, const T2 p2end,
 
 template uint256 Hash<char*>(char*, char*);
 template uint256 Hash<char*, char*>(char*, char*, char*, char*);
-template uint256 Hash<__gnu_cxx::__normal_iterator<char*, std::vector<char, zero_after_free_allocator<char> > > >(__gnu_cxx::__normal_iterator<char*, std::vector<char, zero_after_free_allocator<char> > >, __gnu_cxx::__normal_iterator<char*, std::vector<char, zero_after_free_allocator<char> > >);
-template uint256 Hash<__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, std::allocator<unsigned char> > > >(__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, std::allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, std::allocator<unsigned char> > >);
-template uint256 Hash<__gnu_cxx::__normal_iterator<char const*, std::string > >(__gnu_cxx::__normal_iterator<char const*, std::string>, __gnu_cxx::__normal_iterator<char const*, std::string>);
+template uint256 Hash<CDataStream::iterator>(CDataStream::iterator, CDataStream::iterator);
+template uint256 Hash<ec_point::iterator>(ec_point::iterator, ec_point::iterator);
+template uint256 Hash<std::string::const_iterator>(std::string::const_iterator, std::string::const_iterator);
 
 template<typename T>
 uint256 SerializeHash(const T& obj, int nType, int nVersion)

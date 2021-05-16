@@ -9,6 +9,7 @@
 #include "uint/uint256.h"
 #include "cpubkey.h"
 #include "hash.h"
+#include "crypter.h"
 
 #include "ckey.h"
 
@@ -219,7 +220,7 @@ void CKey::Set(const T pbegin, const T pend, bool fCompressedIn)
 
 template void CKey::Set<unsigned char*>(unsigned char*, unsigned char*, bool); 
 template void CKey::Set<unsigned char const*>(unsigned char const*, unsigned char const*, bool);
-template void CKey::Set<__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, secure_allocator<unsigned char> > > >(__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, secure_allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, secure_allocator<unsigned char> > >, bool);
+template void CKey::Set<CKeyingMaterial::iterator>(CKeyingMaterial::iterator, CKeyingMaterial::iterator, bool);
 
 // Simple read-only vector-like interface.
 unsigned int CKey::size() const

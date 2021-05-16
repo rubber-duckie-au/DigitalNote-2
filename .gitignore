@@ -16,7 +16,7 @@ src/DigitalNoted
 *.gch
 *.exe
 .DigitalNote
-DigitalNote
+DigitalNoted
 DigitalNote-qt
 DigitalNote-Qt.dmg
 DigitalNote-Qt.app

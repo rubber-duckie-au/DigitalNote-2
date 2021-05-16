@@ -17,12 +17,18 @@ win32 {
 }
 
 macx {
+	DIGITALNOTE_LIB_BOOST_DIR = /usr/local/Cellar/boost/1.74.0
+	DIGITALNOTE_LIB_BOOST_SUFFIX = -mgw7-mt-d-x64-1_75
+	DIGITALNOTE_LIB_OPENSSL_DIR = /usr/local/Cellar/openssl@1.1/1.1.1h
+	DIGITALNOTE_LIB_BDB_DIR = /usr/local/Cellar/berkeley-db@6.2.32
+	DIGITALNOTE_LIB_EVENT_DIR = /usr/local
+	DIGITALNOTE_LIB_GMP_DIR = /usr/local
+	DIGITALNOTE_LIB_MINIUPNP_DIR = /usr/local/Cellar/miniupnpc/2.1
+	DIGITALNOTE_LIB_QRENCODE_DIR = /usr/local
+	
 	DIGITALNOTE_MAC_SDK_DIR = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
 	DIGITALNOTE_MAC_SDK_VERSION = 10.15
 	DIGITALNOTE_MAC_SDK_VERSION_MIN = 10.13
-	
-	DIGITALNOTE_LIB_BOOST_DIR = /usr/local/Cellar/boost/1.74.0
-	DIGITALNOTE_LIB_OPENSSL_DIR = /usr/local/Cellar/openssl@1.1/1.1.1h
 	
 	DIGITALNOTE_MAC_QMAKE_FLAGS = -mmacosx-version-min=$${DIGITALNOTE_MAC_SDK_VERSION_MIN} -isysroot $${DIGITALNOTE_MAC_SDK_DIR}/MacOSX$${DIGITALNOTE_MAC_SDK_VERSION}.sdk
 	
