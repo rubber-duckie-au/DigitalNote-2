@@ -19,6 +19,7 @@
 #include "creservekey.h"
 #include "coutput.h"
 #include "script.h"
+#include "cinv.h"
 #include "net/cnode.h"
 #include "net.h"
 #include "ckey.h"
