@@ -23,6 +23,7 @@
 #include "cwallettx.h"
 #include "mining.h"
 #include "creservekey.h"
+#include "cinv.h"
 #include "net/cnode.h"
 #include "net.h"
 #include "chashwriter.h"
