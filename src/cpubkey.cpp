@@ -3,12 +3,13 @@
 #include <secp256k1_recovery.h>
 
 #include "serialize.h"
-#include "cpubkey.h"
 #include "ckeyid.h"
 #include "hash.h"
 #include "uint/uint256.h"
 #include "crypto/bmw/bmw512.h"
 #include "secp256k1_context_verify.h"
+
+#include "cpubkey.h"
 
 /** This function is taken from the libsecp256k1 distribution and implements
  *  DER parsing for ECDSA signatures, while supporting an arbitrary subset of
