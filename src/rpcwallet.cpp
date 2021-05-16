@@ -10,6 +10,7 @@
 #include "stealth.h"
 #include "rpcserver.h"
 #include "init.h"
+#include "cinv.h"
 #include "net.h"
 #include "util.h"
 #include "walletdb.h"
