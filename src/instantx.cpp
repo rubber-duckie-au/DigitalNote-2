@@ -4,6 +4,7 @@
 
 #include "util.h"
 #include "spork.h"
+#include "cinv.h"
 #include "net.h"
 #include "cvalidationstate.h"
 #include "cblock.h"
