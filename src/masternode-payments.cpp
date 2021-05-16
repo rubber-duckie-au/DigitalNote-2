@@ -12,6 +12,7 @@
 #include "sync.h"
 #include "spork.h"
 #include "script.h"
+#include "cinv.h"
 #include "net/cnode.h"
 #include "net.h"
 #include "ckey.h"
