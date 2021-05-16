@@ -19,6 +19,7 @@
 #include "cblocklocator.h"
 #include "cwallet.h"
 #include "script.h"
+#include "cinv.h"
 #include "net/cnode.h"
 #include "net.h"
 #include "masternode-payments.h"
@@ -27,7 +28,6 @@
 #include "txmempool.h"
 #include "ckey.h"
 #include "ctxout.h"
-#include "cinv.h"
 
 #include "cblock.h"
 
