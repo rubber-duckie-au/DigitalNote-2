@@ -18,7 +18,7 @@ win32 {
 
 macx {
 	DIGITALNOTE_LIB_BOOST_DIR = /usr/local/Cellar/boost/1.74.0
-	DIGITALNOTE_LIB_BOOST_SUFFIX = -mgw7-mt-d-x64-1_75
+	DIGITALNOTE_LIB_BOOST_SUFFIX = -mt
 	DIGITALNOTE_LIB_OPENSSL_DIR = /usr/local/Cellar/openssl@1.1/1.1.1h
 	DIGITALNOTE_LIB_BDB_DIR = /usr/local/Cellar/berkeley-db@6.2.32
 	DIGITALNOTE_LIB_EVENT_DIR = /usr/local
