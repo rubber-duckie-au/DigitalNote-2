@@ -5,7 +5,7 @@ macx {
 	LIBS += -framework CoreServices
 }
 
-!win32 {
+!windows:!macx {
 	LIBS += -ldl
 	LIBS += -lrt
 }
