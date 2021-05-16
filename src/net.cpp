@@ -21,6 +21,7 @@
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 
+#include "cinv.h"
 #include "chainparams.h"
 #include "ui_interface.h"
 #include "mnengine.h"
@@ -34,7 +35,6 @@
 #include "txmempool.h"
 #include "cdnsseeddata.h"
 #include "protocol.h"
-#include "cinv.h"
 #include "caddrman.h"
 #include "caddrinfo.h"
 #include "net/have_msg_nosignal.h"
