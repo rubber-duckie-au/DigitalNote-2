@@ -10,6 +10,7 @@
 #include "csporkmanager.h"
 #include "csporkmessage.h"
 #include "main_extern.h"
+#include "cinv.h"
 #include "net/cnode.h"
 #include "main.h"
 
