@@ -16,8 +16,7 @@ win32 {
 	contains(FAIL, 1) {
 		message("You need to compile openssl yourself with msys2.")
 		message("Also you need to configure the following variables:")
-		message("	DIGITALNOTE_LIB_DIR = $${DOLLAR}$${DOLLAR}PROJECT_PWD/../libs")
-		message("	DIGITALNOTE_LIB_OPENSSL_NAME = openssl-1.0.2u")
+		message("	DIGITALNOTE_LIB_QRENCODE_DIR = $${DOLLAR}$${DOLLAR}DIGITALNOTE_PATH/../libs/openssl-1.0.2u")
 	}
 	
 	QMAKE_LIBDIR += $${DIGITALNOTE_LIB_OPENSSL_DIR}
