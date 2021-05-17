@@ -10,6 +10,9 @@
 	## Only for 32 bit mingw compiler
 	##QMAKE_LFLAGS += -Wl,--large-address-aware
 	
+	# main.o too many sections
+	QMAKE_CXXFLAGS += -Wl,-allow-multiple-definition
+	
 	# on Windows: enable GCC large address aware linker flag
 	QMAKE_LFLAGS += -static
 	
@@ -21,5 +24,4 @@
 # for extra security (see: https://wiki.debian.org/Hardening): this flag is GCC compiler-specific
 QMAKE_CXXFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2
 
-# main.o too many sections
-QMAKE_CXXFLAGS += -Wl,-allow-multiple-definition
+
