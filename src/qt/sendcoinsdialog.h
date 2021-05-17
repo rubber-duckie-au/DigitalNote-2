@@ -5,6 +5,8 @@
 #ifndef SENDCOINSDIALOG_H
 #define SENDCOINSDIALOG_H
 
+#include "compat.h"
+
 #include "walletmodel.h"
 
 #include <QDialog>

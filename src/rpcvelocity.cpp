@@ -4,11 +4,14 @@
 // Copyright (c) 2018-2020 The DigitalNote Project
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "main.h"
-#include "rpcvelocity.h"
+
 #include <boost/assign/list_of.hpp>
 
-using namespace std;
+#include "cscript.h"
+#include "main_extern.h"
+
+#include "rpcvelocity.h"
+
 using namespace boost;
 using namespace boost::assign;
 using namespace json_spirit;

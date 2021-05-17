@@ -2,15 +2,17 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
 #include <boost/assign/list_of.hpp> // for 'map_list_of()'
 #include <boost/foreach.hpp>
 
-#include "checkpoints.h"
-
 #include "txdb.h"
-#include "main.h"
-#include "uint256.h"
+#include "uint/uint256.h"
+#include "chainparams.h"
+#include "main_extern.h"
 
+#include "checkpoints.h"
 
 static const int nCheckpointSpan = 5000;
 

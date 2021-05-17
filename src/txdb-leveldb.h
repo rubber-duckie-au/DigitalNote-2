@@ -6,14 +6,19 @@
 #ifndef BITCOIN_LEVELDB_H
 #define BITCOIN_LEVELDB_H
 
-#include "main.h"
-
 #include <map>
 #include <string>
 #include <vector>
-
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
+
+#include "util.h"
+#include "cdiskblockindex.h"
+#include "ctxindex.h"
+#include "uint/uint160.h"
+
+class CBigNum;
+class CTransaction;
 
 // Class that provides access to a LevelDB. Note that this class is frequently
 // instantiated on the stack and then destroyed again, so instantiation has to

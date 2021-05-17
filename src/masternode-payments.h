@@ -1,5 +1,3 @@
-
-
 // Copyright (c) 2014-2015 The Dash developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -7,20 +5,16 @@
 #define MASTERNODE_PAYMENTS_H
 
 #include "sync.h"
-#include "net.h"
-#include "key.h"
 #include "util.h"
 #include "base58.h"
-#include "main.h"
 #include "masternode.h"
-
-using namespace std;
+#include "hash.h"
 
 class CMasternodePayments;
 class CMasternodePaymentWinner;
 
 extern CMasternodePayments masternodePayments;
-extern map<uint256, CMasternodePaymentWinner> mapSeenMasternodeVotes;
+extern std::map<uint256, CMasternodePaymentWinner> mapSeenMasternodeVotes;
 
 void ProcessMessageMasternodePayments(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
 
@@ -80,7 +74,7 @@ public:
         enabled = false;
     }
 
-    bool SetPrivKey(std::string strPrivKey);
+    bool SetPrivKey(const std::string &strPrivKey);
     bool CheckSignature(CMasternodePaymentWinner& winner);
     bool Sign(CMasternodePaymentWinner& winner);
 
@@ -98,8 +92,8 @@ public:
     void CleanPaymentList();
     int LastPayment(CMasternode& mn);
     int GetMinMasternodePaymentsProto();
-
-    bool GetBlockPayee(int nBlockHeight, CScript& payee, CTxIn& vin);
+	
+	bool GetBlockPayee(int nBlockHeight, CScript& payee, CTxIn& vin);
 };
 
 

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "askpassphrasedialog.h"
 #include "ui_askpassphrasedialog.h"
 

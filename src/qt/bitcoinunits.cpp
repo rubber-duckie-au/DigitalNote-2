@@ -3,11 +3,14 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "bitcoinunits.h"
-#include "main.h"
+#include "compat.h"
 
 #include <QSettings>
 #include <QStringList>
+
+#include "main_const.h"
+
+#include "bitcoinunits.h"
 
 DigitalNoteUnits::DigitalNoteUnits(QObject *parent):
         QAbstractListModel(parent),

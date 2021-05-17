@@ -1,17 +1,4 @@
-#include "rpcconsole.h"
-#include "ui_rpcconsole.h"
-
-#include "bantablemodel.h"
-#include "clientmodel.h"
-#include "guiutil.h"
-#include "peertablemodel.h"
-
-#include "main.h"
-#include "chainparams.h"
-#include "util.h"
-
-#include "rpcserver.h"
-#include "rpcclient.h"
+#include "compat.h"
 
 #include <QClipboard>
 #include <QTime>
@@ -22,8 +9,22 @@
 #include <QScrollBar>
 #include <QSignalMapper>
 #include <QStringList>
-
 #include <openssl/crypto.h>
+
+#include "ui_rpcconsole.h"
+#include "bantablemodel.h"
+#include "clientmodel.h"
+#include "guiutil.h"
+#include "peertablemodel.h"
+#include "chainparams.h"
+#include "util.h"
+#include "rpcserver.h"
+#include "rpcclient.h"
+#include "net/cnode.h"
+#include "net.h"
+#include "netbase.h"
+
+#include "rpcconsole.h"
 
 // TODO: add a scrollback limit, as there is currently none
 // TODO: make it possible to filter out categories (esp debug messages when implemented)

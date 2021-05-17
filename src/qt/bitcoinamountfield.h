@@ -1,6 +1,8 @@
 #ifndef BITCOINAMOUNTFIELD_H
 #define BITCOINAMOUNTFIELD_H
 
+#include "compat.h"
+
 #include <QWidget>
 #include "util.h"
 

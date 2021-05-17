@@ -4,15 +4,30 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
+#include <boost/foreach.hpp>
+#include <memory>
+
 #include "blockparams.h"
 #include "txdb.h"
-#include "miner.h"
 #include "kernel.h"
 #include "masternode.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
+#include "fork.h"
+#include "cblock.h"
+#include "creservekey.h"
+#include "cwallet.h"
+#include "script.h"
+#include "cinv.h"
+#include "net.h"
+#include "main_const.h"
+#include "txmempool.h"
+#include "ctxout.h"
+#include "ctransaction.h"
 
-using namespace std;
+#include "miner.h"
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -62,7 +77,7 @@ class COrphan
 {
 public:
     CTransaction* ptx;
-    set<uint256> setDependsOn;
+    std::set<uint256> setDependsOn;
     double dPriority;
     double dFeePerKb;
 
@@ -106,24 +121,13 @@ public:
 CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFees)
 {
     // Create new block
-    #ifdef __GNUC__
-    #define GCC_VERSION (__GNUC__ * 10000 \
-                        + __GNUC_MINOR__ * 100 \
-                        + __GNUC_PATCHLEVEL__)
-
-    /* Test for GCC < 6.3.0 */
-    #if GCC_VERSION > 60300
-        unique_ptr<CBlock> pblock(new CBlock());
-    #else
-        auto_ptr<CBlock> pblock(new CBlock());
-    #endif
-    #else
-        unique_ptr<CBlock> pblock(new CBlock());
-    #endif
+    CBlockPtr pblock(new CBlock());
 
     if (!pblock.get())
+	{
         return NULL;
-
+	}
+	
     CBlockIndex* pindexPrev = pindexBest;
     int nHeight = pindexPrev->nHeight + 1;
 
@@ -136,8 +140,12 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
     if (!fProofOfStake)
     {
         CPubKey pubkey;
-        if (!reservekey.GetReservedKey(pubkey))
+        
+		if (!reservekey.GetReservedKey(pubkey))
+		{
             return NULL;
+		}
+		
         txNew.vout[0].scriptPubKey.SetDestination(pubkey.GetID());
     }
     else
@@ -174,39 +182,47 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
     // cost to you of processing a transaction.
     int64_t nMinTxFee = MIN_TX_FEE;
     if (mapArgs.count("-mintxfee"))
+	{
         ParseMoney(mapArgs["-mintxfee"], nMinTxFee);
-
+	}
+	
     pblock->nBits = GetNextTargetRequired(pindexPrev, fProofOfStake);
-
-
+	
     // Collect memory pool transactions into the block
     int64_t nFees = 0;
-    {
+    
+	{
         LOCK2(cs_main, mempool.cs);
-        CTxDB txdb("r");
+        
+		CTxDB txdb("r");
 //> XDN <
         // Priority order to process transactions
-        list<COrphan> vOrphan; // list memory doesn't move
-        map<uint256, vector<COrphan*> > mapDependers;
+        std::list<COrphan> vOrphan; // list memory doesn't move
+        std::map<uint256, std::vector<COrphan*> > mapDependers;
 
         // This vector will be sorted into a priority queue:
-        vector<TxPriority> vecPriority;
+        std::vector<TxPriority> vecPriority;
         vecPriority.reserve(mempool.mapTx.size());
-        for (map<uint256, CTransaction>::iterator mi = mempool.mapTx.begin(); mi != mempool.mapTx.end(); ++mi)
+		
+        for (std::map<uint256, CTransaction>::iterator mi = mempool.mapTx.begin(); mi != mempool.mapTx.end(); ++mi)
         {
             CTransaction& tx = (*mi).second;
             if (tx.IsCoinBase() || tx.IsCoinStake() || !IsFinalTx(tx, nHeight))
+			{
                 continue;
-
+			}
+			
             COrphan* porphan = NULL;
             double dPriority = 0;
             int64_t nTotalIn = 0;
             bool fMissingInputs = false;
-            BOOST_FOREACH(const CTxIn& txin, tx.vin)
+			
+            for(const CTxIn& txin : tx.vin)
             {
                 // Read prev transaction
                 CTransaction txPrev;
                 CTxIndex txindex;
+				
                 if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
                 {
                     // This should never happen; all transactions in the memory
@@ -215,11 +231,20 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                     if (!mempool.mapTx.count(txin.prevout.hash))
                     {
                         LogPrintf("ERROR: mempool transaction missing input\n");
-                        if (fDebug) assert("mempool transaction missing input" == 0);
-                        fMissingInputs = true;
-                        if (porphan)
+                        
+						if (fDebug)
+						{
+							assert("mempool transaction missing input" == 0);
+                        }
+						
+						fMissingInputs = true;
+                        
+						if (porphan)
+						{
                             vOrphan.pop_back();
-                        break;
+						}
+						
+						break;
                     }
 
                     // Has to wait for dependencies
@@ -229,19 +254,26 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                         vOrphan.push_back(COrphan(&tx));
                         porphan = &vOrphan.back();
                     }
-                    mapDependers[txin.prevout.hash].push_back(porphan);
+                    
+					mapDependers[txin.prevout.hash].push_back(porphan);
                     porphan->setDependsOn.insert(txin.prevout.hash);
                     nTotalIn += mempool.mapTx[txin.prevout.hash].vout[txin.prevout.n].nValue;
-                    continue;
+                    
+					continue;
                 }
+				
                 int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
                 nTotalIn += nValueIn;
 
                 int nConf = txindex.GetDepthInMainChain();
                 dPriority += (double)nValueIn * nConf;
             }
-            if (fMissingInputs) continue;
-
+            
+			if (fMissingInputs)
+			{
+				continue;
+			}
+			
             // Priority is sum(valuein * age) / txsize
             unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
             dPriority /= nTxSize;
@@ -257,11 +289,13 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                 porphan->dFeePerKb = dFeePerKb;
             }
             else
+			{
                 vecPriority.push_back(TxPriority(dPriority, dFeePerKb, &(*mi).second));
+			}
         }
 
         // Collect transactions into block
-        map<uint256, CTxIndex> mapTestPool;
+        std::map<uint256, CTxIndex> mapTestPool;
         uint64_t nBlockSize = 1000;
         uint64_t nBlockTx = 0;
         int nBlockSigOps = 100;
@@ -283,21 +317,29 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
             // Size limits
             unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
             if (nBlockSize + nTxSize >= nBlockMaxSize)
+			{
                 continue;
-
+			}
+			
             // Legacy limits on sigOps:
             unsigned int nTxSigOps = GetLegacySigOpCount(tx);
             if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)
+			{
                 continue;
-
+			}
+			
             // Timestamp limit
             if (tx.nTime > GetAdjustedTime() || (fProofOfStake && tx.nTime > pblock->vtx[0].nTime))
+			{
                 continue;
-
+			}
+			
             // Skip free transactions if we're past the minimum block size:
             if (fSortedByFee && (dFeePerKb < nMinTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
+			{
                 continue;
-
+			}
+			
             // Prioritize by fee once past the priority size or we run out of high-priority
             // transactions:
             if (!fSortedByFee &&
@@ -310,24 +352,31 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
             // Connecting shouldn't fail due to dependency on other memory pool transactions
             // because we're already processing them in order of dependency
-            map<uint256, CTxIndex> mapTestPoolTmp(mapTestPool);
+            std::map<uint256, CTxIndex> mapTestPoolTmp(mapTestPool);
             MapPrevTx mapInputs;
             bool fInvalid;
             if (!tx.FetchInputs(txdb, mapTestPoolTmp, false, true, mapInputs, fInvalid))
+			{
                 continue;
-
+			}
+			
             int64_t nTxFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
 
             nTxSigOps += GetP2SHSigOpCount(tx, mapInputs);
             if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)
+			{
                 continue;
-
+			}
+			
             // Note that flags: we don't want to set mempool/IsStandard()
             // policy here, but we still have to ensure that the block we
             // create only contains transactions that are valid in new blocks.
             if (!tx.ConnectInputs(txdb, mapInputs, mapTestPoolTmp, CDiskTxPos(1,1,1), pindexPrev, false, true, MANDATORY_SCRIPT_VERIFY_FLAGS))
+			{
                 continue;
-            mapTestPoolTmp[tx.GetHash()] = CTxIndex(CDiskTxPos(1,1,1), tx.vout.size());
+            }
+			
+			mapTestPoolTmp[tx.GetHash()] = CTxIndex(CDiskTxPos(1,1,1), tx.vout.size());
             swap(mapTestPool, mapTestPoolTmp);
 
             // Added
@@ -339,15 +388,19 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
             if (fDebug && GetBoolArg("-printpriority", false))
             {
-                LogPrintf("priority %.1f feeperkb %.1f txid %s\n",
-                       dPriority, dFeePerKb, tx.GetHash().ToString());
+                LogPrintf(
+					"priority %.1f feeperkb %.1f txid %s\n",
+                    dPriority,
+					dFeePerKb,
+					tx.GetHash().ToString()
+				);
             }
 
             // Add transactions that depend on this one to the priority queue
             uint256 hash = tx.GetHash();
             if (mapDependers.count(hash))
             {
-                BOOST_FOREACH(COrphan* porphan, mapDependers[hash])
+                for(COrphan* porphan : mapDependers[hash])
                 {
                     if (!porphan->setDependsOn.empty())
                     {
@@ -366,16 +419,22 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
         nLastBlockSize = nBlockSize;
 
         if (fDebug && GetBoolArg("-printpriority", false))
+		{
             LogPrintf("CreateNewBlock(): total size %u\n", nBlockSize);
-        // > XDN <
-        if (!fProofOfStake){
+        }
+		
+		// > XDN <
+        if (!fProofOfStake)
+		{
             pblock->vtx[0].vout[0].nValue = GetProofOfWorkReward(pindexPrev->nHeight + 1, nFees);
 
             // Check for payment update fork
-            if(pindexBest->GetBlockTime() > 0){
-                if(pindexBest->GetBlockTime() > nPaymentUpdate_1){ // Monday, May 20, 2019 12:00:00 AM
+            if(pindexBest->GetBlockTime() > 0)
+			{
+                if(pindexBest->GetBlockTime() > nPaymentUpdate_1) // Monday, May 20, 2019 12:00:00 AM
+				{
                     // masternode/devops payment
-                    int64_t blockReward = GetProofOfWorkReward(pindexPrev->nHeight + 1, nFees);
+					int64_t blockReward = GetProofOfWorkReward(pindexPrev->nHeight + 1, nFees);
                     bool hasPayment = true;
                     bool bMasterNodePayment = true;// TODO: Setup proper network toggle
                     CScript mn_payee;
@@ -395,12 +454,23 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                     //       Not an issue otherwise, merely a pet peev. Done in a rush...
                     //
                     CBitcoinAddress devopaddress;
-                    if (Params().NetworkID() == CChainParams::MAIN) {
-                        if(GetTime() < nPaymentUpdate_2) { devopaddress = CBitcoinAddress("dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7"); } // TODO: nothing, already set to a valid DigitalNote address
-                        else { devopaddress = CBitcoinAddress("dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18"); }
-                    } else if (Params().NetworkID() == CChainParams::TESTNET) {
+                    if (Params().NetworkID() == CChainParams::MAIN)
+					{
+                        if(GetTime() < nPaymentUpdate_2)
+						{
+							devopaddress = CBitcoinAddress("dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7");
+						} // TODO: nothing, already set to a valid DigitalNote address
+                        else
+						{
+							devopaddress = CBitcoinAddress("dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18");
+						}
+                    }
+					else if (Params().NetworkID() == CChainParams::TESTNET)
+					{
                         devopaddress = CBitcoinAddress("");
-                    } else if (Params().NetworkID() == CChainParams::REGTEST) {
+                    }
+					else if (Params().NetworkID() == CChainParams::REGTEST)
+					{
                         devopaddress = CBitcoinAddress("");
                     }
 
@@ -408,10 +478,12 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                     if(devopaddress.IsValid())
                     {
                         //spork
-                        if(pindexBest->GetBlockTime() > 1546123500) { // ON  (Saturday, December 29, 2018 10:45 PM)
+                        if(pindexBest->GetBlockTime() > 1546123500) // ON  (Saturday, December 29, 2018 10:45 PM)
+						{
                                 do_payee = GetScriptForDestination(devopaddress.Get());
                         }
-                        else {
+                        else
+						{
                             hasPayment = false;
                         }
                     }
@@ -420,24 +492,32 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                         LogPrintf("CreateNewBlock(): Failed to detect dev address to pay\n");
                     }
 
-                    if(bMasterNodePayment) {
-                        //spork
-                        if(!masternodePayments.GetBlockPayee(pindexPrev->nHeight+1, mn_payee, vin)){
+                    if(bMasterNodePayment)
+					{
+                                                //spork
+                        if(!masternodePayments.GetBlockPayee(pindexPrev->nHeight+1, mn_payee, vin))
+						{
                             CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
-                            if(winningNode){
+                            if(winningNode)
+							{
                                 mn_payee = GetScriptForDestination(winningNode->pubkey.GetID());
-                            } else {
-                                mn_payee = do_payee;
+                            }
+							else
+							{
+								mn_payee = do_payee;
                             }
                         }
-                    } else {
+                    }
+					else
+					{
                         hasPayment = false;
                     }
 
                     CAmount masternodePayment = GetMasternodePayment(nHeight, blockReward);
                     CAmount devopsPayment = GetDevOpsPayment(nHeight, blockReward);
 
-                    if (hasPayment) {
+                    if (hasPayment)
+					{
                         pblock->vtx[0].vout.resize(3);
                         pblock->vtx[0].vout[1].scriptPubKey = mn_payee;
                         pblock->vtx[0].vout[1].nValue = masternodePayment;
@@ -461,19 +541,24 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
         }
 
         if (pFees)
+		{
             *pFees = nFees;
-
+		}
+		
         // Fill in header
         pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-        pblock->nTime          = max(pindexPrev->GetPastTimeLimit()+1, pblock->GetMaxTransactionTime());
-        if (!fProofOfStake)
+        pblock->nTime          = std::max(pindexPrev->GetPastTimeLimit()+1, pblock->GetMaxTransactionTime());
+        
+		if (!fProofOfStake)
+		{
             pblock->UpdateTime(pindexPrev);
+		}
+		
         pblock->nNonce         = 0;
     }
 
     return pblock.release();
 }
-
 
 void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce)
 {
@@ -484,15 +569,16 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
         nExtraNonce = 0;
         hashPrevBlock = pblock->hashPrevBlock;
     }
-    ++nExtraNonce;
+    
+	++nExtraNonce;
 
     unsigned int nHeight = pindexPrev->nHeight+1; // Height first in coinbase required for block.version=2
     pblock->vtx[0].vin[0].scriptSig = (CScript() << nHeight << CBigNum(nExtraNonce)) + COINBASE_FLAGS;
-    assert(pblock->vtx[0].vin[0].scriptSig.size() <= 100);
+    
+	assert(pblock->vtx[0].vin[0].scriptSig.size() <= 100);
 
     pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 }
-
 
 void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash1)
 {
@@ -516,6 +602,7 @@ void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash
         unsigned char pchPadding1[64];
     }
     tmp;
+	
     memset(&tmp, 0, sizeof(tmp));
 
     tmp.block.nVersion       = pblock->nVersion;
@@ -530,15 +617,16 @@ void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash
 
     // Byte swap all the input buffer
     for (unsigned int i = 0; i < sizeof(tmp)/4; i++)
+	{
         ((unsigned int*)&tmp)[i] = ByteReverse(((unsigned int*)&tmp)[i]);
-
+	}
+	
     // Precalc the first half of the first hash, which stays constant
     SHA256Transform(pmidstate, &tmp.block, pSHA256InitState);
 
     memcpy(pdata, &tmp.block, 128);
     memcpy(phash1, &tmp.hash1, 64);
 }
-
 
 bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
 {
@@ -547,11 +635,15 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
 
     if(!pblock->IsProofOfWork())
+	{
         return error("CheckWork() : %s is not a proof-of-work block", hashBlock.GetHex());
-
+	}
+	
     if (hashProof > hashTarget)
+	{
         return error("CheckWork() : proof-of-work not meeting target");
-
+	}
+	
     //// debug print
     LogPrintf("CheckWork() : new proof-of-work block found  \n  proof hash: %s  \ntarget: %s\n", hashProof.GetHex(), hashTarget.GetHex());
     LogPrintf("%s\n", pblock->ToString());
@@ -560,21 +652,27 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     // Found a solution
     {
         LOCK(cs_main);
-        if (pblock->hashPrevBlock != hashBestChain)
+        
+		if (pblock->hashPrevBlock != hashBestChain)
+		{
             return error("CheckWork() : generated block is stale");
-
+		}
+		
         // Remove key from key pool
         reservekey.KeepKey();
 
         // Track how many getdata requests this block gets
         {
             LOCK(wallet.cs_wallet);
-            wallet.mapRequestCount[hashBlock] = 0;
+            
+			wallet.mapRequestCount[hashBlock] = 0;
         }
 
         // Process this block the same as if we had received it from another node
         if (!ProcessBlock(NULL, pblock))
+		{
             return error("CheckWork() : ProcessBlock, block not accepted");
+		}
     }
 
     return true;
@@ -586,12 +684,16 @@ bool CheckStake(CBlock* pblock, CWallet& wallet)
     uint256 hashBlock = pblock->GetHash();
 
     if(!pblock->IsProofOfStake())
+	{
         return error("CheckStake() : %s is not a proof-of-stake block", hashBlock.GetHex());
-
+	}
+	
     // verify hash target and signature of coinstake tx
     if (!CheckProofOfStake(mapBlockIndex[pblock->hashPrevBlock], pblock->vtx[1], pblock->nBits, proofHash, hashTarget))
+	{
         return error("CheckStake() : proof-of-stake checking failed");
-
+	}
+	
     //// debug print
     LogPrint("coinstake", "CheckStake() : new proof-of-stake block found  \n  hash: %s \nproofhash: %s  \ntarget: %s\n", hashBlock.GetHex(), proofHash.GetHex(), hashTarget.GetHex());
     LogPrint("coinstake", "%s\n", pblock->ToString());
@@ -600,25 +702,32 @@ bool CheckStake(CBlock* pblock, CWallet& wallet)
     // Found a solution
     {
         LOCK(cs_main);
-        if (pblock->hashPrevBlock != hashBestChain)
+        
+		if (pblock->hashPrevBlock != hashBestChain)
+		{
             return error("CheckStake() : generated block is stale");
-
+		}
+		
         // Track how many getdata requests this block gets
         {
             LOCK(wallet.cs_wallet);
-            wallet.mapRequestCount[hashBlock] = 0;
+            
+			wallet.mapRequestCount[hashBlock] = 0;
         }
 
         // Process this block the same as if we had received it from another node
         if (!ProcessBlock(NULL, pblock))
+		{
             return error("CheckStake() : ProcessBlock, block not accepted");
+		}
         else
         {
             //ProcessBlock successful for PoS. now FixSpentCoins.
             int nMismatchSpent;
             CAmount nBalanceInQuestion;
             wallet.FixSpentCoins(nMismatchSpent, nBalanceInQuestion);
-            if (nMismatchSpent != 0)
+            
+			if (nMismatchSpent != 0)
             {
                 LogPrintf("PoS mismatched spent coins = %d and balance affects = %d \n", nMismatchSpent, nBalanceInQuestion);
             }
@@ -644,23 +753,27 @@ void ThreadStakeMiner(CWallet *pwallet)
         while (pwallet->IsLocked())
         {
             nLastCoinStakeSearchInterval = 0;
-            MilliSleep(1000);
+            
+			MilliSleep(1000);
         }
 
         while (vNodes.empty() || IsInitialBlockDownload())
         {
             nLastCoinStakeSearchInterval = 0;
-            fTryToSync = true;
-            MilliSleep(1000);
+			fTryToSync = true;
+            
+			MilliSleep(1000);
         }
 
         if (fTryToSync)
         {
             fTryToSync = false;
-            if (vNodes.size() < 3 || pindexBest->GetBlockTime() < GetTime() - 10 * 60)
+            
+			if (vNodes.size() < 3 || pindexBest->GetBlockTime() < GetTime() - 10 * 60)
             {
                 MilliSleep(10000);
-                continue;
+                
+				continue;
             }
         }
 
@@ -668,32 +781,47 @@ void ThreadStakeMiner(CWallet *pwallet)
         // Create new block
         //
         int64_t nFees;
-            #ifdef __GNUC__
-        #define GCC_VERSION (__GNUC__ * 10000 \
-                            + __GNUC_MINOR__ * 100 \
-                            + __GNUC_PATCHLEVEL__)
-
-        /* Test for GCC < 6.3.0 */
-        #if GCC_VERSION > 60300
-            unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-        #else
-            auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-        #endif
-        #else
-            unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-        #endif
-        if (!pblock.get())
+		std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+		
+		//
+		// Legacy code
+		//
+		//
+        //#ifdef __GNUC__
+		//	#define GCC_VERSION (__GNUC__ * 10000 \
+		//						+ __GNUC_MINOR__ * 100 \
+		//						+ __GNUC_PATCHLEVEL__)
+		//
+		//	/* Test for GCC < 6.3.0 */
+		//	#if GCC_VERSION > 60300
+		//		std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+		//	#else
+		//		std::auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+		//	#endif
+        //#else
+        //    std::unique_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+        //#endif
+        
+		
+		if (!pblock.get())
+		{
             return;
-
+		}
+		
         // Trying to sign a block
         if (pblock->SignBlock(*pwallet, nFees))
         {
             SetThreadPriority(THREAD_PRIORITY_NORMAL);
-            CheckStake(pblock.get(), *pwallet);
-            SetThreadPriority(THREAD_PRIORITY_LOWEST);
-            MilliSleep(500);
+            
+			CheckStake(pblock.get(), *pwallet);
+            
+			SetThreadPriority(THREAD_PRIORITY_LOWEST);
+            
+			MilliSleep(500);
         }
         else
+		{
             MilliSleep(nMinerSleep);
+		}
     }
 }

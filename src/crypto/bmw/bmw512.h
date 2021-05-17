@@ -1,7 +1,8 @@
 #ifndef BMW512_H
 #define BMW512_H
 
-#include "uint256.h"
+#include "uint/uint512.h"
+#include "uint/uint256.h"
 #include "../common/sph_bmw.h"
 
 #ifndef QT_NO_DEBUG

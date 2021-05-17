@@ -10,11 +10,12 @@
 #include <vector>
 #include <map>
 #include <algorithm>
-#include "main.h"
+
 #include "util.h"
 #include "clientversion.h"
+#include "main_const.h"
 
-using namespace std;
+class CBlockIndex;
 
 namespace BlockSizeCalculator {
     unsigned int ComputeBlockSize(CBlockIndex*, unsigned int pastblocks = NUM_BLOCKS_FOR_MEDIAN_BLOCK);

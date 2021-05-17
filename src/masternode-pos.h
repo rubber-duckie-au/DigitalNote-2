@@ -1,5 +1,3 @@
-
-
 // Copyright (c) 2014-2015 The Dash developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -8,21 +6,16 @@
 
 #include "bignum.h"
 #include "sync.h"
-#include "net.h"
-#include "key.h"
 #include "core.h"
 #include "util.h"
-#include "script.h"
 #include "base58.h"
-#include "main.h"
 
-using namespace std;
 using namespace boost;
 
 class CMasternodeScanning;
 class CMasternodeScanningError;
 
-extern map<uint256, CMasternodeScanningError> mapMasternodeScanningErrors;
+extern std::map<uint256, CMasternodeScanningError> mapMasternodeScanningErrors;
 extern CMasternodeScanning mnscan;
 
 static const int MIN_MASTERNODE_POS_PROTO_VERSION = 61402;

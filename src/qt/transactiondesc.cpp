@@ -1,16 +1,23 @@
+#include "compat.h"
+
 #include "transactiondesc.h"
 
 #include "bitcoinunits.h"
 #include "guiutil.h"
 #include "blockparams.h"
 #include "base58.h"
-#include "main.h"
 #include "paymentserver.h"
 #include "transactionrecord.h"
 #include "util.h"
 #include "ui_interface.h"
-#include "wallet.h"
 #include "txdb.h"
+#include "cwallettx.h"
+#include "script.h"
+#include "main_extern.h"
+#include "main_const.h"
+#include "ccriticalblock.h"
+#include "ctxin.h"
+#include "ctxout.h"
 
 #include <string>
 

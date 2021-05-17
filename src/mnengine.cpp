@@ -2,24 +2,36 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "mnengine.h"
-#include "main.h"
+#include "compat.h"
+
+#include <algorithm>
+#include <random>
+#include <openssl/rand.h>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/assign/list_of.hpp>
+
 #include "init.h"
 #include "util.h"
 #include "masternodeman.h"
 #include "instantx.h"
 #include "ui_interface.h"
+#include "cvalidationstate.h"
+#include "cwallet.h"
+#include "cwallettx.h"
+#include "mining.h"
+#include "creservekey.h"
+#include "cinv.h"
+#include "net/cnode.h"
+#include "net.h"
+#include "chashwriter.h"
+#include "ckey.h"
+#include "cinv.h"
 
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/lexical_cast.hpp>
+#include "mnengine.h"
 
-#include <algorithm>
-#include <boost/assign/list_of.hpp>
-#include <openssl/rand.h>
-
-using namespace std;
 using namespace boost;
 
 // The main object for accessing mnengine
@@ -31,7 +43,7 @@ std::vector<CMNengineQueue> vecMNengineQueue;
 // Keep track of the used Masternodes
 std::vector<CTxIn> vecMasternodesUsed;
 // keep track of the scanning errors I've seen
-map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
+std::map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
 // Keep track of the active Masternode
 CActiveMasternode activeMasternode;
 
@@ -44,9 +56,13 @@ int RequestedMasterNodeList = 0;
         udjinm6   - udjinm6@dashpay.io
 */
 
-int randomizeList (int i) { return std::rand()%i;}
+int randomizeList(int i)
+{
+	return std::rand() % i;
+}
 
-void CMNenginePool::Reset(){
+void CMNenginePool::Reset()
+{
     cachedLastSuccess = 0;
     lastNewBlock = 0;
     txCollateral = CTransaction();
@@ -55,8 +71,8 @@ void CMNenginePool::Reset(){
     SetNull();
 }
 
-void CMNenginePool::SetNull(){
-
+void CMNenginePool::SetNull()
+{
     // MN side
     sessionUsers = 0;
     vecSessionCollateral.clear();
@@ -81,14 +97,19 @@ void CMNenginePool::SetNull(){
     std::srand(seed);
 }
 
-bool CMNenginePool::SetCollateralAddress(std::string strAddress){
+bool CMNenginePool::SetCollateralAddress(const std::string &strAddress)
+{
     CDigitalNoteAddress address;
-    if (!address.SetString(strAddress))
+    
+	if (!address.SetString(strAddress))
     {
         LogPrintf("CMNenginePool::SetCollateralAddress - Invalid MNengine collateral address\n");
-        return false;
+        
+		return false;
     }
-    collateralPubKey = GetScriptForDestination(address.Get());
+    
+	collateralPubKey = GetScriptForDestination(address.Get());
+	
     return true;
 }
 
@@ -96,11 +117,21 @@ bool CMNenginePool::SetCollateralAddress(std::string strAddress){
 // Unlock coins after MNengine fails or succeeds
 //
 void CMNenginePool::UnlockCoins(){
-    while(true) {
+    while(true)
+	{
         TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
-        if(!lockWallet) {MilliSleep(50); continue;}
-        BOOST_FOREACH(CTxIn v, lockedCoins)
+        
+		if(!lockWallet)
+		{
+			MilliSleep(50);
+			continue;
+		}
+        
+		for(CTxIn v : lockedCoins)
+		{
             pwalletMain->UnlockCoin(v.prevout);
+		}
+	
         break;
     }
 
@@ -114,26 +145,39 @@ bool CMNenginePool::IsBlockchainSynced()
     static int64_t lastProcess = GetTime();
 
     // if the last call to this function was more than 60 minutes ago (client was in sleep mode) reset the sync process
-    if(GetTime() - lastProcess > 60*60) {
+    if(GetTime() - lastProcess > 60*60)
+	{
         Reset();
         fBlockchainSynced = false;
     }
+	
     lastProcess = GetTime();
 
     if(fBlockchainSynced) return true;
 
-    if (fImporting || fReindex) return false;
-
+    if (fImporting || fReindex)
+	{
+		return false;
+	}
+	
     TRY_LOCK(cs_main, lockMain);
-    if(!lockMain) return false;
-
+	
+    if(!lockMain)
+	{
+		return false;
+	}
+	
     CBlockIndex* pindex = pindexBest;
-    if(pindex == NULL) return false;
-
+    if(pindex == NULL)
+	{
+		return false;
+	}
 
     if(pindex->nTime + 60*60 < GetTime())
+	{
         return false;
-
+	}
+	
     fBlockchainSynced = true;
 
     return true;
@@ -144,43 +188,58 @@ bool CMNenginePool::IsBlockchainSynced()
 //
 void CMNenginePool::Check()
 {
-    if(fMasterNode) LogPrint("mnengine", "CMNenginePool::Check() - entries count %lu\n", entries.size());
-    //printf("CMNenginePool::Check() %d - %d - %d\n", state, anonTx.CountEntries(), GetTimeMillis()-lastTimeChanged);
+    if(fMasterNode)
+	{
+		LogPrint("mnengine", "CMNenginePool::Check() - entries count %lu\n", entries.size());
+    }
+	
+	//printf("CMNenginePool::Check() %d - %d - %d\n", state, anonTx.CountEntries(), GetTimeMillis()-lastTimeChanged);
 
-    if(fMasterNode) {
+    if(fMasterNode)
+	{
         LogPrint("mnengine", "CMNenginePool::Check() - entries count %lu\n", entries.size());
-        // If entries is full, then move on to the next phase
+        
+		// If entries is full, then move on to the next phase
         if(state == POOL_STATUS_ACCEPTING_ENTRIES && (int)entries.size() >= GetMaxPoolTransactions())
         {
             LogPrint("mnengine", "CMNenginePool::Check() -- TRYING TRANSACTION \n");
-            UpdateState(POOL_STATUS_FINALIZE_TRANSACTION);
+            
+			UpdateState(POOL_STATUS_FINALIZE_TRANSACTION);
         }
     }
 
     // create the finalized transaction for distribution to the clients
-    if(state == POOL_STATUS_FINALIZE_TRANSACTION) {
+    if(state == POOL_STATUS_FINALIZE_TRANSACTION)
+	{
         LogPrint("mnengine", "CMNenginePool::Check() -- FINALIZE TRANSACTIONS\n");
-        UpdateState(POOL_STATUS_SIGNING);
+        
+		UpdateState(POOL_STATUS_SIGNING);
 
-        if (fMasterNode) {
+        if (fMasterNode)
+		{
             CTransaction txNew;
 
             // make our new transaction
-            for(unsigned int i = 0; i < entries.size(); i++){
-                BOOST_FOREACH(const CTxOut& v, entries[i].vout)
+            for(unsigned int i = 0; i < entries.size(); i++)
+			{
+                for(const CTxOut& v : entries[i].vout)
+				{
                     txNew.vout.push_back(v);
-
-                BOOST_FOREACH(const CTxDSIn& s, entries[i].sev)
+				}
+			
+                for(const CTxDSIn& s : entries[i].sev)
+				{
                     txNew.vin.push_back(s);
+				}
             }
 
             // shuffle the outputs for improved anonymity
-            std::random_shuffle ( txNew.vin.begin(),  txNew.vin.end(),  randomizeList);
-            std::random_shuffle ( txNew.vout.begin(), txNew.vout.end(), randomizeList);
-
-
+            std::shuffle ( txNew.vin.begin(),  txNew.vin.end(),  std::mt19937(std::random_device()()));
+            std::shuffle ( txNew.vout.begin(), txNew.vout.end(), std::mt19937(std::random_device()()));
+			
             LogPrint("mnengine", "Transaction 1: %s\n", txNew.ToString());
-            finalTransaction = txNew;
+            
+			finalTransaction = txNew;
 
             // request signatures from clients
             RelayFinalTransaction(sessionID, finalTransaction);
@@ -188,41 +247,55 @@ void CMNenginePool::Check()
     }
 
     // If we have all of the signatures, try to compile the transaction
-    if(fMasterNode && state == POOL_STATUS_SIGNING && SignaturesComplete()) {
+    if(fMasterNode && state == POOL_STATUS_SIGNING && SignaturesComplete())
+	{
         LogPrint("mnengine", "CMNenginePool::Check() -- SIGNING\n");
-        UpdateState(POOL_STATUS_TRANSMISSION);
+        
+		UpdateState(POOL_STATUS_TRANSMISSION);
         CheckFinalTransaction();
     }
 
     // reset if we're here for 10 seconds
-    if((state == POOL_STATUS_ERROR || state == POOL_STATUS_SUCCESS) && GetTimeMillis()-lastTimeChanged >= 10000) {
+    if((state == POOL_STATUS_ERROR || state == POOL_STATUS_SUCCESS) && GetTimeMillis()-lastTimeChanged >= 10000)
+	{
         LogPrint("mnengine", "CMNenginePool::Check() -- timeout, RESETTING\n");
-        UnlockCoins();
+        
+		UnlockCoins();
         SetNull();
-        if(fMasterNode) RelayStatus(sessionID, GetState(), GetEntriesCount(), MASTERNODE_RESET);
+		
+        if(fMasterNode)
+		{
+			RelayStatus(sessionID, GetState(), GetEntriesCount(), MASTERNODE_RESET);
+		}
     }
 }
 
 void CMNenginePool::CheckFinalTransaction()
 {
-    if (!fMasterNode) return; // check and relay final tx only on masternode
+    if (!fMasterNode)
+	{
+		return; // check and relay final tx only on masternode
+	}
 
     CWalletTx txNew = CWalletTx(pwalletMain, finalTransaction);
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
-    {
+    
+	{
         LogPrint("mnengine", "Transaction 2: %s\n", txNew.ToString());
 
         // See if the transaction is valid
         if (!txNew.AcceptToMemoryPool(false, true, true))
         {
             LogPrintf("CMNenginePool::Check() - CommitTransaction : Error: Transaction not valid\n");
-            SetNull();
+            
+			SetNull();
 
             // not much we can do in this case
             UpdateState(POOL_STATUS_ACCEPTING_ENTRIES);
             RelayCompletedTransaction(sessionID, true, _("Transaction not valid, please try again"));
-            return;
+            
+			return;
         }
 
         LogPrintf("CMNenginePool::Check() -- IS MASTER -- TRANSMITTING MNengine\n");
@@ -240,31 +313,39 @@ void CMNenginePool::CheckFinalTransaction()
         {
             LogPrintf("CMNenginePool::Check() - ERROR: Invalid Masternodeprivkey: '%s'\n", strError);
             LogPrintf("CMNenginePool::Check() - FORCE BYPASS - SetKey checks!!!\n");
-            return;
+            
+			return;
         }
 
-        if(!mnEngineSigner.SignMessage(strMessage, strError, vchSig, key2)) {
+        if(!mnEngineSigner.SignMessage(strMessage, strError, vchSig, key2))
+		{
             LogPrintf("CMNenginePool::Check() - Sign message failed\n");
             LogPrintf("CMNenginePool::Check() - FORCE BYPASS - Sign message checks!!!\n");
-            return;
+            
+			return;
         }
 
-        if(!mnEngineSigner.VerifyMessage(pubkey2, vchSig, strMessage, strError)) {
+        if(!mnEngineSigner.VerifyMessage(pubkey2, vchSig, strMessage, strError))
+		{
             LogPrintf("CMNenginePool::Check() - Verify message failed\n");
             LogPrintf("CMNenginePool::Check() - FORCE BYPASS - Verify message checks!!!\n");
-            return;
+            
+			return;
         }
 
-        string txHash = txNew.GetHash().ToString().c_str();
-        LogPrintf("CMNenginePool::Check() -- txHash %d \n", txHash);
-        if(!mapMNengineBroadcastTxes.count(txNew.GetHash())){
+        std::string txHash = txNew.GetHash().ToString().c_str();
+        
+		LogPrintf("CMNenginePool::Check() -- txHash %d \n", txHash);
+        
+		if(!mapMNengineBroadcastTxes.count(txNew.GetHash()))
+		{
             CMNengineBroadcastTx dstx;
             dstx.tx = txNew;
             dstx.vin = activeMasternode.vin;
             dstx.vchSig = vchSig;
             dstx.sigTime = sigTime;
 
-            mapMNengineBroadcastTxes.insert(make_pair(txNew.GetHash(), dstx));
+            mapMNengineBroadcastTxes.insert(std::make_pair(txNew.GetHash(), dstx));
         }
 
         CInv inv(MSG_DSTX, txNew.GetHash());
@@ -278,7 +359,8 @@ void CMNenginePool::CheckFinalTransaction()
 
         // Reset
         LogPrint("mnengine", "CMNenginePool::Check() -- COMPLETED -- RESETTING \n");
-        SetNull();
+        
+		SetNull();
         RelayStatus(sessionID, GetState(), GetEntriesCount(), MASTERNODE_RESET);
     }
 }
@@ -295,38 +377,57 @@ void CMNenginePool::CheckFinalTransaction()
 // transaction for the client to be able to enter the pool. This transaction is kept by the Masternode
 // until the transaction is either complete or fails.
 //
-void CMNenginePool::ChargeFees(){
-    if(!fMasterNode) return;
-
+void CMNenginePool::ChargeFees()
+{
+    if(!fMasterNode)
+	{
+		return;
+	}
+	
     //we don't need to charge collateral for every offence.
     int offences = 0;
     int r = rand()%100;
-    if(r > 33) return;
-
-    if(state == POOL_STATUS_ACCEPTING_ENTRIES){
-        BOOST_FOREACH(const CTransaction& txCollateral, vecSessionCollateral) {
+	if(r > 33)
+	{
+		return;
+	}
+	
+    if(state == POOL_STATUS_ACCEPTING_ENTRIES)
+	{
+        for(const CTransaction& txCollateral : vecSessionCollateral)
+		{
             bool found = false;
-            BOOST_FOREACH(const CMNengineEntry& v, entries) {
-                if(v.collateral == txCollateral) {
+			
+            for(const CMNengineEntry& v : entries)
+			{
+                if(v.collateral == txCollateral)
+				{
                     found = true;
                 }
             }
 
             // This queue entry didn't send us the promised transaction
-            if(!found){
+            if(!found)
+			{
                 LogPrintf("CMNenginePool::ChargeFees -- found uncooperative node (didn't send transaction). Found offence.\n");
-                offences++;
+                
+				offences++;
             }
         }
     }
 
-    if(state == POOL_STATUS_SIGNING) {
+    if(state == POOL_STATUS_SIGNING)
+	{
         // who didn't sign?
-        BOOST_FOREACH(const CMNengineEntry v, entries) {
-            BOOST_FOREACH(const CTxDSIn s, v.sev) {
-                if(!s.fHasSig){
+        for(const CMNengineEntry v : entries)
+		{
+            for(const CTxDSIn s : v.sev)
+			{
+                if(!s.fHasSig)
+				{
                     LogPrintf("CMNenginePool::ChargeFees -- found uncooperative node (didn't sign). Found offence\n");
-                    offences++;
+                    
+					offences++;
                 }
             }
         }
@@ -336,28 +437,42 @@ void CMNenginePool::ChargeFees(){
     int target = 0;
 
     //mostly offending?
-    if(offences >= Params().PoolMaxTransactions()-1 && r > 33) return;
-
+    if(offences >= Params().PoolMaxTransactions()-1 && r > 33)
+	{
+		return;
+	}
+	
     //everyone is an offender? That's not right
-    if(offences >= Params().PoolMaxTransactions()) return;
-
+    if(offences >= Params().PoolMaxTransactions())
+	{
+		return;
+	}
+	
     //charge one of the offenders randomly
-    if(offences > 1) target = 50;
-
+    if(offences > 1)
+	{
+		target = 50;
+	}
+	
     //pick random client to charge
     r = rand()%100;
 
-    if(state == POOL_STATUS_ACCEPTING_ENTRIES){
-        BOOST_FOREACH(const CTransaction& txCollateral, vecSessionCollateral) {
+    if(state == POOL_STATUS_ACCEPTING_ENTRIES)
+	{
+        for(const CTransaction& txCollateral : vecSessionCollateral)
+		{
             bool found = false;
-            BOOST_FOREACH(const CMNengineEntry& v, entries) {
-                if(v.collateral == txCollateral) {
+            for(const CMNengineEntry& v : entries)
+			{
+                if(v.collateral == txCollateral)
+				{
                     found = true;
                 }
             }
 
             // This queue entry didn't send us the promised transaction
-            if(!found && r > target){
+            if(!found && r > target)
+			{
                 LogPrintf("CMNenginePool::ChargeFees -- found uncooperative node (didn't send transaction). charging fees.\n");
 
                 CWalletTx wtxCollateral = CWalletTx(pwalletMain, txCollateral);
@@ -368,17 +483,23 @@ void CMNenginePool::ChargeFees(){
                     // This must not fail. The transaction has already been signed and recorded.
                     LogPrintf("CMNenginePool::ChargeFees() : Error: Transaction not valid");
                 }
-                wtxCollateral.RelayWalletTransaction();
-                return;
+                
+				wtxCollateral.RelayWalletTransaction();
+                
+				return;
             }
         }
     }
 
-    if(state == POOL_STATUS_SIGNING) {
+    if(state == POOL_STATUS_SIGNING)
+	{
         // who didn't sign?
-        BOOST_FOREACH(const CMNengineEntry v, entries) {
-            BOOST_FOREACH(const CTxDSIn s, v.sev) {
-                if(!s.fHasSig && r > target){
+        for(const CMNengineEntry v : entries)
+		{
+            for(const CTxDSIn s : v.sev)
+			{
+                if(!s.fHasSig && r > target)
+				{
                     LogPrintf("CMNenginePool::ChargeFees -- found uncooperative node (didn't sign). charging fees.\n");
 
                     CWalletTx wtxCollateral = CWalletTx(pwalletMain, v.collateral);
@@ -389,8 +510,10 @@ void CMNenginePool::ChargeFees(){
                         // This must not fail. The transaction has already been signed and recorded.
                         LogPrintf("CMNenginePool::ChargeFees() : Error: Transaction not valid");
                     }
-                    wtxCollateral.RelayWalletTransaction();
-                    return;
+                    
+					wtxCollateral.RelayWalletTransaction();
+                    
+					return;
                 }
             }
         }
@@ -399,11 +522,14 @@ void CMNenginePool::ChargeFees(){
 
 // charge the collateral randomly
 //  - MNengine is completely free, to pay miners we randomly pay the collateral of users.
-void CMNenginePool::ChargeRandomFees(){
-    if(fMasterNode) {
+void CMNenginePool::ChargeRandomFees()
+{
+    if(fMasterNode)
+	{
         int i = 0;
 
-        BOOST_FOREACH(const CTransaction& txCollateral, vecSessionCollateral) {
+        for(const CTransaction& txCollateral : vecSessionCollateral)
+		{
             int r = rand()%100;
 
             /*
@@ -427,6 +553,7 @@ void CMNenginePool::ChargeRandomFees(){
                     // This must not fail. The transaction has already been signed and recorded.
                     LogPrintf("CMNenginePool::ChargeRandomFees() : Error: Transaction not valid");
                 }
+				
                 wtxCollateral.RelayWalletTransaction();
             }
         }
@@ -436,96 +563,138 @@ void CMNenginePool::ChargeRandomFees(){
 //
 // Check for various timeouts (queue objects, mnengine, etc)
 //
-void CMNenginePool::CheckTimeout(){
-
+void CMNenginePool::CheckTimeout()
+{
     // catching hanging sessions
-    if(!fMasterNode) {
-        switch(state) {
+    if(!fMasterNode)
+	{
+        switch(state)
+		{
             case POOL_STATUS_TRANSMISSION:
                 LogPrint("mnengine", "CMNenginePool::CheckTimeout() -- Session complete -- Running Check()\n");
-                Check();
-                break;
+                
+				Check();
+            break;
             case POOL_STATUS_ERROR:
                 LogPrint("mnengine", "CMNenginePool::CheckTimeout() -- Pool error -- Running Check()\n");
-                Check();
-                break;
+                
+				Check();
+            break;
             case POOL_STATUS_SUCCESS:
                 LogPrint("mnengine", "CMNenginePool::CheckTimeout() -- Pool success -- Running Check()\n");
-                Check();
-                break;
+                
+				Check();
+                
+			break;
         }
     }
 
     // check MNengine queue objects for timeouts
     int c = 0;
-    vector<CMNengineQueue>::iterator it = vecMNengineQueue.begin();
-    while(it != vecMNengineQueue.end()){
-        if((*it).IsExpired()){
+    std::vector<CMNengineQueue>::iterator it = vecMNengineQueue.begin();
+    while(it != vecMNengineQueue.end())
+	{
+        if((*it).IsExpired())
+		{
             LogPrint("mnengine", "CMNenginePool::CheckTimeout() : Removing expired queue entry - %d\n", c);
-            it = vecMNengineQueue.erase(it);
-        } else ++it;
+            
+			it = vecMNengineQueue.erase(it);
+        }
+		else
+		{
+			++it;
+		}
+		
         c++;
     }
 
     int addLagTime = 0;
-    if(!fMasterNode) addLagTime = 10000; //if we're the client, give the server a few extra seconds before resetting.
-
-    if(state == POOL_STATUS_ACCEPTING_ENTRIES || state == POOL_STATUS_QUEUE){
+    if(!fMasterNode)
+	{
+		addLagTime = 10000; //if we're the client, give the server a few extra seconds before resetting.
+	}
+	
+    if(state == POOL_STATUS_ACCEPTING_ENTRIES || state == POOL_STATUS_QUEUE)
+	{
         c = 0;
 
         // check for a timeout and reset if needed
-        vector<CMNengineEntry>::iterator it2 = entries.begin();
-        while(it2 != entries.end()){
-            if((*it2).IsExpired()){
+        std::vector<CMNengineEntry>::iterator it2 = entries.begin();
+        
+		while(it2 != entries.end())
+		{
+            if((*it2).IsExpired())
+			{
                 LogPrint("mnengine", "CMNenginePool::CheckTimeout() : Removing expired entry - %d\n", c);
-                it2 = entries.erase(it2);
-                if(entries.size() == 0){
+                
+				it2 = entries.erase(it2);
+                
+				if(entries.size() == 0)
+				{
                     UnlockCoins();
                     SetNull();
                 }
-                if(fMasterNode){
+				
+                if(fMasterNode)
+				{
                     RelayStatus(sessionID, GetState(), GetEntriesCount(), MASTERNODE_RESET);
                 }
-            } else ++it2;
+            }
+			else
+			{
+				++it2;
+			}
+			
             c++;
         }
 
-        if(GetTimeMillis()-lastTimeChanged >= (MNengine_QUEUE_TIMEOUT*1000)+addLagTime){
+        if(GetTimeMillis()-lastTimeChanged >= (MNengine_QUEUE_TIMEOUT*1000)+addLagTime)
+		{
             UnlockCoins();
             SetNull();
         }
-    } else if(GetTimeMillis()-lastTimeChanged >= (MNengine_QUEUE_TIMEOUT*1000)+addLagTime){
+    }
+	else if(GetTimeMillis()-lastTimeChanged >= (MNengine_QUEUE_TIMEOUT*1000)+addLagTime)
+	{
         LogPrint("mnengine", "CMNenginePool::CheckTimeout() -- Session timed out (%ds) -- resetting\n", MNengine_QUEUE_TIMEOUT);
-        UnlockCoins();
+        
+		UnlockCoins();
         SetNull();
 
         UpdateState(POOL_STATUS_ERROR);
         lastMessage = _("Session timed out.");
     }
 
-    if(state == POOL_STATUS_SIGNING && GetTimeMillis()-lastTimeChanged >= (MNengine_SIGNING_TIMEOUT*1000)+addLagTime ) {
-            LogPrint("mnengine", "CMNenginePool::CheckTimeout() -- Session timed out (%ds) -- restting\n", MNengine_SIGNING_TIMEOUT);
-            ChargeFees();
-            UnlockCoins();
-            SetNull();
+    if(state == POOL_STATUS_SIGNING && GetTimeMillis()-lastTimeChanged >= (MNengine_SIGNING_TIMEOUT*1000)+addLagTime )
+	{
+		LogPrint("mnengine", "CMNenginePool::CheckTimeout() -- Session timed out (%ds) -- restting\n", MNengine_SIGNING_TIMEOUT);
+		
+		ChargeFees();
+		UnlockCoins();
+		SetNull();
 
-            UpdateState(POOL_STATUS_ERROR);
-            lastMessage = _("Signing timed out.");
+		UpdateState(POOL_STATUS_ERROR);
+		lastMessage = _("Signing timed out.");
     }
 }
 
 //
 // Check for complete queue
 //
-void CMNenginePool::CheckForCompleteQueue(){
-    if(!fMasterNode) return;
-
+void CMNenginePool::CheckForCompleteQueue()
+{
+    if(!fMasterNode)
+	{
+		return;
+	}
+	
     /* Check to see if we're ready for submissions from clients */
     //
     // After receiving multiple dsa messages, the queue will switch to "accepting entries"
     // which is the active state right before merging the transaction
     //
-    if(state == POOL_STATUS_QUEUE && sessionUsers == GetMaxPoolTransactions()) {
+    if(state == POOL_STATUS_QUEUE && sessionUsers == GetMaxPoolTransactions())
+	{
         UpdateState(POOL_STATUS_ACCEPTING_ENTRIES);
 
         CMNengineQueue dsq;
@@ -538,7 +707,8 @@ void CMNenginePool::CheckForCompleteQueue(){
 }
 
 // check to see if the signature is valid
-bool CMNenginePool::SignatureValid(const CScript& newSig, const CTxIn& newVin){
+bool CMNenginePool::SignatureValid(const CScript& newSig, const CTxIn& newVin)
+{
     CTransaction txNew;
     txNew.vin.clear();
     txNew.vout.clear();
@@ -547,129 +717,186 @@ bool CMNenginePool::SignatureValid(const CScript& newSig, const CTxIn& newVin){
     CScript sigPubKey = CScript();
     unsigned int i = 0;
 
-    BOOST_FOREACH(CMNengineEntry& e, entries) {
-        BOOST_FOREACH(const CTxOut& out, e.vout)
+    for(CMNengineEntry& e : entries)
+	{
+        for(const CTxOut& out : e.vout)
+		{
             txNew.vout.push_back(out);
-
-        BOOST_FOREACH(const CTxDSIn& s, e.sev){
+		}
+		
+        for(const CTxDSIn& s : e.sev)
+		{
             txNew.vin.push_back(s);
 
-            if(s == newVin){
+            if(s == newVin)
+			{
                 found = i;
                 sigPubKey = s.prevPubKey;
             }
+			
             i++;
         }
     }
 
-    if(found >= 0){ //might have to do this one input at a time?
+    if(found >= 0) //might have to do this one input at a time?
+	{
         int n = found;
         txNew.vin[n].scriptSig = newSig;
-        LogPrint("mnengine", "CMNenginePool::SignatureValid() - Sign with sig %s\n", newSig.ToString().substr(0,24));
-        if (!VerifyScript(txNew.vin[n].scriptSig, sigPubKey, txNew, n, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC, 0)){
+        
+		LogPrint("mnengine", "CMNenginePool::SignatureValid() - Sign with sig %s\n", newSig.ToString().substr(0,24));
+        
+		if (!VerifyScript(txNew.vin[n].scriptSig, sigPubKey, txNew, n, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC, 0))
+		{
             LogPrint("mnengine", "CMNenginePool::SignatureValid() - Signing - Error signing input %u\n", n);
-            return false;
+            
+			return false;
         }
     }
 
     LogPrint("mnengine", "CMNenginePool::SignatureValid() - Signing - Successfully validated input\n");
-    return true;
+    
+	return true;
 }
 
 // check to make sure the collateral provided by the client is valid
-bool CMNenginePool::IsCollateralValid(const CTransaction& txCollateral){
-    if(txCollateral.vout.size() < 1) return false;
-    if(txCollateral.nLockTime != 0) return false;
-
+bool CMNenginePool::IsCollateralValid(const CTransaction& txCollateral)
+{
+    if(txCollateral.vout.size() < 1)
+	{
+		return false;
+    }
+	
+	if(txCollateral.nLockTime != 0)
+	{
+		return false;
+	}
+	
     int64_t nValueIn = 0;
     int64_t nValueOut = 0;
     bool missingTx = false;
 
-    BOOST_FOREACH(const CTxOut o, txCollateral.vout){
+    for(const CTxOut o : txCollateral.vout)
+	{
         nValueOut += o.nValue;
 
-        if(!o.scriptPubKey.IsNormalPaymentScript()){
+        if(!o.scriptPubKey.IsNormalPaymentScript())
+		{
             LogPrintf ("CMNenginePool::IsCollateralValid - Invalid Script %s\n", txCollateral.ToString());
-            return false;
+            
+			return false;
         }
     }
 
-    BOOST_FOREACH(const CTxIn i, txCollateral.vin){
+    for(const CTxIn i : txCollateral.vin)
+	{
         CTransaction tx2;
         uint256 hash;
-        if(GetTransaction(i.prevout.hash, tx2, hash)){
-            if(tx2.vout.size() > i.prevout.n) {
+        
+		if(GetTransaction(i.prevout.hash, tx2, hash))
+		{
+            if(tx2.vout.size() > i.prevout.n)
+			{
                 nValueIn += tx2.vout[i.prevout.n].nValue;
             }
-        } else{
+        }
+		else
+		{
             missingTx = true;
         }
     }
 
-    if(missingTx){
+    if(missingTx)
+	{
         LogPrint("mnengine", "CMNenginePool::IsCollateralValid - Unknown inputs in collateral transaction - %s\n", txCollateral.ToString());
-        return false;
+        
+		return false;
     }
 
     //collateral transactions are required to pay out MNengine_COLLATERAL as a fee to the miners
-    if(nValueIn-nValueOut < MNengine_COLLATERAL) {
+    if(nValueIn-nValueOut < MNengine_COLLATERAL)
+	{
         LogPrint("mnengine", "CMNenginePool::IsCollateralValid - did not include enough fees in transaction %d\n%s\n", nValueOut-nValueIn, txCollateral.ToString());
-        return false;
+        
+		return false;
     }
 
     LogPrint("mnengine", "CMNenginePool::IsCollateralValid %s\n", txCollateral.ToString());
 
     {
         LOCK(cs_main);
-        CValidationState state;
-        if(!AcceptableInputs(mempool, txCollateral, true, NULL)){
+        
+		CValidationState state;
+        
+		if(!AcceptableInputs(mempool, txCollateral, true, NULL))
+		{
             LogPrintf ("CMNenginePool::IsCollateralValid - didn't pass IsAcceptable\n");
-            return false;
+            
+			return false;
         }
     }
 
     return true;
 }
 
-
 //
 // Add a clients transaction to the pool
 //
 bool CMNenginePool::AddEntry(const std::vector<CTxIn>& newInput, const int64_t& nAmount, const CTransaction& txCollateral, const std::vector<CTxOut>& newOutput, std::string& error){
-    if (!fMasterNode) return false;
-
-    BOOST_FOREACH(CTxIn in, newInput) {
-        if (in.prevout.IsNull() || nAmount < 0) {
+    if (!fMasterNode)
+	{
+		return false;
+	}
+	
+    for(CTxIn in : newInput)
+	{
+        if (in.prevout.IsNull() || nAmount < 0)
+		{
             LogPrint("mnengine", "CMNenginePool::AddEntry - input not valid!\n");
             error = _("Input is not valid.");
-            sessionUsers--;
-            return false;
+            
+			sessionUsers--;
+            
+			return false;
         }
     }
 
-    if (!IsCollateralValid(txCollateral)){
+    if (!IsCollateralValid(txCollateral))
+	{
         LogPrint("mnengine", "CMNenginePool::AddEntry - collateral not valid!\n");
-        error = _("Collateral is not valid.");
-        sessionUsers--;
-        return false;
+		error = _("Collateral is not valid.");
+        
+		sessionUsers--;
+        
+		return false;
     }
 
-    if((int)entries.size() >= GetMaxPoolTransactions()){
+    if((int)entries.size() >= GetMaxPoolTransactions())
+	{
         LogPrint("mnengine", "CMNenginePool::AddEntry - entries is full!\n");
-        error = _("Entries are full.");
-        sessionUsers--;
+        
+		error = _("Entries are full.");
+        
+		sessionUsers--;
+		
         return false;
     }
 
-    BOOST_FOREACH(CTxIn in, newInput) {
+    for(CTxIn in : newInput)
+	{
         LogPrint("mnengine", "looking for vin -- %s\n", in.ToString());
-        BOOST_FOREACH(const CMNengineEntry& v, entries) {
-            BOOST_FOREACH(const CTxDSIn& s, v.sev){
-                if((CTxIn)s == in) {
+		
+        for(const CMNengineEntry& v : entries)
+		{
+            for(const CTxDSIn& s : v.sev)
+			{
+                if((CTxIn)s == in)
+				{
                     LogPrint("mnengine", "CMNenginePool::AddEntry - found in vin\n");
                     error = _("Already have that input.");
-                    sessionUsers--;
-                    return false;
+                    
+					sessionUsers--;
+                    
+					return false;
                 }
             }
         }
@@ -685,52 +912,71 @@ bool CMNenginePool::AddEntry(const std::vector<CTxIn>& newInput, const int64_t& 
     return true;
 }
 
-bool CMNenginePool::AddScriptSig(const CTxIn& newVin){
+bool CMNenginePool::AddScriptSig(const CTxIn& newVin)
+{
     LogPrint("mnengine", "CMNenginePool::AddScriptSig -- new sig  %s\n", newVin.scriptSig.ToString().substr(0,24));
 
-    BOOST_FOREACH(const CMNengineEntry& v, entries) {
-        BOOST_FOREACH(const CTxDSIn& s, v.sev){
-            if(s.scriptSig == newVin.scriptSig) {
+    for(const CMNengineEntry& v : entries)
+	{
+        for(const CTxDSIn& s : v.sev)
+		{
+            if(s.scriptSig == newVin.scriptSig)
+			{
                 LogPrint("mnengine", "CMNenginePool::AddScriptSig - already exists \n");
-                return false;
+                
+				return false;
             }
         }
     }
 
-    if(!SignatureValid(newVin.scriptSig, newVin)){
+    if(!SignatureValid(newVin.scriptSig, newVin))
+	{
         LogPrint("mnengine", "CMNenginePool::AddScriptSig - Invalid Sig\n");
-        return false;
+        
+		return false;
     }
 
     LogPrint("mnengine", "CMNenginePool::AddScriptSig -- sig %s\n", newVin.ToString());
 
-    BOOST_FOREACH(CTxIn& vin, finalTransaction.vin){
-        if(newVin.prevout == vin.prevout && vin.nSequence == newVin.nSequence){
+    for(CTxIn& vin : finalTransaction.vin)
+	{
+        if(newVin.prevout == vin.prevout && vin.nSequence == newVin.nSequence)
+		{
             vin.scriptSig = newVin.scriptSig;
             vin.prevPubKey = newVin.prevPubKey;
-            LogPrint("mnengine", "CMNenginePool::AddScriptSig -- adding to finalTransaction  %s\n", newVin.scriptSig.ToString().substr(0,24));
+            
+			LogPrint("mnengine", "CMNenginePool::AddScriptSig -- adding to finalTransaction  %s\n", newVin.scriptSig.ToString().substr(0,24));
         }
     }
-    for(unsigned int i = 0; i < entries.size(); i++){
-        if(entries[i].AddSig(newVin)){
+    
+	for(unsigned int i = 0; i < entries.size(); i++)
+	{
+        if(entries[i].AddSig(newVin))
+		{
             LogPrint("mnengine", "CMNenginePool::AddScriptSig -- adding  %s\n", newVin.scriptSig.ToString().substr(0,24));
-            return true;
+            
+			return true;
         }
     }
-
-
+	
     LogPrintf("CMNenginePool::AddScriptSig -- Couldn't set sig!\n" );
+	
     return false;
 }
 
 // check to make sure everything is signed
-bool CMNenginePool::SignaturesComplete(){
-
-    BOOST_FOREACH(const CMNengineEntry& v, entries) {
-        BOOST_FOREACH(const CTxDSIn& s, v.sev){
-            if(!s.fHasSig) return false;
+bool CMNenginePool::SignaturesComplete()
+{
+    for(const CMNengineEntry& v : entries)
+	{
+        for(const CTxDSIn& s : v.sev){
+            if(!s.fHasSig)
+			{
+				return false;
+			}
         }
     }
+	
     return true;
 }
 
@@ -740,39 +986,62 @@ bool CMNenginePool::SignaturesComplete(){
 //                  1 means transaction was accepted
 
 bool CMNenginePool::StatusUpdate(int newState, int newEntriesCount, int newAccepted, std::string& error, int newSessionID){
-    if(fMasterNode) return false;
-    if(state == POOL_STATUS_ERROR || state == POOL_STATUS_SUCCESS) return false;
-
+    if(fMasterNode)
+	{
+		return false;
+    }
+	
+	if(state == POOL_STATUS_ERROR || state == POOL_STATUS_SUCCESS)
+	{
+		return false;
+	}
+	
     UpdateState(newState);
     entriesCount = newEntriesCount;
 
-    if(newAccepted != -1) {
+    if(newAccepted != -1)
+	{
         lastEntryAccepted = newAccepted;
         countEntriesAccepted += newAccepted;
-        if(newAccepted == 0){
+        
+		if(newAccepted == 0)
+		{
             UpdateState(POOL_STATUS_ERROR);
             lastMessage = error;
         }
 
-        if(newAccepted == 1 && newSessionID != 0) {
+        if(newAccepted == 1 && newSessionID != 0)
+		{
             sessionID = newSessionID;
-            LogPrintf("CMNenginePool::StatusUpdate - set sessionID to %d\n", sessionID);
-            sessionFoundMasternode = true;
+            
+			LogPrintf("CMNenginePool::StatusUpdate - set sessionID to %d\n", sessionID);
+            
+			sessionFoundMasternode = true;
         }
     }
 
-    if(newState == POOL_STATUS_ACCEPTING_ENTRIES){
-        if(newAccepted == 1){
+    if(newState == POOL_STATUS_ACCEPTING_ENTRIES)
+	{
+        if(newAccepted == 1)
+		{
             LogPrintf("CMNenginePool::StatusUpdate - entry accepted! \n");
-            sessionFoundMasternode = true;
+            
+			sessionFoundMasternode = true;
             //wait for other users. Masternode will report when ready
             UpdateState(POOL_STATUS_QUEUE);
-        } else if (newAccepted == 0 && sessionID == 0 && !sessionFoundMasternode) {
+        }
+		else if (newAccepted == 0 && sessionID == 0 && !sessionFoundMasternode)
+		{
             LogPrintf("CMNenginePool::StatusUpdate - entry not accepted by Masternode \n");
-            UnlockCoins();
+            
+			UnlockCoins();
             UpdateState(POOL_STATUS_ACCEPTING_ENTRIES);
         }
-        if(sessionFoundMasternode) return true;
+        
+		if(sessionFoundMasternode)
+		{
+			return true;
+		}
     }
 
     return true;
@@ -783,41 +1052,53 @@ bool CMNenginePool::StatusUpdate(int newState, int newEntriesCount, int newAccep
 // check it to make sure it's what we want, then sign it if we agree.
 // If we refuse to sign, it's possible we'll be charged collateral
 //
-bool CMNenginePool::SignFinalTransaction(CTransaction& finalTransactionNew, CNode* node){
-    if(fMasterNode) return false;
-
+bool CMNenginePool::SignFinalTransaction(CTransaction& finalTransactionNew, CNode* node)
+{
+    if(fMasterNode)
+	{
+		return false;
+	}
+	
     finalTransaction = finalTransactionNew;
     LogPrintf("CMNenginePool::SignFinalTransaction %s\n", finalTransaction.ToString());
 
-    vector<CTxIn> sigs;
+    std::vector<CTxIn> sigs;
 
     //make sure my inputs/outputs are present, otherwise refuse to sign
-    BOOST_FOREACH(const CMNengineEntry e, entries) {
-        BOOST_FOREACH(const CTxDSIn s, e.sev) {
+    for(const CMNengineEntry e : entries)
+	{
+        for(const CTxDSIn s : e.sev)
+		{
             /* Sign my transaction and all outputs */
             int mine = -1;
             CScript prevPubKey = CScript();
             CTxIn vin = CTxIn();
 
-            for(unsigned int i = 0; i < finalTransaction.vin.size(); i++){
-                if(finalTransaction.vin[i] == s){
+            for(unsigned int i = 0; i < finalTransaction.vin.size(); i++)
+			{
+                if(finalTransaction.vin[i] == s)
+				{
                     mine = i;
                     prevPubKey = s.prevPubKey;
                     vin = s;
                 }
             }
-
-
-            if(mine >= 0){ //might have to do this one input at a time?
+			
+            if(mine >= 0) //might have to do this one input at a time?
+			{
                 int foundOutputs = 0;
                 CAmount nValue1 = 0;
                 CAmount nValue2 = 0;
 
-                for(unsigned int i = 0; i < finalTransaction.vout.size(); i++){
-                    BOOST_FOREACH(const CTxOut& o, e.vout) {
-                        string Ftx = finalTransaction.vout[i].scriptPubKey.ToString().c_str();
-                        string Otx = o.scriptPubKey.ToString().c_str();
-                        if(Ftx == Otx){
+                for(unsigned int i = 0; i < finalTransaction.vout.size(); i++)
+				{
+                    for(const CTxOut& o : e.vout)
+					{
+                        std::string Ftx = finalTransaction.vout[i].scriptPubKey.ToString().c_str();
+                        std::string Otx = o.scriptPubKey.ToString().c_str();
+                        
+						if(Ftx == Otx)
+						{
                             //if(fDebug) LogPrintf("CMNenginePool::SignFinalTransaction - foundOutputs = %d \n", foundOutputs);
                             foundOutputs++;
                             nValue1 += finalTransaction.vout[i].nValue;
@@ -825,40 +1106,50 @@ bool CMNenginePool::SignFinalTransaction(CTransaction& finalTransactionNew, CNod
                     }
                 }
 
-                BOOST_FOREACH(const CTxOut o, e.vout)
+                for(const CTxOut o : e.vout)
+				{
                     nValue2 += o.nValue;
-
+				}
+				
                 int targetOuputs = e.vout.size();
-                if(foundOutputs < targetOuputs || nValue1 != nValue2) {
+                if(foundOutputs < targetOuputs || nValue1 != nValue2)
+				{
                     // in this case, something went wrong and we'll refuse to sign. It's possible we'll be charged collateral. But that's
                     // better then signing if the transaction doesn't look like what we wanted.
                     LogPrintf("CMNenginePool::Sign - My entries are not correct! Refusing to sign. %d entries %d target. \n", foundOutputs, targetOuputs);
-                    UnlockCoins();
+                    
+					UnlockCoins();
                     SetNull();
-                    return false;
+                    
+					return false;
                 }
 
                 const CKeyStore& keystore = *pwalletMain;
 
                 LogPrint("mnengine", "CMNenginePool::Sign - Signing my input %i\n", mine);
-                if(!SignSignature(keystore, prevPubKey, finalTransaction, mine, int(SIGHASH_ALL|SIGHASH_ANYONECANPAY))) { // changes scriptSig
+				
+                if(!SignSignature(keystore, prevPubKey, finalTransaction, mine, int(SIGHASH_ALL|SIGHASH_ANYONECANPAY))) // changes scriptSig
+				{
                     LogPrint("mnengine", "CMNenginePool::Sign - Unable to sign my own transaction! \n");
                     // not sure what to do here, it will timeout...?
                 }
 
                 sigs.push_back(finalTransaction.vin[mine]);
-                LogPrint("mnengine", " -- dss %d %d %s\n", mine, (int)sigs.size(), finalTransaction.vin[mine].scriptSig.ToString());
+                
+				LogPrint("mnengine", " -- dss %d %d %s\n", mine, (int)sigs.size(), finalTransaction.vin[mine].scriptSig.ToString());
             }
-
         }
-
+		
         LogPrint("mnengine", "CMNenginePool::Sign - txNew:\n%s", finalTransaction.ToString());
     }
 
-   // push all of our signatures to the Masternode
-   if(sigs.size() > 0 && node != NULL)
-       node->PushMessage("dss", sigs);
-    return true;
+	// push all of our signatures to the Masternode
+	if(sigs.size() > 0 && node != NULL)
+	{
+		node->PushMessage("dss", sigs);
+	}
+	
+	return true;
 }
 
 void CMNenginePool::NewBlock()
@@ -866,33 +1157,46 @@ void CMNenginePool::NewBlock()
     LogPrint("mnengine", "CMNenginePool::NewBlock \n");
 
     //we we're processing lots of blocks, we'll just leave
-    if(GetTime() - lastNewBlock < 10) return;
+    if(GetTime() - lastNewBlock < 10)
+	{
+		return;
+	}
+	
     lastNewBlock = GetTime();
 
     mnEnginePool.CheckTimeout();
-
 }
 
 // MNengine transaction was completed (failed or successful)
 void CMNenginePool::CompletedTransaction(bool error, int errorID)
 {
-    if(fMasterNode) return;
-
-    if(error){
+    if(fMasterNode)
+	{
+		return;
+	}
+	
+    if(error)
+	{
         LogPrintf("CompletedTransaction -- error \n");
-        UpdateState(POOL_STATUS_ERROR);
+        
+		UpdateState(POOL_STATUS_ERROR);
         Check();
         UnlockCoins();
         SetNull();
-    } else {
+    }
+	else
+	{
         LogPrintf("CompletedTransaction -- success \n");
-        UpdateState(POOL_STATUS_SUCCESS);
+        
+		UpdateState(POOL_STATUS_SUCCESS);
 
         UnlockCoins();
         SetNull();
-        // To avoid race conditions, we'll only let DS run once per block
+        
+		// To avoid race conditions, we'll only let DS run once per block
         cachedLastSuccess = pindexBest->nHeight;
     }
+	
     lastMessage = GetMessageByID(errorID);
 
 }
@@ -907,30 +1211,37 @@ bool CMNenginePool::SendRandomPaymentToSelf()
     int64_t nBalance = pwalletMain->GetBalance();
     int64_t nPayment = (nBalance*0.35) + (rand() % nBalance);
 
-    if(nPayment > nBalance) nPayment = nBalance-(0.1*COIN);
-
+    if(nPayment > nBalance)
+	{
+		nPayment = nBalance-(0.1*COIN);
+	}
+	
     // make our change address
     CReserveKey reservekey(pwalletMain);
 
     CScript scriptChange;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
-    scriptChange = GetScriptForDestination(vchPubKey.GetID());
+    
+	assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    
+	scriptChange = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
     int64_t nFeeRet = 0;
     std::string strFail = "";
-    vector< pair<CScript, int64_t> > vecSend;
+    std::vector<std::pair<CScript, int64_t> > vecSend;
 
     // ****** Add fees ************ /
-    vecSend.push_back(make_pair(scriptChange, nPayment));
+    vecSend.push_back(std::make_pair(scriptChange, nPayment));
 
     CCoinControl *coinControl=NULL;
     int32_t nChangePos;
     bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl);
-    if(!success){
+    if(!success)
+	{
         LogPrintf("SendRandomPaymentToSelf: Error - %s\n", strFail);
-        return false;
+        
+		return false;
     }
 
     pwalletMain->CommitTransaction(wtx, reservekey);
@@ -946,7 +1257,7 @@ bool CMNenginePool::MakeCollateralAmounts()
     CWalletTx wtx;
     int64_t nFeeRet = 0;
     std::string strFail = "";
-    vector< pair<CScript, int64_t> > vecSend;
+    std::vector<std::pair<CScript, int64_t>> vecSend;
     CCoinControl *coinControl = NULL;
 
     // make our collateral address
@@ -959,22 +1270,45 @@ bool CMNenginePool::MakeCollateralAmounts()
     assert(reservekeyCollateral.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
     scriptCollateral = GetScriptForDestination(vchPubKey.GetID());
 
-    vecSend.push_back(make_pair(scriptCollateral, MNengine_COLLATERAL*4));
+    vecSend.push_back(std::make_pair(scriptCollateral, MNengine_COLLATERAL*4));
 
     int32_t nChangePos;
     // try to use non-denominated and not mn-like funds
-    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekeyChange,
-            nFeeRet, nChangePos, strFail, coinControl, ONLY_NONDENOMINATED_NOT10000IFMN);
-    if(!success){
+    bool success = pwalletMain->CreateTransaction(
+		vecSend,
+		wtx,
+		reservekeyChange,
+        nFeeRet,
+		nChangePos,
+		strFail,
+		coinControl,
+		ONLY_NONDENOMINATED_NOT10000IFMN
+	);
+    
+	if(!success)
+	{
         // if we failed (most likeky not enough funds), try to use denominated instead -
         // MN-like funds should not be touched in any case and we can't mix denominated without collaterals anyway
         LogPrintf("MakeCollateralAmounts: ONLY_NONDENOMINATED_NOT1000IFMN Error - %s\n", strFail);
-        success = pwalletMain->CreateTransaction(vecSend, wtx, reservekeyChange,
-                nFeeRet, nChangePos, strFail, coinControl, ONLY_NOT10000IFMN);
-        if(!success){
+        
+		success = pwalletMain->CreateTransaction(
+			vecSend,
+			wtx,
+			reservekeyChange,
+            nFeeRet,
+			nChangePos,
+			strFail,
+			coinControl,
+			ONLY_NOT10000IFMN
+		);
+        
+		if(!success)
+		{
             LogPrintf("MakeCollateralAmounts: ONLY_NOT1000IFMN Error - %s\n", strFail);
-            reservekeyCollateral.ReturnKey();
-            return false;
+            
+			reservekeyCollateral.ReturnKey();
+            
+			return false;
         }
     }
 
@@ -983,9 +1317,11 @@ bool CMNenginePool::MakeCollateralAmounts()
     LogPrintf("MakeCollateralAmounts: tx %s\n", wtx.GetHash().GetHex());
 
     // use the same cachedLastSuccess as for DS mixinx to prevent race
-    if(!pwalletMain->CommitTransaction(wtx, reservekeyChange)) {
+    if(!pwalletMain->CommitTransaction(wtx, reservekeyChange))
+	{
         LogPrintf("MakeCollateralAmounts: CommitTransaction failed!\n");
-        return false;
+        
+		return false;
     }
 
     cachedLastSuccess = pindexBest->nHeight;
@@ -993,44 +1329,49 @@ bool CMNenginePool::MakeCollateralAmounts()
     return true;
 }
 
-std::string CMNenginePool::GetMessageByID(int messageID) {
-    switch (messageID) {
-    case ERR_ALREADY_HAVE: return _("Already have that input.");
-    case ERR_ENTRIES_FULL: return _("Entries are full.");
-    case ERR_EXISTING_TX: return _("Not compatible with existing transactions.");
-    case ERR_FEES: return _("Transaction fees are too high.");
-    case ERR_INVALID_COLLATERAL: return _("Collateral not valid.");
-    case ERR_INVALID_INPUT: return _("Input is not valid.");
-    case ERR_INVALID_SCRIPT: return _("Invalid script detected.");
-    case ERR_INVALID_TX: return _("Transaction not valid.");
-    case ERR_MAXIMUM: return _("Value more than MNengine pool maximum allows.");
-    case ERR_MN_LIST: return _("Not in the Masternode list.");
-    case ERR_MODE: return _("Incompatible mode.");
-    case ERR_NON_STANDARD_PUBKEY: return _("Non-standard public key detected.");
-    case ERR_NOT_A_MN: return _("This is not a Masternode.");
-    case ERR_QUEUE_FULL: return _("Masternode queue is full.");
-    case ERR_RECENT: return _("Last MNengine was too recent.");
-    case ERR_SESSION: return _("Session not complete!");
-    case ERR_MISSING_TX: return _("Missing input transaction information.");
-    case ERR_VERSION: return _("Incompatible version.");
-    case MSG_SUCCESS: return _("Transaction created successfully.");
-    case MSG_ENTRIES_ADDED: return _("Your entries added successfully.");
-    case MSG_NOERR:
-    default:
-        return "";
+std::string CMNenginePool::GetMessageByID(int messageID)
+{
+    switch (messageID)
+	{
+		case ERR_ALREADY_HAVE: 			return _("Already have that input.");
+		case ERR_ENTRIES_FULL: 			return _("Entries are full.");
+		case ERR_EXISTING_TX: 			return _("Not compatible with existing transactions.");
+		case ERR_FEES: 					return _("Transaction fees are too high.");
+		case ERR_INVALID_COLLATERAL: 	return _("Collateral not valid.");
+		case ERR_INVALID_INPUT: 		return _("Input is not valid.");
+		case ERR_INVALID_SCRIPT: 		return _("Invalid script detected.");
+		case ERR_INVALID_TX: 			return _("Transaction not valid.");
+		case ERR_MAXIMUM: 				return _("Value more than MNengine pool maximum allows.");
+		case ERR_MN_LIST: 				return _("Not in the Masternode list.");
+		case ERR_MODE: 					return _("Incompatible mode.");
+		case ERR_NON_STANDARD_PUBKEY: 	return _("Non-standard public key detected.");
+		case ERR_NOT_A_MN: 				return _("This is not a Masternode.");
+		case ERR_QUEUE_FULL: 			return _("Masternode queue is full.");
+		case ERR_RECENT: 				return _("Last MNengine was too recent.");
+		case ERR_SESSION:				return _("Session not complete!");
+		case ERR_MISSING_TX:			return _("Missing input transaction information.");
+		case ERR_VERSION:				return _("Incompatible version.");
+		case MSG_SUCCESS:				return _("Transaction created successfully.");
+		case MSG_ENTRIES_ADDED: 		return _("Your entries added successfully.");
+		case MSG_NOERR:
+		default:						return "";
     }
 }
 
 bool CMNengineSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey){
     CScript payee2;
-    payee2 = GetScriptForDestination(pubkey.GetID());
-
     CTransaction txVin;
     uint256 hash;
-    //if(GetTransaction(vin.prevout.hash, txVin, hash, true)){
-    if(GetTransaction(vin.prevout.hash, txVin, hash)){
-        BOOST_FOREACH(CTxOut out, txVin.vout){
-            if(out.nValue == MasternodeCollateral(pindexBest->nHeight)*COIN){
+	
+    payee2 = GetScriptForDestination(pubkey.GetID());
+	
+	//if(GetTransaction(vin.prevout.hash, txVin, hash, true)){
+    if(GetTransaction(vin.prevout.hash, txVin, hash))
+	{
+        for(CTxOut out : txVin.vout)
+		{
+			if(out.nValue == MasternodeCollateral(pindexBest->nHeight)*COIN)
+			{
                 if(out.scriptPubKey == payee2) return true;
             }
         }
@@ -1039,57 +1380,71 @@ bool CMNengineSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey){
     return false;
 }
 
-bool CMNengineSigner::SetKey(std::string strSecret, std::string& errorMessage, CKey& key, CPubKey& pubkey){
+bool CMNengineSigner::SetKey(const std::string &strSecret, std::string& errorMessage, CKey& key, CPubKey& pubkey)
+{
     CDigitalNoteSecret vchSecret;
     bool fGood = vchSecret.SetString(strSecret);
 
-    if (!fGood) {
-        errorMessage = _("");//NOTE: previous message contents - Invalid private key.
-        return false;
+    if (!fGood)
+	{
+		errorMessage = _("");//NOTE: previous message contents - Invalid private key.
+        
+		return false;
     }
-
-    key = vchSecret.GetKey();
+    
+	key = vchSecret.GetKey();
     pubkey = key.GetPubKey();
-    LogPrintf("CMNengineSetKey(): SetKey now set successfully \n");
-    return true;
+    
+	LogPrintf("CMNengineSetKey(): SetKey now set successfully \n");
+    
+	return true;
 }
 
-bool CMNengineSigner::SignMessage(std::string strMessage, std::string& errorMessage, vector<unsigned char>& vchSig, CKey key)
+bool CMNengineSigner::SignMessage(const std::string &strMessage, std::string& errorMessage, std::vector<unsigned char>& vchSig, CKey key)
 {
     CHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
     ss << strMessage;
 
-    if (!key.SignCompact(ss.GetHash(), vchSig)) {
+    if (!key.SignCompact(ss.GetHash(), vchSig))
+	{
         errorMessage = _("Signing failed.");
-        return false;
+        
+		return false;
     }
 
     return true;
 }
 
-bool CMNengineSigner::VerifyMessage(CPubKey pubkey, vector<unsigned char>& vchSig, std::string strMessage, std::string& errorMessage)
+bool CMNengineSigner::VerifyMessage(CPubKey pubkey, std::vector<unsigned char>& vchSig, const std::string &strMessage, std::string& errorMessage)
 {
     CHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
     ss << strMessage;
 
     CPubKey pubkey2;
-    if (!pubkey2.RecoverCompact(ss.GetHash(), vchSig)) {
+    if (!pubkey2.RecoverCompact(ss.GetHash(), vchSig))
+	{
         errorMessage = _("Error recovering public key.");
-        return false;
+        
+		return false;
     }
 
     if (fDebug && (pubkey2.GetID() != pubkey.GetID()))
+	{
         LogPrintf("CMNengineSigner::VerifyMessage -- keys don't match: %s %s\n", pubkey2.GetID().ToString(), pubkey.GetID().ToString());
-
+	}
+	
     return (pubkey2.GetID() == pubkey.GetID());
 }
 
 bool CMNengineQueue::Sign()
 {
-    if(!fMasterNode) return false;
-
+    if(!fMasterNode)
+	{
+		return false;
+	}
+	
     std::string strMessage = vin.ToString() + boost::lexical_cast<std::string>(time) + boost::lexical_cast<std::string>(ready);
 
     CKey key2;
@@ -1100,19 +1455,24 @@ bool CMNengineQueue::Sign()
     {
         LogPrintf("CMNengineQueue():Relay - ERROR: Invalid Masternodeprivkey: '%s'\n", errorMessage);
         LogPrintf("CMNengineQueue():Relay - FORCE BYPASS - SetKey checks!!!\n");
-        return false;
+        
+		return false;
     }
 
-    if(!mnEngineSigner.SignMessage(strMessage, errorMessage, vchSig, key2)) {
+    if(!mnEngineSigner.SignMessage(strMessage, errorMessage, vchSig, key2))
+	{
         LogPrintf("CMNengineQueue():Relay - Sign message failed\n");
         LogPrintf("CMNengineQueue():Relay - FORCE BYPASS - SignMessage checks!!!\n");
-        return false;
+        
+		return false;
     }
 
-    if(!mnEngineSigner.VerifyMessage(pubkey2, vchSig, strMessage, errorMessage)) {
+    if(!mnEngineSigner.VerifyMessage(pubkey2, vchSig, strMessage, errorMessage))
+	{
         LogPrintf("CMNengineQueue():Relay - Verify message failed\n");
         LogPrintf("CMNengineQueue():Relay - FORCE BYPASS - VerifyMessage checks!!!\n");
-        return false;
+        
+		return false;
     }
 
     return true;
@@ -1120,9 +1480,10 @@ bool CMNengineQueue::Sign()
 
 bool CMNengineQueue::Relay()
 {
-
     LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes){
+	
+    for(CNode* pnode : vNodes)
+	{
         // always relay to everyone
         pnode->PushMessage("dsq", (*this));
     }
@@ -1137,9 +1498,12 @@ bool CMNengineQueue::CheckSignature()
     {
         std::string strMessage = vin.ToString() + boost::lexical_cast<std::string>(time) + boost::lexical_cast<std::string>(ready);
         std::string errorMessage = "";
-        if(!mnEngineSigner.VerifyMessage(pmn->pubkey2, vchSig, strMessage, errorMessage)){
+        
+		if(!mnEngineSigner.VerifyMessage(pmn->pubkey2, vchSig, strMessage, errorMessage))
+		{
             LogPrintf("CMNengineQueue::CheckSignature() - WARNING - Could not verify masternode address signature %s \n", vin.ToString().c_str());
-            return error("CMNengineQueue::CheckSignature() - Got bad Masternode address signature %s \n", vin.ToString().c_str());
+            
+			return error("CMNengineQueue::CheckSignature() - Got bad Masternode address signature %s \n", vin.ToString().c_str());
         }
 
         return true;
@@ -1151,7 +1515,8 @@ bool CMNengineQueue::CheckSignature()
 void CMNenginePool::RelayFinalTransaction(const int sessionID, const CTransaction& txNew)
 {
     LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes)
+    
+	for(CNode* pnode : vNodes)
     {
         pnode->PushMessage("dsf", sessionID, txNew);
     }
@@ -1159,43 +1524,61 @@ void CMNenginePool::RelayFinalTransaction(const int sessionID, const CTransactio
 
 void CMNenginePool::RelayIn(const std::vector<CTxDSIn>& vin, const int64_t& nAmount, const CTransaction& txCollateral, const std::vector<CTxDSOut>& vout)
 {
-    if(!pSubmittedToMasternode) return;
-
+    if(!pSubmittedToMasternode)
+	{
+		return;
+	}
+	
     std::vector<CTxIn> vin2;
     std::vector<CTxOut> vout2;
 
-    BOOST_FOREACH(CTxDSIn in, vin)
+    for(CTxDSIn in : vin)
+	{
         vin2.push_back(in);
-
-    BOOST_FOREACH(CTxDSOut out, vout)
+	}
+	
+    for(CTxDSOut out : vout)
+	{
         vout2.push_back(out);
-
+	}
+	
     CNode* pnode = FindNode(pSubmittedToMasternode->addr);
-    if(pnode != NULL) {
+    if(pnode != NULL)
+	{
         LogPrintf("RelayIn - found master, relaying message - %s \n", pnode->addr.ToString());
-        pnode->PushMessage("dsi", vin2, nAmount, txCollateral, vout2);
+        
+		pnode->PushMessage("dsi", vin2, nAmount, txCollateral, vout2);
     }
 }
 
-void CMNenginePool::RelayStatus(const int sessionID, const int newState, const int newEntriesCount, const int newAccepted, const std::string error)
+void CMNenginePool::RelayStatus(const int sessionID, const int newState, const int newEntriesCount, const int newAccepted, const std::string &error)
 {
     LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes)
+    
+	for(CNode* pnode : vNodes)
+	{
         pnode->PushMessage("dssu", sessionID, newState, newEntriesCount, newAccepted, error);
+	}
 }
 
-void CMNenginePool::RelayCompletedTransaction(const int sessionID, const bool error, const std::string errorMessage)
+void CMNenginePool::RelayCompletedTransaction(const int sessionID, const bool error, const std::string &errorMessage)
 {
     LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes)
+	
+    for(CNode* pnode : vNodes)
+	{
         pnode->PushMessage("dsc", sessionID, error, errorMessage);
+	}
 }
 
 //TODO: Rename/move to core
 void ThreadCheckMNenginePool()
 {
-    if(fLiteMode) return; //disable all MNengine/Masternode related functionality
-
+    if(fLiteMode)
+	{
+		return; //disable all MNengine/Masternode related functionality
+	}
+	
     // Make this thread recognisable as the wallet flushing thread
     RenameThread("DigitalNote-mnengine");
 
@@ -1204,20 +1587,23 @@ void ThreadCheckMNenginePool()
     while (true)
     {
         MilliSleep(1000);
-        //LogPrintf("ThreadCheckMNenginePool::check timeout\n");
+        
+		//LogPrintf("ThreadCheckMNenginePool::check timeout\n");
 
         // try to sync from all available nodes, one step at a time
         //masternodeSync.Process();
-
-
-        if(mnEnginePool.IsBlockchainSynced()) {
-
+		
+        if(mnEnginePool.IsBlockchainSynced())
+		{
             c++;
 
             // check if we should activate or ping every few minutes,
             // start right after sync is considered to be done
-            if(c % MASTERNODE_PING_SECONDS == 1) activeMasternode.ManageStatus();
-
+            if(c % MASTERNODE_PING_SECONDS == 1)
+			{
+				activeMasternode.ManageStatus();
+			}
+			
             if(c % 60 == 0)
             {
                 mnodeman.CheckAndRemove();
@@ -1226,13 +1612,18 @@ void ThreadCheckMNenginePool()
                 CleanTransactionLocksList();
             }
 
-            //if(c % MASTERNODES_DUMP_SECONDS == 0) DumpMasternodes();
-
+            //if(c % MASTERNODES_DUMP_SECONDS == 0)
+			//{
+			//	DumpMasternodes();
+			//}
+			
             mnEnginePool.CheckTimeout();
             mnEnginePool.CheckForCompleteQueue();
 
-            if(mnEnginePool.GetState() == POOL_STATUS_IDLE && c % 15 == 0){
-            }
+            //if(mnEnginePool.GetState() == POOL_STATUS_IDLE && c % 15 == 0)
+			//{
+				
+            //}
         }
     }
 }

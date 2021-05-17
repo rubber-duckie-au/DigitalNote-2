@@ -3,11 +3,14 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "chain.h"
-#include "txmempool.h"
-#include "main.h" // for CTransaction
+#include <boost/foreach.hpp>
 
-using namespace std;
+#include "ctransaction.h"
+#include "cinpoint.h"
+#include "ctxout.h"
+#include "ctxin.h"
+
+#include "txmempool.h"
 
 CTxMemPool::CTxMemPool()
 {
@@ -93,7 +96,7 @@ void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
 
     LOCK(cs);
     vtxid.reserve(mapTx.size());
-    for (map<uint256, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
+    for (std::map<uint256, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
         vtxid.push_back((*mi).first);
 }
 

@@ -7,6 +7,7 @@
 #ifndef BITCOIN_GENESIS_H
 #define BITCOIN_GENESIS_H
 
+#include "uint/uint256.h"
 #include "bignum.h"
 
 /** Genesis Start Time */

@@ -7,10 +7,9 @@
 #ifndef BITCOIN_BLOCKPARAMS_H
 #define BITCOIN_BLOCKPARAMS_H
 
-#include "net.h"
-#include "chain.h"
-#include "bignum.h"
-#include "base58.h"
+#include <cstdint>
+
+class CBlockIndex;
 
 #define START_MASTERNODE_PAYMENTS_TESTNET      9993058800  // OFF (NOT TOGGLED)
 #define START_MASTERNODE_PAYMENTS              1554494400  // OFF (Friday, April 5, 2019 1:00:00 PM GMT-07:00 | PDT)

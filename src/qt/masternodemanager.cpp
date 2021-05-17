@@ -1,26 +1,7 @@
-#include "masternodemanager.h"
-#include "ui_masternodemanager.h"
-#include "addeditadrenalinenode.h"
-#include "adrenalinenodeconfigdialog.h"
+#include "compat.h"
 
-#include "sync.h"
-#include "clientmodel.h"
-#include "walletmodel.h"
-#include "activemasternode.h"
-#include "masternodeconfig.h"
-#include "masternodeman.h"
-#include "masternode.h"
-#include "walletdb.h"
-#include "wallet.h"
-#include "init.h"
-#include "rpcserver.h"
-#include "guiutil.h"
 #include <boost/lexical_cast.hpp>
 #include <fstream>
-
-using namespace json_spirit;
-using namespace std;
-
 #include <QAbstractItemDelegate>
 #include <QClipboard>
 #include <QPainter>
@@ -40,6 +21,26 @@ using namespace std;
 #else
 #include <QUrlQuery>
 #endif
+
+#include "sync.h"
+#include "clientmodel.h"
+#include "walletmodel.h"
+#include "activemasternode.h"
+#include "masternodeconfig.h"
+#include "masternodeman.h"
+#include "masternode.h"
+#include "walletdb.h"
+#include "init.h"
+#include "rpcserver.h"
+#include "guiutil.h"
+#include "script.h"
+
+#include "masternodemanager.h"
+#include "ui_masternodemanager.h"
+#include "addeditadrenalinenode.h"
+#include "adrenalinenodeconfigdialog.h"
+
+using namespace json_spirit;
 
 MasternodeManager::MasternodeManager(QWidget *parent) :
     QWidget(parent),

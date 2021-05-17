@@ -15,11 +15,15 @@
 #define BITCOIN_BASE58_H
 
 #include "chainparams.h"
-#include "pubkey.h"
 #include "script.h"
+#include "cextpubkey.h"
+#include "allocators.h"
 
 #include <string>
 #include <vector>
+
+class CKey;
+class CExtKey;
 
 /**
  * Encode a byte sequence as a base58-encoded string.

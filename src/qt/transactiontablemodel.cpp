@@ -1,4 +1,11 @@
-#include "transactiontablemodel.h"
+#include "compat.h"
+
+#include <QList>
+#include <QColor>
+#include <QIcon>
+#include <QDateTime>
+#include <QDebug>
+#include <boost/bind.hpp>
 
 #include "guiutil.h"
 #include "transactionrecord.h"
@@ -8,16 +15,12 @@
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
 #include "bitcoinunits.h"
-
-#include "wallet.h"
+#include "cwallettx.h"
 #include "ui_interface.h"
+#include "main_extern.h"
+#include "ccriticalblock.h"
 
-#include <QList>
-#include <QColor>
-#include <QIcon>
-#include <QDateTime>
-#include <QDebug>
-#include <boost/bind.hpp>
+#include "transactiontablemodel.h"
 
 // Amount column is right-aligned it contains numbers
 static int column_alignments[] = {

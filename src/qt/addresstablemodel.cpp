@@ -1,14 +1,18 @@
-#include "addresstablemodel.h"
-
-#include "guiutil.h"
-#include "walletmodel.h"
-
-#include "wallet.h"
-#include "base58.h"
-#include "stealth.h"
+#include "compat.h"
 
 #include <QFont>
 #include <QDebug>
+#include <boost/foreach.hpp>
+
+#include "guiutil.h"
+#include "walletmodel.h"
+#include "base58.h"
+#include "stealth.h"
+#include "script.h"
+#include "cscript.h"
+#include "ccriticalblock.h"
+
+#include "addresstablemodel.h"
 
 const QString AddressTableModel::Send = "S";
 const QString AddressTableModel::Receive = "R";
@@ -62,7 +66,7 @@ public:
         cachedAddressTable.clear();
         {
             LOCK(wallet->cs_wallet);
-            BOOST_FOREACH(const PAIRTYPE(CTxDestination, std::string)& item, wallet->mapAddressBook)
+            for(const std::pair<CTxDestination, std::string>& item : wallet->mapAddressBook)
             {
                 const CDigitalNoteAddress& address = item.first;
                 const std::string& strName = item.second;

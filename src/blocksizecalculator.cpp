@@ -3,10 +3,18 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
+#include "cblockindex.h"
+#include "cdiskblockpos.h"
+#include "cscript.h"
+#include "main_extern.h"
+#include "ccriticalblock.h"
+#include "main.h"
+
 #include "blocksizecalculator.h"
 
 using namespace BlockSizeCalculator;
-using namespace std;
 
 static std::vector<unsigned int> blocksizes;
 static bool sorted = false;

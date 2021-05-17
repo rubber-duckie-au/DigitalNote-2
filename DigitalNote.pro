@@ -11,6 +11,12 @@ CONFIG += widgets
 CONFIG += static
 CONFIG += openssl
 
+## 
+## This gives us abilitie to create same name .cpp files in different directories.
+## Without this option it overwrite and then there is a .o missing on linking
+##
+CONFIG += object_parallel_to_source
+
 greaterThan(QT_MAJOR_VERSION, 4) {
     QT += widgets
     DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
@@ -197,8 +203,21 @@ contains(USE_O0, 1) {
     QMAKE_CFLAGS += -msse2
 }
 
-QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wno-ignored-qualifiers -Wformat -Wformat-security -Wno-unused-parameter -Wstack-protector
-QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-variable -fpermissive
+QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option
+#QMAKE_CXXFLAGS_WARN_ON += -Wall
+#QMAKE_CXXFLAGS_WARN_ON += -Wextra
+QMAKE_CXXFLAGS_WARN_ON += -Wno-ignored-qualifiers
+QMAKE_CXXFLAGS_WARN_ON += -Wformat
+QMAKE_CXXFLAGS_WARN_ON += -Wformat-security
+QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-parameter
+QMAKE_CXXFLAGS_WARN_ON += -Wstack-protector
+QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-variable
+QMAKE_CXXFLAGS_WARN_ON += -fpermissive
+QMAKE_CXXFLAGS_WARN_ON += -Wfatal-errors
+QMAKE_CXXFLAGS_WARN_ON += -std=c++17
+
+## Debug header inclusions
+#QMAKE_CXXFLAGS_WARN_ON += -H
 
 windows:QMAKE_CXXFLAGS_WARN_ON += -Wno-cpp -Wno-maybe-uninitialized
 !macx:QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-local-typedefs
@@ -221,7 +240,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/importprivatekeydialog.h \
     src/qt/editconfigdialog.h \
     src/qt/bitcoinaddressvalidator.h \
-    src/alert.h \
+    src/calert.h \
     src/blocksizecalculator.h \
     src/allocators.h \
     src/addrman.h \
@@ -239,7 +258,6 @@ HEADERS += src/qt/bitcoingui.h \
     src/sync.h \
     src/util.h \
     src/hash.h \
-    src/uint256.h \
     src/kernel.h \
     src/pbkdf2.h \
     src/serialize.h \
@@ -330,7 +348,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/addeditadrenalinenode.h \
     src/qt/adrenalinenodeconfigdialog.h \
     src/qt/qcustomplot.h \
-    src/smessage.h \
+    src/smsg.h \
     src/webwalletconnector.h \
     src/qt/messagepage.h \
     src/qt/messagemodel.h \
@@ -361,7 +379,67 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/importprivatekeydialog.cpp \
     src/qt/editconfigdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
-    src/alert.cpp \
+	src/cunsignedalert.cpp \
+	src/cstealthkeymetadata.cpp \
+	src/ckeymetadata.cpp \
+	src/smsg/batchscanner.cpp \
+	src/smsg/address.cpp \
+	src/smsg/crypter.cpp \
+	src/smsg/token.cpp \
+	src/smsg/stored.cpp \
+	src/smsg/bucket.cpp \
+	src/smsg/options.cpp \
+	src/smsg/db.cpp \
+	src/smsg/ckeyid_b.cpp \
+	src/smsg/cdigitalnoteaddress_b.cpp \
+	src/smsg/securemessage.cpp \
+	src/bignum.cpp \
+	src/cinpoint.cpp \
+	src/coutpoint.cpp \
+	src/ctxin.cpp \
+	src/ctxout.cpp \
+	src/csporkmanager.cpp \
+	src/csporkmessage.cpp \
+	src/cconsensusvote.cpp \
+	src/ctransactionlock.cpp \
+	src/net/cbandb.cpp \
+	src/net/caddrdb.cpp \
+	src/net/cnode.cpp \
+	src/net/cbanentry.cpp \
+	src/net/cnetmessage.cpp \
+	src/uint/uint_base.cpp \
+	src/uint/uint160.cpp \
+	src/uint/uint256.cpp \
+	src/uint/uint512.cpp \
+	src/cstealthaddress.cpp \
+	src/cscriptcompressor.cpp \
+	src/cscriptvisitor.cpp \
+	src/cscript.cpp \
+	src/cscriptnum.cpp \
+    src/caffectedkeysvisitor.cpp \
+	src/ckeystoreisminevisitor.cpp \
+	src/csignaturecache.cpp \
+	src/signaturechecker.cpp \
+	src/caccountingentry.cpp \
+	src/caccount.cpp \
+	src/cwalletkey.cpp \
+	src/coutput.cpp \
+	src/cwallettx.cpp \
+	src/creservekey.cpp \
+	src/cwallet.cpp \
+	src/ckeypool.cpp \
+	src/cvalidationstate.cpp \
+	src/cblocklocator.cpp \
+	src/cdiskblockindex.cpp \
+	src/cblockindex.cpp \
+	src/cdiskblockpos.cpp \
+	src/cblock.cpp \
+	src/ctxoutcompressor.cpp \
+	src/ctxindex.cpp \
+	src/cmerkletx.cpp \
+	src/cdisktxpos.cpp \
+	src/ctransaction.cpp \
+	src/calert.cpp \
     src/blocksizecalculator.cpp \
     src/allocators.cpp \
     src/base58.cpp \
@@ -453,7 +531,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/addeditadrenalinenode.cpp \
     src/qt/adrenalinenodeconfigdialog.cpp \
     src/qt/qcustomplot.cpp \
-    src/smessage.cpp \
+    src/smsg.cpp \
     src/webwalletconnector.cpp \
     src/qt/messagepage.cpp \
     src/qt/messagemodel.cpp \
@@ -467,31 +545,47 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/crypto/common/bmw.c \
     src/crypto/common/echo.c
 
+## ----------------------------------------------------------
+##
+## Experiment to make precompiling headers work
+##
+
+#CONFIG += precompile_header
+
+## Use Precompiled headers (PCH)
+#PRECOMPILED_HEADER += src/all_headers.h
+
+#precompile_header:!isEmpty(PRECOMPILED_HEADER) {
+#DEFINES += USING_PCH
+#}
+
+## ----------------------------------------------------------
+
 RESOURCES += \
     src/qt/bitcoin.qrc
 
 FORMS += \
-    src/qt/forms/coincontroldialog.ui \
-    src/qt/forms/sendcoinsdialog.ui \
-    src/qt/forms/addressbookpage.ui \
-    src/qt/forms/signverifymessagedialog.ui \
     src/qt/forms/aboutdialog.ui \
-    src/qt/forms/editaddressdialog.ui \
-    src/qt/forms/importprivatekeydialog.ui \
-    src/qt/forms/editconfigdialog.ui \
-    src/qt/forms/transactiondescdialog.ui \
-    src/qt/forms/overviewpage.ui \
-    src/qt/forms/sendcoinsentry.ui \
-    src/qt/forms/askpassphrasedialog.ui \
-    src/qt/forms/rpcconsole.ui \
-    src/qt/forms/optionsdialog.ui \
-    src/qt/forms/masternodemanager.ui \
     src/qt/forms/addeditadrenalinenode.ui \
+    src/qt/forms/addressbookpage.ui \
     src/qt/forms/adrenalinenodeconfigdialog.ui \
-    src/qt/forms/messagepage.ui \
-    src/qt/forms/sendmessagesentry.ui \
-    src/qt/forms/sendmessagesdialog.ui \
+    src/qt/forms/askpassphrasedialog.ui \
     src/qt/forms/blockbrowser.ui \
+    src/qt/forms/coincontroldialog.ui \
+    src/qt/forms/editaddressdialog.ui \
+    src/qt/forms/editconfigdialog.ui \
+    src/qt/forms/importprivatekeydialog.ui \
+    src/qt/forms/masternodemanager.ui \
+    src/qt/forms/messagepage.ui \
+    src/qt/forms/optionsdialog.ui \
+    src/qt/forms/overviewpage.ui \
+    src/qt/forms/rpcconsole.ui \
+    src/qt/forms/sendcoinsdialog.ui \
+    src/qt/forms/sendcoinsentry.ui \
+    src/qt/forms/sendmessagesdialog.ui \
+    src/qt/forms/sendmessagesentry.ui \
+    src/qt/forms/signverifymessagedialog.ui \
+    src/qt/forms/transactiondescdialog.ui \
     src/qt/plugins/mrichtexteditor/mrichtextedit.ui
 
 contains(USE_QRCODE, 1) {

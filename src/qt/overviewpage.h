@@ -1,6 +1,8 @@
 #ifndef OVERVIEWPAGE_H
 #define OVERVIEWPAGE_H
 
+#include "compat.h"
+
 #include "util.h"
 
 #include <QTimer>

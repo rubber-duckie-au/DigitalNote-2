@@ -1,29 +1,21 @@
-#include "masternode.h"
-#include "masternodeman.h"
-#include "mnengine.h"
-#include "chain.h"
-#include "main.h"
-#include "sync.h"
-#include "util.h"
-#include "addrman.h"
+#include "compat.h"
+
 #include <boost/lexical_cast.hpp>
 
+#include "masternodeman.h"
+#include "mnengine.h"
+#include "sync.h"
+#include "util.h"
+#include "cvalidationstate.h"
+#include "mining.h"
+
+#include "masternode.h"
 
 CCriticalSection cs_masternodes;
 // keep track of the scanning errors I've seen
-map<uint256, int> mapSeenMasternodeScanningErrors;
+std::map<uint256, int> mapSeenMasternodeScanningErrors;
 // cache block hashes as we calculate them
 std::map<int64_t, uint256> mapCacheBlockHashes;
-
-
-struct CompareValueOnly
-{
-    bool operator()(const pair<int64_t, CTxIn>& t1,
-                    const pair<int64_t, CTxIn>& t2) const
-    {
-        return t1.first < t2.first;
-    }
-};
 
 //Get the last hash that matches the modulus given. Processed in reverse order
 bool GetBlockHash(uint256& hash, int nBlockHeight)

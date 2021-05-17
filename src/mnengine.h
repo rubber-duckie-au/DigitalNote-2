@@ -5,15 +5,16 @@
 #ifndef MNengine_H
 #define MNengine_H
 
-#include "chain.h"
-#include "main.h"
+#include <boost/foreach.hpp>
+
 #include "sync.h"
 #include "activemasternode.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
-//#include "mnengine-relay.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "ctransaction.h"
 
-class CTxIn;
 class CMNenginePool;
 class CMNengineSigner;
 class CMasterNodeVote;
@@ -50,7 +51,7 @@ extern CMNenginePool mnEnginePool;
 extern CMNengineSigner mnEngineSigner;
 extern std::vector<CMNengineQueue> vecMNengineQueue;
 extern std::string strMasterNodePrivKey;
-extern map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
+extern std::map<uint256, CMNengineBroadcastTx> mapMNengineBroadcastTxes;
 extern CActiveMasternode activeMasternode;
 
 /** Holds an MNengine input
@@ -110,14 +111,21 @@ public:
     /// Add entries to use for MNengine
     bool Add(const std::vector<CTxIn> vinIn, int64_t amountIn, const CTransaction collateralIn, const std::vector<CTxOut> voutIn)
     {
-        if(isSet){return false;}
+        if(isSet)
+		{
+			return false;
+		}
 
-        BOOST_FOREACH(const CTxIn& in, vinIn)
+        for(const CTxIn& in : vinIn)
+		{
             sev.push_back(in);
-
-        BOOST_FOREACH(const CTxOut& out, voutIn)
+		}
+		
+        for(const CTxOut& out : voutIn)
+		{
             vout.push_back(out);
-
+		}
+		
         amount = amountIn;
         collateral = collateralIn;
         isSet = true;
@@ -128,9 +136,15 @@ public:
 
     bool AddSig(const CTxIn& vin)
     {
-        BOOST_FOREACH(CTxDSIn& s, sev) {
-            if(s.prevout == vin.prevout && s.nSequence == vin.nSequence){
-                if(s.fHasSig){return false;}
+        for(CTxDSIn& s : sev)
+		{
+            if(s.prevout == vin.prevout && s.nSequence == vin.nSequence)
+			{
+                if(s.fHasSig)
+				{
+					return false;
+				}
+				
                 s.scriptSig = vin.scriptSig;
                 s.prevPubKey = vin.prevPubKey;
                 s.fHasSig = true;
@@ -228,7 +242,7 @@ class CMNengineBroadcastTx
 public:
     CTransaction tx;
     CTxIn vin;
-    vector<unsigned char> vchSig;
+    std::vector<unsigned char> vchSig;
     int64_t sigTime;
 };
 
@@ -240,11 +254,11 @@ public:
     /// Is the inputs associated with this public key? (and there is 10000 XDN - checking if valid masternode)
     bool IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey);
     /// Set the private/public key values, returns true if successful
-    bool SetKey(std::string strSecret, std::string& errorMessage, CKey& key, CPubKey& pubkey);
+    bool SetKey(const std::string &strSecret, std::string& errorMessage, CKey& key, CPubKey& pubkey);
     /// Sign the message, returns true if successful
-    bool SignMessage(std::string strMessage, std::string& errorMessage, std::vector<unsigned char>& vchSig, CKey key);
+    bool SignMessage(const std::string &strMessage, std::string& errorMessage, std::vector<unsigned char>& vchSig, CKey key);
     /// Verify the message, returns true if succcessful
-    bool VerifyMessage(CPubKey pubkey, std::vector<unsigned char>& vchSig, std::string strMessage, std::string& errorMessage);
+    bool VerifyMessage(CPubKey pubkey, std::vector<unsigned char>& vchSig, const std::string &strMessage, std::string& errorMessage);
 };
 
 /** Used to keep track of current status of MNengine pool
@@ -354,7 +368,7 @@ public:
         minBlockSpacing = minBlockSpacingIn;
     }
 
-    bool SetCollateralAddress(std::string strAddress);
+    bool SetCollateralAddress(const std::string &strAddress);
     void Reset();
     void SetNull();
 
@@ -474,8 +488,8 @@ public:
     void RelaySignaturesAnon(std::vector<CTxIn>& vin);
     void RelayInAnon(std::vector<CTxIn>& vin, std::vector<CTxOut>& vout);
     void RelayIn(const std::vector<CTxDSIn>& vin, const int64_t& nAmount, const CTransaction& txCollateral, const std::vector<CTxDSOut>& vout);
-    void RelayStatus(const int sessionID, const int newState, const int newEntriesCount, const int newAccepted, const std::string error="");
-    void RelayCompletedTransaction(const int sessionID, const bool error, const std::string errorMessage);
+    void RelayStatus(const int sessionID, const int newState, const int newEntriesCount, const int newAccepted, const std::string &error="");
+    void RelayCompletedTransaction(const int sessionID, const bool error, const std::string &errorMessage);
 };
 
 void ThreadCheckMNenginePool();

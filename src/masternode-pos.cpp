@@ -1,21 +1,14 @@
-
-
-
 #include "bignum.h"
 #include "sync.h"
-#include "net.h"
-#include "key.h"
 #include "util.h"
-#include "script.h"
 #include "base58.h"
-#include "protocol.h"
 #include "activemasternode.h"
 #include "masternodeman.h"
 #include "spork.h"
 #include <boost/lexical_cast.hpp>
 #include "masternodeman.h"
+#include "script.h"
 
-using namespace std;
 using namespace boost;
 
 std::map<uint256, CMasternodeScanningError> mapMasternodeScanningErrors;
@@ -52,9 +45,16 @@ CMasternodeScanning mnscan;
 
 void ProcessMessageMasternodePOS(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
-    if(!IsSporkActive(SPORK_7_MASTERNODE_SCANNING)) return;
-    if(IsInitialBlockDownload()) return;
-
+    if(!IsSporkActive(SPORK_7_MASTERNODE_SCANNING))
+	{
+		return;
+    }
+	
+	if(IsInitialBlockDownload())
+	{
+		return;
+	}
+	
     if (strCommand == "mnse") //Masternode Scanning Error
     {
 
@@ -65,15 +65,17 @@ void ProcessMessageMasternodePOS(CNode* pfrom, std::string& strCommand, CDataStr
         CInv inv(MSG_MASTERNODE_SCANNING_ERROR, mnse.GetHash());
         pfrom->AddInventoryKnown(inv);
 
-        if(mapMasternodeScanningErrors.count(mnse.GetHash())){
+        if(mapMasternodeScanningErrors.count(mnse.GetHash()))
+		{
             return;
         }
-        mapMasternodeScanningErrors.insert(make_pair(mnse.GetHash(), mnse));
+        mapMasternodeScanningErrors.insert(std::make_pair(mnse.GetHash(), mnse));
 
         if(!mnse.IsValid())
         {
             LogPrintf("MasternodePOS::mnse - Invalid object\n");   
-            return;
+            
+			return;
         }
 
         CMasternode* pmnA = mnodeman.Find(mnse.vinMasternodeA);
@@ -81,36 +83,58 @@ void ProcessMessageMasternodePOS(CNode* pfrom, std::string& strCommand, CDataStr
         if(pmnA->protocolVersion < MIN_MASTERNODE_POS_PROTO_VERSION) return;
 
         int nBlockHeight = pindexBest->nHeight;
-        if(nBlockHeight - mnse.nBlockHeight > 10){
+        if(nBlockHeight - mnse.nBlockHeight > 10)
+		{
             LogPrintf("MasternodePOS::mnse - Too old\n");
-            return;   
+            
+			return;   
         }
 
         // Lowest masternodes in rank check the highest each block
         int a = mnodeman.GetMasternodeRank(mnse.vinMasternodeA, mnse.nBlockHeight, MIN_MASTERNODE_POS_PROTO_VERSION);
-        if(a == -1 || a > GetCountScanningPerBlock())
+        
+		if(a == -1 || a > GetCountScanningPerBlock())
         {
             if(a != -1) LogPrintf("MasternodePOS::mnse - MasternodeA ranking is too high\n");
-            return;
+            
+			return;
         }
 
         int b = mnodeman.GetMasternodeRank(mnse.vinMasternodeB, mnse.nBlockHeight, MIN_MASTERNODE_POS_PROTO_VERSION, false);
+		
         if(b == -1 || b < mnodeman.CountMasternodesAboveProtocol(MIN_MASTERNODE_POS_PROTO_VERSION)-GetCountScanningPerBlock())
         {
-            if(b != -1) LogPrintf("MasternodePOS::mnse - MasternodeB ranking is too low\n");
-            return;
+            if(b != -1)
+			{
+				LogPrintf("MasternodePOS::mnse - MasternodeB ranking is too low\n");
+            }
+			
+			return;
         }
 
-        if(!mnse.SignatureValid()){
+        if(!mnse.SignatureValid())
+		{
             LogPrintf("MasternodePOS::mnse - Bad masternode message\n");
-            return;
+            
+			return;
         }
 
         CMasternode* pmnB = mnodeman.Find(mnse.vinMasternodeB);
-        if(pmnB == NULL) return;
-
-        if(fDebug) LogPrintf("ProcessMessageMasternodePOS::mnse - nHeight %d MasternodeA %s MasternodeB %s\n", mnse.nBlockHeight, pmnA->addr.ToString().c_str(), pmnB->addr.ToString().c_str());
-
+        if(pmnB == NULL)
+		{
+			return;
+		}
+		
+        if(fDebug)
+		{
+			LogPrintf(
+				"ProcessMessageMasternodePOS::mnse - nHeight %d MasternodeA %s MasternodeB %s\n",
+				mnse.nBlockHeight,
+				pmnA->addr.ToString().c_str(),
+				pmnB->addr.ToString().c_str()
+			);
+		}
+		
         pmnB->ApplyScanningError(mnse);
         mnse.Relay();
     }
@@ -122,19 +146,25 @@ int GetCountScanningPerBlock()
     return std::max(1, mnodeman.CountMasternodesAboveProtocol(MIN_MASTERNODE_POS_PROTO_VERSION)/100);
 }
 
-
 void CMasternodeScanning::CleanMasternodeScanningErrors()
 {
-    if(pindexBest == NULL) return;
-
+    if(pindexBest == NULL)
+	{
+		return;
+	}
+	
     std::map<uint256, CMasternodeScanningError>::iterator it = mapMasternodeScanningErrors.begin();
 
-    while(it != mapMasternodeScanningErrors.end()) {
-        if(GetTime() > it->second.nExpiration){ //keep them for an hour
+    while(it != mapMasternodeScanningErrors.end())
+	{
+        if(GetTime() > it->second.nExpiration) //keep them for an hour
+		{
             LogPrintf("Removing old masternode scanning error %s\n", it->second.GetHash().ToString().c_str());
 
             mapMasternodeScanningErrors.erase(it++);
-        } else {
+        }
+		else
+		{
             it++;
         }
     }
@@ -144,51 +174,70 @@ void CMasternodeScanning::CleanMasternodeScanningErrors()
 // Check other masternodes to make sure they're running correctly
 void CMasternodeScanning::DoMasternodePOSChecks()
 {
-    if(!fMasterNode) return;
-    if(!IsSporkActive(SPORK_7_MASTERNODE_SCANNING)) return;
-    if(IsInitialBlockDownload()) return;
-
+    if(!fMasterNode)
+	{
+		return;
+    }
+	
+	if(!IsSporkActive(SPORK_7_MASTERNODE_SCANNING))
+	{
+		return;
+    }
+	
+	if(IsInitialBlockDownload())
+	{
+		return;
+	}
+	
     int nBlockHeight = pindexBest->nHeight-5;
 
     int a = mnodeman.GetMasternodeRank(activeMasternode.vin, nBlockHeight, MIN_MASTERNODE_POS_PROTO_VERSION);
-    if(a == -1 || a > GetCountScanningPerBlock()){
+    if(a == -1 || a > GetCountScanningPerBlock())
+	{
         // we don't need to do anything this block
         return;
     }
 
     // The lowest ranking nodes (Masternode A) check the highest ranking nodes (Masternode B)
     CMasternode* pmn = mnodeman.GetMasternodeByRank(mnodeman.CountMasternodesAboveProtocol(MIN_MASTERNODE_POS_PROTO_VERSION)-a, nBlockHeight, MIN_MASTERNODE_POS_PROTO_VERSION, false);
-    if(pmn == NULL) return;
-
+    if(pmn == NULL)
+	{
+		return;
+	}
+	
     // -- first check : Port is open
 
-    if(!ConnectNode((CAddress)pmn->addr, NULL, true)){
+    if(!ConnectNode((CAddress)pmn->addr, NULL, true))
+	{
         // we couldn't connect to the node, let's send a scanning error
         CMasternodeScanningError mnse(activeMasternode.vin, pmn->vin, SCANNING_ERROR_NO_RESPONSE, nBlockHeight);
         mnse.Sign();
-        mapMasternodeScanningErrors.insert(make_pair(mnse.GetHash(), mnse));
+        mapMasternodeScanningErrors.insert(std::make_pair(mnse.GetHash(), mnse));
         mnse.Relay();
     }
 
     // success
     CMasternodeScanningError mnse(activeMasternode.vin, pmn->vin, SCANNING_SUCCESS, nBlockHeight);
     mnse.Sign();
-    mapMasternodeScanningErrors.insert(make_pair(mnse.GetHash(), mnse));
+    mapMasternodeScanningErrors.insert(std::make_pair(mnse.GetHash(), mnse));
     mnse.Relay();
 }
 
 bool CMasternodeScanningError::SignatureValid()
 {
     std::string errorMessage;
-    std::string strMessage = vinMasternodeA.ToString() + vinMasternodeB.ToString() + 
-        boost::lexical_cast<std::string>(nBlockHeight) + boost::lexical_cast<std::string>(nErrorType);
+    std::string strMessage = vinMasternodeA.ToString() +
+								vinMasternodeB.ToString() + 
+								boost::lexical_cast<std::string>(nBlockHeight) +
+								boost::lexical_cast<std::string>(nErrorType);
 
     CMasternode* pmn = mnodeman.Find(vinMasternodeA);
 
     if(pmn == NULL)
     {
         LogPrintf("CMasternodeScanningError::SignatureValid() - Unknown Masternode\n");
-        return false;
+        
+		return false;
     }
 
     CScript pubkey;
@@ -197,9 +246,11 @@ bool CMasternodeScanningError::SignatureValid()
     ExtractDestination(pubkey, address1);
     CDigitalNoteAddress address2(address1);
 
-    if(!darkSendSigner.VerifyMessage(pmn->pubkey2, vchMasterNodeSignature, strMessage, errorMessage)) {
+    if(!darkSendSigner.VerifyMessage(pmn->pubkey2, vchMasterNodeSignature, strMessage, errorMessage))
+	{
         LogPrintf("CMasternodeScanningError::SignatureValid() - Verify message failed\n");
-        return false;
+        
+		return false;
     }
 
     return true;
@@ -207,17 +258,20 @@ bool CMasternodeScanningError::SignatureValid()
 
 bool CMasternodeScanningError::Sign()
 {
-    std::string errorMessage;
-
     CKey key2;
     CPubKey pubkey2;
-    std::string strMessage = vinMasternodeA.ToString() + vinMasternodeB.ToString() + 
-        boost::lexical_cast<std::string>(nBlockHeight) + boost::lexical_cast<std::string>(nErrorType);
+	
+    std::string errorMessage;
+    std::string strMessage = vinMasternodeA.ToString() +
+							vinMasternodeB.ToString() + 
+							boost::lexical_cast<std::string>(nBlockHeight) +
+							boost::lexical_cast<std::string>(nErrorType);
 
     if(!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, key2, pubkey2))
     {
         LogPrintf("CMasternodeScanningError::Sign() - ERROR: Invalid masternodeprivkey: '%s'\n", errorMessage.c_str());
-        return false;
+        
+		return false;
     }
 
     CScript pubkey;
@@ -225,16 +279,21 @@ bool CMasternodeScanningError::Sign()
     CTxDestination address1;
     ExtractDestination(pubkey, address1);
     CDigitalNoteAddress address2(address1);
-    //LogPrintf("signing pubkey2 %s \n", address2.ToString().c_str());
+    
+	//LogPrintf("signing pubkey2 %s \n", address2.ToString().c_str());
 
-    if(!darkSendSigner.SignMessage(strMessage, errorMessage, vchMasterNodeSignature, key2)) {
+    if(!darkSendSigner.SignMessage(strMessage, errorMessage, vchMasterNodeSignature, key2))
+	{
         LogPrintf("CMasternodeScanningError::Sign() - Sign message failed");
-        return false;
+        
+		return false;
     }
 
-    if(!darkSendSigner.VerifyMessage(pubkey2, vchMasterNodeSignature, strMessage, errorMessage)) {
+    if(!darkSendSigner.VerifyMessage(pubkey2, vchMasterNodeSignature, strMessage, errorMessage))
+	{
         LogPrintf("CMasternodeScanningError::Sign() - Verify message failed");
-        return false;
+        
+		return false;
     }
 
     return true;
@@ -243,11 +302,13 @@ bool CMasternodeScanningError::Sign()
 void CMasternodeScanningError::Relay()
 {
     CInv inv(MSG_MASTERNODE_SCANNING_ERROR, GetHash());
-
-    vector<CInv> vInv;
+    std::vector<CInv> vInv;
     vInv.push_back(inv);
-    LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes){
+    
+	LOCK(cs_vNodes);
+    
+	for(CNode* pnode, vNodes)
+	{
         pnode->PushMessage("inv", vInv);
     }
 }

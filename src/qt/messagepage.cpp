@@ -1,13 +1,3 @@
-#include "messagepage.h"
-#include "ui_messagepage.h"
-
-#include "sendmessagesdialog.h"
-#include "mrichtextedit.h"
-#include "messagemodel.h"
-#include "bitcoingui.h"
-#include "csvmodelwriter.h"
-#include "guiutil.h"
-
 #include <QSortFilterProxyModel>
 #include <QClipboard>
 #include <QMessageBox>
@@ -15,9 +5,19 @@
 #include <QStyledItemDelegate>
 #include <QAbstractTextDocumentLayout>
 #include <QPainter>
-
 #include <QToolBar>
 #include <QMenu>
+
+#include "sendmessagesdialog.h"
+#include "qt/plugins/mrichtexteditor/mrichtextedit.h"
+#include "messagemodel.h"
+#include "bitcoingui.h"
+#include "csvmodelwriter.h"
+#include "guiutil.h"
+#include "smsg.h"
+
+#include "messagepage.h"
+#include "ui_messagepage.h"
 
 #define DECORATION_SIZE 64
 #define NUM_ITEMS 3
@@ -177,7 +177,7 @@ void MessagePage::on_sendButton_clicked()
     std::string message = ui->messageEdit->toHtml().toStdString();
     std::string addFrom = replyFromAddress.toStdString();
 
-    if (SecureMsgSend(addFrom, sendTo, message, sError) != 0)
+    if (DigitalNote::SMSG::Send(addFrom, sendTo, message, sError) != 0)
     {
         QMessageBox::warning(NULL, tr("Send Secure Message"),
             tr("Send failed: %1.").arg(sError.c_str()),

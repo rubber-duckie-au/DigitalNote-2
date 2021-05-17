@@ -1,7 +1,8 @@
 #ifndef ECHO512_H
 #define ECHO512_H
 
-#include "uint256.h"
+#include "uint/uint512.h"
+#include "uint/uint256.h"
 #include "../common/sph_echo.h"
 
 #ifndef QT_NO_DEBUG
@@ -41,10 +42,5 @@ inline uint256 Hash_echo512(const T1 pbegin, const T1 pend)
 
     return hash[0].trim256();
 }
-
-
-
-
-
 
 #endif // ECHO512_H

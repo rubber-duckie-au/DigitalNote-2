@@ -5,14 +5,18 @@
 #ifndef MASTERNODE_H
 #define MASTERNODE_H
 
-#include "uint256.h"
+#include "uint/uint256.h"
 #include "sync.h"
-#include "net.h"
-#include "key.h"
 #include "util.h"
 #include "base58.h"
+#include "cblockindex.h"
+#include "ccriticalsection.h"
+#include "ctxin.h"
+#include "ccriticalblock.h"
+#include "main_extern.h"
 #include "main.h"
-#include "script.h"
+#include "net/cservice.h"
+
 #include "masternode.h"
 
 class uint256;
@@ -34,12 +38,10 @@ class uint256;
 #define MASTERNODE_EXPIRATION_SECONDS          (65*60)
 #define MASTERNODE_REMOVAL_SECONDS             (70*60)
 
-using namespace std;
-
 class CMasternode;
 
 extern CCriticalSection cs_masternodes;
-extern map<int64_t, uint256> mapCacheBlockHashes;
+extern std::map<int64_t, uint256> mapCacheBlockHashes;
 
 bool GetBlockHash(uint256& hash, int nBlockHeight);
 

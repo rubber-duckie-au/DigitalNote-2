@@ -1,4 +1,3 @@
-
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
@@ -8,19 +7,13 @@
 
 #include "bignum.h"
 #include "sync.h"
-#include "net.h"
-#include "key.h"
-#include "chain.h"
 #include "util.h"
-#include "script.h"
 #include "base58.h"
-#include "main.h"
 #include "masternode.h"
+#include <boost/filesystem/path.hpp>
 
 #define MASTERNODES_DUMP_SECONDS               (15*60)
 #define MASTERNODES_DSEG_SECONDS               (3*60*60)
-
-using namespace std;
 
 class CMasternodeMan;
 
@@ -130,7 +123,7 @@ public:
 
     std::vector<CMasternode> GetFullMasternodeVector() { Check(); return vMasternodes; }
 
-    std::vector<pair<int, CMasternode> > GetMasternodeRanks(int64_t nBlockHeight, int minProtocol=0);
+    std::vector<std::pair<int, CMasternode> > GetMasternodeRanks(int64_t nBlockHeight, int minProtocol=0);
     int GetMasternodeRank(const CTxIn &vin, int64_t nBlockHeight, int minProtocol=0, bool fOnlyActive=true);
     CMasternode* GetMasternodeByRank(int nRank, int64_t nBlockHeight, int minProtocol=0, bool fOnlyActive=true);
 
