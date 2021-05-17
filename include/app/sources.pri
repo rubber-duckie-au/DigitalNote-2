@@ -213,3 +213,8 @@ SOURCES += src/qt/blockbrowser.cpp
 SOURCES += src/qt/qvalidatedtextedit.cpp
 SOURCES += src/qt/plugins/mrichtexteditor/mrichtextedit.cpp
 SOURCES += src/qt/flowlayout.cpp
+
+macx {
+	OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
+	OBJECTIVE_SOURCES += src/qt/macnotificationhandler.mm
+}

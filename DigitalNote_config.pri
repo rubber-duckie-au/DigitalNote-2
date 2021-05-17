@@ -36,15 +36,4 @@ macx {
 	QMAKE_CFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
 	QMAKE_LFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
 	QMAKE_OBJECTIVE_CFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
-	
-	#HEADERS += src/qt/macdockiconhandler.h
-	#HEADERS += src/qt/macnotificationhandler.h
-	
-	#OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
-	#OBJECTIVE_SOURCES += src/qt/macnotificationhandler.mm
-	
-	DEFINES += MAC_OSX
-	DEFINES += MSG_NOSIGNAL=0
-	
-	ICON = src/qt/res/icons/digitalnote.icns
 }
