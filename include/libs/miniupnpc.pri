@@ -20,7 +20,7 @@ contains(USE_UPNP, -) {
 		INCLUDEPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
 		DEPENDPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
 		
-		LIBS += -liphlpapi
+		
 	}
 	
 	macx {
@@ -30,6 +30,9 @@ contains(USE_UPNP, -) {
 	}
 	
 	LIBS += -lminiupnpc
+	win32 {
+		LIBS += -liphlpapi
+	}
 	
 	DEFINES += MINIUPNP_STATICLIB
 	DEFINES += USE_UPNP
