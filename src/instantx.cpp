@@ -15,7 +15,6 @@
 #include "cwallet.h"
 #include "mnengine.h"
 #include "main_const.h"
-#include "cinv.h"
 
 #include "instantx.h"
 

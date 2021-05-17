@@ -20,7 +20,6 @@
 #include "creservekey.h"
 #include "cwallet.h"
 #include "script.h"
-#include "cinv.h"
 #include "net.h"
 #include "main_const.h"
 #include "txmempool.h"

@@ -24,7 +24,6 @@
 #include "chainparams.h"
 #include "txdb.h"
 #include "rpcserver.h"
-#include "cinv.h"
 #include "net.h"
 #include "ckey.h"
 #include "util.h"

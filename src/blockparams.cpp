@@ -15,7 +15,6 @@
 #include "db.h"
 #include "init.h"
 #include "kernel.h"
-#include "cinv.h"
 #include "net.h"
 #include "txdb.h"
 #include "velocity.h"

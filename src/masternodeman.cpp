@@ -10,7 +10,6 @@
 #include "caddrman.h"
 #include "cvalidationstate.h"
 #include "mining.h"
-#include "cinv.h"
 #include "net/cnode.h"
 #include "net.h"
 #include "comparevalueonly.h"

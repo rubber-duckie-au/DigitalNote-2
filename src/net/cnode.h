@@ -9,6 +9,10 @@
 #include "caddress.h"
 #include "uint/uint256.h"
 
+#if defined(__clang__) && __clang_major__ <= 9
+	#include "cinv.h"
+#endif // defined(__clang__) && __clang_major__ <= 9
+
 class CSubNet;
 class CBanEntry;
 class CBlockIndex;

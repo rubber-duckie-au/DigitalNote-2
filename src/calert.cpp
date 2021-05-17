@@ -11,7 +11,6 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
 
-#include "cinv.h"
 #include "net/cnode.h"
 #include "chainparams.h"
 #include "ui_interface.h"

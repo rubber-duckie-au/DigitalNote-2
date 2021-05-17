@@ -13,7 +13,6 @@
 #include "cwallettx.h"
 #include "mining.h"
 #include "script.h"
-#include "cinv.h"
 #include "net.h"
 #include "ckey.h"
 

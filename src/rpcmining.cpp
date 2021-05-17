@@ -23,7 +23,6 @@
 #include "mining.h"
 #include "cblock.h"
 #include "script.h"
-#include "cinv.h"
 #include "net.h"
 #include "txmempool.h"
 #include "ctxout.h"

@@ -19,7 +19,6 @@
 #include "stealth.h"
 #include "spork.h"
 #include "script.h"
-#include "cinv.h"
 #include "net.h"
 #include "cblockindex.h"
 #include "csporkmessage.h"
