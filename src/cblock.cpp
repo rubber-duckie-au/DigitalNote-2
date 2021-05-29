@@ -24,10 +24,12 @@
 #include "net.h"
 #include "masternode-payments.h"
 #include "masternodeman.h"
+#include "masternode_extern.h"
 #include "serialize.h"
 #include "txmempool.h"
 #include "ckey.h"
 #include "ctxout.h"
+#include "main_extern.h"
 
 #include "cblock.h"
 

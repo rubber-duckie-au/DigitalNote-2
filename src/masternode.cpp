@@ -8,6 +8,11 @@
 #include "util.h"
 #include "cvalidationstate.h"
 #include "mining.h"
+#include "masternode_extern.h"
+#include "main_extern.h"
+#include "cblockindex.h"
+#include "main.h"
+#include "serialize.h"
 
 #include "masternode.h"
 
@@ -17,38 +22,62 @@ std::map<uint256, int> mapSeenMasternodeScanningErrors;
 // cache block hashes as we calculate them
 std::map<int64_t, uint256> mapCacheBlockHashes;
 
+CMasternodeMan mnodeman;
+
 //Get the last hash that matches the modulus given. Processed in reverse order
 bool GetBlockHash(uint256& hash, int nBlockHeight)
 {
-    if (pindexBest == NULL) return false;
-
+    if (pindexBest == NULL)
+	{
+		return false;
+	}
+	
     if(nBlockHeight == 0)
+	{
         nBlockHeight = pindexBest->nHeight;
-
-    if(mapCacheBlockHashes.count(nBlockHeight)){
+	}
+	
+    if(mapCacheBlockHashes.count(nBlockHeight))
+	{	
         hash = mapCacheBlockHashes[nBlockHeight];
-        return true;
+        
+		return true;
     }
 
     const CBlockIndex *BlockLastSolved = pindexBest;
     const CBlockIndex *BlockReading = pindexBest;
 
-    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || pindexBest->nHeight+1 < nBlockHeight) return false;
-
+    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || pindexBest->nHeight+1 < nBlockHeight)
+	{
+		return false;
+	}
+	
     int nBlocksAgo = 0;
-    if(nBlockHeight > 0) nBlocksAgo = (pindexBest->nHeight+1)-nBlockHeight;
+    if(nBlockHeight > 0)
+	{
+		nBlocksAgo = (pindexBest->nHeight+1)-nBlockHeight;
+	}
     assert(nBlocksAgo >= 0);
 
     int n = 0;
-    for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
-        if(n >= nBlocksAgo){
+    for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++)
+	{
+        if(n >= nBlocksAgo)
+		{
             hash = BlockReading->GetBlockHash();
             mapCacheBlockHashes[nBlockHeight] = hash;
-            return true;
+            
+			return true;
         }
+		
         n++;
 
-        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
+        if (BlockReading->pprev == NULL)
+		{
+			assert(BlockReading);
+			break;
+		}
+		
         BlockReading = BlockReading->pprev;
     }
 
@@ -58,6 +87,7 @@ bool GetBlockHash(uint256& hash, int nBlockHeight)
 CMasternode::CMasternode()
 {
     LOCK(cs);
+	
     vin = CTxIn();
     addr = CService();
     pubkey = CPubKey();
@@ -88,6 +118,7 @@ CMasternode::CMasternode()
 CMasternode::CMasternode(const CMasternode& other)
 {
     LOCK(cs);
+	
     vin = other.vin;
     addr = other.addr;
     pubkey = other.pubkey;
@@ -115,10 +146,12 @@ CMasternode::CMasternode(const CMasternode& other)
     isOldNode = other.isOldNode;
 }
 
-CMasternode::CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std::vector<unsigned char> newSig, int64_t newSigTime, CPubKey newPubkey2, int protocolVersionIn, CScript newDonationAddress, int newDonationPercentage)
+CMasternode::CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std::vector<unsigned char> newSig, int64_t newSigTime, CPubKey newPubkey2,
+		int protocolVersionIn, CScript newDonationAddress, int newDonationPercentage)
 {
     LOCK(cs);
-    vin = newVin;
+    
+	vin = newVin;
     addr = newAddr;
     pubkey = newPubkey;
     pubkey2 = newPubkey2;
@@ -143,6 +176,53 @@ CMasternode::CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std:
     isOldNode = true;
 }
 
+void CMasternode::swap(CMasternode& first, CMasternode& second) // nothrow
+{
+	// by swapping the members of two classes,
+	// the two classes are effectively swapped
+	std::swap(first.vin, second.vin);
+	std::swap(first.addr, second.addr);
+	std::swap(first.pubkey, second.pubkey);
+	std::swap(first.pubkey2, second.pubkey2);
+	std::swap(first.sig, second.sig);
+	std::swap(first.activeState, second.activeState);
+	std::swap(first.sigTime, second.sigTime);
+	std::swap(first.lastDseep, second.lastDseep);
+	std::swap(first.lastTimeSeen, second.lastTimeSeen);
+	std::swap(first.cacheInputAge, second.cacheInputAge);
+	std::swap(first.cacheInputAgeBlock, second.cacheInputAgeBlock);
+	std::swap(first.unitTest, second.unitTest);
+	std::swap(first.allowFreeTx, second.allowFreeTx);
+	std::swap(first.protocolVersion, second.protocolVersion);
+	std::swap(first.nLastDsq, second.nLastDsq);
+	std::swap(first.donationAddress, second.donationAddress);
+	std::swap(first.donationPercentage, second.donationPercentage);
+	std::swap(first.nVote, second.nVote);
+	std::swap(first.lastVote, second.lastVote);
+	std::swap(first.nScanningErrorCount, second.nScanningErrorCount);
+	std::swap(first.nLastScanningErrorBlockHeight, second.nLastScanningErrorBlockHeight);
+	std::swap(first.nLastPaid, second.nLastPaid);
+	std::swap(first.isPortOpen, second.isPortOpen);
+	std::swap(first.isOldNode, second.isOldNode);
+}
+
+CMasternode& CMasternode::operator=(CMasternode from)
+{
+	this->swap(*this, from);
+	
+	return *this;
+}
+
+bool operator==(const CMasternode& a, const CMasternode& b)
+{
+	return a.vin == b.vin;
+}
+
+bool operator!=(const CMasternode& a, const CMasternode& b)
+{
+	return !(a.vin == b.vin);
+}
+
 //
 // Deterministically calculate a given "score" for a masternode depending on how close it's hash is to
 // the proof of work for that block. The further away they are the better, the furthest will win the election
@@ -150,13 +230,19 @@ CMasternode::CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std:
 //
 uint256 CMasternode::CalculateScore(int mod, int64_t nBlockHeight)
 {
-    if(pindexBest == NULL) return 0;
-
+    if(pindexBest == NULL)
+	{
+		return 0;
+	}
+	
     uint256 hash = 0;
     uint256 aux = vin.prevout.hash + vin.prevout.n;
 
-    if(!GetBlockHash(hash, nBlockHeight)) return 0;
-
+    if(!GetBlockHash(hash, nBlockHeight))
+	{
+		return 0;
+	}
+	
     uint256 hash2 = Hash(BEGIN(hash), END(hash));
     uint256 hash3 = Hash(BEGIN(hash), END(hash), BEGIN(aux), END(aux));
 
@@ -165,40 +251,300 @@ uint256 CMasternode::CalculateScore(int mod, int64_t nBlockHeight)
     return r;
 }
 
+int64_t CMasternode::SecondsSincePayment()
+{
+	return (GetAdjustedTime() - nLastPaid);
+}
+
+void CMasternode::UpdateLastSeen(int64_t override)
+{
+	if(override == 0)
+	{
+		lastTimeSeen = GetAdjustedTime();
+	}
+	else
+	{
+		lastTimeSeen = override;
+	}
+}
+
+void CMasternode::ChangePortStatus(bool status)
+{
+	isPortOpen = status;
+}
+
+void CMasternode::ChangeNodeStatus(bool status)
+{
+	isOldNode = status;
+}
+
+uint64_t CMasternode::SliceHash(uint256& hash, int slice)
+{
+	uint64_t n = 0;
+	
+	memcpy(&n, &hash+slice*64, 64);
+	
+	return n;
+}
+
 void CMasternode::Check()
 {
-    if(ShutdownRequested()) return;
+	if(ShutdownRequested())
+	{
+		return;
+	}
 
-    //TODO: Random segfault with this line removed
-    TRY_LOCK(cs_main, lockRecv);
-    if(!lockRecv) return;
+	//TODO: Random segfault with this line removed
+	TRY_LOCK(cs_main, lockRecv);
 
-    //once spent, stop doing the checks
-    if(activeState == MASTERNODE_VIN_SPENT) return;
+	if(!lockRecv)
+	{
+		return;
+	}
 
+	//once spent, stop doing the checks
+	if(activeState == MASTERNODE_VIN_SPENT)
+	{
+		return;
+	}
 
-    if(!UpdatedWithin(MASTERNODE_REMOVAL_SECONDS)){
-        activeState = MASTERNODE_REMOVE;
-        return;
-    }
+	if(!UpdatedWithin(MASTERNODE_REMOVAL_SECONDS))
+	{
+		activeState = MASTERNODE_REMOVE;
+		
+		return;
+	}
 
-    if(!UpdatedWithin(MASTERNODE_EXPIRATION_SECONDS)){
-        activeState = MASTERNODE_EXPIRED;
-        return;
-    }
+	if(!UpdatedWithin(MASTERNODE_EXPIRATION_SECONDS))
+	{
+		activeState = MASTERNODE_EXPIRED;
+		
+		return;
+	}
 
-    if(!unitTest){
-        CValidationState state;
-        CTransaction tx = CTransaction();
-        CTxOut vout = CTxOut(MNengine_POOL_MAX, mnEnginePool.collateralPubKey);
-        tx.vin.push_back(vin);
-        tx.vout.push_back(vout);
+	if(!unitTest)
+	{
+		CValidationState state;
+		CTransaction tx = CTransaction();
+		CTxOut vout = CTxOut(MNengine_POOL_MAX, mnEnginePool.collateralPubKey);
+		
+		tx.vin.push_back(vin);
+		tx.vout.push_back(vout);
 
-	if(!AcceptableInputs(mempool, tx, false, NULL)){
-            activeState = MASTERNODE_VIN_SPENT;
-            return;
-        }
-    }
+		if(!AcceptableInputs(mempool, tx, false, NULL))
+		{
+			activeState = MASTERNODE_VIN_SPENT;
+			
+			return;
+		}
+	}
 
-    activeState = MASTERNODE_ENABLED; // OK
+	activeState = MASTERNODE_ENABLED; // OK
 }
+
+bool CMasternode::UpdatedWithin(int seconds)
+{
+	// LogPrintf("UpdatedWithin %d, %d --  %d \n", GetAdjustedTime() , lastTimeSeen, (GetAdjustedTime() - lastTimeSeen) < seconds);
+
+	return (GetAdjustedTime() - lastTimeSeen) < seconds;
+}
+
+void CMasternode::Disable()
+{
+	lastTimeSeen = 0;
+}
+
+bool CMasternode::IsEnabled()
+{
+	return isPortOpen && activeState == MASTERNODE_ENABLED;
+}
+
+int CMasternode::GetMasternodeInputAge()
+{
+	if(pindexBest == NULL)
+	{
+		return 0;
+	}
+	
+	if(cacheInputAge == 0)
+	{
+		cacheInputAge = GetInputAge(vin);
+		cacheInputAgeBlock = pindexBest->nHeight;
+	}
+
+	return cacheInputAge+(pindexBest->nHeight-cacheInputAgeBlock);
+}
+
+std::string CMasternode::Status()
+{
+	std::string strStatus = "ACTIVE";
+
+	if(activeState == CMasternode::MASTERNODE_ENABLED)
+	{
+		strStatus = "ENABLED";
+	}
+	
+	if(activeState == CMasternode::MASTERNODE_EXPIRED)
+	{
+		strStatus = "EXPIRED";
+	}
+	
+	if(activeState == CMasternode::MASTERNODE_VIN_SPENT)
+	{
+		strStatus = "VIN_SPENT";
+	}
+	
+	if(activeState == CMasternode::MASTERNODE_REMOVE)
+	{
+		strStatus = "REMOVE";
+	}
+	
+	if(activeState == CMasternode::MASTERNODE_POS_ERROR)
+	{
+		strStatus = "POS_ERROR";
+	}
+	
+	return strStatus;
+}
+
+unsigned int CMasternode::GetSerializeSize(int nType, int nVersion) const
+{
+	CSerActionGetSerializeSize ser_action;
+	const bool fGetSize = true;
+	const bool fWrite = false;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	ser_streamplaceholder s;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	s.nType = nType;
+	s.nVersion = nVersion;
+	
+	// serialized format:
+	// * version byte (currently 0)
+	// * all fields (?)
+	{
+		LOCK(cs);
+		
+		unsigned char nVersion = 0;
+		READWRITE(nVersion);
+		READWRITE(vin);
+		READWRITE(addr);
+		READWRITE(pubkey);
+		READWRITE(pubkey2);
+		READWRITE(sig);
+		READWRITE(activeState);
+		READWRITE(sigTime);
+		READWRITE(lastDseep);
+		READWRITE(lastTimeSeen);
+		READWRITE(cacheInputAge);
+		READWRITE(cacheInputAgeBlock);
+		READWRITE(unitTest);
+		READWRITE(allowFreeTx);
+		READWRITE(protocolVersion);
+		READWRITE(nLastDsq);
+		READWRITE(donationAddress);
+		READWRITE(donationPercentage);
+		READWRITE(nVote);
+		READWRITE(lastVote);
+		READWRITE(nScanningErrorCount);
+		READWRITE(nLastScanningErrorBlockHeight);
+		READWRITE(nLastPaid);
+		READWRITE(isPortOpen);
+		READWRITE(isOldNode);
+	}
+	
+	return nSerSize;
+}
+
+template<typename Stream>
+void CMasternode::Serialize(Stream& s, int nType, int nVersion) const
+{
+	CSerActionSerialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = true;
+	const bool fRead = false;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+		// serialized format:
+	// * version byte (currently 0)
+	// * all fields (?)
+	{
+		LOCK(cs);
+		
+		unsigned char nVersion = 0;
+		READWRITE(nVersion);
+		READWRITE(vin);
+		READWRITE(addr);
+		READWRITE(pubkey);
+		READWRITE(pubkey2);
+		READWRITE(sig);
+		READWRITE(activeState);
+		READWRITE(sigTime);
+		READWRITE(lastDseep);
+		READWRITE(lastTimeSeen);
+		READWRITE(cacheInputAge);
+		READWRITE(cacheInputAgeBlock);
+		READWRITE(unitTest);
+		READWRITE(allowFreeTx);
+		READWRITE(protocolVersion);
+		READWRITE(nLastDsq);
+		READWRITE(donationAddress);
+		READWRITE(donationPercentage);
+		READWRITE(nVote);
+		READWRITE(lastVote);
+		READWRITE(nScanningErrorCount);
+		READWRITE(nLastScanningErrorBlockHeight);
+		READWRITE(nLastPaid);
+		READWRITE(isPortOpen);
+		READWRITE(isOldNode);
+	}
+}
+
+template<typename Stream>
+void CMasternode::Unserialize(Stream& s, int nType, int nVersion)
+{
+	CSerActionUnserialize ser_action;
+	const bool fGetSize = false;
+	const bool fWrite = false;
+	const bool fRead = true;
+	unsigned int nSerSize = 0;
+	assert(fGetSize||fWrite||fRead); /* suppress warning */
+	
+		// serialized format:
+	// * version byte (currently 0)
+	// * all fields (?)
+	{
+		LOCK(cs);
+		
+		unsigned char nVersion = 0;
+		READWRITE(nVersion);
+		READWRITE(vin);
+		READWRITE(addr);
+		READWRITE(pubkey);
+		READWRITE(pubkey2);
+		READWRITE(sig);
+		READWRITE(activeState);
+		READWRITE(sigTime);
+		READWRITE(lastDseep);
+		READWRITE(lastTimeSeen);
+		READWRITE(cacheInputAge);
+		READWRITE(cacheInputAgeBlock);
+		READWRITE(unitTest);
+		READWRITE(allowFreeTx);
+		READWRITE(protocolVersion);
+		READWRITE(nLastDsq);
+		READWRITE(donationAddress);
+		READWRITE(donationPercentage);
+		READWRITE(nVote);
+		READWRITE(lastVote);
+		READWRITE(nScanningErrorCount);
+		READWRITE(nLastScanningErrorBlockHeight);
+		READWRITE(nLastPaid);
+		READWRITE(isPortOpen);
+		READWRITE(isOldNode);
+	}
+}
+
+template void CMasternode::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
+template void CMasternode::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);

@@ -15,6 +15,8 @@
 #include "script.h"
 #include "net.h"
 #include "ckey.h"
+#include "main_extern.h"
+#include "cblockindex.h"
 
 #include "activemasternode.h"
 

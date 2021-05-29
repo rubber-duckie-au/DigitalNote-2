@@ -29,6 +29,7 @@
 #include "masternodeconfig.h"
 #include "masternodeman.h"
 #include "masternode.h"
+#include "masternode_extern.h"
 #include "walletdb.h"
 #include "init.h"
 #include "rpcserver.h"

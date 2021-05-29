@@ -11,6 +11,7 @@
 #include "blockparams.h"
 #include "fork.h"
 #include "masternodeman.h"
+#include "masternode_extern.h"
 #include "masternode-payments.h"
 #include "coutput.h"
 #include "cwallettx.h"

@@ -12,6 +12,7 @@
 #include "blockparams.h"
 #include "chainparams.h"
 #include "masternodeman.h"
+#include "masternode_extern.h"
 #include "masternode-payments.h"
 #include "txdb.h"
 #include "init.h"
@@ -27,6 +28,7 @@
 #include "txmempool.h"
 #include "ctxout.h"
 #include "ctransaction.h"
+#include "main_extern.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

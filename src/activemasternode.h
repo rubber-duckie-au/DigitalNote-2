@@ -12,6 +12,7 @@
 #include "mnengine.h"
 
 class COutput;
+class CKey;
 
 // Responsible for activating the masternode and pinging the network
 class CActiveMasternode

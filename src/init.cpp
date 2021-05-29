@@ -51,6 +51,8 @@
 #include "cmasterkey.h"
 #include "eccverifyhandle.h"
 #include "netbase.h"
+#include "main_extern.h"
+#include "cmasternodedb.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

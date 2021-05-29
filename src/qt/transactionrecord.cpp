@@ -10,6 +10,8 @@
 #include "mining.h"
 #include "script.h"
 #include "main_const.h"
+#include "main_extern.h"
+#include "cblockindex.h"
 
 #include "transactionrecord.h"
 

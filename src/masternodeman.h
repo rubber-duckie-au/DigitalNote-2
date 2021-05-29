@@ -5,43 +5,26 @@
 #ifndef MASTERNODEMAN_H
 #define MASTERNODEMAN_H
 
-#include "bignum.h"
-#include "sync.h"
-#include "util.h"
-#include "base58.h"
-#include "masternode.h"
+#include <vector>
+#include <map>
 #include <boost/filesystem/path.hpp>
+
+#include "ccriticalblock.h"
+
+class CNode;
+class CMasternode;
+class CNetAddr;
+class COutPoint;
+class CService;
+class CTxIn;
+class CPubKey;
+class CDataStream;
+class CScript;
 
 #define MASTERNODES_DUMP_SECONDS               (15*60)
 #define MASTERNODES_DSEG_SECONDS               (3*60*60)
 
-class CMasternodeMan;
-
-extern CMasternodeMan mnodeman;
-
 void DumpMasternodes();
-
-/** Access to the MN database (mncache.dat) */
-class CMasternodeDB
-{
-private:
-    boost::filesystem::path pathMN;
-    std::string strMagicMessage;
-public:
-    enum ReadResult {
-        Ok,
-       FileError,
-        HashReadError,
-        IncorrectHash,
-        IncorrectMagicMessage,
-        IncorrectMagicNumber,
-        IncorrectFormat
-    };
-
-    CMasternodeDB();
-    bool Write(const CMasternodeMan &mnodemanToSave);
-    ReadResult Read(CMasternodeMan& mnodemanToLoad);
-};
 
 class CMasternodeMan
 {
@@ -61,24 +44,7 @@ private:
 public:
     // keep track of dsq count to prevent masternodes from gaming mnengine queue
     int64_t nDsqCount;
-
-    IMPLEMENT_SERIALIZE
-    (
-        // serialized format:
-        // * version byte (currently 0)
-        // * masternodes vector
-        {
-                LOCK(cs);
-                unsigned char nVersion = 0;
-                READWRITE(nVersion);
-                READWRITE(vMasternodes);
-                READWRITE(mAskedUsForMasternodeList);
-                READWRITE(mWeAskedForMasternodeList);
-                READWRITE(mWeAskedForMasternodeListEntry);
-                READWRITE(nDsqCount);
-        }
-    )
-
+	
     CMasternodeMan();
     CMasternodeMan(CMasternodeMan& other);
 
@@ -89,7 +55,7 @@ public:
     void Check();
 
     /// Ask (source) node for mnb
-    void AskForMN(CNode *pnode, CTxIn &vin);
+    void AskForMN(CNode* pnode, CTxIn &vin);
 
     // Check all masternodes and remove inactive
     void CheckAndRemove();
@@ -120,31 +86,34 @@ public:
     CMasternode* GetCurrentMasterNode(int mod=1, int64_t nBlockHeight=0, int minProtocol=0);
 
     bool IsPayeeAValidMasternode(CScript payee);
+    std::vector<CMasternode> GetFullMasternodeVector();
 
-    std::vector<CMasternode> GetFullMasternodeVector() { Check(); return vMasternodes; }
-
-    std::vector<std::pair<int, CMasternode> > GetMasternodeRanks(int64_t nBlockHeight, int minProtocol=0);
+    std::vector<std::pair<int, CMasternode>> GetMasternodeRanks(int64_t nBlockHeight, int minProtocol=0);
     int GetMasternodeRank(const CTxIn &vin, int64_t nBlockHeight, int minProtocol=0, bool fOnlyActive=true);
     CMasternode* GetMasternodeByRank(int nRank, int64_t nBlockHeight, int minProtocol=0, bool fOnlyActive=true);
 
     void ProcessMasternodeConnections();
 
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
-
-    // Return the number of (unique) masternodes
-    int size() { return vMasternodes.size(); }
-
+	
     std::string ToString() const;
+    int size();
 
     //
     // Relay Masternode Messages
     //
 
-    void RelayMasternodeEntry(const CTxIn vin, const CService addr, const std::vector<unsigned char> vchSig, const int64_t nNow, const CPubKey pubkey, const CPubKey pubkey2, const int count, const int current, const int64_t lastUpdated, const int protocolVersion, CScript donationAddress, int donationPercentage);
+    void RelayMasternodeEntry(const CTxIn vin, const CService addr, const std::vector<unsigned char> vchSig, const int64_t nNow, const CPubKey pubkey,
+			const CPubKey pubkey2, const int count, const int current, const int64_t lastUpdated, const int protocolVersion, CScript donationAddress, int donationPercentage);
     void RelayMasternodeEntryPing(const CTxIn vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
 
     void Remove(CTxIn vin);
-
+	
+	unsigned int GetSerializeSize(int nType, int nVersion) const;
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const;
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion);
 };
 
 #endif

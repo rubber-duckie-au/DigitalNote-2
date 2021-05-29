@@ -22,6 +22,8 @@
 #include "net/cnode.h"
 #include "net.h"
 #include "ckey.h"
+#include "main_extern.h"
+#include "cblockindex.h"
 
 using namespace json_spirit;
 

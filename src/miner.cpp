@@ -14,6 +14,7 @@
 #include "kernel.h"
 #include "masternode.h"
 #include "masternodeman.h"
+#include "masternode_extern.h"
 #include "masternode-payments.h"
 #include "fork.h"
 #include "cblock.h"
@@ -25,6 +26,7 @@
 #include "txmempool.h"
 #include "ctxout.h"
 #include "ctransaction.h"
+#include "main_extern.h"
 
 #include "miner.h"
 

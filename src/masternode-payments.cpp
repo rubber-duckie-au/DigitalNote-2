@@ -16,6 +16,9 @@
 #include "net.h"
 #include "ckey.h"
 #include "cinv.h"
+#include "main.h"
+#include "main_extern.h"
+#include "cblockindex.h"
 
 #include "masternode-payments.h"
 

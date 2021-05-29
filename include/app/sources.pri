@@ -117,6 +117,7 @@ SOURCES += src/rpcmnengine.cpp
 SOURCES += src/instantx.cpp
 SOURCES += src/activemasternode.cpp
 SOURCES += src/masternodeman.cpp
+SOURCES += src/cmasternodedb.cpp
 SOURCES += src/masternode-payments.cpp
 SOURCES += src/spork.cpp
 SOURCES += src/masternodeconfig.cpp

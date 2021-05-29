@@ -28,6 +28,8 @@
 #include "chashwriter.h"
 #include "ckey.h"
 #include "cinv.h"
+#include "main_extern.h"
+#include "cblockindex.h"
 
 #include "mnengine.h"
 

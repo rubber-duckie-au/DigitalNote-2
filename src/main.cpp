@@ -51,6 +51,8 @@
 #include "protocol.h"
 #include "cinv.h"
 #include "caddrman.h"
+#include "cmainsignals.h"
+#include "main_extern.h"
 
 #include "main.h"
 
