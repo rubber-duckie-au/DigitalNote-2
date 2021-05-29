@@ -357,19 +357,7 @@ inline std::string leftTrim(std::string src, char chr)
     return src;
 }
 
-inline int64_t GetPerformanceCounter()
-{
-    int64_t nCounter = 0;
-#ifdef WIN32
-    QueryPerformanceCounter((LARGE_INTEGER*)&nCounter);
-#else
-    timeval t;
-    gettimeofday(&t, NULL);
-    nCounter = (int64_t) t.tv_sec * 1000000 + t.tv_usec;
-#endif
-    return nCounter;
-}
-
+int64_t GetPerformanceCounter();
 int64_t GetTimeMillis();
 int64_t GetTimeMicros();
 
