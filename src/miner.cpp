@@ -6,16 +6,18 @@
 
 #include "compat.h"
 
-#include <boost/foreach.hpp>
 #include <memory>
+#include <boost/foreach.hpp>
+#include <openssl/sha.h>
 
 #include "blockparams.h"
 #include "txdb.h"
 #include "kernel.h"
-#include "masternode.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
-#include "masternode-payments.h"
 #include "fork.h"
 #include "cblock.h"
 #include "creservekey.h"
@@ -27,6 +29,7 @@
 #include "ctxout.h"
 #include "ctransaction.h"
 #include "main_extern.h"
+#include "base58.h"
 
 #include "miner.h"
 

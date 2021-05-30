@@ -15,7 +15,6 @@
 
 #include "init.h"
 #include "util.h"
-#include "masternodeman.h"
 #include "instantx.h"
 #include "ui_interface.h"
 #include "cvalidationstate.h"
@@ -30,6 +29,10 @@
 #include "cinv.h"
 #include "main_extern.h"
 #include "cblockindex.h"
+#include "base58.h"
+#include "cmasternodepayments.h"
+#include "masternode.h"
+#include "masternodeman.h"
 
 #include "mnengine.h"
 

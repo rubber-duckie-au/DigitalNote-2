@@ -2,7 +2,6 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "masternode.h"
 #include "masternodeman.h"
 #include "mnengine.h"
 #include "serialize.h"

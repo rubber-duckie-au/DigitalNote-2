@@ -3,7 +3,7 @@
 #include "util.h"
 #include "chainparams.h"
 #include "hash.h"
-#include "masternodeman.h"
+#include "cmasternodeman.h"
 
 #include "cmasternodedb.h"
 

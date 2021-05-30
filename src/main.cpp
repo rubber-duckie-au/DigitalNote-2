@@ -27,6 +27,8 @@
 #include "ui_interface.h"
 #include "velocity.h"
 #include "mnengine.h"
+#include "cmasternodepaymentwinner.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
 #include "spork.h"
@@ -53,7 +55,7 @@
 #include "caddrman.h"
 #include "cmainsignals.h"
 #include "main_extern.h"
-
+#include "hash.h"
 #include "main.h"
 
 using namespace boost;

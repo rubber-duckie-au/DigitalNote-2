@@ -20,7 +20,6 @@
 #include "velocity.h"
 #include "mnengine.h"
 #include "masternodeman.h"
-#include "masternode-payments.h"
 #include "cblockindex.h"
 #include "main.h"
 #include "main_extern.h"

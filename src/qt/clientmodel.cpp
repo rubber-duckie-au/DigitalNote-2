@@ -24,6 +24,7 @@
 #include "main_extern.h"
 #include "cblockindex.h"
 #include "util.h"
+#include "cmasternodeman.h"
 
 #include "clientmodel.h"
 

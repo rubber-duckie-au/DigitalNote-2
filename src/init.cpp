@@ -31,8 +31,8 @@
 #include "checkpoints.h"
 //#include "mnengine-relay.h"
 #include "activemasternode.h"
-#include "masternode-payments.h"
-#include "masternode.h"
+#include "cmasternodedb.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternodeconfig.h"
 #include "spork.h"
@@ -52,7 +52,6 @@
 #include "eccverifyhandle.h"
 #include "netbase.h"
 #include "main_extern.h"
-#include "cmasternodedb.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

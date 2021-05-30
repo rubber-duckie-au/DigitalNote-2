@@ -22,7 +22,8 @@
 #include "cinv.h"
 #include "net/cnode.h"
 #include "net.h"
-#include "masternode-payments.h"
+#include "cmasternodeman.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
 #include "serialize.h"
@@ -30,6 +31,9 @@
 #include "ckey.h"
 #include "ctxout.h"
 #include "main_extern.h"
+#include "ctxin.h"
+#include "hash.h"
+#include "base58.h"
 
 #include "cblock.h"
 
