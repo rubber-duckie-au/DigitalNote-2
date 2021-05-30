@@ -7,6 +7,8 @@
 #include "net/cnetaddr.h"
 
 #ifdef WIN32
+	#include "compat.h"
+	
 	// In MSVC, this is defined as a macro, undefine it to prevent a compile and link error
 	#undef SetPort
 #endif
