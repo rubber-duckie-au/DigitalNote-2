@@ -305,7 +305,7 @@ private:
             cachedMessageTable.append(message);
         } else
         {
-            int index = qLowerBound(cachedMessageTable.begin(), cachedMessageTable.end(), message.received_datetime, MessageTableEntryLessThan()) - cachedMessageTable.begin();
+            int index = std::lower_bound(cachedMessageTable.begin(), cachedMessageTable.end(), message.received_datetime, MessageTableEntryLessThan()) - cachedMessageTable.begin();
             parent->beginInsertRows(QModelIndex(), index, index);
             cachedMessageTable.insert(
                         index,

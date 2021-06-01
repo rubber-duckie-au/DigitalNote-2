@@ -149,10 +149,10 @@ static QString seconds_to_DHMS(quint32 duration)
   int hours = (int) (duration % 24);
   int days = (int) (duration / 24);
   if((hours == 0)&&(days == 0))
-      return res.sprintf("%02dm:%02ds", minutes, seconds);
+      return res.asprintf("%02dm:%02ds", minutes, seconds);
   if (days == 0)
-      return res.sprintf("%02dh:%02dm:%02ds", hours, minutes, seconds);
-  return res.sprintf("%dd %02dh:%02dm:%02ds", days, hours, minutes, seconds);
+      return res.asprintf("%02dh:%02dm:%02ds", hours, minutes, seconds);
+  return res.asprintf("%dd %02dh:%02dm:%02ds", days, hours, minutes, seconds);
 }
 
 void MasternodeManager::updateNodeList()
