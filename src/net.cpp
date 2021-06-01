@@ -42,6 +42,7 @@
 #include "net/myclosesocket.h"
 #include "main_extern.h"
 #include "ctransaction.h"
+#include "init.h"
 
 #include "net.h"
 
