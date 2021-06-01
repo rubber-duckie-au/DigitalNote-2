@@ -12,8 +12,7 @@ contains(USE_UPNP, -) {
 		} else {
 			message("You need to compile lib MiniUPNP yourself.")
 			message("Also you need to configure the following variables:")
-			message("	DIGITALNOTE_LIB_DIR = $${DOLLAR}$${DOLLAR}DIGITALNOTE_PATH/../libs")
-			message("	DIGITALNOTE_LIB_MINIUPNP_NAME = miniupnpc-2.1")
+			message("	DIGITALNOTE_LIB_MINIUPNP_DIR = $${DOLLAR}$${DOLLAR}DIGITALNOTE_PATH/../libs/miniupnpc-2.1")
 		}
 		
 		QMAKE_LIBDIR += $${DIGITALNOTE_LIB_MINIUPNP_DIR}
@@ -21,7 +20,7 @@ contains(USE_UPNP, -) {
 		INCLUDEPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
 		DEPENDPATH += $${DIGITALNOTE_LIB_MINIUPNP_DIR}/../
 		
-		LIBS += -liphlpapi
+		
 	}
 	
 	macx {
@@ -31,6 +30,9 @@ contains(USE_UPNP, -) {
 	}
 	
 	LIBS += -lminiupnpc
+	win32 {
+		LIBS += -liphlpapi
+	}
 	
 	DEFINES += MINIUPNP_STATICLIB
 	DEFINES += USE_UPNP

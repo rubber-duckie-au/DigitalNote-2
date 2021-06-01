@@ -47,7 +47,6 @@ Notes:
 #include "lz4/lz4.c"
 #include "ccriticalblock.h"
 #include "txdb-leveldb.h"
-#include "cinv.h"
 #include "net.h"
 #include "cblock.h"
 #include "main.h"

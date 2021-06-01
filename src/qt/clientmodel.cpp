@@ -16,9 +16,15 @@
 #include "calert.h"
 #include "ui_interface.h"
 #include "masternodeman.h"
+#include "masternode_extern.h"
 #include "cblock.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "main.h"
+#include "main_extern.h"
+#include "cblockindex.h"
+#include "util.h"
+#include "cmasternodeman.h"
 
 #include "clientmodel.h"
 

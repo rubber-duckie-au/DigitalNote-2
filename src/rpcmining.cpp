@@ -11,8 +11,10 @@
 #include "rpcserver.h"
 #include "blockparams.h"
 #include "chainparams.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
 #include "masternodeman.h"
-#include "masternode-payments.h"
+#include "masternode_extern.h"
 #include "txdb.h"
 #include "init.h"
 #include "miner.h"
@@ -23,11 +25,12 @@
 #include "mining.h"
 #include "cblock.h"
 #include "script.h"
-#include "cinv.h"
 #include "net.h"
 #include "txmempool.h"
 #include "ctxout.h"
 #include "ctransaction.h"
+#include "main_extern.h"
+#include "base58.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

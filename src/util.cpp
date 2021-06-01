@@ -1679,3 +1679,17 @@ void TraceThread(const char* name,  Callable func)
 }
 
 template void TraceThread<void (*)()>(const char*, void (*)());
+
+int64_t GetPerformanceCounter()
+{
+    int64_t nCounter = 0;
+#ifdef WIN32
+    QueryPerformanceCounter((LARGE_INTEGER*)&nCounter);
+#else
+    timeval t;
+    gettimeofday(&t, NULL);
+    nCounter = (int64_t) t.tv_sec * 1000000 + t.tv_usec;
+#endif
+    return nCounter;
+}
+

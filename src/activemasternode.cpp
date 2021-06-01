@@ -13,11 +13,19 @@
 #include "cwallettx.h"
 #include "mining.h"
 #include "script.h"
-#include "cinv.h"
 #include "net.h"
 #include "ckey.h"
+#include "main_extern.h"
+#include "cblockindex.h"
+#include "masternode.h"
+#include "base58.h"
 
 #include "activemasternode.h"
+
+CActiveMasternode::CActiveMasternode()
+{        
+	status = MASTERNODE_NOT_PROCESSED;
+}
 
 //
 // Bootup the masternode, look for a 2,000,000 XDN input and register on the network

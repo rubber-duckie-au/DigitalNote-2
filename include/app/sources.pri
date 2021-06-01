@@ -111,18 +111,24 @@ SOURCES += src/kernel.cpp
 SOURCES += src/pbkdf2.cpp
 SOURCES += src/support/cleanse.cpp
 SOURCES += src/stealth.cpp
-SOURCES += src/masternode.cpp
 SOURCES += src/mnengine.cpp
 SOURCES += src/rpcmnengine.cpp
 SOURCES += src/instantx.cpp
-SOURCES += src/activemasternode.cpp
-SOURCES += src/masternodeman.cpp
-SOURCES += src/masternode-payments.cpp
 SOURCES += src/spork.cpp
-SOURCES += src/masternodeconfig.cpp
 SOURCES += src/smsg.cpp
 SOURCES += src/webwalletconnector.cpp
 SOURCES += src/rpcsmessage.cpp
+
+SOURCES += src/cmasternode.cpp
+SOURCES += src/cmasternodeman.cpp
+SOURCES += src/cmasternodedb.cpp
+SOURCES += src/cmasternodepaymentwinner.cpp
+SOURCES += src/cmasternodepayments.cpp
+SOURCES += src/activemasternode.cpp
+SOURCES += src/masternode.cpp
+SOURCES += src/masternodeman.cpp
+SOURCES += src/masternodeconfig.cpp
+SOURCES += src/masternode-payments.cpp
 
 SOURCES += src/smsg/address.cpp
 SOURCES += src/smsg/batchscanner.cpp
@@ -213,3 +219,8 @@ SOURCES += src/qt/blockbrowser.cpp
 SOURCES += src/qt/qvalidatedtextedit.cpp
 SOURCES += src/qt/plugins/mrichtexteditor/mrichtextedit.cpp
 SOURCES += src/qt/flowlayout.cpp
+
+macx {
+	OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
+	OBJECTIVE_SOURCES += src/qt/macnotificationhandler.mm
+}

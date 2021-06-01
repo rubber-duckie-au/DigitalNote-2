@@ -2,9 +2,12 @@
 
 #include <boost/foreach.hpp>
 
+#include "util.h"
 #include "cconsensusvote.h"
-#include "masternodeman.h"
+#include "cmasternodeman.h"
+#include "masternode_extern.h"
 #include "blockparams.h"
+#include "net/cnetaddr.h"
 
 #include "ctransactionlock.h"
 
