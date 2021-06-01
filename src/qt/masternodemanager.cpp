@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include <boost/lexical_cast.hpp>
+#include <boost/foreach.hpp>
 #include <fstream>
 #include <QAbstractItemDelegate>
 #include <QClipboard>
@@ -25,16 +26,20 @@
 #include "sync.h"
 #include "clientmodel.h"
 #include "walletmodel.h"
-#include "activemasternode.h"
-#include "masternodeconfig.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
 #include "masternodeman.h"
+#include "cactivemasternode.h"
+#include "masternodeconfig.h"
 #include "masternode_extern.h"
+#include "mnengine_extern.h"
 #include "walletdb.h"
 #include "init.h"
 #include "rpcserver.h"
 #include "guiutil.h"
 #include "script.h"
 #include "base58.h"
+#include "ccriticalblock.h"
 
 #include "masternodemanager.h"
 #include "ui_masternodemanager.h"

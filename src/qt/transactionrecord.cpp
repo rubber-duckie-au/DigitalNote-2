@@ -12,6 +12,8 @@
 #include "main_const.h"
 #include "main_extern.h"
 #include "cblockindex.h"
+#include "ctxin.h"
+#include "ctxout.h"
 
 #include "transactionrecord.h"
 

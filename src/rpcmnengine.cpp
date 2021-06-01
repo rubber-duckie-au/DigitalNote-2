@@ -9,7 +9,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include "init.h"
-#include "activemasternode.h"
+#include "cactivemasternode.h"
 #include "rpcserver.h"
 #include "util.h"
 #include "cwallet.h"
@@ -23,10 +23,15 @@
 #include "main_extern.h"
 #include "cblockindex.h"
 #include "base58.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
 #include "cmasternodepayments.h"
 #include "masternode.h"
 #include "masternodeman.h"
 #include "masternodeconfig.h"
+#include "masternode_extern.h"
+#include "cmnenginesigner.h"
+#include "mnengine_extern.h"
 
 using namespace json_spirit;
 

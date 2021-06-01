@@ -2,22 +2,28 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include "main.h"
+#include "chainparams.h"
+#include "mining.h"
 #include "caddrman.h"
 #include "cblockindex.h"
-#include "cmasternode.h"
 #include "cvalidationstate.h"
 #include "net.h"
 #include "net/cnode.h"
 #include "util.h"
 #include "serialize.h"
+#include "cmasternode.h"
 #include "cmasternodepayments.h"
+#include "cactivemasternode.h"
 #include "masternode.h"
+#include "masternodeman.h"
 #include "masternode_extern.h"
-#include "mnengine.h"
 #include "comparevalueonly.h"
-#include "main.h"
 #include "main_extern.h"
-#include "mining.h"
+#include "ctxout.h"
+#include "cmnenginesigner.h"
+#include "cmnenginepool.h"
+#include "mnengine_extern.h"
 
 #include "cmasternodeman.h"
 

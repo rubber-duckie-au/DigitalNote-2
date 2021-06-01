@@ -2,43 +2,38 @@
 // Copyright (c) 2009-2012 The DarkCoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef ACTIVEMASTERNODE_H
-#define ACTIVEMASTERNODE_H
+#ifndef CACTIVEMASTERNODE_H
+#define CACTIVEMASTERNODE_H
 
-#include "uint/uint256.h"
+#include <string>
+#include <vector>
+
 #include "ctxin.h"
 #include "net/cservice.h"
 #include "cpubkey.h"
-#include "sync.h"
-#include "init.h"
-#include "mnengine.h"
 
 class COutput;
 class CKey;
+class CScript;
 
 // Responsible for activating the masternode and pinging the network
 class CActiveMasternode
 {
 public:
-	// Initialized by init.cpp
-	// Keys for the main masternode
 	CPubKey pubKeyMasternode;
-
-	// Initialized while registering masternode
 	CTxIn vin;
     CService service;
-
     int status;
     std::string notCapableReason;
 
     CActiveMasternode();
 
-    void ManageStatus(); // manage status of main masternode
-    bool Dseep(std::string& errorMessage); // ping for main masternode
-    bool Dseep(CTxIn vin, CService service, CKey key, CPubKey pubKey, std::string &retErrorMessage, bool stop); // ping for any masternode
-    bool StopMasterNode(std::string& errorMessage); // stop main masternode
+    void ManageStatus();
+    bool Dseep(std::string& errorMessage);
+    bool Dseep(CTxIn vin, CService service, CKey key, CPubKey pubKey, std::string &retErrorMessage, bool stop);
+    bool StopMasterNode(std::string& errorMessage);																		// stop main masternode
     bool StopMasterNode(const std::string &strService, const std::string &strKeyMasternode, std::string& errorMessage); // stop remote masternode
-    bool StopMasterNode(CTxIn vin, CService service, CKey key, CPubKey pubKey, std::string& errorMessage); // stop any masternode
+    bool StopMasterNode(CTxIn vin, CService service, CKey key, CPubKey pubKey, std::string& errorMessage);				// stop any masternode
 
     /// Register remote Masternode
     bool Register(const std::string &strService, const std::string &strKey, const std::string &txHash, const std::string &strOutputIndex,
@@ -61,4 +56,4 @@ public:
     bool EnableHotColdMasterNode(CTxIn& vin, CService& addr);
 };
 
-#endif
+#endif // CACTIVEMASTERNODE_H

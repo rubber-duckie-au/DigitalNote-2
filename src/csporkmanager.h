@@ -4,8 +4,6 @@
 #include <vector>
 #include <string>
 
-#include "serialize.h"
-
 class CSporkMessage;
 
 class CSporkManager

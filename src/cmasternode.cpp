@@ -2,19 +2,23 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "masternodeman.h"
-#include "mnengine.h"
 #include "sync.h"
 #include "util.h"
 #include "cvalidationstate.h"
 #include "mining.h"
-#include "masternode_extern.h"
 #include "main_extern.h"
 #include "cblockindex.h"
 #include "main.h"
 #include "serialize.h"
-#include "masternode.h"
 #include "hash.h"
+#include "ccriticalblock.h"
+#include "init.h"
+#include "masternode.h"
+#include "masternodeman.h"
+#include "masternode_extern.h"
+#include "ctxout.h"
+#include "cmnenginepool.h"
+#include "mnengine_extern.h"
 
 #include "cmasternode.h"
 

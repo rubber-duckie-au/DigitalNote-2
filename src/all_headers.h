@@ -57,7 +57,7 @@
 	//#include <boost/thread.hpp>
 	//#include <boost/bind.hpp>
 	
-	#include "activemasternode.h"
+	#include "cactivemasternode.h"
 	#include "addrman.h"
 	#include "allocators.h"
 	#include "base58.h"

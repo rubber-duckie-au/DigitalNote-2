@@ -24,7 +24,6 @@
 #include "cinv.h"
 #include "chainparams.h"
 #include "ui_interface.h"
-#include "mnengine.h"
 #include "net/cnode.h"
 #include "net/cbanentry.h"
 #include "net/cnodestats.h"
@@ -42,6 +41,7 @@
 #include "netbase.h"
 #include "net/myclosesocket.h"
 #include "main_extern.h"
+#include "ctransaction.h"
 
 #include "net.h"
 

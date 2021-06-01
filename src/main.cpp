@@ -13,6 +13,7 @@
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/bind.hpp>
+#include <boost/foreach.hpp>
 
 #include "calert.h"
 #include "blocksizecalculator.h"
@@ -26,11 +27,13 @@
 #include "txmempool.h"
 #include "ui_interface.h"
 #include "velocity.h"
-#include "mnengine.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
 #include "cmasternodepaymentwinner.h"
 #include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
+#include "masternode_extern.h"
 #include "spork.h"
 #include "util.h"
 #include "cnodestatestats.h"
@@ -57,6 +60,11 @@
 #include "main_extern.h"
 #include "hash.h"
 #include "main.h"
+#include "ctxout.h"
+#include "cmnenginebroadcasttx.h"
+#include "cmnenginesigner.h"
+#include "cmnenginepool.h"
+#include "mnengine_extern.h"
 
 using namespace boost;
 

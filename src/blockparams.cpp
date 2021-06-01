@@ -18,7 +18,6 @@
 #include "net.h"
 #include "txdb.h"
 #include "velocity.h"
-#include "mnengine.h"
 #include "masternodeman.h"
 #include "cblockindex.h"
 #include "main.h"

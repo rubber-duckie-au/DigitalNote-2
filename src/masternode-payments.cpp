@@ -4,16 +4,19 @@
 
 #include "compat.h"
 
-#include "ccriticalsection.h"
-#include "mnengine.h"
-#include "net/cnode.h"
 #include "main.h"
 #include "main_extern.h"
+#include "util.h"
 #include "base58.h"
+#include "ccriticalsection.h"
+#include "ccriticalblock.h"
+#include "net/cnode.h"
 #include "cblockindex.h"
 #include "cmasternodepayments.h"
 #include "cmasternodepaymentwinner.h"
 #include "masternode_extern.h"
+#include "cmnenginepool.h"
+#include "mnengine_extern.h"
 
 #include "masternode-payments.h"
 

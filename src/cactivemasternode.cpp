@@ -6,7 +6,6 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "masternodeman.h"
 #include "clientversion.h"
 #include "cwallet.h"
 #include "coutput.h"
@@ -17,10 +16,19 @@
 #include "ckey.h"
 #include "main_extern.h"
 #include "cblockindex.h"
-#include "masternode.h"
 #include "base58.h"
+#include "util.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
+#include "masternode.h"
+#include "masternodeman.h"
+#include "masternode_extern.h"
+#include "ctxout.h"
+#include "cmnenginesigner.h"
+#include "mnengine_extern.h"
+#include "init.h"
 
-#include "activemasternode.h"
+#include "cactivemasternode.h"
 
 CActiveMasternode::CActiveMasternode()
 {        

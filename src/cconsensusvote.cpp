@@ -2,11 +2,16 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "masternodeman.h"
-#include "mnengine.h"
+#include "util.h"
 #include "serialize.h"
 #include "ckey.h"
 #include "cscriptid.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
+#include "masternodeman.h"
+#include "masternode_extern.h"
+#include "cmnenginesigner.h"
+#include "mnengine_extern.h"
 
 #include "cconsensusvote.h"
 

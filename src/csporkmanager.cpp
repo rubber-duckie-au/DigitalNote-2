@@ -2,15 +2,18 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "cscriptid.h"
-#include "spork.h"
-#include "csporkmessage.h"
 #include "util.h"
+#include "net.h"
 #include "uint/uint256.h"
 #include "cinv.h"
-#include "mnengine.h"
-#include "net.h"
 #include "ckey.h"
+#include "cpubkey.h"
+#include "cscriptid.h"
+#include "csporkmessage.h"
+#include "spork.h"
+#include "cmnenginesigner.h"
+#include "mnengine.h"
+#include "mnengine_extern.h"
 
 #include "csporkmanager.h"
 

@@ -3,8 +3,6 @@
 
 #include <vector>
 
-#include "serialize.h"
-
 class uint256;
 
 //

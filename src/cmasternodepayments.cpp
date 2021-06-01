@@ -1,21 +1,27 @@
 #include "compat.h"
 
 #include <boost/lexical_cast.hpp>
+#include <boost/foreach.hpp>
 
 #include "spork.h"
 #include "cpubkey.h"
 #include "util.h"
-#include "mnengine.h"
 #include "ckey.h"
 #include "hash.h"
-#include "cmasternodepaymentwinner.h"
-#include "masternode.h"
-#include "masternode_extern.h"
 #include "main_extern.h"
 #include "cblockindex.h"
 #include "base58.h"
 #include "cinv.h"
 #include "net.h"
+#include "ccriticalblock.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
+#include "cmasternodepaymentwinner.h"
+#include "cactivemasternode.h"
+#include "masternode.h"
+#include "masternode_extern.h"
+#include "cmnenginesigner.h"
+#include "mnengine_extern.h"
 
 #include "cmasternodepayments.h"
 

@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include <map>
+#include <boost/foreach.hpp>
 
 #include "util.h"
 #include "spork.h"
@@ -13,9 +14,17 @@
 #include "blockparams.h"
 #include "cconsensusvote.h"
 #include "cwallet.h"
-#include "mnengine.h"
 #include "main_const.h"
 #include "main_extern.h"
+#include "cmnenginepool.h"
+#include "mnengine_extern.h"
+#include "ccriticalblock.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
+#include "cactivemasternode.h"
+#include "masternode_extern.h"
+#include "init.h"
+#include "ctxout.h"
 
 #include "instantx.h"
 
