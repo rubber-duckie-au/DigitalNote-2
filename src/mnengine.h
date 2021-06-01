@@ -10,10 +10,14 @@
 #include "sync.h"
 #include "activemasternode.h"
 #include "masternodeman.h"
-#include "masternode-payments.h"
+#include "masternode_extern.h"
 #include "ctxin.h"
 #include "ctxout.h"
 #include "ctransaction.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
+#include "util.h"
+#include "chainparams.h"
 
 class CMNenginePool;
 class CMNengineSigner;
@@ -22,6 +26,7 @@ class CDigitalNoteAddress;
 class CMNengineQueue;
 class CMNengineBroadcastTx;
 class CActiveMasternode;
+class CKey;
 
 // pool states for mixing
 #define POOL_STATUS_UNKNOWN                    0 // waiting for update

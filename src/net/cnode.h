@@ -9,6 +9,10 @@
 #include "caddress.h"
 #include "uint/uint256.h"
 
+#if defined(__clang__) && defined(MAC_OSX)
+	#include "cinv.h"
+#endif // defined(__clang__) && defined(MAC_OSX)
+
 class CSubNet;
 class CBanEntry;
 class CBlockIndex;

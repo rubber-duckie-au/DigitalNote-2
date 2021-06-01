@@ -28,11 +28,19 @@ private:
 public:
     // Construct an invalid public key.
     CPubKey();
-
-    // Construct a public key using begin/end iterators to byte data.
-    template<typename T>
-    CPubKey(const T pbegin, const T pend);
-
+	
+	// Construct a public key using begin/end iterators to byte data.
+	#if defined(__clang__) && defined(MAC_OSX)
+		template<typename T>
+		CPubKey(const T pbegin, const T pend)
+		{
+			Set(pbegin, pend);
+		}	
+	#else // defined(__clang__) && defined(MAC_OSX)
+		template<typename T>
+		CPubKey(const T pbegin, const T pend);
+	#endif // defined(__clang__) && defined(MAC_OSX)
+    
     // Construct a public key from a byte vector.
     CPubKey(const std::vector<unsigned char> &vch);
 	

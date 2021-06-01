@@ -6,7 +6,6 @@
 
 #include <boost/foreach.hpp>
 
-#include "cinv.h"
 #include "rpcserver.h"
 #include "calert.h"
 #include "sync.h"

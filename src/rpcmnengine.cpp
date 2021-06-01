@@ -10,8 +10,6 @@
 
 #include "init.h"
 #include "activemasternode.h"
-#include "masternodeman.h"
-#include "masternodeconfig.h"
 #include "rpcserver.h"
 #include "util.h"
 #include "cwallet.h"
@@ -19,10 +17,16 @@
 #include "creservekey.h"
 #include "coutput.h"
 #include "script.h"
-#include "cinv.h"
 #include "net/cnode.h"
 #include "net.h"
 #include "ckey.h"
+#include "main_extern.h"
+#include "cblockindex.h"
+#include "base58.h"
+#include "cmasternodepayments.h"
+#include "masternode.h"
+#include "masternodeman.h"
+#include "masternodeconfig.h"
 
 using namespace json_spirit;
 

@@ -1,6 +1,8 @@
 #ifndef NET_CSERVICE_H
 #define NET_CSERVICE_H
 
+#include "compat.h"
+
 #include <vector>
 #include <string>
 

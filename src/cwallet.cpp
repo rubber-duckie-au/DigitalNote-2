@@ -10,8 +10,11 @@
 #include "txdb-leveldb.h"
 #include "blockparams.h"
 #include "fork.h"
+#include "cmasternode.h"
+#include "cmasternodeman.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
-#include "masternode-payments.h"
+#include "masternode_extern.h"
 #include "coutput.h"
 #include "cwallettx.h"
 #include "mining.h"
@@ -35,6 +38,8 @@
 #include "csecret.h"
 #include "ckey.h"
 #include "ctxout.h"
+#include "hash.h"
+#include "base58.h"
 
 #include "cwallet.h"
 

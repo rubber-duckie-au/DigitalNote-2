@@ -41,6 +41,7 @@
 #include "net/csubnet.h"
 #include "netbase.h"
 #include "net/myclosesocket.h"
+#include "main_extern.h"
 
 #include "net.h"
 

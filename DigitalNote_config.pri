@@ -21,30 +21,11 @@ macx {
 	DIGITALNOTE_LIB_BOOST_SUFFIX = -mt
 	DIGITALNOTE_LIB_OPENSSL_DIR = /usr/local/Cellar/openssl@1.1/1.1.1h
 	DIGITALNOTE_LIB_BDB_DIR = /usr/local/Cellar/berkeley-db@6.2.32
+	DIGITALNOTE_LIB_BDB_SUFFIX = -6.2
 	DIGITALNOTE_LIB_EVENT_DIR = /usr/local
 	DIGITALNOTE_LIB_GMP_DIR = /usr/local
 	DIGITALNOTE_LIB_MINIUPNP_DIR = /usr/local/Cellar/miniupnpc/2.1
 	DIGITALNOTE_LIB_QRENCODE_DIR = /usr/local
 	
-	DIGITALNOTE_MAC_SDK_DIR = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
-	DIGITALNOTE_MAC_SDK_VERSION = 10.15
-	DIGITALNOTE_MAC_SDK_VERSION_MIN = 10.13
-	
-	DIGITALNOTE_MAC_QMAKE_FLAGS = -mmacosx-version-min=$${DIGITALNOTE_MAC_SDK_VERSION_MIN} -isysroot $${DIGITALNOTE_MAC_SDK_DIR}/MacOSX$${DIGITALNOTE_MAC_SDK_VERSION}.sdk
-	
-	QMAKE_CXXFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
-	QMAKE_CFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
-	QMAKE_LFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
-	QMAKE_OBJECTIVE_CFLAGS += $${DIGITALNOTE_MAC_QMAKE_FLAGS}
-	
-	#HEADERS += src/qt/macdockiconhandler.h
-	#HEADERS += src/qt/macnotificationhandler.h
-	
-	#OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
-	#OBJECTIVE_SOURCES += src/qt/macnotificationhandler.mm
-	
-	DEFINES += MAC_OSX
-	DEFINES += MSG_NOSIGNAL=0
-	
-	ICON = src/qt/res/icons/digitalnote.icns
+	QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
 }

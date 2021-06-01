@@ -8,8 +8,7 @@ contains(USE_QRCODE, 1) {
 		} else {
 			message("You need to compile lib QREncode yourself with msys2.")
 			message("Also you need to configure the following variables:")
-			message("	DIGITALNOTE_LIB_DIR = $${DOLLAR}$${DOLLAR}DIGITALNOTE_PATH/../libs")
-			message("	DIGITALNOTE_LIB_QRENCODE_NAME = qrencode-4.1.1")
+			message("	DIGITALNOTE_LIB_QRENCODE_DIR = $${DOLLAR}$${DOLLAR}DIGITALNOTE_PATH/../libs/qrencode-4.1.1")
 		}
 		
 		QMAKE_LIBDIR += $${DIGITALNOTE_LIB_QRENCODE_DIR}/.libs

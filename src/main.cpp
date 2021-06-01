@@ -21,13 +21,14 @@
 #include "checkpoints.h"
 #include "init.h"
 #include "kernel.h"
-#include "cinv.h"
 #include "net.h"
 #include "txdb.h"
 #include "txmempool.h"
 #include "ui_interface.h"
 #include "velocity.h"
 #include "mnengine.h"
+#include "cmasternodepaymentwinner.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
 #include "spork.h"
@@ -52,7 +53,9 @@
 #include "protocol.h"
 #include "cinv.h"
 #include "caddrman.h"
-
+#include "cmainsignals.h"
+#include "main_extern.h"
+#include "hash.h"
 #include "main.h"
 
 using namespace boost;

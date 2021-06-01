@@ -15,6 +15,15 @@ win32 {
 	
 	## https://doc.qt.io/qt-5/qmake-variable-reference.html#rc-file
 	RC_FILE = src/qt/res/bitcoin-qt.rc
-} else {
+}
+
+unix {
 	DEFINES += LINUX
+}
+
+macx {
+	DEFINES += MAC_OSX
+	DEFINES += MSG_NOSIGNAL=0
+	
+	ICON = src/qt/res/icons/digitalnote.icns
 }

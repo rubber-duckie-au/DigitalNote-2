@@ -24,7 +24,6 @@
 #include "chainparams.h"
 #include "txdb.h"
 #include "rpcserver.h"
-#include "cinv.h"
 #include "net.h"
 #include "ckey.h"
 #include "util.h"
@@ -32,8 +31,8 @@
 #include "checkpoints.h"
 //#include "mnengine-relay.h"
 #include "activemasternode.h"
-#include "masternode-payments.h"
-#include "masternode.h"
+#include "cmasternodedb.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternodeconfig.h"
 #include "spork.h"
@@ -52,6 +51,7 @@
 #include "cmasterkey.h"
 #include "eccverifyhandle.h"
 #include "netbase.h"
+#include "main_extern.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

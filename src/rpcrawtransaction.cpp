@@ -13,7 +13,6 @@
 #include "init.h"
 #include "ctransaction.h"
 #include "script.h"
-#include "cinv.h"
 #include "net.h"
 #include "main_extern.h"
 #include "ckey.h"

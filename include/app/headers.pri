@@ -136,3 +136,8 @@ HEADERS += src/crypto/common/sph_types.h
 HEADERS += src/crypto/bmw/bmw512.h
 HEADERS += src/crypto/echo/echo512.h
 HEADERS += src/limitedmap.h
+
+macx {
+	HEADERS += src/qt/macdockiconhandler.h
+	HEADERS += src/qt/macnotificationhandler.h
+}
