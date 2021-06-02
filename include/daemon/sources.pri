@@ -111,7 +111,6 @@ SOURCES += src/protocol.cpp
 SOURCES += src/noui.cpp
 SOURCES += src/kernel.cpp
 SOURCES += src/pbkdf2.cpp
-SOURCES += src/support/cleanse.cpp
 SOURCES += src/stealth.cpp
 SOURCES += src/instantx.cpp
 SOURCES += src/spork.cpp
@@ -164,6 +163,8 @@ SOURCES += src/uint/uint_base.cpp
 SOURCES += src/uint/uint160.cpp
 SOURCES += src/uint/uint256.cpp
 SOURCES += src/uint/uint512.cpp
+
+SOURCES += src/support/cleanse.cpp
 
 SOURCES += src/crypto/common/hmac_sha256.cpp
 SOURCES += src/crypto/common/hmac_sha512.cpp

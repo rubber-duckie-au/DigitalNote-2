@@ -1,6 +1,9 @@
 #ifndef COMPAREVALUEONLY_H
 #define COMPAREVALUEONLY_H
 
+#include <utility>
+#include <cstdint>
+
 template <typename T>
 struct CompareValueOnly
 {
@@ -10,4 +13,4 @@ struct CompareValueOnly
     }
 };
 
-#endif // 
+#endif // COMPAREVALUEONLY_H

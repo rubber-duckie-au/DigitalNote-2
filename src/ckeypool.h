@@ -1,6 +1,8 @@
 #ifndef CKEYPOOL_H
 #define CKEYPOOL_H
 
+#include <cstdint>
+
 #include "cpubkey.h"
 
 /** A key pool entry */

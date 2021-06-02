@@ -1,6 +1,10 @@
 #ifndef CWALLETSCANSTATE_H
 #define CWALLETSCANSTATE_H
 
+#include <vector>
+
+class uint256;
+
 class CWalletScanState
 {
 public:

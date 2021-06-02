@@ -1,6 +1,10 @@
 #ifndef CRESERVEKEY_H
 #define CRESERVEKEY_H
 
+#include <cstdint>
+
+#include "cpubkey.h"
+
 class CWallet;
 
 /** A key allocated from the key pool. */

@@ -2,6 +2,7 @@
 #define CSPORKMESSAGE_H
 
 #include <vector>
+#include <cstdint>
 
 class uint256;
 

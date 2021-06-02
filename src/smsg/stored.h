@@ -2,6 +2,7 @@
 #define SMSG_STORED_H
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace DigitalNote {

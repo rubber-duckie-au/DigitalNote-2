@@ -1,6 +1,8 @@
 #ifndef SMSG_ADDRESS_H
 #define SMSG_ADDRESS_H
 
+#include <string>
+
 #include "string.h"
 
 namespace DigitalNote {
