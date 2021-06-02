@@ -16,7 +16,7 @@ secure_allocator<T>::~secure_allocator() throw()
 }
 
 template<typename T>
-T* secure_allocator<T>::allocate(std::size_t n, const void *hint = 0)
+T* secure_allocator<T>::allocate(std::size_t n, const void *hint)
 {
 	T *p;
 	
