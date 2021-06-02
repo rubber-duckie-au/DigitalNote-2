@@ -5,6 +5,7 @@
 #ifndef BITCOIN_UTIL_H
 #define BITCOIN_UTIL_H
 
+#include <algorithm>
 #include <map>
 #include <list>
 #include <utility>
