@@ -1,6 +1,9 @@
 #ifndef CWALLETKEY_H
 #define CWALLETKEY_H
 
+#include <cstdint>
+#include <string>
+
 #include "cprivkey.h"
 
 /** Private key that includes an expiration date in case it never gets used. */

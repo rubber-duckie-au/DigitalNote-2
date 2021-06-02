@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "allocators.h"
+#include "allocators/secure_allocator.h"
 
 // CSecret is a serialization of just the secret parameter (32 bytes)
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CSecret;

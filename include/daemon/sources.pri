@@ -67,7 +67,6 @@ SOURCES += src/cdisktxpos.cpp
 SOURCES += src/ctransaction.cpp
 SOURCES += src/calert.cpp
 SOURCES += src/blocksizecalculator.cpp
-SOURCES += src/allocators.cpp
 SOURCES += src/base58.cpp
 SOURCES += src/blockparams.cpp
 SOURCES += src/chainparams.cpp
@@ -137,6 +136,13 @@ SOURCES += src/masternode.cpp
 SOURCES += src/masternodeman.cpp
 SOURCES += src/masternodeconfig.cpp
 SOURCES += src/masternode-payments.cpp
+
+SOURCES += src/allocators.cpp
+SOURCES += src/allocators/lockedpagemanagerbase.cpp
+SOURCES += src/allocators/lockedpagemanager.cpp
+SOURCES += src/allocators/memorypagelocker.cpp
+SOURCES += src/allocators/secure_allocator.cpp
+SOURCES += src/allocators/zero_after_free_allocator.cpp
 
 SOURCES += src/smsg/address.cpp
 SOURCES += src/smsg/batchscanner.cpp

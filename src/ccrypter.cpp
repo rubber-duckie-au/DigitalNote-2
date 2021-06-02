@@ -3,6 +3,8 @@
 
 #include "uint/uint256.h"
 #include "scrypt.h"
+#include "allocators/lockedpagemanager.h"
+#include "support/cleanse.h"
 
 #include "ccrypter.h"
 

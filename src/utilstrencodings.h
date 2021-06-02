@@ -13,8 +13,6 @@
 #include <string>
 #include <vector>
 #include "serialize.h"
-#include "allocators.h"
-
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <openssl/bio.h>

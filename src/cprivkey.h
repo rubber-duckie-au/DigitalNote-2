@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "allocators.h"
+#include "allocators/secure_allocator.h"
 
 // secure_allocator is defined in allocators.h
 // CPrivKey is a serialized private key, with all parameters included (279 bytes)

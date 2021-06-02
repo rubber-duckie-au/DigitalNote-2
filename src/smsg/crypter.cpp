@@ -1,7 +1,7 @@
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 
-#include "allocators.h"
+#include "allocators/lockedpagemanager.h"
 
 #include "smsg/crypter.h"
 

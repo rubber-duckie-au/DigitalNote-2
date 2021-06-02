@@ -2,50 +2,35 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "compat.h"
+#include "support/cleanse.h"
+#include "allocators/lockedpagemanager.h"
 
 #include "allocators.h"
 
 LockedPageManager* LockedPageManager::_instance = NULL;
 boost::once_flag LockedPageManager::init_flag = BOOST_ONCE_INIT;
 
-/** Determine system page size in bytes */
-static inline size_t GetSystemPageSize()
+//
+// Functions for directly locking/unlocking memory objects.
+// Intended for non-dynamically allocated structures.
+//
+template<typename T>
+void LockObject(const T &t)
 {
-    size_t page_size;
+    LockedPageManager::Instance().LockRange((void*)(&t), sizeof(T));
+}
+
+template<typename T>
+void UnlockObject(const T &t)
+{
+    memory_cleanse((void*)(&t), sizeof(T));
 	
-#if defined(WIN32)
-    SYSTEM_INFO sSysInfo;
-    GetSystemInfo(&sSysInfo);
-    page_size = sSysInfo.dwPageSize;
-#elif defined(PAGESIZE) // defined in limits.h
-    page_size = PAGESIZE;
-#else // assume some POSIX OS
-    page_size = sysconf(_SC_PAGESIZE);
-#endif
-
-    return page_size;
+    LockedPageManager::Instance().UnlockRange((void*)(&t), sizeof(T));
 }
 
-bool MemoryPageLocker::Lock(const void *addr, size_t len)
-{
-#ifdef WIN32
-    return VirtualLock(const_cast<void*>(addr), len);
-#else
-    return mlock(addr, len) == 0;
-#endif
-}
-
-bool MemoryPageLocker::Unlock(const void *addr, size_t len)
-{
-#ifdef WIN32
-    return VirtualUnlock(const_cast<void*>(addr), len);
-#else
-    return munlock(addr, len) == 0;
-#endif
-}
-
-LockedPageManager::LockedPageManager() : LockedPageManagerBase<MemoryPageLocker>(GetSystemPageSize())
-{
-	
-}
+template void LockObject<unsigned char>(const unsigned char &t);
+template void UnlockObject<unsigned char>(const unsigned char &t);
+template void LockObject<unsigned char [32]>(unsigned char const (&) [32]);
+template void UnlockObject<unsigned char [32]>(unsigned char const (&) [32]);
+template void LockObject<unsigned char [64]>(unsigned char const (&) [64]);
+template void UnlockObject<unsigned char [64]>(unsigned char const (&) [64]);

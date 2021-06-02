@@ -17,7 +17,7 @@
 #include "chainparams.h"
 #include "script.h"
 #include "cextpubkey.h"
-#include "allocators.h"
+#include "allocators/zero_after_free_allocator.h"
 
 #include <string>
 #include <vector>

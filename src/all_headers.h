@@ -1,8 +1,24 @@
 #ifdef __cplusplus
 	#include "compat.h"
 	
+	#include "caddrinfo.h"
+	#include "blocksizecalculator.h"
+	#include "checkpoints.h"
+	#include "hash.h"
+	#include "cregtestparams.h"
+	#include "ccrypter.h"
+	#include "txdb.h"
+	#include "txdb-leveldb.h"
+	#include "util.h"
+	
+	#include "serialize.h"
 	#include "ckey.h"
 	#include "cactivemasternode.h"
+	
+	#include "allocators.h"
+	#include "allocators/zero_after_free_allocator.h"
+	#include "allocators/secure_allocator.h"
+	#include "allocators/securestring.h"
 	
 	#include "ctestnetparams.h"
 	#include "cmainparams.h"

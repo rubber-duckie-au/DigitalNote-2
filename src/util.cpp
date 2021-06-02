@@ -12,7 +12,6 @@
 #include "ui_interface.h"
 #include "uint/uint256.h"
 #include "version.h"
-#include "allocators.h"
 #include "ccriticalsection.h"
 #include "ccriticalblock.h"
 #include "main_const.h"

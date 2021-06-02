@@ -3,7 +3,10 @@
 
 #include "ckey.h"
 
+struct CExtKey;
 struct CExtPubKey;
+
+bool operator==(const CExtKey &a, const CExtKey &b);
 
 struct CExtKey
 {
@@ -13,16 +16,7 @@ struct CExtKey
     unsigned char vchChainCode[32];
     CKey key;
 
-    friend bool operator==(const CExtKey &a, const CExtKey &b)
-	{
-        return (
-			a.nDepth == b.nDepth &&
-			memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], 4) == 0 &&
-			a.nChild == b.nChild &&
-            memcmp(&a.vchChainCode[0], &b.vchChainCode[0], 32) == 0 &&
-			a.key == b.key
-		);
-    }
+    friend bool operator==(const CExtKey &a, const CExtKey &b);
 
     void Encode(unsigned char code[74]) const;
     void Decode(const unsigned char code[74]);

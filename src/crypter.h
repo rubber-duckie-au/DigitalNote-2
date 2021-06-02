@@ -5,8 +5,9 @@
 #define __CRYPTER_H__
 
 #include <string>
+#include <vector>
 
-#include "allocators.h"
+#include "allocators/securestring.h"
 
 class uint256;
 

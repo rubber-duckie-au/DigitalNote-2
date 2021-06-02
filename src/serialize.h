@@ -15,11 +15,11 @@
 #include <stdint.h>
 #include <cstring>
 #include <cstdio>
-
+#include <ios>
 #include <boost/type_traits/is_fundamental.hpp>
 #include <boost/tuple/tuple.hpp>
 
-#include "allocators.h"
+#include "allocators/zero_after_free_allocator.h"
 #include "version.h"
 
 class CAutoFile;

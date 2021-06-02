@@ -10,6 +10,7 @@
 #include "cpubkey.h"
 #include "hash.h"
 #include "crypter.h"
+#include "allocators.h"
 
 #include "ckey.h"
 

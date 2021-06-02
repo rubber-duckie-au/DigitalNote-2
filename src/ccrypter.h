@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "crypter.h"
-#include "allocators.h"
+#include "allocators/securestring.h"
 
 /** Encryption/decryption context with key information */
 class CCrypter
