@@ -27,6 +27,7 @@ include(include/app/sources.pri)
 include(include/app/translations.pri)
 
 ## Compile Options
+include(include/options/use_update_alternatives.pri)
 include(include/options/use_0.pri)
 include(include/options/use_build_info.pri)
 include(include/options/use_dbus.pri)

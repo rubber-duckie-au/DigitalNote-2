@@ -23,6 +23,7 @@ include(include/daemon/headers.pri)
 include(include/daemon/sources.pri)
 
 ## Compile Options
+include(include/options/use_update_alternatives.pri)
 include(include/options/use_0.pri)
 include(include/options/use_build_info.pri)
 include(include/options/use_pch.pri)
