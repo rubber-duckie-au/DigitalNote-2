@@ -40,6 +40,7 @@
 #include "ctxout.h"
 #include "hash.h"
 #include "base58.h"
+#include "types/txitems.h"
 
 #include "cwallet.h"
 

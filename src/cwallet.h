@@ -13,6 +13,7 @@
 #include "ckeymetadata.h"
 #include "cstealthkeymetadata.h"
 #include "ccryptokeystore.h"
+#include "types/txitems.h"
 
 class CWalletDB;
 class CWalletTx;
@@ -97,8 +98,6 @@ public:
 		Typedef
 	*/
 	typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
-	typedef std::pair<CWalletTx*, CAccountingEntry*> TxPair;
-    typedef std::multimap<int64_t, TxPair > TxItems;
 	
 	/**
 		Variables

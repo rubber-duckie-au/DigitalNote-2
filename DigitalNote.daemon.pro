@@ -11,6 +11,7 @@ TARGET = DigitalNoted
 
 DEFINES += ENABLE_WALLET
 
+include(include/build_path.pri)
 include(include/compiler_settings.pri)
 include(include/security.pri)
 include(include/qt.pri)

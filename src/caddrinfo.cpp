@@ -1,6 +1,6 @@
 #include "compat.h"
 
-#include <math.h>
+#include <cmath>
 
 #include "serialize.h"
 #include "crypto/bmw/bmw512.h"

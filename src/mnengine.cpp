@@ -7,11 +7,6 @@
 #include <algorithm>
 #include <random>
 #include <openssl/rand.h>
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/assign/list_of.hpp>
 
 #include "init.h"
 #include "util.h"

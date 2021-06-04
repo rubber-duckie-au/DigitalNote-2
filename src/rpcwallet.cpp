@@ -1957,10 +1957,10 @@ Value listtransactions(const Array& params, bool fHelp)
 	
     Array ret;
 
-    const CWallet::TxItems & txOrdered = pwalletMain->wtxOrdered;
+    const TxItems & txOrdered = pwalletMain->wtxOrdered;
 
     // iterate backwards until we have nCount items to return:
-    for (CWallet::TxItems::const_reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
+    for (TxItems::const_reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
     {
         CWalletTx *const pwtx = (*it).second.first;
         if (pwtx != 0)

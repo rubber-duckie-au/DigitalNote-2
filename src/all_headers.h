@@ -1,6 +1,162 @@
 #ifdef __cplusplus
 	#include "compat.h"
 	
+	#include <string>
+    #include <set>
+    #include <map>
+	#include <list>
+    #include <vector>
+    #include <algorithm>
+    #include <cmath>
+    #include <cassert>
+    #include <cstddef>
+    #include <cstdint>
+    #include <cstdlib>
+	#include <functional>
+	#include <string.h>
+	#include <limits>
+	#include <stdexcept>
+	#include <memory>
+	
+	/*
+	#include <algorithm>
+	#include <any>
+	#include <array>
+	#include <atomic>
+	#include <bit>
+	#include <bitset>
+	#include <cassert>
+	#include <ccomplex>
+	#include <cctype>
+	#include <cerrno>
+	#include <cfenv>
+	#include <cfloat>
+	#include <charconv>
+	#include <chrono>
+	#include <cinttypes>
+	#include <ciso646>
+	#include <climits>
+	#include <clocale>
+	#include <cmath>
+	#include <codecvt>
+	#include <compare>
+	#include <complex>
+	#include <complex.h>
+	#include <concepts>
+	#include <condition_variable>
+	#include <csetjmp>
+	#include <csignal>
+	#include <cstdalign>
+	#include <cstdarg>
+	#include <cstdbool>
+	#include <cstddef>
+	#include <cstdint>
+	#include <cstdio>
+	#include <cstdlib>
+	#include <cstring>
+	#include <ctgmath>
+	#include <ctime>
+	#include <cuchar>
+	#include <cwchar>
+	#include <cwctype>
+	#include <cxxabi.h>
+	#include <deque>
+	#include <exception>
+	#include <execution>
+	#include <fenv.h>
+	#include <filesystem>
+	#include <forward_list>
+	#include <fstream>
+	#include <functional>
+	#include <future>
+	#include <initializer_list>
+	#include <iomanip>
+	#include <ios>
+	#include <iosfwd>
+	#include <iostream>
+	#include <istream>
+	#include <iterator>
+	#include <limits>
+	#include <list>
+	#include <locale>
+	#include <map>
+	#include <math.h>
+	#include <memory>
+	#include <memory_resource>
+	#include <mutex>
+	#include <new>
+	#include <numbers>
+	#include <numeric>
+	#include <optional>
+	#include <ostream>
+	#include <queue>
+	#include <random>
+	#include <ranges>
+	#include <ratio>
+	#include <regex>
+	#include <scoped_allocator>
+	#include <set>
+	#include <shared_mutex>
+	#include <span>
+	#include <sstream>
+	#include <stack>
+	#include <stdexcept>
+	#include <stdlib.h>
+	#include <stop_token>
+	#include <streambuf>
+	#include <string>
+	#include <string_view>
+	#include <system_error>
+	#include <tgmath.h>
+	#include <thread>
+	#include <tuple>
+	#include <typeindex>
+	#include <typeinfo>
+	#include <type_traits>
+	#include <unordered_map>
+	#include <unordered_set>
+	#include <utility>
+	#include <valarray>
+	#include <variant>
+	#include <vector>
+	#include <version>
+	*/
+	
+	#ifdef QT_GUI
+		#include <QApplication>
+		#include <QMenuBar>
+		#include <QMenu>
+		#include <QIcon>
+		#include <QVBoxLayout>
+		#include <QToolBar>
+		#include <QStatusBar>
+		#include <QLabel>
+		#include <QMessageBox>
+		#include <QMimeData>
+		#include <QProgressBar>
+		#include <QProgressDialog>
+		#include <QStackedWidget>
+		#include <QDateTime>
+		#include <QMovie>
+		#include <QFileDialog>
+		#include <QDesktopServices>
+		#include <QTimer>
+		#include <QDragEnterEvent>
+		#include <QUrl>
+		#include <QMimeData>
+		#include <QStyle>
+		#include <QToolButton>
+		#include <QScrollArea>
+		#include <QScroller>
+		#include <QTextDocument>
+		#include <QInputDialog>
+	#endif // QT_GUI
+	
+	#include "json/json_spirit_reader_template.h"
+	#include "json/json_spirit_writer_template.h"
+	#include "json/json_spirit_utils.h"
+	#include "json/json_spirit_value.h"
+	
 	#include "caddrinfo.h"
 	#include "blocksizecalculator.h"
 	#include "checkpoints.h"
@@ -85,7 +241,6 @@
 	#include "cscriptcompressor.h"
 	#include "ckeystoreisminevisitor.h"
 	#include "cscriptvisitor.h"
-	#include "compat.h"
 	#include "strlcpy.h"
 	#include "chash160.h"
 	#include "chash256.h"

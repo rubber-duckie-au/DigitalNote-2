@@ -32,6 +32,7 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "util.h"
+#include "types/txitems.h"
 
 #include "walletdb.h"
 
@@ -117,6 +118,7 @@ bool CWalletDB::WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, c
 
 	// hash pubkey/privkey to accelerate wallet load
 	std::vector<unsigned char> vchKey;
+	
 	vchKey.reserve(vchPubKey.size() + vchPrivKey.size());
 	vchKey.insert(vchKey.end(), vchPubKey.begin(), vchPubKey.end());
 	vchKey.insert(vchKey.end(), vchPrivKey.begin(), vchPrivKey.end());
@@ -231,6 +233,7 @@ bool CWalletDB::WriteMinVersion(int nVersion)
 bool CWalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
 {
     account.SetNull();
+	
     return Read(std::make_pair(std::string("acc"), strAccount), account);
 }
 
@@ -252,10 +255,11 @@ bool CWalletDB::WriteAccountingEntry_Backend(const CAccountingEntry& acentry)
 int64_t CWalletDB::GetAccountCreditDebit(const std::string& strAccount)
 {
     std::list<CAccountingEntry> entries;
+    int64_t nCreditDebit = 0;
+	
     ListAccountCreditDebit(strAccount, entries);
 
-    int64_t nCreditDebit = 0;
-    BOOST_FOREACH (const CAccountingEntry& entry, entries)
+    for(const CAccountingEntry& entry : entries)
 	{
         nCreditDebit += entry.nCreditDebit;
 	}
@@ -266,14 +270,14 @@ int64_t CWalletDB::GetAccountCreditDebit(const std::string& strAccount)
 void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries)
 {
     bool fAllAccounts = (strAccount == "*");
-
     Dbc* pcursor = GetCursor();
+    unsigned int fFlags = DB_SET_RANGE;
+	
     if (!pcursor)
     {
 		throw std::runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
 	}
 	
-    unsigned int fFlags = DB_SET_RANGE;
     while (true)
     {
         // Read next record
@@ -301,6 +305,7 @@ void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<
 
         // Unserialize
         std::string strType;
+		
         ssKey >> strType;
 		
         if (strType != "acentry")
@@ -319,6 +324,7 @@ void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<
 		
         ssValue >> acentry;
         ssKey >> acentry.nEntryNo;
+		
         entries.push_back(acentry);
     }
 
@@ -330,23 +336,21 @@ DBErrors CWalletDB::ReorderTransactions(CWallet* pwallet)
     LOCK(pwallet->cs_wallet);
     // Old wallets didn't have any defined order for transactions
     // Probably a bad idea to change the output of this
-
-    // First: get all CWalletTx and CAccountingEntry into a sorted-by-time multimap.
-    typedef std::pair<CWalletTx*, CAccountingEntry*> TxPair;
-    typedef std::multimap<int64_t, TxPair > TxItems;
 	
     TxItems txByTime;
 
     for (std::map<uint256, CWalletTx>::iterator it = pwallet->mapWallet.begin(); it != pwallet->mapWallet.end(); ++it)
     {
         CWalletTx* wtx = &((*it).second);
+		
         txByTime.insert(std::make_pair(wtx->nTimeReceived, TxPair(wtx, (CAccountingEntry*)0)));
     }
 	
     std::list<CAccountingEntry> acentries;
-    ListAccountCreditDebit("", acentries);
     
-	BOOST_FOREACH(CAccountingEntry& entry, acentries)
+	ListAccountCreditDebit("", acentries);
+    
+	for(CAccountingEntry& entry : acentries)
     {
         txByTime.insert(std::make_pair(entry.nTime, TxPair((CWalletTx*)0, &entry)));
     }
@@ -914,7 +918,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 	
     BOOST_FOREACH(CAccountingEntry& entry, pwallet->laccentries)
 	{
-        pwallet->wtxOrdered.insert(std::make_pair(entry.nOrderPos, CWallet::TxPair((CWalletTx*)0, &entry)));
+        pwallet->wtxOrdered.insert(std::make_pair(entry.nOrderPos, TxPair((CWalletTx*)0, &entry)));
     }
  
     return result;
