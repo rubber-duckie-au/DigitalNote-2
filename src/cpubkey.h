@@ -30,16 +30,16 @@ public:
     CPubKey();
 	
 	// Construct a public key using begin/end iterators to byte data.
-	#if defined(__clang__) && defined(MAC_OSX)
+	#if defined(__clang__)
 		template<typename T>
 		CPubKey(const T pbegin, const T pend)
 		{
 			Set(pbegin, pend);
 		}	
-	#else // defined(__clang__) && defined(MAC_OSX)
+	#else // defined(__clang__)
 		template<typename T>
 		CPubKey(const T pbegin, const T pend);
-	#endif // defined(__clang__) && defined(MAC_OSX)
+	#endif // defined(__clang__)
     
     // Construct a public key from a byte vector.
     CPubKey(const std::vector<unsigned char> &vch);
