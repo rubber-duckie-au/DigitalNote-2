@@ -34,6 +34,7 @@
 #include "ctxin.h"
 #include "hash.h"
 #include "base58.h"
+#include "types/valtype.h"
 
 #include "cblock.h"
 

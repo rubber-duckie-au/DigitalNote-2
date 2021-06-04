@@ -55,4 +55,9 @@ public:
     static std::vector<unsigned char> serialize(const int64_t& value);
 };
 
+static const CScriptNum ScriptNum_Zero(0);
+static const CScriptNum ScriptNum_One(1);
+static const CScriptNum ScriptNum_False(0);
+static const CScriptNum ScriptNum_True(1);
+
 #endif // CSCRIPTNUM_H

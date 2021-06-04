@@ -15,8 +15,6 @@
 class CBigNum;
 class uint256;
 
-typedef  CBigNum Bignum;
-
 /** Errors thrown by the bignum class */
 class bignum_error : public std::runtime_error
 {
@@ -201,5 +199,10 @@ public:
 	friend bool operator<(const CBigNum& a, const CBigNum& b);
 	friend bool operator>(const CBigNum& a, const CBigNum& b);
 };
+
+static const CBigNum BigNum_Zero(0);
+static const CBigNum BigNum_One(1);
+static const CBigNum BigNum_False(0);
+static const CBigNum BigNum_True(1);
 
 #endif

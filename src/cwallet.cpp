@@ -41,6 +41,7 @@
 #include "hash.h"
 #include "base58.h"
 #include "types/txitems.h"
+#include "types/valtype.h"
 
 #include "cwallet.h"
 

@@ -12,6 +12,7 @@
 
 //#include "stealth.h"
 #include "ctxdestination.h"
+#include "types/valtype.h"
 
 class CKeyStore;
 class CTransaction;
@@ -20,13 +21,10 @@ class CNoDestination;
 class CKeyID;
 class CScriptID;
 class CStealthAddress;
-class CScriptNum;
 class CScript;
 class CScriptCompressor;
 class uint256;
 class uint160;
-
-typedef std::vector<unsigned char> valtype;
 
 /** used for bitflags of isminetype */
 typedef uint8_t isminefilter;

@@ -72,6 +72,7 @@ Notes:
 #include "ctxout.h"
 #include "ctxin.h"
 #include "ctransaction.h"
+#include "types/valtype.h"
 
 namespace DigitalNote {
 namespace SMSG {
