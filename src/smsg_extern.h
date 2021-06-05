@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <map>
 #include <vector>
+#include <boost/thread/thread.hpp>
 
 #include "ccriticalsection.h"
 
