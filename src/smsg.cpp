@@ -78,6 +78,8 @@ Notes:
 #include "script.h"
 #include "base58.h"
 
+using namespace json_spirit;
+
 namespace DigitalNote {
 namespace SMSG {
 // Extern
