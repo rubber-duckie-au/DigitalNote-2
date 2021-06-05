@@ -10,7 +10,6 @@
 #include "hash.h"
 #include "main_extern.h"
 #include "cblockindex.h"
-#include "base58.h"
 #include "cinv.h"
 #include "net.h"
 #include "ccriticalblock.h"
@@ -22,6 +21,8 @@
 #include "masternode_extern.h"
 #include "cmnenginesigner.h"
 #include "mnengine_extern.h"
+#include "script.h"
+#include "cdigitalnoteaddress.h"
 
 #include "cmasternodepayments.h"
 

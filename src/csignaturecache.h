@@ -3,7 +3,7 @@
 
 #include <set>
 #include <vector>
-#include <boost/thread.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <boost/tuple/tuple.hpp>
 
 using namespace boost;

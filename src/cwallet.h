@@ -8,12 +8,13 @@
 #include "sync.h"
 #include "ui_interface.h"
 #include "dberrors.h"
-#include "script.h"
 #include "mapvalue_t.h"
 #include "ckeymetadata.h"
 #include "cstealthkeymetadata.h"
 #include "ccryptokeystore.h"
 #include "types/txitems.h"
+#include "types/isminefilter.h"
+#include "enums/isminetype.h"
 
 class CWalletDB;
 class CWalletTx;

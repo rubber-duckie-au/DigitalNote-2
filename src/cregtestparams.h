@@ -12,7 +12,7 @@ public:
     CRegTestParams();
 	
     virtual bool RequireRPCPassword() const;
-    virtual CChainParams::Network NetworkID() const;
+    virtual CChainParams_Network NetworkID() const;
 };
 
 #endif // CREGTESTPARAMS_H

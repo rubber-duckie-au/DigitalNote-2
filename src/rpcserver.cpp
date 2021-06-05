@@ -5,7 +5,6 @@
 
 #include "rpcserver.h"
 
-#include "base58.h"
 #include "init.h"
 #include "util.h"
 #include "sync.h"
@@ -14,6 +13,9 @@
 #include "ui_interface.h"
 #include "main_extern.h"
 #include "ccriticalblock.h"
+#include "uint/uint256.h"
+#include "cchainparams.h"
+#include "chainparams.h"
 
 #ifdef ENABLE_WALLET
 #include "cwallet.h"

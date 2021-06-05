@@ -32,6 +32,7 @@
 #include "ckey.h"
 #include "ctxout.h"
 #include "ctxin.h"
+#include "cdigitalnoteaddress.h"
 
 using namespace json_spirit;
 

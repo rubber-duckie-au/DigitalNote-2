@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include "util.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "net/cbanentry.h"
 #include "hash.h"

@@ -6,7 +6,8 @@
 #ifndef BITCOIN_FORK_H
 #define BITCOIN_FORK_H
 
-#include "bignum.h"
+#include <cstdint>
+
 #include "chainparams.h"
 
 /** Reserve Phase start block */ 

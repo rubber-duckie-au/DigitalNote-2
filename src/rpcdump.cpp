@@ -11,7 +11,6 @@
 #include "init.h" // for pwalletMain
 #include "rpcserver.h"
 #include "ui_interface.h"
-#include "base58.h"
 #include "cwallettx.h"
 #include "walletdb.h"
 #include "cblockindex.h"
@@ -21,6 +20,9 @@
 #include "ckey.h"
 #include "cscript.h"
 #include "util.h"
+#include "script.h"
+#include "cdigitalnotesecret.h"
+#include "cdigitalnoteaddress.h"
 
 using namespace json_spirit;
 

@@ -10,9 +10,10 @@
 #include "main.h"
 #include "main_extern.h"
 #include "mining.h"
-#include "base58.h"
 #include "util.h"
 #include "ui_interface.h"
+#include "script.h"
+#include "cdigitalnotesecret.h"
 
 #include "cmnenginesigner.h"
 

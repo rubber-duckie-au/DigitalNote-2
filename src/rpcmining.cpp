@@ -10,6 +10,7 @@
 
 #include "rpcserver.h"
 #include "blockparams.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "cmasternode.h"
 #include "cmasternodeman.h"
@@ -30,7 +31,7 @@
 #include "ctxout.h"
 #include "ctransaction.h"
 #include "main_extern.h"
-#include "base58.h"
+#include "cbitcoinaddress.h"
 
 using namespace json_spirit;
 using namespace boost::assign;

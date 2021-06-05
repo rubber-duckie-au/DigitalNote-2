@@ -7,6 +7,7 @@
 
 #include "util.h"
 
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "sync.h"
 #include "ui_interface.h"
@@ -1136,7 +1137,7 @@ boost::filesystem::path GetDefaultDataDir()
 #endif
 }
 
-static boost::filesystem::path pathCached[CChainParams::MAX_NETWORK_TYPES+1];
+static boost::filesystem::path pathCached[CChainParams_Network::MAX_NETWORK_TYPES+1];
 static CCriticalSection csPathCached;
 
 const boost::filesystem::path &GetDataDir(bool fNetSpecific)
@@ -1145,7 +1146,7 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
 
     LOCK(csPathCached);
 
-    int nNet = CChainParams::MAX_NETWORK_TYPES;
+    int nNet = CChainParams_Network::MAX_NETWORK_TYPES;
     if (fNetSpecific) nNet = Params().NetworkID();
 
     fs::path &path = pathCached[nNet];
@@ -1174,7 +1175,7 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
 
 void ClearDatadirCache()
 {
-    std::fill(&pathCached[0], &pathCached[CChainParams::MAX_NETWORK_TYPES+1],
+    std::fill(&pathCached[0], &pathCached[CChainParams_Network::MAX_NETWORK_TYPES+1],
               boost::filesystem::path());
 }
 

@@ -74,6 +74,8 @@
 #include "cscript.h"
 #include "main_extern.h"
 #include "ccriticalblock.h"
+#include "cchainparams.h"
+#include "chainparams.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"

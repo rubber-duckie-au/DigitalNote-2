@@ -33,8 +33,10 @@
 #include "main_extern.h"
 #include "ctxin.h"
 #include "hash.h"
-#include "base58.h"
 #include "types/valtype.h"
+#include "cbitcoinaddress.h"
+#include "cdigitalnoteaddress.h"
+#include "cchainparams.h"
 
 #include "cblock.h"
 
@@ -1120,7 +1122,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
     // first check for start of devops payments
     bool bDevOpsPayment = false;
 
-    if ( Params().NetworkID() == CChainParams::TESTNET )
+    if ( Params().NetworkID() == CChainParams_Network::TESTNET )
 	{
         if (GetTime() > START_DEVOPS_PAYMENTS_TESTNET )
 		{
@@ -1136,7 +1138,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
     }
 	
     // stop devops payments (for testing)
-    if (Params().NetworkID() == CChainParams::TESTNET)
+    if (Params().NetworkID() == CChainParams_Network::TESTNET)
 	{
         if (GetTime() > STOP_DEVOPS_PAYMENTS_TESTNET)
 		{

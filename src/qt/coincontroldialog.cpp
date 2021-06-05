@@ -15,12 +15,11 @@
 
 #include "addresstablemodel.h"
 #include "bitcoinunits.h"
-#include "base58.h"
 #include "guiutil.h"
 #include "init.h"
 #include "optionsmodel.h"
 #include "walletmodel.h"
-#include "coincontrol.h"
+#include "ccoincontrol.h"
 #include "coutput.h"
 #include "cwallettx.h"
 #include "wallet.h"
@@ -28,6 +27,7 @@
 #include "ctxin.h"
 #include "ctxout.h"
 #include "main_const.h"
+#include "cdigitalnoteaddress.h"
 
 #include "coincontroldialog.h"
 #include "ui_coincontroldialog.h"

@@ -7,7 +7,6 @@
 
 #include <boost/assign/list_of.hpp>
 
-#include "base58.h"
 #include "rpcserver.h"
 #include "txdb.h"
 #include "init.h"
@@ -18,6 +17,8 @@
 #include "ckey.h"
 #include "ctxout.h"
 #include "ctxin.h"
+#include "cdigitalnotesecret.h"
+#include "cdigitalnoteaddress.h"
 
 #ifdef ENABLE_WALLET
 #include "coutput.h"

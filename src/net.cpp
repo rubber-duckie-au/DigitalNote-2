@@ -22,6 +22,7 @@
 #include <boost/filesystem.hpp>
 
 #include "cinv.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "ui_interface.h"
 #include "net/cnode.h"

@@ -12,6 +12,7 @@
 #include "addresstablemodel.h"
 #include "peertablemodel.h"
 #include "transactiontablemodel.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "calert.h"
 #include "ui_interface.h"

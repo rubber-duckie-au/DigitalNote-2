@@ -21,6 +21,7 @@
 #include "main.h"
 #include "ckey.h"
 #include "hash.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "netbase.h"
 #include "net/csubnet.h"

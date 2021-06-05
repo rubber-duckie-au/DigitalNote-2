@@ -1,6 +1,7 @@
 #include "cscript.h"
 #include "cpubkey.h"
 #include "uint/uint256.h"
+#include "script.h"
 
 #include "signaturechecker.h"
 

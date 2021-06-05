@@ -4,13 +4,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <set>
-#include "rpcclient.h"
-
-#include "rpcprotocol.h"
-#include "util.h"
-#include "ui_interface.h"
-#include "chainparams.h" // for Params().RPCPort()
-
 #include <stdint.h>
 
 #include <boost/algorithm/string.hpp>
@@ -23,7 +16,16 @@
 #include <boost/iostreams/stream.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
+
 #include "json/json_spirit_writer_template.h"
+
+#include "rpcprotocol.h"
+#include "util.h"
+#include "ui_interface.h"
+#include "cchainparams.h"
+#include "chainparams.h"
+
+#include "rpcclient.h"
 
 using namespace boost;
 using namespace boost::asio;

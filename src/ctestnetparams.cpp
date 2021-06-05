@@ -49,18 +49,18 @@ CTestNetParams::CTestNetParams()
 	vFixedSeeds.clear();
 	vSeeds.clear();
 
-	base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,91);
-	base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,100);
-	base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,102);
-	base58Prefixes[STEALTH_ADDRESS] = std::vector<unsigned char>(1,106);
-	base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
-	base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
+	base58Prefixes[CChainParams_Base58Type::PUBKEY_ADDRESS] = std::vector<unsigned char>(1,91);
+	base58Prefixes[CChainParams_Base58Type::SCRIPT_ADDRESS] = std::vector<unsigned char>(1,100);
+	base58Prefixes[CChainParams_Base58Type::SECRET_KEY] =     std::vector<unsigned char>(1,102);
+	base58Prefixes[CChainParams_Base58Type::STEALTH_ADDRESS] = std::vector<unsigned char>(1,106);
+	base58Prefixes[CChainParams_Base58Type::EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
+	base58Prefixes[CChainParams_Base58Type::EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
 
 	nEndPoWBlock = 0x7fffffff;
 }
 
-CChainParams::Network CTestNetParams::NetworkID() const
+CChainParams_Network CTestNetParams::NetworkID() const
 {
-	return CChainParams::TESTNET;
+	return CChainParams_Network::TESTNET;
 }
 

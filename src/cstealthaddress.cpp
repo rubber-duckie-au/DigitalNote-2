@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include "base58.h"
+#include "cpubkey.h"
 #include "serialize.h"
 #include "chashwriter.h"
 #include "util.h"

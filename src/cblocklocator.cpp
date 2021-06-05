@@ -4,6 +4,7 @@
 #include "uint/uint256.h"
 #include "cblockindex.h"
 #include "chainparams.h"
+#include "cchainparams.h"
 #include "serialize.h"
 #include "main_extern.h"
 

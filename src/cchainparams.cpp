@@ -52,7 +52,7 @@ const std::vector<CDNSSeedData>& CChainParams::DNSSeeds() const
 	return vSeeds;
 }
 
-const std::vector<unsigned char>& CChainParams::Base58Prefix(Base58Type type) const
+const std::vector<unsigned char>& CChainParams::Base58Prefix(CChainParams_Base58Type type) const
 {
 	return base58Prefixes[type];
 }

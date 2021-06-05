@@ -29,7 +29,8 @@
 #include "ctxout.h"
 #include "ctransaction.h"
 #include "main_extern.h"
-#include "base58.h"
+#include "cbitcoinaddress.h"
+#include "cchainparams.h"
 
 #include "miner.h"
 
@@ -458,7 +459,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                     //       Not an issue otherwise, merely a pet peev. Done in a rush...
                     //
                     CBitcoinAddress devopaddress;
-                    if (Params().NetworkID() == CChainParams::MAIN)
+                    if (Params().NetworkID() == CChainParams_Network::MAIN)
 					{
                         if(GetTime() < nPaymentUpdate_2)
 						{
@@ -469,11 +470,11 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 							devopaddress = CBitcoinAddress("dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18");
 						}
                     }
-					else if (Params().NetworkID() == CChainParams::TESTNET)
+					else if (Params().NetworkID() == CChainParams_Network::TESTNET)
 					{
                         devopaddress = CBitcoinAddress("");
                     }
-					else if (Params().NetworkID() == CChainParams::REGTEST)
+					else if (Params().NetworkID() == CChainParams_Network::REGTEST)
 					{
                         devopaddress = CBitcoinAddress("");
                     }

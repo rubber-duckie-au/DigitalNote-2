@@ -18,6 +18,7 @@
 #include "calert.h"
 #include "blocksizecalculator.h"
 #include "blockparams.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "checkpoints.h"
 #include "init.h"

@@ -7,6 +7,8 @@
 #include "uint/uint256.h"
 #include "bignum.h"
 #include "message_start_size.h"
+#include "enums/cchainparams_network.h"
+#include "enums/cchainparams_base58type.h"
 
 struct CDNSSeedData;
 class CBlock;
@@ -23,26 +25,6 @@ typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
  */
 class CChainParams
 {
-public:
-    enum Network
-	{
-        MAIN,
-        TESTNET,
-        REGTEST,
-        MAX_NETWORK_TYPES
-    };
-
-    enum Base58Type
-	{
-        PUBKEY_ADDRESS,
-        SCRIPT_ADDRESS,
-        SECRET_KEY,
-        STEALTH_ADDRESS,
-        EXT_PUBLIC_KEY,
-        EXT_SECRET_KEY,
-        MAX_BASE58_TYPES
-    };
-
 protected:
     uint256 hashGenesisBlock;
     MessageStartChars pchMessageStart;
@@ -54,7 +36,7 @@ protected:
     CBigNum bnProofOfStakeLimit;
     std::string strDataDir;
     std::vector<CDNSSeedData> vSeeds;
-    std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
+    std::vector<unsigned char> base58Prefixes[CChainParams_Base58Type::MAX_BASE58_TYPES];
     int nEndPoWBlock;
     int nStartPoSBlock;
     int nPoolMaxTransactions;
@@ -63,7 +45,7 @@ protected:
 
 public:
 	virtual const CBlock& GenesisBlock() const = 0;
-    virtual CChainParams::Network NetworkID() const = 0;
+    virtual CChainParams_Network NetworkID() const = 0;
 	virtual const std::vector<CAddress>& FixedSeeds() const = 0;
 	
 protected:
@@ -79,7 +61,7 @@ public:
     virtual bool RequireRPCPassword() const;
     const std::string& DataDir() const;
 	const std::vector<CDNSSeedData>& DNSSeeds() const;
-	const std::vector<unsigned char>& Base58Prefix(Base58Type type) const;
+	const std::vector<unsigned char>& Base58Prefix(CChainParams_Base58Type type) const;
 	int RPCPort() const;
 	int EndPoWBlock() const;
 	int StartPoSBlock() const;

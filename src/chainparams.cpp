@@ -28,19 +28,19 @@ const CChainParams &Params()
     return *pCurrentParams;
 }
 
-void SelectParams(CChainParams::Network network)
+void SelectParams(CChainParams_Network network)
 {
     switch (network)
 	{
-		case CChainParams::MAIN:
+		case CChainParams_Network::MAIN:
 			pCurrentParams = &mainParams;
 			break;
 
-		case CChainParams::TESTNET:
+		case CChainParams_Network::TESTNET:
 			pCurrentParams = &testNetParams;
 			break;
 
-		case CChainParams::REGTEST:
+		case CChainParams_Network::REGTEST:
 			pCurrentParams = &regTestParams;
 			break;
 
@@ -62,15 +62,15 @@ bool SelectParamsFromCommandLine()
 
     if (fRegTest)
 	{
-        SelectParams(CChainParams::REGTEST);
+        SelectParams(CChainParams_Network::REGTEST);
     }
 	else if (fTestNet)
 	{
-        SelectParams(CChainParams::TESTNET);
+        SelectParams(CChainParams_Network::TESTNET);
     }
 	else
 	{
-        SelectParams(CChainParams::MAIN);
+        SelectParams(CChainParams_Network::MAIN);
     }
 	
     return true;
@@ -79,6 +79,6 @@ bool SelectParamsFromCommandLine()
 bool TestNet()
 {
     // Note: it's deliberate that this returns "false" for regression test mode.
-    return Params().NetworkID() == CChainParams::TESTNET;
+    return Params().NetworkID() == CChainParams_Network::TESTNET;
 }
 

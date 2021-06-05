@@ -3,9 +3,9 @@
 #include <boost/lexical_cast.hpp>
 
 #include "init.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "util.h"
-#include "base58.h"
 #include "net.h"
 #include "cwallet.h"
 #include "ccriticalblock.h"
@@ -27,6 +27,8 @@
 #include "cmnenginesigner.h"
 #include "mnengine.h"
 #include "mnengine_extern.h"
+#include "script.h"
+#include "cdigitalnoteaddress.h"
 
 #include "cmnenginepool.h"
 

@@ -6,7 +6,9 @@
 #ifndef BITCOIN_CHAIN_PARAMS_H
 #define BITCOIN_CHAIN_PARAMS_H
 
-#include "cchainparams.h"
+#include "enums/cchainparams_network.h"
+
+class CChainParams;
 
 /**
  * Return the currently selected parameters. This won't change after app startup
@@ -15,7 +17,7 @@
 const CChainParams &Params();
 
 /** Sets the params returned by Params() to those for the given network. */
-void SelectParams(CChainParams::Network network);
+void SelectParams(CChainParams_Network network);
 
 /**
  * Looks for -regtest or -testnet and then calls SelectParams as appropriate.

@@ -1,6 +1,7 @@
 #include <boost/filesystem.hpp>
 
 #include "util.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "hash.h"
 #include "cmasternodeman.h"

@@ -7,7 +7,7 @@
 
 #include "cmerkletx.h"
 #include "cwallet.h"
-#include "script.h"
+#include "types/isminefilter.h"
 
 void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue);
 void WriteOrderPos(const int64_t& nOrderPos, mapValue_t& mapValue);

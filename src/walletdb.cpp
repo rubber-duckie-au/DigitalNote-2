@@ -9,7 +9,6 @@
 #include <boost/foreach.hpp>
 #include <boost/thread.hpp>
 
-#include "base58.h"
 #include "serialize.h"
 #include "sync.h"
 #include "caccount.h"
@@ -33,6 +32,7 @@
 #include "ctxin.h"
 #include "util.h"
 #include "types/txitems.h"
+#include "cdigitalnoteaddress.h"
 
 #include "walletdb.h"
 

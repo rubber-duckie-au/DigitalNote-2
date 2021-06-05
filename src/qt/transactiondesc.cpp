@@ -5,7 +5,6 @@
 #include "bitcoinunits.h"
 #include "guiutil.h"
 #include "blockparams.h"
-#include "base58.h"
 #include "paymentserver.h"
 #include "transactionrecord.h"
 #include "util.h"
@@ -18,6 +17,7 @@
 #include "ccriticalblock.h"
 #include "ctxin.h"
 #include "ctxout.h"
+#include "cdigitalnoteaddress.h"
 
 #include <string>
 

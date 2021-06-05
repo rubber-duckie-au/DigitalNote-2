@@ -38,8 +38,8 @@
 #include "rpcserver.h"
 #include "guiutil.h"
 #include "script.h"
-#include "base58.h"
 #include "ccriticalblock.h"
+#include "cdigitalnoteaddress.h"
 
 #include "masternodemanager.h"
 #include "ui_masternodemanager.h"

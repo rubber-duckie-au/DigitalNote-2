@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 
-#include "base58.h"
 #include "util.h"
 #include "mnengine.h"
 #include "instantx.h"
@@ -14,6 +13,7 @@
 #include "cblockindex.h"
 #include "ctxin.h"
 #include "ctxout.h"
+#include "cdigitalnoteaddress.h"
 
 #include "transactionrecord.h"
 

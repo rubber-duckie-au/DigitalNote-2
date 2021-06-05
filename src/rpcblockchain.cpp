@@ -10,6 +10,7 @@
 #include "checkpoints.h"
 #include "cblock.h"
 #include "cblockindex.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "main.h"
 #include "main_extern.h"

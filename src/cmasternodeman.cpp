@@ -3,6 +3,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include "main.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "mining.h"
 #include "caddrman.h"
@@ -24,6 +25,7 @@
 #include "cmnenginesigner.h"
 #include "cmnenginepool.h"
 #include "mnengine_extern.h"
+#include "script.h"
 
 #include "cmasternodeman.h"
 
@@ -1056,7 +1058,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         if(vin == CTxIn()) //only should ask for this once
 		{
             //local network
-            if(!pfrom->addr.IsRFC1918() && Params().NetworkID() == CChainParams::MAIN)
+            if(!pfrom->addr.IsRFC1918() && Params().NetworkID() == CChainParams_Network::MAIN)
             {
                 std::map<CNetAddr, int64_t>::iterator i = mAskedUsForMasternodeList.find(pfrom->addr);
                 if (i != mAskedUsForMasternodeList.end())

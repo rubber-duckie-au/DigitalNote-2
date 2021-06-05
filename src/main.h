@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "mapprevtx.h"
-#include "ctxdestination.h"
+#include "types/ctxdestination.h"
 
 struct CNodeStateStats;
 class CValidationState;

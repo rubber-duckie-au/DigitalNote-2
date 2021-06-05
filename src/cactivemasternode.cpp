@@ -16,7 +16,6 @@
 #include "ckey.h"
 #include "main_extern.h"
 #include "cblockindex.h"
-#include "base58.h"
 #include "util.h"
 #include "cmasternode.h"
 #include "cmasternodeman.h"
@@ -27,6 +26,7 @@
 #include "cmnenginesigner.h"
 #include "mnengine_extern.h"
 #include "init.h"
+#include "cdigitalnoteaddress.h"
 
 #include "cactivemasternode.h"
 

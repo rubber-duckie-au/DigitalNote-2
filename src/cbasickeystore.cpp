@@ -5,6 +5,7 @@
 #include "util.h"
 #include "ckey.h"
 #include "cpubkey.h"
+#include "script_const.h"
 
 #include "cbasickeystore.h"
 

@@ -20,6 +20,7 @@
 #include "checkpoints.h"
 #include "txdb.h"
 #include "util.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "ctxindex.h"
 #include "cblock.h"
@@ -27,6 +28,7 @@
 #include "ctxin.h"
 #include "ctxout.h"
 #include "main_extern.h"
+#include "bignum.h"
 
 using namespace boost;
 

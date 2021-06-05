@@ -12,7 +12,6 @@
 #include "json/json_spirit_utils.h"
 #include "json/json_spirit_value.h"
 
-#include "base58.h"
 #include "init.h"
 #include "rpcserver.h"
 #include "util.h"
@@ -28,6 +27,8 @@
 #include "cscript.h"
 #include "netbase.h"
 #include "net/proxytype.h"
+#include "cdigitalnoteaddress.h"
+#include "chainparams.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"

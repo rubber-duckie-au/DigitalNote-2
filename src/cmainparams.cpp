@@ -78,12 +78,12 @@ CMainParams::CMainParams()
 	assert(hashGenesisBlock == uint256("0x00000d8e7d39218c4c02132e95a3896d46939b9b95624cf9dd2b0b794e6c216a"));
 	assert(genesis.hashMerkleRoot == uint256("0x3b9d152cb1370d54d1ea30d5e334a83a41ca9403011495b8743a53d53423004a"));
 
-	base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,90);
-	base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,140);
-	base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,142);
-	base58Prefixes[STEALTH_ADDRESS] = std::vector<unsigned char>(1,115);
-	base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
-	base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
+	base58Prefixes[CChainParams_Base58Type::PUBKEY_ADDRESS] = std::vector<unsigned char>(1,90);
+	base58Prefixes[CChainParams_Base58Type::SCRIPT_ADDRESS] = std::vector<unsigned char>(1,140);
+	base58Prefixes[CChainParams_Base58Type::SECRET_KEY] =     std::vector<unsigned char>(1,142);
+	base58Prefixes[CChainParams_Base58Type::STEALTH_ADDRESS] = std::vector<unsigned char>(1,115);
+	base58Prefixes[CChainParams_Base58Type::EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
+	base58Prefixes[CChainParams_Base58Type::EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
 
 	vSeeds.push_back(CDNSSeedData("node0",  "138.197.161.183"));
 	vSeeds.push_back(CDNSSeedData("node1",  "157.230.107.144"));
@@ -111,9 +111,9 @@ const CBlock& CMainParams::GenesisBlock() const
 	return genesis;
 }
 
-CChainParams::Network CMainParams::NetworkID() const
+CChainParams_Network CMainParams::NetworkID() const
 {
-	return CChainParams::MAIN;
+	return CChainParams_Network::MAIN;
 }
 
 const std::vector<CAddress>& CMainParams::FixedSeeds() const

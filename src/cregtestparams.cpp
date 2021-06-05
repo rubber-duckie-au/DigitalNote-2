@@ -42,8 +42,8 @@ bool CRegTestParams::RequireRPCPassword() const
 	return false;
 }
 
-CChainParams::Network CRegTestParams::NetworkID() const
+CChainParams_Network CRegTestParams::NetworkID() const
 {
-	return CChainParams::REGTEST;
+	return CChainParams_Network::REGTEST;
 }
 

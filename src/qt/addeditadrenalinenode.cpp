@@ -11,7 +11,7 @@
 #include "util.h"
 #include "ckey.h"
 #include "init.h"
-#include "base58.h"
+
 #include <QMessageBox>
 #include <QClipboard>
 

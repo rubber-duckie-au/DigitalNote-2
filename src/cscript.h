@@ -3,9 +3,13 @@
 
 #include <vector>
 
-#include "script.h"
+#include "types/ctxdestination.h"
+#include "enums/opcodetype.h"
 
+class uint160;
+class uint256;
 class CBigNum;
+class CPubKey;
 
 /** Serialized script, used inside transaction inputs and outputs */
 class CScript : public std::vector<unsigned char>

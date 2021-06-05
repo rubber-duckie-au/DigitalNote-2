@@ -16,6 +16,7 @@
 #include "json/json_spirit_writer_template.h"
 #include "util.h"
 #include "smsg_extern.h"
+#include "smsg_extern_signal.h"
 
 #include "webwalletconnector.h"
 

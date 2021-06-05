@@ -7,7 +7,6 @@
 #include "main.h"
 #include "main_extern.h"
 #include "util.h"
-#include "base58.h"
 #include "ccriticalsection.h"
 #include "ccriticalblock.h"
 #include "net/cnode.h"
@@ -17,6 +16,8 @@
 #include "masternode_extern.h"
 #include "cmnenginepool.h"
 #include "mnengine_extern.h"
+#include "script.h"
+#include "cdigitalnoteaddress.h"
 
 #include "masternode-payments.h"
 

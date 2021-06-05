@@ -21,8 +21,7 @@
 #include "optionsmodel.h"
 #include "sendcoinsentry.h"
 #include "walletmodel.h"
-#include "base58.h"
-#include "coincontrol.h"
+#include "ccoincontrol.h"
 #include "init.h"
 #include "addressbookpage.h"
 #include "askpassphrasedialog.h"
@@ -30,6 +29,7 @@
 #include "main_extern.h"
 #include "main_const.h"
 #include "ccriticalblock.h"
+#include "cdigitalnoteaddress.h"
 
 SendCoinsDialog::SendCoinsDialog(QWidget *parent) :
     QDialog(parent),

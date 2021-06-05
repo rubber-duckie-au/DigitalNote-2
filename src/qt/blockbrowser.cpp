@@ -5,7 +5,6 @@
 #include <iomanip>
 
 #include "ui_blockbrowser.h"
-#include "base58.h"
 #include "clientmodel.h"
 #include "walletmodel.h"
 #include "rpcconsole.h"
@@ -18,6 +17,7 @@
 #include "ctxin.h"
 #include "ctxout.h"
 #include "ctransaction.h"
+#include "cdigitalnoteaddress.h"
 
 #include "blockbrowser.h"
 

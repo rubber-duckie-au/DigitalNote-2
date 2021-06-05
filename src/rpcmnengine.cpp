@@ -22,7 +22,6 @@
 #include "ckey.h"
 #include "main_extern.h"
 #include "cblockindex.h"
-#include "base58.h"
 #include "cmasternode.h"
 #include "cmasternodeman.h"
 #include "cmasternodepayments.h"
@@ -32,6 +31,8 @@
 #include "masternode_extern.h"
 #include "cmnenginesigner.h"
 #include "mnengine_extern.h"
+#include "cdigitalnotesecret.h"
+#include "cdigitalnoteaddress.h"
 
 using namespace json_spirit;
 

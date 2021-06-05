@@ -9,6 +9,7 @@
 
 #include "txdb.h"
 #include "uint/uint256.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "main_extern.h"
 

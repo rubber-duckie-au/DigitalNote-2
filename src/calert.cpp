@@ -12,6 +12,7 @@
 #include <boost/foreach.hpp>
 
 #include "net/cnode.h"
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "ui_interface.h"
 #include "util.h"

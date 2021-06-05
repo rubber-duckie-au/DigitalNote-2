@@ -1,10 +1,11 @@
 #ifndef CTRANSACTION_H
 #define CTRANSACTION_H
 
+#include <string>
 #include <vector>
 #include <map>
 
-#include "script.h"
+#include "script_const.h"
 
 class CDiskTxPos;
 class uint256;

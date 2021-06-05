@@ -67,7 +67,6 @@ SOURCES += src/cdisktxpos.cpp
 SOURCES += src/ctransaction.cpp
 SOURCES += src/calert.cpp
 SOURCES += src/blocksizecalculator.cpp
-SOURCES += src/base58.cpp
 SOURCES += src/blockparams.cpp
 SOURCES += src/chainparams.cpp
 SOURCES += src/version.cpp
@@ -116,6 +115,15 @@ SOURCES += src/spork.cpp
 SOURCES += src/smsg.cpp
 SOURCES += src/webwalletconnector.cpp
 SOURCES += src/rpcsmessage.cpp
+SOURCES += src/ccoincontrol.cpp
+
+SOURCES += src/cbase58data.cpp
+SOURCES += src/cdigitalnoteaddress.cpp
+SOURCES += src/cdigitalnoteaddressvisitor.cpp
+SOURCES += src/cdigitalnotesecret.cpp
+SOURCES += src/cbitcoinaddress.cpp
+SOURCES += src/cbitcoinaddressvisitor.cpp
+SOURCES += src/base58.cpp
 
 SOURCES += src/ctxdsin.cpp
 SOURCES += src/ctxdsout.cpp

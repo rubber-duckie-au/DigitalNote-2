@@ -11,7 +11,6 @@
 #include "init.h" // pwalletMain
 #include "cwallet.h"
 #include "script.h"
-#include "base58.h"
 #include "smsg.h"
 #include "smsg_const.h"
 #include "smsg_extern.h"
@@ -23,6 +22,8 @@
 #include "smsg/messagedata.h"
 #include "ccriticalblock.h"
 #include "util.h"
+#include "base58.h"
+#include "cdigitalnoteaddress.h"
 
 using namespace json_spirit;
 

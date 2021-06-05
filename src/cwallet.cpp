@@ -5,7 +5,8 @@
 #include <algorithm>
 #include <random>
 
-#include "coincontrol.h"
+#include "cchainparams.h"
+#include "ccoincontrol.h"
 #include "kernel.h"
 #include "txdb-leveldb.h"
 #include "blockparams.h"
@@ -25,6 +26,7 @@
 #include "ckeypool.h"
 #include "wallet.h"
 #include "script.h"
+#include "enums/opcodetype.h"
 #include "main_const.h"
 #include "main_extern.h"
 #include "txmempool.h"
@@ -39,9 +41,12 @@
 #include "ckey.h"
 #include "ctxout.h"
 #include "hash.h"
-#include "base58.h"
 #include "types/txitems.h"
 #include "types/valtype.h"
+#include "cbitcoinaddress.h"
+#include "cdigitalnotesecret.h"
+#include "cdigitalnoteaddress.h"
+#include "bignum.h"
 
 #include "cwallet.h"
 
@@ -2688,7 +2693,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     // define address
     CBitcoinAddress devopaddress;
-    if (Params().NetworkID() == CChainParams::MAIN)
+    if (Params().NetworkID() == CChainParams_Network::MAIN)
 	{
         if(GetTime() < nPaymentUpdate_2)
 		{
@@ -2699,11 +2704,11 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 			devopaddress = CBitcoinAddress("dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18");
 		}
     }
-	else if (Params().NetworkID() == CChainParams::TESTNET)
+	else if (Params().NetworkID() == CChainParams_Network::TESTNET)
 	{
         devopaddress = CBitcoinAddress("");
     }
-	else if (Params().NetworkID() == CChainParams::REGTEST)
+	else if (Params().NetworkID() == CChainParams_Network::REGTEST)
 	{
         devopaddress = CBitcoinAddress("");
     }
@@ -2713,7 +2718,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // start masternode payments
     bool bMasterNodePayment = false;
 
-    if ( Params().NetworkID() == CChainParams::TESTNET )
+    if ( Params().NetworkID() == CChainParams_Network::TESTNET )
 	{
         if (GetTime() > START_MASTERNODE_PAYMENTS_TESTNET )
 		{
@@ -2729,7 +2734,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 	
     // stop masternode payments (for testing)
-    if ( Params().NetworkID() == CChainParams::TESTNET )
+    if ( Params().NetworkID() == CChainParams_Network::TESTNET )
 	{
         if (GetTime() > STOP_MASTERNODE_PAYMENTS_TESTNET )
 		{
@@ -2790,7 +2795,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // start devops payments
     bool bDevOpsPayment = false;
 
-    if ( Params().NetworkID() == CChainParams::TESTNET )
+    if ( Params().NetworkID() == CChainParams_Network::TESTNET )
 	{
         if (GetTime() > START_DEVOPS_PAYMENTS_TESTNET )
 		{
@@ -2806,7 +2811,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 	
     // stop devops payments (for testing)
-    if ( Params().NetworkID() == CChainParams::TESTNET )
+    if ( Params().NetworkID() == CChainParams_Network::TESTNET )
 	{
         if (GetTime() > STOP_DEVOPS_PAYMENTS_TESTNET )
 		{

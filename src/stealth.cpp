@@ -8,6 +8,7 @@
 #include <openssl/obj_mac.h>
 #include <openssl/sha.h>
 
+#include "uint/uint256.h"
 #include "util.h"
 #include "base58.h"
 

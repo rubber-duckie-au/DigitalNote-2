@@ -36,6 +36,7 @@ Notes:
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/thread/thread.hpp>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
@@ -73,6 +74,8 @@ Notes:
 #include "ctxin.h"
 #include "ctransaction.h"
 #include "types/valtype.h"
+#include "script.h"
+#include "base58.h"
 
 namespace DigitalNote {
 namespace SMSG {

@@ -6,11 +6,11 @@
 
 #include "guiutil.h"
 #include "walletmodel.h"
-#include "base58.h"
 #include "stealth.h"
 #include "script.h"
 #include "cscript.h"
 #include "ccriticalblock.h"
+#include "cdigitalnoteaddress.h"
 
 #include "addresstablemodel.h"
 

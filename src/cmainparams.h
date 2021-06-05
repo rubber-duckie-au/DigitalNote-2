@@ -21,7 +21,7 @@ public:
     CMainParams();
 	
     virtual const CBlock& GenesisBlock() const;
-    virtual CChainParams::Network NetworkID() const;
+    virtual CChainParams_Network NetworkID() const;
     virtual const std::vector<CAddress>& FixedSeeds() const;
 };
 

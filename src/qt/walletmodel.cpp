@@ -15,7 +15,6 @@
 #include "guiconstants.h"
 #include "optionsmodel.h"
 #include "transactiontablemodel.h"
-#include "base58.h"
 #include "checkpoints.h"
 #include "db.h"
 #include "ui_interface.h"
@@ -33,6 +32,7 @@
 #include "ctxout.h"
 #include "coutpoint.h"
 #include "coutput.h"
+#include "cdigitalnoteaddress.h"
 
 #include "walletmodel.h"
 
