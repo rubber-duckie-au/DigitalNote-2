@@ -58,6 +58,7 @@ Notes:
 #include "smsg.h"
 #include "smsg_const.h"
 #include "smsg_extern.h"
+#include "smsg_extern_signal.h"
 #include "smsg/options.h"
 #include "smsg/bucket.h"
 #include "smsg/stored.h"
