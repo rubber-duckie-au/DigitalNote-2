@@ -1,6 +1,10 @@
 #include "cchainparams.h"
 #include "chainparams.h"
 #include "cbitcoinaddressvisitor.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "cbitcoinaddress.h"
 

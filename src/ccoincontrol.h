@@ -4,6 +4,10 @@
 #include <set>
 
 #include "types/ctxdestination.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 class uint256;
 class COutPoint;

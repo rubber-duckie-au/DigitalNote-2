@@ -54,6 +54,8 @@
 	#include "json/json_spirit_value.h"
 	
 	#include "types/ctxdestination.h"
+	#include "types/data_chunk.h"
+	#include "types/ec_point.h"
 	#include "types/isminefilter.h"
 	#include "types/txitems.h"
 	#include "types/txpair.h"

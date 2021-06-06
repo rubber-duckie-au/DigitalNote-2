@@ -3,8 +3,13 @@
 
 #include "cchainparams.h"
 #include "chainparams.h"
-#include "cdigitalnoteaddress.h"
 #include "cdigitalnoteaddressvisitor.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+
+#include "cdigitalnoteaddress.h"
 
 CDigitalNoteAddress::CDigitalNoteAddress()
 {

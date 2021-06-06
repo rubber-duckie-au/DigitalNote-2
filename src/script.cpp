@@ -32,6 +32,11 @@
 #include "cscriptvisitor.h"
 #include "cbignum_ctx.h"
 #include "cbignum_const.h"
+#include "uint/uint160.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "script.h"
 

@@ -31,6 +31,10 @@
 #include "main_extern.h"
 #include "cbitcoinaddress.h"
 #include "cchainparams.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "miner.h"
 

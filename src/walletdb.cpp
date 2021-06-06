@@ -33,6 +33,10 @@
 #include "util.h"
 #include "types/txitems.h"
 #include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "walletdb.h"
 

@@ -1,3 +1,5 @@
+HEADERS += src/noui.h
+
 HEADERS += src/addrman.h
 HEADERS += src/allocators.h
 HEADERS += src/annotatedmixin.h
@@ -173,6 +175,8 @@ HEADERS += src/cbignum_error.h
 HEADERS += src/cbignum_const.h
 
 HEADERS += src/types/ctxdestination.h
+HEADERS += src/types/data_chunk.h
+HEADERS += src/types/ec_point.h
 HEADERS += src/types/isminefilter.h
 HEADERS += src/types/txitems.h
 HEADERS += src/types/txpair.h

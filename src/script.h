@@ -24,6 +24,7 @@ class BaseSignatureChecker;
 class CKeyID;
 class CScript;
 class uint256;
+class CPubKey;
 
 template <typename T>
 std::vector<unsigned char> ToByteVector(const T& in);

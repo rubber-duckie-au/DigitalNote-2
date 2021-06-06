@@ -7,6 +7,11 @@
 #include "cpubkey.h"
 #include "script_const.h"
 
+//#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+//#include "cstealthaddress.h"
+
 #include "cbasickeystore.h"
 
 bool CBasicKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey)

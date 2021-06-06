@@ -9,15 +9,19 @@
 #include <string>
 #include <vector>
 
+#include "types/ec_point.h"
+
 const uint32_t MAX_STEALTH_NARRATION_SIZE = 48;
 const size_t ec_secret_size = 32;
 const size_t ec_compressed_size = 33;
 const size_t ec_uncompressed_size = 65;
 const uint8_t stealth_version_byte = 0x28;
 
-typedef std::vector<uint8_t> data_chunk;
-typedef data_chunk ec_point;
-typedef struct ec_secret { uint8_t e[ec_secret_size]; } ec_secret;
+typedef struct ec_secret
+{
+	uint8_t e[ec_secret_size];
+} ec_secret;
+
 typedef uint32_t stealth_bitfield;
 
 struct stealth_prefix

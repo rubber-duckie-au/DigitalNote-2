@@ -29,6 +29,10 @@
 #include "net/proxytype.h"
 #include "cdigitalnoteaddress.h"
 #include "chainparams.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"

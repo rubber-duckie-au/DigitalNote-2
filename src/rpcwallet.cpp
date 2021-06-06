@@ -33,6 +33,10 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 using namespace json_spirit;
 

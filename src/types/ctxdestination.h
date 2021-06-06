@@ -3,10 +3,10 @@
 
 #include <boost/variant.hpp>
 
-#include "cnodestination.h"
-#include "ckeyid.h"
-#include "cscriptid.h"
-#include "cstealthaddress.h"
+class CNoDestination;
+class CKeyID;
+class CScriptID;
+class CStealthAddress;
 
 /** A txout script template with a specific destination. It is either:
  *  * CNoDestination: no destination set
@@ -14,6 +14,6 @@
  *  * CScriptID: TX_SCRIPTHASH destination
  *  A CTxDestination is the internal data type encoded in a CDigitalNoteAddress
  */
-typedef boost::variant<CNoDestination, CKeyID, CScriptID, CStealthAddress> CTxDestination;
+using CTxDestination = boost::variant<CNoDestination, CKeyID, CScriptID, CStealthAddress>;
 
 #endif // CTXDESTINATION_H

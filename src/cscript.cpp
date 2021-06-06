@@ -4,9 +4,14 @@
 #include "cbignum.h"
 #include "cscriptvisitor.h"
 #include "script.h"
+#include "uint/uint160.h"
 #include "uint/uint256.h"
 #include "cpubkey.h"
 #include "hash.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "cscript.h"
 

@@ -1,5 +1,10 @@
 #include "cscript.h"
 
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+
 #include "cscriptvisitor.h"
 
 CScriptVisitor::CScriptVisitor(CScript *scriptin)

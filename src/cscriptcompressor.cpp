@@ -2,6 +2,8 @@
 #include "chashwriter.h"
 #include "cpubkey.h"
 #include "serialize.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
 
 #include "cscriptcompressor.h"
 

@@ -33,6 +33,7 @@ class COrphanBlock;
 class CTxIn;
 class CTxOut;
 class CScript;
+class uint160;
 
 struct CNodeSignals;
 

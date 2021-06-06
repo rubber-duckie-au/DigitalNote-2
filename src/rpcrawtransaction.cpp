@@ -19,6 +19,10 @@
 #include "ctxin.h"
 #include "cdigitalnotesecret.h"
 #include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #ifdef ENABLE_WALLET
 #include "coutput.h"
