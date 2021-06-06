@@ -31,6 +31,10 @@
 #include "ccriticalblock.h"
 #include "cdigitalnoteaddress.h"
 #include "base58.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "messagemodel.h"
 

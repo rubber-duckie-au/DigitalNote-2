@@ -40,6 +40,10 @@
 #include "script.h"
 #include "ccriticalblock.h"
 #include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "masternodemanager.h"
 #include "ui_masternodemanager.h"

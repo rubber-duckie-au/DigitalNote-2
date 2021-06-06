@@ -18,6 +18,10 @@
 #include "ctxin.h"
 #include "ctxout.h"
 #include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include <string>
 

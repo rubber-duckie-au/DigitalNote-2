@@ -33,6 +33,10 @@
 #include "coutpoint.h"
 #include "coutput.h"
 #include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "walletmodel.h"
 

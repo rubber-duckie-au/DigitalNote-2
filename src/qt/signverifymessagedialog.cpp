@@ -14,6 +14,10 @@
 #include "ckey.h"
 #include "crypto/bmw/bmw512.h"
 #include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 #include "signverifymessagedialog.h"
 #include "ui_signverifymessagedialog.h"
