@@ -17,7 +17,7 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "ctransaction.h"
-#include "bignum.h"
+#include "cbignum.h"
 #include "script.h"
 
 #include "kernel.h"

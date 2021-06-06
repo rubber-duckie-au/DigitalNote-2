@@ -74,6 +74,7 @@
 	#include "allocators/secure_allocator.h"
 	#include "allocators/securestring.h"
 	
+	#include "cbignum.h"
 	#include "cdigitalnoteaddress.h"
 	#include "cdigitalnotesecret.h"
 	#include "caddrinfo.h"
@@ -107,7 +108,6 @@
 	#include "genesis.h"
 	#include "caddress.h"
 	#include "mining.h"
-	#include "bignum.h"
 	#include "ckeyid.h"
 	#include "cscriptid.h"
 	#include "ctransactionlock.h"

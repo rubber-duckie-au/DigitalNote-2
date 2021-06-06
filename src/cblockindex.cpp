@@ -3,7 +3,7 @@
 #include "cblock.h"
 #include "ctransaction.h"
 #include "cdiskblockpos.h"
-#include "bignum.h"
+#include "cbignum.h"
 #include "main_extern.h"
 #include "main_const.h"
 #include "util.h"

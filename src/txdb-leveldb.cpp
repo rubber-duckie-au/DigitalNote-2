@@ -28,7 +28,6 @@
 #include "ctxin.h"
 #include "ctxout.h"
 #include "main_extern.h"
-#include "bignum.h"
 
 using namespace boost;
 

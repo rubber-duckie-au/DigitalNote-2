@@ -16,7 +16,7 @@
 #include "hash.h"
 #include "ctxout.h"
 #include "ctxin.h"
-#include "bignum.h"
+#include "cbignum.h"
 #include "script.h"
 
 #include "ctransaction.h"

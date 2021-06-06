@@ -1,7 +1,6 @@
 #include "compat.h"
 
 #include "cblock.h"
-#include "bignum.h"
 #include "serialize.h"
 #include "main_extern.h"
 #include "util.h"

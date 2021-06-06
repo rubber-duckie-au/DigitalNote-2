@@ -1,54 +1,12 @@
-#include "compat.h"
-
 #include <limits>
 #include <algorithm>
 
 #include "uint/uint256.h"
-#include "bignum.h"
+#include "cbignum_error.h"
+#include "cbignum_ctx.h"
 #include "util.h"
 
-BN_CTX* CAutoBN_CTX::operator=(BN_CTX* pnew)
-{
-	return pctx = pnew;
-}
-
-CAutoBN_CTX::CAutoBN_CTX()
-{
-	pctx = BN_CTX_new();
-	
-	if (pctx == NULL)
-	{
-		throw bignum_error("CAutoBN_CTX : BN_CTX_new() returned NULL");
-	}
-}
-
-CAutoBN_CTX::~CAutoBN_CTX()
-{
-	if (pctx != NULL)
-	{
-		BN_CTX_free(pctx);
-	}
-}
-
-CAutoBN_CTX::operator BN_CTX*()
-{
-	return pctx;
-}
-
-BN_CTX& CAutoBN_CTX::operator*()
-{
-	return *pctx;
-}
-
-BN_CTX** CAutoBN_CTX::operator&()
-{
-	return &pctx;
-}
-
-bool CAutoBN_CTX::operator!()
-{
-	return (pctx == NULL);
-}
+#include "cbignum.h"
 
 CBigNum::CBigNum() : bn(BN_new())
 {
@@ -61,7 +19,7 @@ CBigNum::CBigNum(const CBigNum& b) : CBigNum()
 	{
 		BN_clear_free(bn);
 		
-		throw bignum_error("CBigNum::CBigNum(const CBigNum&) : BN_copy failed");
+		throw CBigNum_Error("CBigNum::CBigNum(const CBigNum&) : BN_copy failed");
 	}
 }
 
@@ -69,7 +27,7 @@ CBigNum& CBigNum::operator=(const CBigNum& b)
 {
 	if (!BN_copy(bn, b.bn))
 	{
-		throw bignum_error("CBigNum::operator= : BN_copy failed");
+		throw CBigNum_Error("CBigNum::operator= : BN_copy failed");
 	}
 	
 	return (*this);
@@ -180,7 +138,7 @@ CBigNum  CBigNum::randBignum(const CBigNum& range)
 	
 	if(!BN_rand_range(ret.bn, range.bn))
 	{
-		throw bignum_error("CBigNum:rand element : BN_rand_range failed");
+		throw CBigNum_Error("CBigNum:rand element : BN_rand_range failed");
 	}
 	
 	return ret;
@@ -196,7 +154,7 @@ CBigNum CBigNum::RandKBitBigum(const uint32_t k)
 	
 	if(!BN_rand(ret.bn, k, -1, 0))
 	{
-		throw bignum_error("CBigNum:rand element : BN_rand failed");
+		throw CBigNum_Error("CBigNum:rand element : BN_rand failed");
 	}
 	
 	return ret;
@@ -215,7 +173,7 @@ void CBigNum::setulong(unsigned long n)
 {
 	if (!BN_set_word(bn, n))
 	{
-		throw bignum_error("CBigNum conversion from unsigned long : BN_set_word failed");
+		throw CBigNum_Error("CBigNum conversion from unsigned long : BN_set_word failed");
 	}
 }
 
@@ -565,7 +523,7 @@ void CBigNum::SetHex(const std::string& str)
 
 std::string CBigNum::ToString(int nBase) const
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	CBigNum bnBase = nBase;
 	CBigNum bn0 = 0;
 	std::string str;
@@ -583,7 +541,7 @@ std::string CBigNum::ToString(int nBase) const
 	{
 		if (!BN_div(dv.bn, rem.bn, bn.bn, bnBase.bn, pctx))
 		{
-			throw bignum_error("CBigNum::ToString() : BN_div failed");
+			throw CBigNum_Error("CBigNum::ToString() : BN_div failed");
 		}
 		
 		bn = dv;
@@ -647,12 +605,12 @@ CBigNum CBigNum::pow(const int e) const
  */
 CBigNum CBigNum::pow(const CBigNum& e) const
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	CBigNum ret;
 	
 	if (!BN_exp(ret.bn, bn, e.bn, pctx))
 	{
-		throw bignum_error("CBigNum::pow : BN_exp failed");
+		throw CBigNum_Error("CBigNum::pow : BN_exp failed");
 	}
 	
 	return ret;
@@ -665,12 +623,12 @@ CBigNum CBigNum::pow(const CBigNum& e) const
  */
 CBigNum CBigNum::mul_mod(const CBigNum& b, const CBigNum& m) const
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	CBigNum ret;
 	
 	if (!BN_mod_mul(ret.bn, bn, b.bn, m.bn, pctx))
 	{
-		throw bignum_error("CBigNum::mul_mod : BN_mod_mul failed");
+		throw CBigNum_Error("CBigNum::mul_mod : BN_mod_mul failed");
 	}
 	
 	return ret;
@@ -683,7 +641,7 @@ CBigNum CBigNum::mul_mod(const CBigNum& b, const CBigNum& m) const
  */
 CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m) const
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	CBigNum ret;
 	
 	if(BN_is_negative(e.bn))
@@ -695,14 +653,14 @@ CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m) const
 		
 		if (!BN_mod_exp(ret.bn, inv.bn, posE.bn, m.bn, pctx))
 		{
-			throw bignum_error("CBigNum::pow_mod: BN_mod_exp failed on negative exponent");
+			throw CBigNum_Error("CBigNum::pow_mod: BN_mod_exp failed on negative exponent");
 		}
 	}
 	else
 	{
 		if (!BN_mod_exp(ret.bn, bn, e.bn, m.bn, pctx))
 		{
-			throw bignum_error("CBigNum::pow_mod : BN_mod_exp failed");
+			throw CBigNum_Error("CBigNum::pow_mod : BN_mod_exp failed");
 		}
 	}
 	
@@ -717,12 +675,12 @@ CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m) const
 */
 CBigNum CBigNum::inverse(const CBigNum& m) const
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	CBigNum ret;
 	
 	if (!BN_mod_inverse(ret.bn, bn, m.bn, pctx))
 	{
-		throw bignum_error("CBigNum::inverse*= :BN_mod_inverse");
+		throw CBigNum_Error("CBigNum::inverse*= :BN_mod_inverse");
 	}
 	
 	return ret;
@@ -740,7 +698,7 @@ CBigNum CBigNum::generatePrime(const unsigned int numBits, bool safe)
 	
 	if(!BN_generate_prime_ex(ret.bn, numBits, (safe == true), NULL, NULL, NULL))
 	{
-		throw bignum_error("CBigNum::generatePrime*= :BN_generate_prime_ex");
+		throw CBigNum_Error("CBigNum::generatePrime*= :BN_generate_prime_ex");
 	}
 	
 	return ret;
@@ -753,12 +711,12 @@ CBigNum CBigNum::generatePrime(const unsigned int numBits, bool safe)
  */
 CBigNum CBigNum::gcd(const CBigNum& b) const
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	CBigNum ret;
 	
 	if (!BN_gcd(ret.bn, bn, b.bn, pctx))
 	{
-		throw bignum_error("CBigNum::gcd*= :BN_gcd");
+		throw CBigNum_Error("CBigNum::gcd*= :BN_gcd");
 	}
 	
 	return ret;
@@ -772,7 +730,7 @@ CBigNum CBigNum::gcd(const CBigNum& b) const
 */
 bool CBigNum::isPrime(const int checks) const
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	int ret = BN_is_prime_ex(bn, checks, pctx, NULL);
@@ -782,7 +740,7 @@ bool CBigNum::isPrime(const int checks) const
 
 	if(ret < 0)
 	{
-		throw bignum_error("CBigNum::isPrime :BN_is_prime");
+		throw CBigNum_Error("CBigNum::isPrime :BN_is_prime");
 	}
 	
 	return ret;
@@ -802,7 +760,7 @@ CBigNum& CBigNum::operator+=(const CBigNum& b)
 {
 	if (!BN_add(bn, bn, b.bn))
 	{
-		throw bignum_error("CBigNum::operator+= : BN_add failed");
+		throw CBigNum_Error("CBigNum::operator+= : BN_add failed");
 	}
 	
 	return *this;
@@ -812,7 +770,7 @@ CBigNum& CBigNum::operator-=(const CBigNum& b)
 {
 	if (!BN_sub(bn, bn, b.bn))
 	{
-		throw bignum_error("CBigNum::operator-= : BN_sub failed");
+		throw CBigNum_Error("CBigNum::operator-= : BN_sub failed");
 	}
 	
 	return *this;
@@ -820,11 +778,11 @@ CBigNum& CBigNum::operator-=(const CBigNum& b)
 
 CBigNum& CBigNum::operator*=(const CBigNum& b)
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	
 	if (!BN_mul(bn, bn, b.bn, pctx))
 	{
-		throw bignum_error("CBigNum::operator*= : BN_mul failed");
+		throw CBigNum_Error("CBigNum::operator*= : BN_mul failed");
 	}
 	
 	return *this;
@@ -832,11 +790,11 @@ CBigNum& CBigNum::operator*=(const CBigNum& b)
 
 CBigNum& CBigNum::operator/=(const CBigNum& b)
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	
 	if (!BN_div(bn, NULL, bn, b.bn, pctx))
 	{
-		throw bignum_error("CBigNum::operator/= : BN_div failed");
+		throw CBigNum_Error("CBigNum::operator/= : BN_div failed");
 	}
 	
 	return *this;
@@ -844,11 +802,11 @@ CBigNum& CBigNum::operator/=(const CBigNum& b)
 
 CBigNum& CBigNum::operator%=(const CBigNum& b)
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	
 	if (!BN_div(NULL, bn, bn, b.bn, pctx))
 	{
-		throw bignum_error("CBigNum::operator%= : BN_div failed");
+		throw CBigNum_Error("CBigNum::operator%= : BN_div failed");
 	}
 	
 	return *this;
@@ -858,7 +816,7 @@ CBigNum& CBigNum::operator<<=(unsigned int shift)
 {
 	if (!BN_lshift(bn, bn, shift))
 	{
-		throw bignum_error("CBigNum:operator<<= : BN_lshift failed");
+		throw CBigNum_Error("CBigNum:operator<<= : BN_lshift failed");
 	}
 	
 	return *this;
@@ -880,7 +838,7 @@ CBigNum& CBigNum::operator>>=(unsigned int shift)
 
 	if (!BN_rshift(bn, bn, shift))
 	{
-		throw bignum_error("CBigNum:operator>>= : BN_rshift failed");
+		throw CBigNum_Error("CBigNum:operator>>= : BN_rshift failed");
 	}
 	
 	return *this;
@@ -891,7 +849,7 @@ CBigNum& CBigNum::operator++()
 	// prefix operator
 	if (!BN_add(bn, bn, BN_value_one()))
 	{
-		throw bignum_error("CBigNum::operator++ : BN_add failed");
+		throw CBigNum_Error("CBigNum::operator++ : BN_add failed");
 	}
 	
 	return *this;
@@ -914,7 +872,7 @@ CBigNum& CBigNum::operator--()
 	
 	if (!BN_sub(r.bn, bn, BN_value_one()))
 	{
-		throw bignum_error("CBigNum::operator-- : BN_sub failed");
+		throw CBigNum_Error("CBigNum::operator-- : BN_sub failed");
 	}
 	
 	*this = r;
@@ -948,7 +906,7 @@ const CBigNum operator+(const CBigNum& a, const CBigNum& b)
 	
     if (!BN_add(r.bn, a.bn, b.bn))
 	{
-        throw bignum_error("CBigNum::operator+ : BN_add failed");
+        throw CBigNum_Error("CBigNum::operator+ : BN_add failed");
     }
 	
 	return r;
@@ -960,7 +918,7 @@ const CBigNum operator-(const CBigNum& a, const CBigNum& b)
     
 	if (!BN_sub(r.bn, a.bn, b.bn))
 	{
-        throw bignum_error("CBigNum::operator- : BN_sub failed");
+        throw CBigNum_Error("CBigNum::operator- : BN_sub failed");
 	}
 	
     return r;
@@ -977,12 +935,12 @@ const CBigNum operator-(const CBigNum& a)
 
 const CBigNum operator*(const CBigNum& a, const CBigNum& b)
 {
-    CAutoBN_CTX pctx;
+    CBigNum_CTX pctx;
     CBigNum r;
 	
     if (!BN_mul(r.bn, a.bn, b.bn, pctx))
 	{
-        throw bignum_error("CBigNum::operator* : BN_mul failed");
+        throw CBigNum_Error("CBigNum::operator* : BN_mul failed");
 	}
 	
     return r;
@@ -990,12 +948,12 @@ const CBigNum operator*(const CBigNum& a, const CBigNum& b)
 
 const CBigNum operator/(const CBigNum& a, const CBigNum& b)
 {
-    CAutoBN_CTX pctx;
+    CBigNum_CTX pctx;
     CBigNum r;
 	
     if (!BN_div(r.bn, NULL, a.bn, b.bn, pctx))
     {
-		throw bignum_error("CBigNum::operator/ : BN_div failed");
+		throw CBigNum_Error("CBigNum::operator/ : BN_div failed");
 	}
 	
     return r;
@@ -1003,12 +961,12 @@ const CBigNum operator/(const CBigNum& a, const CBigNum& b)
 
 const CBigNum operator%(const CBigNum& a, const CBigNum& b)
 {
-    CAutoBN_CTX pctx;
+    CBigNum_CTX pctx;
     CBigNum r;
 	
     if (!BN_nnmod(r.bn, a.bn, b.bn, pctx))
     {
-		throw bignum_error("CBigNum::operator% : BN_div failed");
+		throw CBigNum_Error("CBigNum::operator% : BN_div failed");
     }
 	
 	return r;
@@ -1020,7 +978,7 @@ const CBigNum operator<<(const CBigNum& a, unsigned int shift)
 	
     if (!BN_lshift(r.bn, a.bn, shift))
     {
-		throw bignum_error("CBigNum:operator<< : BN_lshift failed");
+		throw CBigNum_Error("CBigNum:operator<< : BN_lshift failed");
 	}
 	
     return r;

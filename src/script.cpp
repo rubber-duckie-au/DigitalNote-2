@@ -13,7 +13,6 @@
 #include "crypto/bmw/bmw512.h"
 #include "crypto/common/sha1.h"
 
-#include "bignum.h"
 #include "util.h"
 #include "ctransaction.h"
 #include "ckey.h"
@@ -31,6 +30,8 @@
 #include "signaturechecker.h"
 #include "caffectedkeysvisitor.h"
 #include "cscriptvisitor.h"
+#include "cbignum_ctx.h"
+#include "cbignum_const.h"
 
 #include "script.h"
 
@@ -569,7 +570,7 @@ bool static CheckPubKeyEncoding(const valtype &vchSig)
 
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, const CTransaction& txTo, unsigned int nIn, unsigned int flags, int nHashType)
 {
-	CAutoBN_CTX pctx;
+	CBigNum_CTX pctx;
 	CScript::const_iterator pc = script.begin();
 	CScript::const_iterator pend = script.end();
 	CScript::const_iterator pbegincodehash = script.begin();
@@ -1264,13 +1265,13 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 						{
 							case OP_1ADD:
 							{
-								bn += BigNum_One;
+								bn += CBigNum_One;
 							}
 							break;
 							
 							case OP_1SUB:
 							{
-								bn -= BigNum_One;
+								bn -= CBigNum_One;
 							}
 							break;
 							
@@ -1294,7 +1295,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 							
 							case OP_ABS:
 							{
-								if (bn < BigNum_Zero)
+								if (bn < CBigNum_Zero)
 								{
 									bn = -bn;
 								}
@@ -1303,13 +1304,13 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 							
 							case OP_NOT:
 							{
-								bn = (bn == BigNum_Zero);
+								bn = (bn == CBigNum_Zero);
 							}
 							break;
 							
 							case OP_0NOTEQUAL:
 							{
-								bn = (bn != BigNum_Zero);
+								bn = (bn != CBigNum_Zero);
 							}
 							break;
 							
@@ -1398,7 +1399,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 
 							case OP_LSHIFT:
 							{
-								if (bn2 < BigNum_Zero || bn2 > CBigNum(2048))
+								if (bn2 < CBigNum_Zero || bn2 > CBigNum(2048))
 								{
 									return false;
 								}
@@ -1409,7 +1410,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 
 							case OP_RSHIFT:
 							{
-								if (bn2 < BigNum_Zero || bn2 > CBigNum(2048))
+								if (bn2 < CBigNum_Zero || bn2 > CBigNum(2048))
 								{
 									return false;
 								}
@@ -1420,13 +1421,13 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 
 							case OP_BOOLAND:
 							{
-								bn = (bn1 != BigNum_Zero && bn2 != BigNum_Zero);
+								bn = (bn1 != CBigNum_Zero && bn2 != CBigNum_Zero);
 							}
 							break;
 							
 							case OP_BOOLOR:
 							{
-								bn = (bn1 != BigNum_Zero || bn2 != BigNum_Zero);
+								bn = (bn1 != CBigNum_Zero || bn2 != CBigNum_Zero);
 							}
 							break;
 							

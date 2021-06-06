@@ -1,7 +1,7 @@
 #include <boost/foreach.hpp>
 #include <boost/variant/static_visitor.hpp>
 
-#include "bignum.h"
+#include "cbignum.h"
 #include "cscriptvisitor.h"
 #include "script.h"
 #include "uint/uint256.h"

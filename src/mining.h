@@ -7,7 +7,6 @@
 #ifndef BITCOIN_MINING_H
 #define BITCOIN_MINING_H
 
-//#include "bignum.h"
 #include "main_const.h"
 
 /** Minimum nCoinAge required to stake PoS */

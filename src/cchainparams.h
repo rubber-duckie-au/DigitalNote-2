@@ -5,7 +5,7 @@
 #include <string>
 
 #include "uint/uint256.h"
-#include "bignum.h"
+#include "cbignum.h"
 #include "message_start_size.h"
 #include "enums/cchainparams_network.h"
 #include "enums/cchainparams_base58type.h"

@@ -2,7 +2,6 @@ HEADERS += src/addrman.h
 HEADERS += src/allocators.h
 HEADERS += src/annotatedmixin.h
 HEADERS += src/base58.h
-HEADERS += src/bignum.h
 HEADERS += src/blockparams.h
 HEADERS += src/blocksizecalculator.h
 HEADERS += src/caccount.h
@@ -167,6 +166,11 @@ HEADERS += src/version.h
 HEADERS += src/walletdb.h
 HEADERS += src/wallet.h
 HEADERS += src/webwalletconnector.h
+
+HEADERS += src/cbignum.h
+HEADERS += src/cbignum_ctx.h
+HEADERS += src/cbignum_error.h
+HEADERS += src/cbignum_const.h
 
 HEADERS += src/types/ctxdestination.h
 HEADERS += src/types/isminefilter.h

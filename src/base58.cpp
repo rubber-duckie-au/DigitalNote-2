@@ -6,8 +6,9 @@
 #include <cassert>
 
 #include "crypto/bmw/bmw512.h"
-#include "bignum.h"
-
+#include "cbignum_error.h"
+#include "cbignum_ctx.h"
+#include "cbignum.h"
 #include "base58.h"
 
 /* All alphanumeric characters except for "0", "I", "O", and "l" */
@@ -15,7 +16,7 @@ static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnop
 
 bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet)
 {
-    CAutoBN_CTX pctx;
+    CBigNum_CTX pctx;
     vchRet.clear();
     CBigNum bn58 = 58;
     CBigNum bn = 0;
@@ -59,7 +60,7 @@ bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet)
         
 		if (!BN_mul(bn.to_bignum(), bn.to_bignum(), bn58.to_bignum(), pctx))
 		{
-            throw bignum_error("DecodeBase58 : BN_mul failed");
+            throw CBigNum_Error("DecodeBase58 : BN_mul failed");
 		}
 		
         bn += bnChar;

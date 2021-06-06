@@ -23,7 +23,6 @@ SOURCES += src/chash160.cpp
 SOURCES += src/chashwriter.cpp
 SOURCES += src/cdb.cpp
 SOURCES += src/cdbenv.cpp
-SOURCES += src/bignum.cpp
 SOURCES += src/cinpoint.cpp
 SOURCES += src/coutpoint.cpp
 SOURCES += src/ctxin.cpp
@@ -114,6 +113,9 @@ SOURCES += src/smsg.cpp
 SOURCES += src/webwalletconnector.cpp
 SOURCES += src/rpcsmessage.cpp
 SOURCES += src/ccoincontrol.cpp
+
+SOURCES += src/cbignum_ctx.cpp
+SOURCES += src/cbignum.cpp
 
 SOURCES += src/cbase58data.cpp
 SOURCES += src/cdigitalnoteaddress.cpp
