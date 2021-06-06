@@ -1,6 +1,7 @@
 #ifndef CBIGNUM_ERROR_H
 #define CBIGNUM_ERROR_H
 
+#include <string>
 #include <stdexcept>
 
 /** Errors thrown by the bignum class */
