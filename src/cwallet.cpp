@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <random>
 
+#include "chainparams.h"
 #include "cchainparams.h"
 #include "ccoincontrol.h"
 #include "kernel.h"

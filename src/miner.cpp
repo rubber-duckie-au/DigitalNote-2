@@ -30,6 +30,7 @@
 #include "ctransaction.h"
 #include "main_extern.h"
 #include "cbitcoinaddress.h"
+#include "chainparams.h"
 #include "cchainparams.h"
 #include "cnodestination.h"
 #include "ckeyid.h"

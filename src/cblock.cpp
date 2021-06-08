@@ -37,6 +37,7 @@
 #include "cbitcoinaddress.h"
 #include "cdigitalnoteaddress.h"
 #include "cchainparams.h"
+#include "chainparams.h"
 #include "cnodestination.h"
 #include "ckeyid.h"
 #include "cscriptid.h"

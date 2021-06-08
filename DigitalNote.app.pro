@@ -32,6 +32,7 @@ include(include/options/use_0.pri)
 include(include/options/use_build_info.pri)
 include(include/options/use_dbus.pri)
 include(include/options/use_pch.pri)
+include(include/options/use_unity_build.pri)
 
 ## Libraries
 include(include/libs.pri)

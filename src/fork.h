@@ -8,8 +8,6 @@
 
 #include <cstdint>
 
-#include "chainparams.h"
-
 /** Reserve Phase start block */ 
 static const int64_t nReservePhaseStart = 1;
 /** Masternode/Devops Payment Update 1 **/
@@ -23,5 +21,5 @@ static const int64_t VELOCITY_TOGGLE = 175; // Implementation of the Velocity sy
 /** Velocity retarget toggle block */
 static const int64_t VELOCITY_TDIFF = 0; // Use Velocity's retargetting method.
 /** Protocol 3.0 toggle */
-inline bool IsProtocolV3(int64_t nTime) { return TestNet() || nTime > 1493596800; } // Mon, 01 May 2017 00:00:00 GMT
+
 #endif // BITCOIN_FORK_H
