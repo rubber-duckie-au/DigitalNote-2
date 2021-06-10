@@ -39,8 +39,9 @@
 MRichTextEdit::MRichTextEdit(QWidget *parent) : QWidget(parent) {
     setupUi(this);
     m_lastBlockList = 0;
-    f_textedit->setTabStopWidth(40);
-
+	
+	f_textedit->setTabStopDistance(40.0);
+	
     connect(f_textedit, SIGNAL(currentCharFormatChanged(QTextCharFormat)),
             this,     SLOT(slotCurrentCharFormatChanged(QTextCharFormat)));
     connect(f_textedit, SIGNAL(cursorPositionChanged()),
@@ -150,7 +151,7 @@ MRichTextEdit::MRichTextEdit(QWidget *parent) : QWidget(parent) {
     // text background color
 
     QPixmap pix(16, 16);
-    pix.fill(QApplication::palette().background().color());
+    pix.fill(QApplication::palette().window().color());
     f_bgcolor->setIcon(pix);
 
     connect(f_bgcolor, SIGNAL(clicked()), this, SLOT(textBgColor()));
@@ -401,7 +402,7 @@ void MRichTextEdit::bgColorChanged(const QColor &c) {
     if (c.isValid()) {
         pix.fill(c);
       } else {
-        pix.fill(QApplication::palette().background().color());
+        pix.fill(QApplication::palette().window().color());
         }
     f_bgcolor->setIcon(pix);
 }

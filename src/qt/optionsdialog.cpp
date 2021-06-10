@@ -191,6 +191,9 @@ bool OptionsDialog::eventFilter(QObject *object, QEvent *event)
 {
     if(event->type() == QEvent::FocusOut)
     {   
-    return QDialog::eventFilter(object, event);
+		return QDialog::eventFilter(object, event);
     }
+	
+	return false;
 }
+
