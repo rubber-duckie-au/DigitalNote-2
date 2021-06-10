@@ -437,11 +437,13 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
         if (!fProofOfStake)
 		{
             pblock->vtx[0].vout[0].nValue = GetProofOfWorkReward(pindexPrev->nHeight + 1, nFees);
-
+			
+			int64_t block_time = pindexBest->GetBlockTime();
+			
             // Check for payment update fork
-            if(pindexBest->GetBlockTime() > 0)
+            if(block_time > 0)
 			{
-                if(pindexBest->GetBlockTime() > nPaymentUpdate_1) // Monday, May 20, 2019 12:00:00 AM
+                if(block_time > mapEpochUpdateName["PaymentUpdate_2"]) // Monday, May 20, 2019 12:00:00 AM
 				{
                     // masternode/devops payment
 					int64_t blockReward = GetProofOfWorkReward(pindexPrev->nHeight + 1, nFees);
@@ -466,7 +468,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                     CBitcoinAddress devopaddress;
                     if (Params().NetworkID() == CChainParams_Network::MAIN)
 					{
-                        if(GetTime() < nPaymentUpdate_2)
+                        if(GetTime() < mapEpochUpdateName["PaymentUpdate_2"])
 						{
 							devopaddress = CBitcoinAddress("dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7");
 						} // TODO: nothing, already set to a valid DigitalNote address

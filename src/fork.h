@@ -7,6 +7,8 @@
 #define BITCOIN_FORK_H
 
 #include <cstdint>
+#include <string>
+#include <map>
 
 /** Reserve Phase start block */ 
 static const int64_t nReservePhaseStart = 1;
@@ -21,5 +23,15 @@ static const int64_t VELOCITY_TOGGLE = 175; // Implementation of the Velocity sy
 /** Velocity retarget toggle block */
 static const int64_t VELOCITY_TDIFF = 0; // Use Velocity's retargetting method.
 /** Protocol 3.0 toggle */
+
+/**
+	https://www.epochconverter.com/
+*/
+static const std::map<std::string, int64_t> mapEpochUpdateName = {
+	{ "PaymentUpdate_1", 1558310400 }, // Monday, 20 May 2019 00:00:00 GMT
+	{ "PaymentUpdate_2", 1562094000 }, // Tuesday, 2 July 2019 19:00:00 GMT
+	{ "PaymentUpdate_3", 1562281200 }, // Thursday, 4 July 2019 23:00:00 GMT
+	{ "PaymentUpdate_4", 1631232000 }, // Friday, 10 September 2021 00:00:00 GMT
+};
 
 #endif // BITCOIN_FORK_H

@@ -2695,7 +2695,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     CBitcoinAddress devopaddress;
     if (Params().NetworkID() == CChainParams_Network::MAIN)
 	{
-        if(GetTime() < nPaymentUpdate_2)
+        if(GetTime() < mapEpochUpdateName["PaymentUpdate_2"])
 		{
 			devopaddress = CBitcoinAddress("dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7");
 		} // TODO: nothing, already set to a valid DigitalNote address

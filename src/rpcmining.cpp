@@ -825,14 +825,14 @@ Value getblocktemplate(const Array& params, bool fHelp)
 	// Check for payment upgrade fork
     if (pindexBest->GetBlockTime() > 0)
     {
-        if (pindexBest->GetBlockTime() > nPaymentUpdate_1) // Monday, May 20, 2019 12:00:00 AM
+        if (pindexBest->GetBlockTime() > mapEpochUpdateName["PaymentUpdate_2"]) // Monday, May 20, 2019 12:00:00 AM
         {
             // Set Masternode / DevOps payments
             int64_t masternodePayment = GetMasternodePayment(pindexPrev->nHeight+1, networkPayment);
             int64_t devopsPayment = GetDevOpsPayment(pindexPrev->nHeight+1, networkPayment);
             std::string devpayee2 = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18";
 
-            if (pindexBest->GetBlockTime() < nPaymentUpdate_2)
+            if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
 			{
                 devpayee2 = Params().DevOpsAddress();
             }

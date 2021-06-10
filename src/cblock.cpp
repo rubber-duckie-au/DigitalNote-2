@@ -1244,7 +1244,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
         // Devops Address Set and Updates
         strVfyDevopsAddress = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18";
         
-		if(pindexBest->GetBlockTime() < nPaymentUpdate_2)
+		if(pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
 		{
 			strVfyDevopsAddress = Params().DevOpsAddress();
 		}
@@ -1317,10 +1317,10 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                        LogPrintf("CheckBlock() : PoS Recipient devops address validity could not be verified\n");
                        
 					   // Skip check during transition to new DevOps
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_3)
+                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_3"])
 					   {
                            // Check legacy blocks for valid payment, only skip for Update_2
-                           if (pindexBest->GetBlockTime() < nPaymentUpdate_2)
+                           if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
 						   {
                                fBlockHasPayments = false;
                            }
@@ -1337,7 +1337,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                    }
 				   else
 				   {
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_2)
+                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
 					   {
                            LogPrintf("CheckBlock() : PoS Recipient devops amount validity could not be verified\n");
                            
@@ -1412,10 +1412,10 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                        LogPrintf("CheckBlock() : PoW Recipient devops address validity could not be verified\n");
                        
 					   // Skip check during transition to new DevOps
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_3) {
+                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_3"]) {
                            
 						   // Check legacy blocks for valid payment, only skip for Update_2
-                           if (pindexBest->GetBlockTime() < nPaymentUpdate_2) {
+                           if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"]) {
                                fBlockHasPayments = false;
                            }
                        }
@@ -1432,7 +1432,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                    }
 				   else
 				   {
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_2)
+                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
 					   {
                            LogPrintf("CheckBlock() : PoW Recipient devops amount validity could not be verified\n");
                            fBlockHasPayments = false;
