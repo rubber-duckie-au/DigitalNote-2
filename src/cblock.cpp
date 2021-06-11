@@ -1161,7 +1161,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
     // Fork toggle for payment upgrade
     if(pindexBest->GetBlockTime() > 0)
     {
-        if(pindexBest->GetBlockTime() > nPaymentUpdate_1) // Monday, May 20, 2019 12:00:00 AM
+        if(pindexBest->GetBlockTime() > mapEpochUpdateName["PaymentUpdate_1"]) // Monday, May 20, 2019 12:00:00 AM
         {
             bDevOpsPayment = true;
         }

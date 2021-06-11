@@ -752,7 +752,19 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
     {
         seesawRollover = seesawArcend * seesawEpoch;
         LogPrint("creation", "GetMasternodePayment(): seesawRollover=%lu\n", seesawRollover);
-        seesawInterval =- seesawRollover;
+		
+		/*
+			Fix wrong seesawInterval generation.
+		*/
+		if(GetTime() < mapEpochUpdateName["PaymentUpdate_4"])
+		{
+			seesawInterval =- seesawRollover;
+		}
+		else
+		{
+			seesawInterval -= seesawRollover;
+		}
+	
         LogPrint("creation", "GetMasternodePayment(): seesawInterval=%lu\n", seesawInterval);
     }
     else
