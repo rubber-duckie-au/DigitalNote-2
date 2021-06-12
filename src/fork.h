@@ -26,6 +26,7 @@ static std::map<std::string, int64_t> mapEpochUpdateName = {
 	{ "PaymentUpdate_2", 1562094000 }, // Tuesday, 2 July 2019 19:00:00 GMT
 	{ "PaymentUpdate_3", 1562281200 }, // Thursday, 4 July 2019 23:00:00 GMT
 	{ "PaymentUpdate_4", 1631232000 }, // Friday, 10 September 2021 00:00:00 GMT
+	{ "PaymentUpdate_4", 1631404800 }, // Friday, 12 September 2021 00:00:00 GMT
 };
 
 #endif // BITCOIN_FORK_H

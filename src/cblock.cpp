@@ -886,82 +886,82 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos, const u
 
 bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) const
 {
-    // These are checks that are independent of context
-    // that can be verified before saving an orphan block.
+	// These are checks that are independent of context
+	// that can be verified before saving an orphan block.
 
-    // Size limits
-    if (vtx.empty() || vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+	// Size limits
+	if (vtx.empty() || vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
 	{
-        return DoS(100, error("CheckBlock() : size limits failed"));
+		return DoS(100, error("CheckBlock() : size limits failed"));
 	}
-	
-    // Check proof of work matches claimed amount
-    if (fCheckPOW && IsProofOfWork() && !CheckProofOfWork(GetPoWHash(), nBits))
+
+	// Check proof of work matches claimed amount
+	if (fCheckPOW && IsProofOfWork() && !CheckProofOfWork(GetPoWHash(), nBits))
 	{
-        return DoS(50, error("CheckBlock() : proof of work failed"));
+		return DoS(50, error("CheckBlock() : proof of work failed"));
 	}
-	
-    // Check timestamp
-    if (GetBlockTime() > FutureDrift(GetAdjustedTime()))
+
+	// Check timestamp
+	if (GetBlockTime() > FutureDrift(GetAdjustedTime()))
 	{
-        return error("CheckBlock() : block timestamp too far in the future");
+		return error("CheckBlock() : block timestamp too far in the future");
 	}
-	
-    // First transaction must be coinbase, the rest must not be
-    if (vtx.empty() || !vtx[0].IsCoinBase())
+
+	// First transaction must be coinbase, the rest must not be
+	if (vtx.empty() || !vtx[0].IsCoinBase())
 	{
-        return DoS(100, error("CheckBlock() : first tx is not coinbase"));
+		return DoS(100, error("CheckBlock() : first tx is not coinbase"));
 	}
-	
-    for (unsigned int i = 1; i < vtx.size(); i++)
+
+	for (unsigned int i = 1; i < vtx.size(); i++)
 	{
-        if (vtx[i].IsCoinBase())
+		if (vtx[i].IsCoinBase())
 		{
-            return DoS(100, error("CheckBlock() : more than one coinbase"));
+			return DoS(100, error("CheckBlock() : more than one coinbase"));
 		}
 	}
-	
-    if (IsProofOfStake())
-    {
-        // Coinbase output should be empty if proof-of-stake block
-        if (vtx[0].vout.size() != 1 || !vtx[0].vout[0].IsEmpty())
+
+	if (IsProofOfStake())
+	{
+		// Coinbase output should be empty if proof-of-stake block
+		if (vtx[0].vout.size() != 1 || !vtx[0].vout[0].IsEmpty())
 		{
-            return DoS(100, error("CheckBlock() : coinbase output not empty for proof-of-stake block"));
-		}
-		
-        // Second transaction must be coinstake, the rest must not be
-        if (vtx.empty() || !vtx[1].IsCoinStake())
-		{
-            return DoS(100, error("CheckBlock() : second tx is not coinstake"));
+			return DoS(100, error("CheckBlock() : coinbase output not empty for proof-of-stake block"));
 		}
 		
-        for (unsigned int i = 2; i < vtx.size(); i++)
+		// Second transaction must be coinstake, the rest must not be
+		if (vtx.empty() || !vtx[1].IsCoinStake())
 		{
-            if (vtx[i].IsCoinStake())
+			return DoS(100, error("CheckBlock() : second tx is not coinstake"));
+		}
+		
+		for (unsigned int i = 2; i < vtx.size(); i++)
+		{
+			if (vtx[i].IsCoinStake())
 			{
-                return DoS(100, error("CheckBlock() : more than one coinstake"));
+				return DoS(100, error("CheckBlock() : more than one coinstake"));
 			}
 		}
-    }
-
-    // Check proof-of-stake block signature
-    if (fCheckSig && !CheckBlockSignature())
-	{
-        return DoS(100, error("CheckBlock() : bad proof-of-stake block signature"));
 	}
-	
-    // ----------- instantX transaction scanning -----------
 
-    if(IsSporkActive(SPORK_3_INSTANTX_BLOCK_FILTERING))
+	// Check proof-of-stake block signature
+	if (fCheckSig && !CheckBlockSignature())
 	{
-        for(const CTransaction& tx : vtx)
+		return DoS(100, error("CheckBlock() : bad proof-of-stake block signature"));
+	}
+
+	// ----------- instantX transaction scanning -----------
+
+	if(IsSporkActive(SPORK_3_INSTANTX_BLOCK_FILTERING))
+	{
+		for(const CTransaction& tx : vtx)
 		{
-            if (!tx.IsCoinBase())
+			if (!tx.IsCoinBase())
 			{
-                //only reject blocks when it's based on complete consensus
-                for(const CTxIn& in : tx.vin)
+				//only reject blocks when it's based on complete consensus
+				for(const CTxIn& in : tx.vin)
 				{
-                    if(mapLockedInputs.count(in.prevout) && mapLockedInputs[in.prevout] != tx.GetHash())
+					if(mapLockedInputs.count(in.prevout) && mapLockedInputs[in.prevout] != tx.GetHash())
 					{
 						if(fDebug)
 						{
@@ -973,61 +973,61 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 						}
 						
 						return DoS(0, error("CheckBlock() : found conflicting transaction with transaction lock"));
-                    }
-                }
-            }
-        }
-    }
+					}
+				}
+			}
+		}
+	}
 	else if(fDebug)
 	{
 		LogPrintf("CheckBlock() : skipping transaction locking checks\n");
-    }
+	}
 
-    // ----------- masternode / devops - payments -----------
+	// ----------- masternode / devops - payments -----------
 
-    bool MasternodePayments = false;
-    bool fIsInitialDownload = IsInitialBlockDownload();
+	bool MasternodePayments = false;
+	bool fIsInitialDownload = IsInitialBlockDownload();
 
-    int64_t cTime = nTime;
-    int64_t mTime = START_MASTERNODE_PAYMENTS;
-	
-    if(cTime > mTime)
+	int64_t cTime = nTime;
+	int64_t mTime = START_MASTERNODE_PAYMENTS;
+
+	if(cTime > mTime)
 	{
 		MasternodePayments = true;
 	}
-	
-    if (!fIsInitialDownload)
-    {
-        if(MasternodePayments)
-        {
-            LOCK2(cs_main, mempool.cs);
 
-            CBlockIndex *pindex = pindexBest;
-            if(IsProofOfStake() && pindex != NULL)
+	if (!fIsInitialDownload)
+	{
+		if(MasternodePayments)
+		{
+			LOCK2(cs_main, mempool.cs);
+
+			CBlockIndex *pindex = pindexBest;
+			if(IsProofOfStake() && pindex != NULL)
 			{
-                if(pindex->GetBlockHash() == hashPrevBlock)
+				if(pindex->GetBlockHash() == hashPrevBlock)
 				{
-                    // If we don't already have its previous block, skip masternode payment step
-                    CAmount masternodePaymentAmount;
-                    for(int i = vtx[1].vout.size(); i--> 0; )
+					// If we don't already have its previous block, skip masternode payment step
+					CAmount masternodePaymentAmount;
+					for(int i = vtx[1].vout.size(); i--> 0; )
 					{
-                        masternodePaymentAmount = vtx[1].vout[i].nValue;
+						masternodePaymentAmount = vtx[1].vout[i].nValue;
 						
-                        break;
-                    }
-					
-                    bool foundPaymentAmount = false;
-                    bool foundPayee = false;
-                    bool foundPaymentAndPayee = false;
+						break;
+					}
 
-                    CScript payee;
-                    CTxIn vin;
+					bool foundPaymentAmount = false;
+					bool foundPayee = false;
+					bool foundPaymentAndPayee = false;
+
+					CScript payee;
+					CTxIn vin;
 					if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee, vin) || payee == CScript())
 					{
-                        foundPayee = true; //doesn't require a specific payee
-                        foundPaymentAmount = true;
-                        foundPaymentAndPayee = true;
-                        
+						foundPayee = true; //doesn't require a specific payee
+						foundPaymentAmount = true;
+						foundPaymentAndPayee = true;
+						
 						if(fDebug)
 						{
 							LogPrintf(
@@ -1035,33 +1035,33 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 								pindexBest->nHeight+1
 							);
 						}
-                    }
+					}
 
-                    for (unsigned int i = 0; i < vtx[1].vout.size(); i++)
+					for (unsigned int i = 0; i < vtx[1].vout.size(); i++)
 					{
-                        if(vtx[1].vout[i].nValue == masternodePaymentAmount )
+						if(vtx[1].vout[i].nValue == masternodePaymentAmount )
 						{
-                            foundPaymentAmount = true;
+							foundPaymentAmount = true;
 						}
-						
-                        if(vtx[1].vout[i].scriptPubKey == payee )
-						{
-                            foundPayee = true;
-						}
-						
-                        if(vtx[1].vout[i].nValue == masternodePaymentAmount && vtx[1].vout[i].scriptPubKey == payee)
-						{
-                            foundPaymentAndPayee = true;
-						}
-                    }
 
-                    CTxDestination address1;
-                    ExtractDestination(payee, address1);
-                    CDigitalNoteAddress address2(address1);
+						if(vtx[1].vout[i].scriptPubKey == payee )
+						{
+							foundPayee = true;
+						}
 
-                    if(!foundPaymentAndPayee)
+						if(vtx[1].vout[i].nValue == masternodePaymentAmount && vtx[1].vout[i].scriptPubKey == payee)
+						{
+							foundPaymentAndPayee = true;
+						}
+					}
+
+					CTxDestination address1;
+					ExtractDestination(payee, address1);
+					CDigitalNoteAddress address2(address1);
+
+					if(!foundPaymentAndPayee)
 					{
-                        if(fDebug)
+						if(fDebug)
 						{
 							LogPrintf(
 								"CheckBlock() : Couldn't find masternode payment(%d|%d) or payee(%d|%s) nHeight %d. \n",
@@ -1072,12 +1072,12 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 								pindexBest->nHeight+1
 							);
 						}
-						
-                        return DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
-                    }
+
+						return DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
+					}
 					else
 					{
-                        LogPrintf(
+						LogPrintf(
 							"CheckBlock() : Found payment(%d|%d) or payee(%d|%s) nHeight %d. \n",
 							foundPaymentAmount,
 							masternodePaymentAmount,
@@ -1085,11 +1085,11 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 							address2.ToString().c_str(),
 							pindexBest->nHeight+1
 						);
-                    }
-                }
+					}
+				}
 				else
 				{
-                    if(fDebug)
+					if(fDebug)
 					{
 						LogPrintf(
 							"CheckBlock() : Skipping masternode payment check - nHeight %d Hash %s\n",
@@ -1097,422 +1097,367 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 							GetHash().ToString().c_str()
 						);
 					}
-                }
-            }
+				}
+			}
 			else
 			{
-                if(fDebug)
+				if(fDebug)
 				{
 					LogPrintf("CheckBlock() : pindex is null, skipping masternode payment check\n");
 				}
-            }
-        }
+			}
+		}
 		else
 		{
-            if(fDebug)
+			if(fDebug)
 			{
 				LogPrintf("CheckBlock() : skipping masternode payment checks\n");
 			}
-        }
-    }
+		}
+	}
 	else
 	{
-        if(fDebug)
+		if(fDebug)
 		{
 			LogPrintf("CheckBlock() : Is initial download, skipping masternode payment check %d\n", pindexBest->nHeight+1);
 		}
-    }
+	}
 
-    // Verify coinbase/coinstake tx includes devops payment -
-    // first check for start of devops payments
-    bool bDevOpsPayment = false;
+	// Verify coinbase/coinstake tx includes devops payment -
+	// first check for start of devops payments
+	int64_t pindexBestBlockTime = pindexBest->GetBlockTime();
 
-    if ( Params().NetworkID() == CChainParams_Network::TESTNET )
+	// Fork toggle for payment upgrade
+	bool bDevOpsPayment = (pindexBestBlockTime > mapEpochUpdateName["PaymentUpdate_1"]);
+
+	// Run checks if at fork height
+	if(bDevOpsPayment)
 	{
-        if (GetTime() > START_DEVOPS_PAYMENTS_TESTNET )
-		{
-            bDevOpsPayment = true;
-        }
-    }
-	else
-	{
-        if (GetTime() > START_DEVOPS_PAYMENTS)
-		{
-            bDevOpsPayment = true;
-        }
-    }
-	
-    // stop devops payments (for testing)
-    if (Params().NetworkID() == CChainParams_Network::TESTNET)
-	{
-        if (GetTime() > STOP_DEVOPS_PAYMENTS_TESTNET)
-		{
-            bDevOpsPayment = false;
-        }
-    }
-	else
-	{
-        if (GetTime() > STOP_DEVOPS_PAYMENTS)
-		{
-            bDevOpsPayment = false;
-        }
-    }
-	
-    // Fork toggle for payment upgrade
-    if(pindexBest->GetBlockTime() > 0)
-    {
-        if(pindexBest->GetBlockTime() > mapEpochUpdateName["PaymentUpdate_1"]) // Monday, May 20, 2019 12:00:00 AM
-        {
-            bDevOpsPayment = true;
-        }
-        else
-        {
-            bDevOpsPayment = false;
-        }
-    }
-    else
-    {
-        bDevOpsPayment = false;
-    }
-	
-    // Run checks if at fork height
-    if(bDevOpsPayment)
-    {
-        int64_t nStandardPayment = 0;
-        int64_t nMasternodePayment = 0;
-        int64_t nDevopsPayment = 0;
-        int64_t nProofOfIndexMasternode = 0;
-        int64_t nProofOfIndexDevops = 0;
-        int64_t nMasterNodeChecksDelay = 45 * 60;
-        int64_t nMasterNodeChecksEngageTime = 0;
-        const CBlockIndex* pindexPrev = pindexBest->pprev;
-        bool isProofOfStake = !IsProofOfWork();
-        bool fBlockHasPayments = true;
-        std::string strVfyDevopsAddress;
-        // Define primitives depending if PoW/PoS
-        
+		int64_t nStandardPayment = 0;
+		int64_t nMasternodePayment = 0;
+		int64_t nDevopsPayment = 0;
+		int64_t nProofOfIndexMasternode = 0;
+		int64_t nProofOfIndexDevops = 0;
+		int64_t nMasterNodeChecksDelay = 45 * 60;
+		int64_t nMasterNodeChecksEngageTime = 0;
+		const CBlockIndex* pindexPrev = pindexBest->pprev;
+		bool isProofOfStake = !IsProofOfWork();
+		bool fBlockHasPayments = true;
+		std::string strVfyDevopsAddress;
+		// Define primitives depending if PoW/PoS
+
 		if (isProofOfStake)
 		{
-            nProofOfIndexMasternode = 2;
-            nProofOfIndexDevops = 3;
-            
+			nProofOfIndexMasternode = 2;
+			nProofOfIndexDevops = 3;
+
 			if (vtx[isProofOfStake].vout.size() != 4)
 			{
-                if (vtx[isProofOfStake].vout.size() != 5)
+				if (vtx[isProofOfStake].vout.size() != 5)
 				{
-                    LogPrintf("CheckBlock() : PoS submission doesn't include devops and/or masternode payment\n");
-                    fBlockHasPayments = false;
-                }
+					LogPrintf("CheckBlock() : PoS submission doesn't include devops and/or masternode payment\n");
+					fBlockHasPayments = false;
+				}
 				else
 				{
-                    nProofOfIndexMasternode = 3;
-                    nProofOfIndexDevops = 4;
-                }
-            }
-			
-            nStandardPayment = GetProofOfStakeReward(pindexPrev, 0, 0);
-        }
+					nProofOfIndexMasternode = 3;
+					nProofOfIndexDevops = 4;
+				}
+			}
+
+			nStandardPayment = GetProofOfStakeReward(pindexPrev, 0, 0);
+		}
 		else
 		{
-            nProofOfIndexMasternode = 1;
-            nProofOfIndexDevops = 2;
-            if (vtx[isProofOfStake].vout.size() != 3)
+			nProofOfIndexMasternode = 1;
+			nProofOfIndexDevops = 2;
+			if (vtx[isProofOfStake].vout.size() != 3)
 			{
 				LogPrintf("CheckBlock() : PoW submission doesn't include devops and/or masternode payment\n");
 				fBlockHasPayments = false;
-            }
+			}
 			
-            nStandardPayment = GetProofOfWorkReward(nBestHeight, 0);
-        }
+			nStandardPayment = GetProofOfWorkReward(nBestHeight, 0);
+		}
 		
-        // Set payout values depending if PoW/PoS
-        nMasternodePayment = GetMasternodePayment(pindexBest->nHeight, nStandardPayment) / COIN;
-        nDevopsPayment = GetDevOpsPayment(pindexBest->nHeight, nStandardPayment) / COIN;
-        
+		// Set payout values depending if PoW/PoS
+		nMasternodePayment = GetMasternodePayment(pindexBest->nHeight, nStandardPayment) / COIN;
+		nDevopsPayment = GetDevOpsPayment(pindexBest->nHeight, nStandardPayment) / COIN;
+		
 		LogPrintf("Hardset MasternodePayment: %lu | Hardset DevOpsPayment: %lu \n", nMasternodePayment, nDevopsPayment);
-        
+		
 		// Increase time for Masternode checks delay during sync per-block
-        if (fIsInitialDownload)
+		if (fIsInitialDownload)
 		{
-            nMasterNodeChecksDelayBaseTime = GetTime();
-        }
+			nMasterNodeChecksDelayBaseTime = GetTime();
+		}
 		else
 		{
-            nMasterNodeChecksEngageTime = nMasterNodeChecksDelayBaseTime + nMasterNodeChecksDelay;
-        }
+			nMasterNodeChecksEngageTime = nMasterNodeChecksDelayBaseTime + nMasterNodeChecksDelay;
+		}
 		
-        // Devops Address Set and Updates
-        strVfyDevopsAddress = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18";
-        
-		if(pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
+		// Devops Address Set and Updates
+		strVfyDevopsAddress = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18";
+		
+		if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_2"])
 		{
 			strVfyDevopsAddress = Params().DevOpsAddress();
 		}
 		
-        // Check PoW or PoS payments for current block
-        for (unsigned int i=0; i < vtx[isProofOfStake].vout.size(); i++)
+		// Check PoW or PoS payments for current block
+		for (unsigned int i=0; i < vtx[isProofOfStake].vout.size(); i++)
 		{
-            // Define values
-            CScript rawPayee = vtx[isProofOfStake].vout[i].scriptPubKey;
-            CTxDestination address;
-            ExtractDestination(vtx[isProofOfStake].vout[i].scriptPubKey, address);
-            CBitcoinAddress addressOut(address);
-            int64_t nAmount = vtx[isProofOfStake].vout[i].nValue / COIN;
-            int64_t nIndexedMasternodePayment = vtx[isProofOfStake].vout[nProofOfIndexMasternode].nValue / COIN;
-            int64_t nIndexedDevopsPayment = vtx[isProofOfStake].vout[nProofOfIndexDevops].nValue / COIN;
-            LogPrintf(" - vtx[%d].vout[%d] Address: %s Amount: %lu \n", isProofOfStake, i, addressOut.ToString(), nAmount);
-            
-			// PoS Checks
-            if (isProofOfStake)
-			{
-                // Check for PoS masternode payment
-                if (i == nProofOfIndexMasternode)
-				{
-                   if (mnodeman.IsPayeeAValidMasternode(rawPayee))
-				   {
-                       LogPrintf("CheckBlock() : PoS Recipient masternode address validity succesfully verified\n");
-                   }
-				   else if (addressOut.ToString() == strVfyDevopsAddress)
-				   {
-                       LogPrintf("CheckBlock() : PoS Recipient masternode address validity succesfully verified\n");
-                   }
-				   else
-				   {
-                       if (nMasterNodeChecksEngageTime != 0)
-					   {
-                           if (fMnAdvRelay)
-						   {
-                               LogPrintf("CheckBlock() : PoS Recipient masternode address validity could not be verified\n");
-                               
-							   fBlockHasPayments = false;
-                           }
-						   else
-						   {
-                               LogPrintf("CheckBlock() : PoS Recipient masternode address validity skipping, Checks delay still active!\n");
-                           }
-                       }
-                   }
-				   
-                   if (nIndexedMasternodePayment == nMasternodePayment)
-				   {
-                       LogPrintf("CheckBlock() : PoS Recipient masternode amount validity succesfully verified\n");
-                   }
-				   else
-				   {
-                       LogPrintf("CheckBlock() : PoS Recipient masternode amount validity could not be verified\n");
-                       
-					   fBlockHasPayments = false;
-                   }
-                }
-				
-                // Check for PoS devops payment
-                if (i == nProofOfIndexDevops)
-				{
-                   if (addressOut.ToString() == strVfyDevopsAddress)
-				   {
-                       LogPrintf("CheckBlock() : PoS Recipient devops address validity succesfully verified\n");
-                   }
-				   else
-				   {
-                       LogPrintf("CheckBlock() : PoS Recipient devops address validity could not be verified\n");
-                       
-					   // Skip check during transition to new DevOps
-                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_3"])
-					   {
-                           // Check legacy blocks for valid payment, only skip for Update_2
-                           if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
-						   {
-                               fBlockHasPayments = false;
-                           }
-                       }
-					   else
-					   {
-                           // Re-enable enforcement post transition (Update_3)
-                           fBlockHasPayments = false;
-                       }
-                   }
-                   if (nIndexedDevopsPayment == nDevopsPayment)
-				   {
-                       LogPrintf("CheckBlock() : PoS Recipient devops amount validity succesfully verified\n");
-                   }
-				   else
-				   {
-                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
-					   {
-                           LogPrintf("CheckBlock() : PoS Recipient devops amount validity could not be verified\n");
-                           
-						   fBlockHasPayments = false;
-                       }
-					   else
-					   {
-                           if (nIndexedDevopsPayment >= nDevopsPayment)
-						   {
-                               LogPrintf("CheckBlock() : PoS Reciepient devops amount is abnormal due to large fee paid");
-                           }
-						   else
-						   {
-                               LogPrintf("CheckBlock() : PoS Reciepient devops amount validity could not be verified");
-                               
-							   fBlockHasPayments = false;
-                           }
-                       }
-                   }
-                }
-            }
-            // PoW Checks
-            else if (!isProofOfStake)
-			{
-                // Check for PoW masternode payment
-                if (i == nProofOfIndexMasternode)
-				{
-                   if (mnodeman.IsPayeeAValidMasternode(rawPayee))
-				   {
-                      LogPrintf("CheckBlock() : PoW Recipient masternode address validity succesfully verified\n");
-                   }
-				   else if (addressOut.ToString() == strVfyDevopsAddress)
-				   {
-                      LogPrintf("CheckBlock() : PoW Recipient masternode address validity succesfully verified\n");
-                   }
-				   else
-				   {
-                      if (nMasterNodeChecksEngageTime != 0)
-					  {
-                          if (fMnAdvRelay)
-						  {
-                              LogPrintf("CheckBlock() : PoW Recipient masternode address validity could not be verified\n");
-                              fBlockHasPayments = false;
-                          }
-						  else
-						  {
-                              LogPrintf("CheckBlock() : PoW Recipient masternode address validity skipping, Checks delay still active!\n");
-                          }
-                      }
-                   }
-				   
-                   if (nAmount == nMasternodePayment)
-				   {
-                      LogPrintf("CheckBlock() : PoW Recipient masternode amount validity succesfully verified\n");
-                   }
-				   else
-				   {
-                      LogPrintf("CheckBlock() : PoW Recipient masternode amount validity could not be verified\n");
-                      fBlockHasPayments = false;
-                   }
-                }
-				
-                // Check for PoW devops payment
-                if (i == nProofOfIndexDevops)
-				{
-                   if (addressOut.ToString() == strVfyDevopsAddress)
-				   {
-                      LogPrintf("CheckBlock() : PoW Recipient devops address validity succesfully verified\n");
-                   }
-				   else
-				   {
-                       LogPrintf("CheckBlock() : PoW Recipient devops address validity could not be verified\n");
-                       
-					   // Skip check during transition to new DevOps
-                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_3"]) {
-                           
-						   // Check legacy blocks for valid payment, only skip for Update_2
-                           if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"]) {
-                               fBlockHasPayments = false;
-                           }
-                       }
-					   else
-					   {
-                           // Re-enable enforcement post transition (Update_3)
-                           fBlockHasPayments = false;
-                       }
-                   }
-                   
-				   if (nAmount == nDevopsPayment)
-				   {
-                      LogPrintf("CheckBlock() : PoW Recipient devops amount validity succesfully verified\n");
-                   }
-				   else
-				   {
-                       if (pindexBest->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"])
-					   {
-                           LogPrintf("CheckBlock() : PoW Recipient devops amount validity could not be verified\n");
-                           fBlockHasPayments = false;
-                       }
-					   else
-					   {
-                           if (nIndexedDevopsPayment >= nDevopsPayment)
-						   {
-                               LogPrintf("CheckBlock() : PoW Reciepient devops amount is abnormal due to large fee paid");
-                           }
-						   else
-						   {
-                               LogPrintf("CheckBlock() : PoW Reciepient devops amount validity could not be verified");
-                               fBlockHasPayments = false;
-                           }
-                       }
-                   }
-                }
-            }
-        }
-        
-		// Final checks (DevOps/Masternode payments)
-        if (fBlockHasPayments)
-		{
-            LogPrintf("CheckBlock() : PoW/PoS non-miner reward payments succesfully verified\n");
-        }
-		else
-		{
-            LogPrintf("CheckBlock() : PoW/PoS non-miner reward payments could not be verified\n");
+			// Define values
+			CScript rawPayee = vtx[isProofOfStake].vout[i].scriptPubKey;
+			CTxDestination address;
+			ExtractDestination(vtx[isProofOfStake].vout[i].scriptPubKey, address);
+			CBitcoinAddress addressOut(address);
+			int64_t nAmount = vtx[isProofOfStake].vout[i].nValue / COIN;
+			int64_t nIndexedMasternodePayment = vtx[isProofOfStake].vout[nProofOfIndexMasternode].nValue / COIN;
+			int64_t nIndexedDevopsPayment = vtx[isProofOfStake].vout[nProofOfIndexDevops].nValue / COIN;
+			LogPrintf(" - vtx[%d].vout[%d] Address: %s Amount: %lu \n", isProofOfStake, i, addressOut.ToString(), nAmount);
 			
-            return DoS(100, error("CheckBlock() : PoW/PoS invalid payments in current block\n"));
-        }
-    }
+			// PoS Checks
+			if (isProofOfStake)
+			{
+				// Check for PoS masternode payment
+				if (i == nProofOfIndexMasternode)
+				{
+					if (mnodeman.IsPayeeAValidMasternode(rawPayee) ||
+						addressOut.ToString() == strVfyDevopsAddress)
+					{
+						LogPrintf("CheckBlock() : PoS Recipient masternode address validity succesfully verified\n");
+					}
+					else
+					{
+						if (nMasterNodeChecksEngageTime != 0)
+						{
+							if (fMnAdvRelay)
+							{
+								LogPrintf("CheckBlock() : PoS Recipient masternode address validity could not be verified\n");
 
-    // Check transactions
-    for(const CTransaction& tx : vtx)
-    {
-        if (!tx.CheckTransaction())
-		{
-            return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
+								fBlockHasPayments = false;
+							}
+							else
+							{
+								LogPrintf("CheckBlock() : PoS Recipient masternode address validity skipping, Checks delay still active!\n");
+							}
+						}
+					}
+
+					if (nIndexedMasternodePayment == nMasternodePayment)
+					{
+						LogPrintf("CheckBlock() : PoS Recipient masternode amount validity succesfully verified\n");
+					}
+					else
+					{
+						LogPrintf("CheckBlock() : PoS Recipient masternode amount validity could not be verified\n");
+
+						fBlockHasPayments = false;
+					}
+				}
+				
+				// Check for PoS devops payment
+				if (i == nProofOfIndexDevops)
+				{
+					if (addressOut.ToString() == strVfyDevopsAddress)
+					{
+						LogPrintf("CheckBlock() : PoS Recipient devops address validity succesfully verified\n");
+					}
+					else
+					{
+						LogPrintf("CheckBlock() : PoS Recipient devops address validity could not be verified\n");
+
+						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_2"] ||
+							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_3"])
+						{
+							fBlockHasPayments = false;
+						}
+						
+						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_4"] ||
+							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_5"])
+						{
+							fBlockHasPayments = false;
+						}
+					}
+					
+					if (nIndexedDevopsPayment == nDevopsPayment)
+					{
+						LogPrintf("CheckBlock() : PoS Recipient devops amount validity succesfully verified\n");
+					}
+					else
+					{
+						if (pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_2"])
+						{
+							LogPrintf("CheckBlock() : PoS Recipient devops amount validity could not be verified\n");
+
+							fBlockHasPayments = false;
+						}
+						else
+						{
+							if (nIndexedDevopsPayment >= nDevopsPayment)
+							{
+								LogPrintf("CheckBlock() : PoS Reciepient devops amount is abnormal due to large fee paid");
+							}
+							else
+							{
+								LogPrintf("CheckBlock() : PoS Reciepient devops amount validity could not be verified");
+
+								fBlockHasPayments = false;
+							}
+						}
+					}
+				}
+			}
+			// PoW Checks
+			else
+			{
+				// Check for PoW masternode payment
+				if (i == nProofOfIndexMasternode)
+				{
+					if (mnodeman.IsPayeeAValidMasternode(rawPayee) ||
+						addressOut.ToString() == strVfyDevopsAddress)
+					{
+					  LogPrintf("CheckBlock() : PoW Recipient masternode address validity succesfully verified\n");
+					}
+					else
+					{
+						if (nMasterNodeChecksEngageTime != 0)
+						{
+							if (fMnAdvRelay)
+							{
+								LogPrintf("CheckBlock() : PoW Recipient masternode address validity could not be verified\n");
+								fBlockHasPayments = false;
+							}
+							else
+							{
+								LogPrintf("CheckBlock() : PoW Recipient masternode address validity skipping, Checks delay still active!\n");
+							}
+						}
+					}
+
+					if (nAmount == nMasternodePayment)
+					{
+						LogPrintf("CheckBlock() : PoW Recipient masternode amount validity succesfully verified\n");
+					}
+					else
+					{
+						LogPrintf("CheckBlock() : PoW Recipient masternode amount validity could not be verified\n");
+						fBlockHasPayments = false;
+					}
+				}
+				
+				// Check for PoW devops payment
+				if (i == nProofOfIndexDevops)
+				{
+					if (addressOut.ToString() == strVfyDevopsAddress)
+					{
+						LogPrintf("CheckBlock() : PoW Recipient devops address validity succesfully verified\n");
+					}
+					else
+					{
+						LogPrintf("CheckBlock() : PoW Recipient devops address validity could not be verified\n");
+
+						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_2"] ||	// Check legacy blocks for valid payment, only skip for Update_2
+							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_3"])	// Skip check during transition to new DevOps
+						{
+							fBlockHasPayments = false;
+						}
+						
+						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_4"] ||
+							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_5"])
+						{
+							fBlockHasPayments = false;
+						}
+					}
+				   
+					if (nAmount == nDevopsPayment)
+					{
+						LogPrintf("CheckBlock() : PoW Recipient devops amount validity succesfully verified\n");
+					}
+					else
+					{
+						if (pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_2"])
+						{
+							LogPrintf("CheckBlock() : PoW Recipient devops amount validity could not be verified\n");
+							fBlockHasPayments = false;
+						}
+						else
+						{
+							if (nIndexedDevopsPayment >= nDevopsPayment)
+							{
+								LogPrintf("CheckBlock() : PoW Reciepient devops amount is abnormal due to large fee paid");
+							}
+							else
+							{
+								LogPrintf("CheckBlock() : PoW Reciepient devops amount validity could not be verified");
+								fBlockHasPayments = false;
+							}
+						}
+					}
+				}
+			}
 		}
 		
-        // ppcoin: check transaction timestamp
-        if (GetBlockTime() < (int64_t)tx.nTime)
+		// Final checks (DevOps/Masternode payments)
+		if (fBlockHasPayments)
 		{
-            return DoS(50, error("CheckBlock() : block timestamp earlier than transaction timestamp"));
+			LogPrintf("CheckBlock() : PoW/PoS non-miner reward payments succesfully verified\n");
 		}
-    }
-
-    // Check for duplicate txids. This is caught by ConnectInputs(),
-    // but catching it earlier avoids a potential DoS attack:
-    std::set<uint256> uniqueTx;
-    for(const CTransaction& tx : vtx)
-    {
-        uniqueTx.insert(tx.GetHash());
-    }
-	
-    if (uniqueTx.size() != vtx.size())
-	{
-        return DoS(100, error("CheckBlock() : duplicate transaction"));
-	}
-	
-    unsigned int nSigOps = 0;
-    for(const CTransaction& tx : vtx)
-    {
-        nSigOps += GetLegacySigOpCount(tx);
-    }
-	
-    if (nSigOps > MAX_BLOCK_SIGOPS)
-	{
-        return DoS(100, error("CheckBlock() : out-of-bounds SigOpCount"));
-	}
-	
-    // Check merkle root
-    if (fCheckMerkleRoot && hashMerkleRoot != BuildMerkleTree())
-	{
-        return DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
+		else
+		{
+			LogPrintf("CheckBlock() : PoW/PoS non-miner reward payments could not be verified\n");
+			
+			return DoS(100, error("CheckBlock() : PoW/PoS invalid payments in current block\n"));
+		}
 	}
 
-    return true;
+	// Check transactions
+	for(const CTransaction& tx : vtx)
+	{
+		if (!tx.CheckTransaction())
+		{
+			return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
+		}
+		
+		// ppcoin: check transaction timestamp
+		if (GetBlockTime() < (int64_t)tx.nTime)
+		{
+			return DoS(50, error("CheckBlock() : block timestamp earlier than transaction timestamp"));
+		}
+	}
+
+	// Check for duplicate txids. This is caught by ConnectInputs(),
+	// but catching it earlier avoids a potential DoS attack:
+	std::set<uint256> uniqueTx;
+	for(const CTransaction& tx : vtx)
+	{
+		uniqueTx.insert(tx.GetHash());
+	}
+
+	if (uniqueTx.size() != vtx.size())
+	{
+		return DoS(100, error("CheckBlock() : duplicate transaction"));
+	}
+
+	unsigned int nSigOps = 0;
+	for(const CTransaction& tx : vtx)
+	{
+		nSigOps += GetLegacySigOpCount(tx);
+	}
+
+	if (nSigOps > MAX_BLOCK_SIGOPS)
+	{
+		return DoS(100, error("CheckBlock() : out-of-bounds SigOpCount"));
+	}
+
+	// Check merkle root
+	if (fCheckMerkleRoot && hashMerkleRoot != BuildMerkleTree())
+	{
+		return DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
+	}
+
+	return true;
 }
 
 bool CBlock::AcceptBlock()
