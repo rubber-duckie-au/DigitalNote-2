@@ -1267,12 +1267,14 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 					else
 					{
 						LogPrintf("CheckBlock() : PoS Recipient devops address validity could not be verified\n");
-
+						
+						/*
 						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_2"] ||
 							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_3"])
 						{
 							fBlockHasPayments = false;
 						}
+						*/
 						
 						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_4"] ||
 							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_5"])
@@ -1357,12 +1359,14 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 					else
 					{
 						LogPrintf("CheckBlock() : PoW Recipient devops address validity could not be verified\n");
-
+						
+						/*
 						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_2"] ||	// Check legacy blocks for valid payment, only skip for Update_2
 							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_3"])	// Skip check during transition to new DevOps
 						{
 							fBlockHasPayments = false;
 						}
+						*/
 						
 						if(pindexBestBlockTime < mapEpochUpdateName["PaymentUpdate_4"] ||
 							pindexBestBlockTime >= mapEpochUpdateName["PaymentUpdate_5"])
