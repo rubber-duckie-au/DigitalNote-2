@@ -54,6 +54,7 @@
 	#include "json/json_spirit_value.h"
 	
 	#include "types/ctxdestination.h"
+	#include "types/cryptedkeymap.h"
 	#include "types/data_chunk.h"
 	#include "types/ec_point.h"
 	#include "types/isminefilter.h"
@@ -135,7 +136,6 @@
 	#include "db.h"
 	#include "masternode-payments.h"
 	#include "webwalletconnector.h"
-	#include "cryptedkeymap.h"
 	#include "ecwrapper.h"
 	#include "limitedmap.h"
 	#include "mapprevtx.h"
