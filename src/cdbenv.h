@@ -4,7 +4,7 @@
 #include <boost/filesystem.hpp>
 #include <db_cxx.h>
 
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 
 class CDBEnv
 {

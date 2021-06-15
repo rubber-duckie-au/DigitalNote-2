@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 #include "ctransaction.h"
 #include "cscript.h"
 

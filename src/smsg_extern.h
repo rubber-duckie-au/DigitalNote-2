@@ -6,7 +6,7 @@
 #include <vector>
 #include <boost/thread/thread.hpp>
 
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 
 namespace leveldb {
 	class DB;

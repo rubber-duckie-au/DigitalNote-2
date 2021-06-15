@@ -2,7 +2,7 @@
 #define CCRITICALBLOCK_H
 
 #include "cmutexlock.h"
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 
 typedef CMutexLock<CCriticalSection> CCriticalBlock;
 

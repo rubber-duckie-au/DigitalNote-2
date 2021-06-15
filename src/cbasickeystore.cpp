@@ -1,6 +1,6 @@
 #include "compat.h"
 
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "cscript.h"
 #include "util.h"
 #include "ckey.h"

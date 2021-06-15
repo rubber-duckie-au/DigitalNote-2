@@ -3,7 +3,7 @@
 
 #include <map>
 
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 
 class uint256;
 class CMasternodeMan;

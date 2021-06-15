@@ -7,7 +7,7 @@
 #include "net/cservice.h"
 #include "cpubkey.h"
 #include "cscript.h"
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 
 class uint256;
 class CMasternode;

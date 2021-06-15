@@ -5,7 +5,7 @@
 #include <map>
 #include <set>
 
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 #include "util.h"
 
 class CNetAddr;

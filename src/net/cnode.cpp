@@ -8,7 +8,7 @@
 #include "net/cnetmessage.h"
 #include "crypto/bmw/bmw512.h"
 #include "net.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "util.h"
 #include "netbase.h"
 #include "net/csubnet.h"

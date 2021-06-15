@@ -6,8 +6,8 @@
 #define BITCOIN_TXMEMPOOL_H
 
 #include "uint/uint256.h"
-#include "ccriticalsection.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalsection.h"
+#include "types/ccriticalblock.h"
 
 class CInPoint;
 class COutPoint;

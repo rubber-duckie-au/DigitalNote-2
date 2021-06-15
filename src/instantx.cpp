@@ -18,7 +18,7 @@
 #include "main_extern.h"
 #include "cmnenginepool.h"
 #include "mnengine_extern.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "cmasternode.h"
 #include "cmasternodeman.h"
 #include "cactivemasternode.h"

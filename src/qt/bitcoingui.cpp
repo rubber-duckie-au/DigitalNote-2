@@ -73,7 +73,7 @@
 #include "net.h"
 #include "cscript.h"
 #include "main_extern.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "cchainparams.h"
 #include "chainparams.h"
 

@@ -2,7 +2,7 @@
 
 #include "caddrinfo.h"
 #include "addrman.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 
 #include "caddrman.h"
 

@@ -9,7 +9,7 @@
 #include <QItemSelectionModel>
 
 #include "util.h"
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 
 namespace Ui {
     class MasternodeManager;

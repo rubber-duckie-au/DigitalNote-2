@@ -16,7 +16,7 @@
 #include "chainparams.h"
 #include "ui_interface.h"
 #include "util.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "serialize.h"
 #include "crypto/bmw/bmw512.h"
 #include "cpubkey.h"

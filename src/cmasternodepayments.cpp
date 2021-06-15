@@ -12,7 +12,7 @@
 #include "cblockindex.h"
 #include "cinv.h"
 #include "net.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "cmasternode.h"
 #include "cmasternodeman.h"
 #include "cmasternodepaymentwinner.h"

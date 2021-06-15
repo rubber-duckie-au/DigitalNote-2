@@ -3,7 +3,7 @@
 #include <boost/thread.hpp>
 
 #include "util.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 
 #include "cdbenv.h"
 

@@ -3,7 +3,7 @@
 
 #include <set>
 
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 
 class CKey;
 class CPubKey;

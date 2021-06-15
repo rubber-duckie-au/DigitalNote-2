@@ -2,7 +2,7 @@
 #define MAIN_EXTERN_H
 
 #include <set>
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 #include "cmainsignals.h"
 
 class CScript;

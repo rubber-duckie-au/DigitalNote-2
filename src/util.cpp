@@ -13,8 +13,8 @@
 #include "ui_interface.h"
 #include "uint/uint256.h"
 #include "version.h"
-#include "ccriticalsection.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalsection.h"
+#include "types/ccriticalblock.h"
 #include "main_const.h"
 #include "net/cnetaddr.h"
 

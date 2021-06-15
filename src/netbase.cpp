@@ -13,8 +13,8 @@
 #endif
 
 #include "util.h"
-#include "ccriticalsection.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalsection.h"
+#include "types/ccriticalblock.h"
 #include "net/cservice.h"
 #include "net/myclosesocket.h"
 

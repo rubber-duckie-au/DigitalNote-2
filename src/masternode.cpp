@@ -1,4 +1,4 @@
-#include "ccriticalsection.h"
+#include "types/ccriticalsection.h"
 #include "uint/uint256.h"
 #include "masternodeman.h"
 #include "main_extern.h"

@@ -3,7 +3,7 @@
 #include "../../src/qt/qvaluecombobox.cpp"
 #include "../../src/qt/askpassphrasedialog.cpp"
 #include "../../src/qt/notificator.cpp"
-//#include "../../src/qt/rpcconsole.cpp"
+#include "../../src/qt/rpcconsole.cpp"
 #include "../../src/qt/addeditadrenalinenode.cpp"
 #include "../../src/qt/adrenalinenodeconfigdialog.cpp"
 #include "../../src/qt/qcustomplot.cpp"

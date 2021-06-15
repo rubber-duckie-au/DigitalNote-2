@@ -9,7 +9,7 @@
 #include "stealth.h"
 #include "script.h"
 #include "cscript.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "cdigitalnoteaddress.h"
 #include "cnodestination.h"
 #include "ckeyid.h"

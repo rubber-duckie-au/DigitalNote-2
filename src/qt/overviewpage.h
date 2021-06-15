@@ -5,6 +5,7 @@
 
 #include "util.h"
 
+#include <QAbstractItemDelegate>
 #include <QTimer>
 #include <QWidget>
 
@@ -64,6 +65,18 @@ private slots:
     void handleTransactionClicked(const QModelIndex &index);
     void updateAlerts(const QString &warnings);
     void updateWatchOnlyLabels(bool showWatchOnly);
+};
+
+class TxViewDelegate : public QAbstractItemDelegate
+{
+    Q_OBJECT
+public:
+	int unit;
+	
+    TxViewDelegate();
+	
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const;
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const;
 };
 
 #endif // OVERVIEWPAGE_H

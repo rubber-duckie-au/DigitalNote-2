@@ -27,7 +27,7 @@
 #include "script.h"
 #include "main_extern.h"
 #include "main_const.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "ctxin.h"
 #include "ctxout.h"
 #include "coutpoint.h"

@@ -17,7 +17,7 @@
 #include "net/cnodestats.h"
 #include "net/cbanentry.h"
 #include "net.h"
-#include "ccriticalblock.h"
+#include "types/ccriticalblock.h"
 #include "main.h"
 #include "ckey.h"
 #include "hash.h"

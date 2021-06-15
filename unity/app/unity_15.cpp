@@ -7,7 +7,7 @@
 #include "../../src/qt/transactionview.cpp"
 #include "../../src/qt/walletmodel.cpp"
 #include "../../src/qt/walletmodeltransaction.cpp"
-//#include "../../src/qt/overviewpage.cpp"
+#include "../../src/qt/overviewpage.cpp"
 #include "../../src/qt/csvmodelwriter.cpp"
 #include "../../src/qt/sendcoinsentry.cpp"
 #include "../../src/qt/qvalidatedlineedit.cpp"

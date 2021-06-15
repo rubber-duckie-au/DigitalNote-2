@@ -20,8 +20,6 @@ HEADERS += src/cblockindex.h
 HEADERS += src/cblocklocator.h
 HEADERS += src/cchainparams.h
 HEADERS += src/cconsensusvote.h
-HEADERS += src/ccriticalblock.h
-HEADERS += src/ccriticalsection.h
 HEADERS += src/ccrypter.h
 HEADERS += src/ccryptokeystore.h
 HEADERS += src/cdbenv.h
@@ -174,6 +172,8 @@ HEADERS += src/cbignum_ctx.h
 HEADERS += src/cbignum_error.h
 HEADERS += src/cbignum_const.h
 
+HEADERS += src/types/ccriticalblock.h
+HEADERS += src/types/ccriticalsection.h
 HEADERS += src/types/ctxdestination.h
 HEADERS += src/types/data_chunk.h
 HEADERS += src/types/ec_point.h
