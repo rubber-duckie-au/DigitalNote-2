@@ -91,7 +91,6 @@ SOURCES += src/db.cpp
 SOURCES += src/walletdb.cpp
 SOURCES += src/txdb-leveldb.cpp
 SOURCES += src/wallet.cpp
-SOURCES += src/keystore.cpp
 SOURCES += src/rpcclient.cpp
 SOURCES += src/rpcprotocol.cpp
 SOURCES += src/rpcserver.cpp

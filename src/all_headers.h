@@ -135,7 +135,7 @@
 	#include "db.h"
 	#include "masternode-payments.h"
 	#include "webwalletconnector.h"
-	#include "keystore.h"
+	#include "cryptedkeymap.h"
 	#include "ecwrapper.h"
 	#include "limitedmap.h"
 	#include "mapprevtx.h"

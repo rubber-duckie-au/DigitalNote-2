@@ -114,7 +114,6 @@ HEADERS += src/init.h
 HEADERS += src/instantx.h
 HEADERS += src/kernel.h
 HEADERS += src/key.h
-HEADERS += src/keystore.h
 HEADERS += src/limitedmap.h
 HEADERS += src/main_const.h
 HEADERS += src/main_extern.h
@@ -174,6 +173,7 @@ HEADERS += src/cbignum_const.h
 
 HEADERS += src/types/ccriticalblock.h
 HEADERS += src/types/ccriticalsection.h
+HEADERS += src/types/cryptedkeymap.h
 HEADERS += src/types/ctxdestination.h
 HEADERS += src/types/data_chunk.h
 HEADERS += src/types/ec_point.h

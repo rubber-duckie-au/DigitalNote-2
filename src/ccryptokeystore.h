@@ -5,7 +5,7 @@
 #include <boost/signals2/signal.hpp>
 
 #include "cbasickeystore.h"
-#include "keystore.h"
+#include "types/cryptedkeymap.h"
 #include "crypter.h"
 
 class CKey;
