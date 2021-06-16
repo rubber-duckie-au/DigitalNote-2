@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "cdb.h"
-#include "dberrors.h"
+#include "enums/dberrors.h"
 #include "types/cprivkey.h"
 
 class CAccount;

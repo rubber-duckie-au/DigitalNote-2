@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "mapvalue_t.h"
+#include "types/mapvalue_t.h"
 
 /** Internal transfers.
  * Database key is acentry<account><counter>.

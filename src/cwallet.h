@@ -5,15 +5,14 @@
 #include <map>
 
 #include "cwalletinterface.h"
-#include "enums/changetype.h"
-#include "dberrors.h"
-#include "mapvalue_t.h"
-#include "ckeymetadata.h"
-#include "cstealthkeymetadata.h"
 #include "ccryptokeystore.h"
+#include "cpubkey.h"
+#include "types/mapvalue_t.h"
 #include "types/txitems.h"
 #include "types/isminefilter.h"
+#include "enums/changetype.h"
 #include "enums/isminetype.h"
+#include "enums/dberrors.h"
 
 class CWalletDB;
 class CWalletTx;
@@ -25,6 +24,8 @@ class COutput;
 class CDigitalNoteSecret;
 class CKeyPool;
 class CMasterKey;
+class CKeyMetadata;
+class CStealthKeyMetadata;
 
 typedef int64_t CAmount;
 

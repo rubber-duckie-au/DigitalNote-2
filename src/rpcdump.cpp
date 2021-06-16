@@ -27,6 +27,7 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "ui_translate.h"
+#include "ckeymetadata.h"
 
 using namespace json_spirit;
 

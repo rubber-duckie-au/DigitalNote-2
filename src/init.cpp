@@ -63,6 +63,8 @@
 #include "thread.h"
 #include "cclientuiinterface.h"
 #include "ui_translate.h"
+#include "ckeymetadata.h"
+#include "cstealthkeymetadata.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "mapprevtx.h"
+#include "types/mapprevtx.h"
 #include "types/ctxdestination.h"
 
 struct CNodeStateStats;
