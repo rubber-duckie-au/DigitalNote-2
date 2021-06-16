@@ -12,6 +12,7 @@
 #include "thread.h"
 #include "main.h"
 #include "serialize.h"
+#include "enums/serialize_type.h"
 
 #include "blocksizecalculator.h"
 

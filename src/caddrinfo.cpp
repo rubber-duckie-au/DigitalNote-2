@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "serialize.h"
+#include "enums/serialize_type.h"
 #include "crypto/bmw/bmw512.h"
 #include "addrman.h"
 

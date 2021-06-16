@@ -1,6 +1,7 @@
 #include "cblock.h"
 #include "cblockindex.h"
 #include "serialize.h"
+#include "enums/serialize_type.h"
 #include "main_extern.h"
 #include "chashwriter.h"
 #include "ctxout.h"

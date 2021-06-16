@@ -46,6 +46,7 @@
 #include "thread.h"
 #include "ui_interface.h"
 #include "ui_translate.h"
+#include "enums/serialize_type.h"
 
 #include "net.h"
 

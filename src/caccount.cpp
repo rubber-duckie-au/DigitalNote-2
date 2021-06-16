@@ -1,4 +1,5 @@
 #include "serialize.h"
+#include "enums/serialize_type.h"
 
 #include "caccount.h"
 

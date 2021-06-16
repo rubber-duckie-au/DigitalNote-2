@@ -5,7 +5,7 @@
 #ifndef BITCOIN_HASH_H
 #define BITCOIN_HASH_H
 
-#include "serialize.h"
+#include "enums/serialize_type.h"
 #include "version.h"
 #include "hmac_sha512_ctx.h"
 

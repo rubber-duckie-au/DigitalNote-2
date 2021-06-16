@@ -6,6 +6,7 @@
 #include "uint/uint160.h"
 #include "uint/uint256.h"
 #include "types/ec_point.h"
+#include "serialize.h"
 
 #include "hash.h"
 

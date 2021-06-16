@@ -13,6 +13,7 @@
 #include <leveldb/write_batch.h>
 
 #include "util.h"
+#include "enums/serialize_type.h"
 #include "cdiskblockindex.h"
 #include "ctxindex.h"
 #include "uint/uint160.h"

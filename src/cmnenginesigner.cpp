@@ -18,6 +18,7 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "ui_translate.h"
+#include "enums/serialize_type.h"
 
 #include "cmnenginesigner.h"
 

@@ -13,6 +13,7 @@
 #include "net/csubnet.h"
 #include "net/myclosesocket.h"
 #include "thread.h"
+#include "enums/serialize_type.h"
 
 #include "net/cnode.h"
 

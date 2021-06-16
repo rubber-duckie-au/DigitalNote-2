@@ -37,6 +37,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "enums/serialize_type.h"
 
 using namespace json_spirit;
 

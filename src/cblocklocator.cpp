@@ -6,6 +6,7 @@
 #include "chainparams.h"
 #include "cchainparams.h"
 #include "serialize.h"
+#include "enums/serialize_type.h"
 #include "main_extern.h"
 
 #include "cblocklocator.h"

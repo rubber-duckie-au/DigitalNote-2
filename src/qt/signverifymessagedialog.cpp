@@ -18,6 +18,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "enums/serialize_type.h"
 
 #include "signverifymessagedialog.h"
 #include "ui_signverifymessagedialog.h"

@@ -18,6 +18,7 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "ctransaction.h"
+#include "enums/serialize_type.h"
 
 using namespace json_spirit;
 

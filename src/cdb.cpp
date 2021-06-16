@@ -2,7 +2,7 @@
 
 #include "util.h"
 #include "db.h"
-#include "serialize.h"
+#include "enums/serialize_type.h"
 #include "thread.h"
 #include "ckeymetadata.h"
 #include "cstealthaddress.h"

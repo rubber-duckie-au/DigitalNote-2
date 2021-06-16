@@ -8,6 +8,7 @@
 #include "creservekey.h"
 #include "ctxin.h"
 #include "ctxout.h"
+#include "enums/serialize_type.h"
 
 #include "walletmodeltransaction.h"
 

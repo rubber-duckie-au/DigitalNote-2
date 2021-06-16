@@ -8,6 +8,7 @@
 #include "smsg/stored.h"
 #include "ckeyid.h"
 #include "cpubkey.h"
+#include "enums/serialize_type.h"
 
 #include "smsg/db.h"
 

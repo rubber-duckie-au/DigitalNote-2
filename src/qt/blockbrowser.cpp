@@ -22,6 +22,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "enums/serialize_type.h"
 
 #include "blockbrowser.h"
 

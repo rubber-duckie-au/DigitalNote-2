@@ -82,18 +82,6 @@ inline const T* end_ptr(const std::vector<T,TAl>& v)
 // i.e. anything that supports .read(char*, size_t) and .write(char*, size_t)
 //
 
-enum
-{
-    // primary actions
-    SER_NETWORK         = (1 << 0),
-    SER_DISK            = (1 << 1),
-    SER_GETHASH         = (1 << 2),
-
-    // modifiers
-    SER_SKIPSIG         = (1 << 16),
-    SER_BLOCKHEADERONLY = (1 << 17),
-};
-
 #define READWRITE(obj)      (nSerSize += ::SerReadWrite(s, (obj), nType, nVersion, ser_action))
 #define READWRITES(obj)	    (::SerReadWrite(s, (obj), nType, nVersion, ser_action))
 

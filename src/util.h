@@ -21,6 +21,7 @@
 #include "serialize.h"
 #include "tinyformat.h"
 #include "allocators/securestring.h"
+
 namespace boost
 {
 	namespace filesystem

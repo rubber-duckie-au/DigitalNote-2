@@ -1,7 +1,7 @@
 #include "compat.h"
 
 #include "cblock.h"
-#include "serialize.h"
+#include "enums/serialize_type.h"
 #include "main_extern.h"
 #include "util.h"
 #include "ctxout.h"

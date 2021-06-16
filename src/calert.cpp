@@ -16,7 +16,7 @@
 #include "chainparams.h"
 #include "util.h"
 #include "thread.h"
-#include "serialize.h"
+#include "enums/serialize_type.h"
 #include "crypto/bmw/bmw512.h"
 #include "cpubkey.h"
 #include "ui_interface.h"

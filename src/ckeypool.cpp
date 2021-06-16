@@ -1,7 +1,7 @@
 #include "compat.h"
 
 #include "util.h"
-#include "serialize.h"
+#include "enums/serialize_type.h"
 
 #include "ckeypool.h"
 

@@ -33,6 +33,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "enums/serialize_type.h"
 
 #ifdef ENABLE_WALLET
 #include "walletdb.h"
