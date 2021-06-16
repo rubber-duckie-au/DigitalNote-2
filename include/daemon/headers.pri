@@ -187,6 +187,7 @@ HEADERS += src/enums/isminetype.h
 HEADERS += src/enums/opcodetype.h
 HEADERS += src/enums/script_error.h
 HEADERS += src/enums/script_verify.h
+HEADERS += src/enums/serialize_type.h
 HEADERS += src/enums/sighash.h
 HEADERS += src/enums/txnouttype.h
 
