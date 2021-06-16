@@ -171,6 +171,7 @@ HEADERS += src/types/ec_point.h
 HEADERS += src/types/isminefilter.h
 HEADERS += src/types/mapprevtx.h
 HEADERS += src/types/mapvalue_t.h
+HEADERS += src/types/nodeid.h
 HEADERS += src/types/txitems.h
 HEADERS += src/types/txpair.h
 HEADERS += src/types/valtype.h

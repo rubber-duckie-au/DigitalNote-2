@@ -5,8 +5,7 @@
 #include <set>
 
 #include "smsg/token.h"
-
-typedef int NodeId;
+#include "types/nodeid.h"
 
 namespace DigitalNote {
 namespace SMSG {

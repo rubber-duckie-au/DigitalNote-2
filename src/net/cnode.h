@@ -8,6 +8,7 @@
 #include "caddress.h"
 #include "uint/uint256.h"
 #include "thread/csemaphoregrant.h"
+#include "types/nodeid.h"
 
 #if defined(__clang__) && defined(MAC_OSX)
 	#include "cinv.h"
@@ -19,8 +20,6 @@ class CBlockIndex;
 class CNodeStats;
 class CInv;
 struct CNodeSignals;
-
-typedef int NodeId;
 
 typedef std::map<CSubNet, CBanEntry> banmap_t;
 

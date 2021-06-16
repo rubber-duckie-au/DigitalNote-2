@@ -12,6 +12,7 @@
 
 #include "types/mapprevtx.h"
 #include "types/ctxdestination.h"
+#include "types/nodeid.h"
 
 struct CNodeStateStats;
 class CValidationState;
@@ -36,8 +37,6 @@ class CScript;
 class uint160;
 
 struct CNodeSignals;
-
-typedef int NodeId;
 
 enum GetMinFee_mode
 {
