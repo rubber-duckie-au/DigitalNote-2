@@ -177,7 +177,6 @@
 	#include "protocol.h"
 	#include "dberrors.h"
 	#include "addrman.h"
-	#include "chain.h"
 	#include "cinpoint.h"
 	#include "clientversion.h"
 	#include "cnodestatestats.h"

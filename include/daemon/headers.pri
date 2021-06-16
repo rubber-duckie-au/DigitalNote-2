@@ -30,7 +30,6 @@ HEADERS += src/cdisktxpos.h
 HEADERS += src/cdnsseeddata.h
 HEADERS += src/cextkey.h
 HEADERS += src/cextpubkey.h
-HEADERS += src/chain.h
 HEADERS += src/chainparams.h
 HEADERS += src/chainparamsseeds.h
 HEADERS += src/chash160.h

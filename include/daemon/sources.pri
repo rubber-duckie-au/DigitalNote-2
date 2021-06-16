@@ -80,7 +80,6 @@ SOURCES += src/key.cpp
 SOURCES += src/pubkey.cpp
 SOURCES += src/script.cpp
 SOURCES += src/scrypt.cpp
-SOURCES += src/chain.cpp
 SOURCES += src/main.cpp
 SOURCES += src/miner.cpp
 SOURCES += src/init.cpp
