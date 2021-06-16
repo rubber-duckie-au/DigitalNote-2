@@ -6,6 +6,7 @@
 
 #include "types/ccriticalsection.h"
 #include "ctransaction.h"
+#include "cscript.h"
 
 class CMNengineEntry;
 class CMasternode;

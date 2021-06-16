@@ -112,6 +112,7 @@ SOURCES += src/webwalletconnector.cpp
 SOURCES += src/rpcsmessage.cpp
 SOURCES += src/ccoincontrol.cpp
 SOURCES += src/ui_translate.cpp
+SOURCES += src/limitedmap.cpp
 
 SOURCES += src/cbignum_ctx.cpp
 SOURCES += src/cbignum.cpp
