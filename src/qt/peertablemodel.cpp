@@ -13,13 +13,12 @@
 #include "guiconstants.h"
 #include "guiutil.h"
 #include "net.h"
-#include "sync.h"
 #include "net/cnode.h"
 #include "coutpoint.h"
 #include "main.h"
 #include "main_extern.h"
-#include "thread.h"
 #include "peertablemodel.h"
+#include "thread.h"
 
 bool NodeLessThan::operator()(const CNodeCombinedStats &left, const CNodeCombinedStats &right) const
 {

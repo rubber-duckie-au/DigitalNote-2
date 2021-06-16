@@ -10,7 +10,6 @@
 #include <boost/thread.hpp>
 
 #include "serialize.h"
-#include "sync.h"
 #include "caccount.h"
 #include "caccountingentry.h"
 #include "cwalletkey.h"
@@ -24,7 +23,6 @@
 #include "cstealthkeymetadata.h"
 #include "db.h"
 #include "cdbenv.h"
-#include "thread.h"
 #include "cmasterkey.h"
 #include "ckey.h"
 #include "hash.h"
@@ -37,6 +35,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "thread.h"
 
 #include "walletdb.h"
 

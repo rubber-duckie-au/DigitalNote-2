@@ -1,7 +1,7 @@
 #ifndef ANNOTATEDMIXIN_H
 #define ANNOTATEDMIXIN_H
 
-#include "threadsafety.h"
+#include "thread/safety.h"
 
 // Template mixin that adds -Wthread-safety locking annotations to a
 // subset of the mutex API.

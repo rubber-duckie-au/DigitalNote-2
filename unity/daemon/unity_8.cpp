@@ -1,8 +1,5 @@
-//ORIGINAL_PATH: ../src/cbignum.cpp----../src/cbase58data.cpp----../src/cdigitalnoteaddress.cpp----../src/cdigitalnoteaddressvisitor.cpp----../src/cdigitalnotesecret.cpp----../src/cbitcoinaddress.cpp----../src/cbitcoinaddressvisitor.cpp----../src/base58.cpp----../src/ctxdsin.cpp----../src/ctxdsout.cpp----../src/cmnengineentry.cpp----../src/cmnenginequeue.cpp
+//ORIGINAL_PATH: ../../src/cdigitalnoteaddressvisitor.cpp----../../src/cdigitalnotesecret.cpp----../../src/cbitcoinaddress.cpp----../../src/cbitcoinaddressvisitor.cpp----../../src/base58.cpp----../../src/ctxdsin.cpp----../../src/ctxdsout.cpp----../../src/cmnengineentry.cpp----../../src/cmnenginequeue.cpp----../../src/cmnenginesigner.cpp----../../src/cmnenginepool.cpp----../../src/mnengine.cpp
 
-#include "../../src/cbignum.cpp"
-#include "../../src/cbase58data.cpp"
-#include "../../src/cdigitalnoteaddress.cpp"
 #include "../../src/cdigitalnoteaddressvisitor.cpp"
 #include "../../src/cdigitalnotesecret.cpp"
 #include "../../src/cbitcoinaddress.cpp"
@@ -12,3 +9,6 @@
 #include "../../src/ctxdsout.cpp"
 #include "../../src/cmnengineentry.cpp"
 #include "../../src/cmnenginequeue.cpp"
+#include "../../src/cmnenginesigner.cpp"
+#include "../../src/cmnenginepool.cpp"
+#include "../../src/mnengine.cpp"

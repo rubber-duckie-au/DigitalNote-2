@@ -12,8 +12,8 @@
 #include "clientmodel.h"
 #include "guiconstants.h"
 #include "guiutil.h"
-#include "sync.h"
 #include "util.h"
+#include "thread.h"
 
 #include "bantablemodel.h"
 

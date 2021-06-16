@@ -1,5 +1,6 @@
-//ORIGINAL_PATH: src/smsg/db.cpp----src/smsg/options.cpp----src/smsg/token.cpp----src/smsg/stored.cpp----src/smsg/securemessage.cpp----src/net/cservice.cpp----src/net/csubnet.cpp----src/net/cnetaddr.cpp----src/net/caddrdb.cpp----src/net/cbandb.cpp----src/net/cbanentry.cpp----src/net/cnetmessage.cpp
+//ORIGINAL_PATH: ../../src/smsg/crypter.cpp----../../src/smsg/db.cpp----../../src/smsg/options.cpp----../../src/smsg/token.cpp----../../src/smsg/stored.cpp----../../src/smsg/securemessage.cpp----../../src/net/cservice.cpp----../../src/net/csubnet.cpp----../../src/net/cnetaddr.cpp----../../src/net/caddrdb.cpp----../../src/net/cbandb.cpp----../../src/net/cbanentry.cpp
 
+#include "../../src/smsg/crypter.cpp"
 #include "../../src/smsg/db.cpp"
 #include "../../src/smsg/options.cpp"
 #include "../../src/smsg/token.cpp"
@@ -11,4 +12,3 @@
 #include "../../src/net/caddrdb.cpp"
 #include "../../src/net/cbandb.cpp"
 #include "../../src/net/cbanentry.cpp"
-#include "../../src/net/cnetmessage.cpp"

@@ -3,8 +3,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef BITCOIN_THREADSAFETY_H
-#define BITCOIN_THREADSAFETY_H
+#ifndef THREAD_SAFETY_H
+#define THREAD_SAFETY_H
 
 #ifdef __clang__
 // TL;DR Add GUARDED_BY(mutex) to member variables. The others are
@@ -31,7 +31,9 @@
 #define EXCLUSIVE_LOCKS_REQUIRED(...)   __attribute__ ((exclusive_locks_required(__VA_ARGS__)))
 #define SHARED_LOCKS_REQUIRED(...)      __attribute__ ((shared_locks_required(__VA_ARGS__)))
 #define NO_THREAD_SAFETY_ANALYSIS       __attribute__ ((no_thread_safety_analysis))
+
 #else
+	
 #define LOCKABLE
 #define SCOPED_LOCKABLE
 #define GUARDED_BY(x)
@@ -50,5 +52,7 @@
 #define EXCLUSIVE_LOCKS_REQUIRED(...)
 #define SHARED_LOCKS_REQUIRED(...)
 #define NO_THREAD_SAFETY_ANALYSIS
+
 #endif  // __GNUC__
-#endif  // BITCOIN_THREADSAFETY_H
+
+#endif  // THREAD_SAFETY_H

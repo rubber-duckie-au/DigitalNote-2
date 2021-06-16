@@ -1,4 +1,4 @@
-//ORIGINAL_PATH: src/cpubkey.cpp----src/ckey.cpp----src/cextkey.cpp----src/ccryptokeystore.cpp----src/ccrypter.cpp----src/cmasterkey.cpp----src/ckeystore.cpp----src/cbasickeystore.cpp----src/chash256.cpp----src/chash160.cpp----src/chashwriter.cpp----src/cdb.cpp
+//ORIGINAL_PATH: ../../src/cpubkey.cpp----../../src/ckey.cpp----../../src/cextkey.cpp----../../src/ccryptokeystore.cpp----../../src/ccrypter.cpp----../../src/cmasterkey.cpp----../../src/ckeystore.cpp----../../src/cbasickeystore.cpp----../../src/chash256.cpp----../../src/chash160.cpp----../../src/chashwriter.cpp----../../src/cdb.cpp
 
 #include "../../src/cpubkey.cpp"
 #include "../../src/ckey.cpp"

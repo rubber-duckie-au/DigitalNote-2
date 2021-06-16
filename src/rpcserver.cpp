@@ -7,15 +7,14 @@
 
 #include "init.h"
 #include "util.h"
-#include "sync.h"
 #include "base58.h"
 #include "rpcvelocity.h"
 #include "ui_interface.h"
 #include "main_extern.h"
-#include "thread.h"
 #include "uint/uint256.h"
 #include "cchainparams.h"
 #include "chainparams.h"
+#include "thread.h"
 
 #ifdef ENABLE_WALLET
 #include "cwallet.h"

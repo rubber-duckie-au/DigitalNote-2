@@ -1,4 +1,4 @@
-//ORIGINAL_PATH: src/coutput.cpp----src/cwallettx.cpp----src/creservekey.cpp----src/cwallet.cpp----src/ckeypool.cpp----src/cvalidationstate.cpp----src/cblocklocator.cpp----src/cdiskblockindex.cpp----src/cblockindex.cpp----src/cdiskblockpos.cpp----src/cblock.cpp----src/ctxoutcompressor.cpp
+//ORIGINAL_PATH: ../../src/coutput.cpp----../../src/cwallettx.cpp----../../src/creservekey.cpp----../../src/cwallet.cpp----../../src/ckeypool.cpp----../../src/cvalidationstate.cpp----../../src/cblocklocator.cpp----../../src/cdiskblockindex.cpp----../../src/cblockindex.cpp----../../src/cdiskblockpos.cpp----../../src/cblock.cpp----../../src/ctxoutcompressor.cpp
 
 #include "../../src/coutput.cpp"
 #include "../../src/cwallettx.cpp"

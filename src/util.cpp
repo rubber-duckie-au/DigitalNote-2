@@ -9,13 +9,12 @@
 
 #include "cchainparams.h"
 #include "chainparams.h"
-#include "sync.h"
 #include "ui_interface.h"
 #include "uint/uint256.h"
 #include "version.h"
-#include "thread.h"
 #include "main_const.h"
 #include "net/cnetaddr.h"
+#include "thread.h"
 
 #include <openssl/bio.h>
 #include <openssl/evp.h>

@@ -18061,7 +18061,7 @@ bool QCPCurve::getTraverse(double prevKey, double prevValue, double key, double 
 	// possibly re-sort points so optimized point segment has same direction as original segment:
 	if ((key-prevKey)*(intersections.at(1).x()-intersections.at(0).x()) + (value-prevValue)*(intersections.at(1).y()-intersections.at(0).y()) < 0) // scalar product of both segments < 0 -> opposite direction
 	{
-#if (QT_VERSION_CHECK(QT_MAJOR_VERSION, QT_MINOR_VERSION, QT_PATCH_VERSION) >= QT_VERSION_CHECK(5,13,0))
+#if QT_VERSION >= QT_VERSION_CHECK(5,13,0)
 		intersections.swapItemsAt(0, 1);
 #else // QT_VERSION_CHECK
 		intersections.swap(0, 1);

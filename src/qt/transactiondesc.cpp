@@ -14,7 +14,6 @@
 #include "script.h"
 #include "main_extern.h"
 #include "main_const.h"
-#include "thread.h"
 #include "ctxin.h"
 #include "ctxout.h"
 #include "cdigitalnoteaddress.h"
@@ -22,6 +21,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "thread.h"
 
 #include <string>
 

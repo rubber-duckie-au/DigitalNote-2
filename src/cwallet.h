@@ -5,7 +5,6 @@
 #include <map>
 
 #include "cwalletinterface.h"
-#include "sync.h"
 #include "ui_interface.h"
 #include "dberrors.h"
 #include "mapvalue_t.h"

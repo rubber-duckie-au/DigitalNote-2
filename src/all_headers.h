@@ -72,12 +72,15 @@
 	#include "enums/sighash.h"
 	#include "enums/txnouttype.h"
 	
+	#include "thread.h"
+	#include "thread/cmutexlock.h"
+	#include "thread/safety.h"
+	
 	#include "allocators.h"
 	#include "allocators/zero_after_free_allocator.h"
 	#include "allocators/secure_allocator.h"
 	#include "allocators/securestring.h"
 	
-	#include "thread.h"
 	#include "cbignum.h"
 	#include "cdigitalnoteaddress.h"
 	#include "cdigitalnotesecret.h"
@@ -189,7 +192,6 @@
 	#include "message_start_size.h"
 	#include "mnengine.h"
 	#include "pubkey.h"
-	#include "threadsafety.h"
 	
 	#include "net/cservice.h"
 	#include "net/csubnet.h"

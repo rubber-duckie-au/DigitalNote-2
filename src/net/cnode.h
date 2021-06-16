@@ -2,12 +2,12 @@
 #define CNODE_H
 
 #include "mruset.h"
-#include "sync.h"
 #include "net/secmsgnode.h"
 #include "net/banreason.h"
 #include "net/cnetmessage.h"
 #include "caddress.h"
 #include "uint/uint256.h"
+#include "thread/csemaphoregrant.h"
 
 #if defined(__clang__) && defined(MAC_OSX)
 	#include "cinv.h"

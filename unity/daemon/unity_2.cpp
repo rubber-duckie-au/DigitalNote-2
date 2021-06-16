@@ -1,4 +1,4 @@
-//ORIGINAL_PATH: ../src/cdb.cpp----../src/cdbenv.cpp----../src/cinpoint.cpp----../src/coutpoint.cpp----../src/ctxin.cpp----../src/ctxout.cpp----../src/csporkmanager.cpp----../src/csporkmessage.cpp----../src/cconsensusvote.cpp----../src/ctransactionlock.cpp----../src/cunsignedalert.cpp----../src/cstealthkeymetadata.cpp
+//ORIGINAL_PATH: ../../src/cdb.cpp----../../src/cdbenv.cpp----../../src/cinpoint.cpp----../../src/coutpoint.cpp----../../src/ctxin.cpp----../../src/ctxout.cpp----../../src/csporkmanager.cpp----../../src/csporkmessage.cpp----../../src/cconsensusvote.cpp----../../src/ctransactionlock.cpp----../../src/cunsignedalert.cpp----../../src/cstealthkeymetadata.cpp
 
 #include "../../src/cdb.cpp"
 #include "../../src/cdbenv.cpp"

@@ -68,7 +68,6 @@ SOURCES += src/blockparams.cpp
 SOURCES += src/chainparams.cpp
 SOURCES += src/version.cpp
 SOURCES += src/velocity.cpp
-SOURCES += src/sync.cpp
 SOURCES += src/txmempool.cpp
 SOURCES += src/util.cpp
 SOURCES += src/hash.cpp
@@ -149,6 +148,11 @@ SOURCES += src/allocators/lockedpagemanager.cpp
 SOURCES += src/allocators/memorypagelocker.cpp
 SOURCES += src/allocators/secure_allocator.cpp
 SOURCES += src/allocators/zero_after_free_allocator.cpp
+
+SOURCES += src/thread.cpp
+SOURCES += src/thread/cmutexlock.cpp
+SOURCES += src/thread/csemaphore.cpp
+SOURCES += src/thread/csemaphoregrant.cpp
 
 SOURCES += src/smsg/address.cpp
 SOURCES += src/smsg/batchscanner.cpp

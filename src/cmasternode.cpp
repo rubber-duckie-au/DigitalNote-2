@@ -2,7 +2,6 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "sync.h"
 #include "util.h"
 #include "cvalidationstate.h"
 #include "mining.h"
@@ -11,7 +10,6 @@
 #include "main.h"
 #include "serialize.h"
 #include "hash.h"
-#include "thread.h"
 #include "init.h"
 #include "masternode.h"
 #include "masternodeman.h"
@@ -19,6 +17,7 @@
 #include "ctxout.h"
 #include "cmnenginepool.h"
 #include "mnengine_extern.h"
+#include "thread.h"
 
 #include "cmasternode.h"
 

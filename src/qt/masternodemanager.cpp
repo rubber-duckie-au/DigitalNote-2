@@ -23,7 +23,6 @@
 #include <QUrlQuery>
 #endif
 
-#include "sync.h"
 #include "clientmodel.h"
 #include "walletmodel.h"
 #include "cmasternode.h"
@@ -38,12 +37,12 @@
 #include "rpcserver.h"
 #include "guiutil.h"
 #include "script.h"
-#include "thread.h"
 #include "cdigitalnoteaddress.h"
 #include "cnodestination.h"
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "thread.h"
 
 #include "masternodemanager.h"
 #include "ui_masternodemanager.h"

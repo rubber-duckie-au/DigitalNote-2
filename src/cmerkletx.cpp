@@ -8,11 +8,11 @@
 #include "mining.h"
 #include "ctransactionlock.h"
 #include "main_extern.h"
-#include "sync.h"
 #include "txmempool.h"
 #include "main.h"
 #include "ctxout.h"
 #include "ctxin.h"
+#include "thread.h"
 
 #include "cmerkletx.h"
 

@@ -46,7 +46,6 @@ Notes:
 #endif
 
 #include "lz4/lz4.c"
-#include "thread.h"
 #include "txdb-leveldb.h"
 #include "net.h"
 #include "cblock.h"
@@ -81,6 +80,7 @@ Notes:
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "thread.h"
 
 using namespace json_spirit;
 
