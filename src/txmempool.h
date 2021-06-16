@@ -7,7 +7,6 @@
 
 #include "uint/uint256.h"
 #include "types/ccriticalsection.h"
-#include "types/ccriticalblock.h"
 
 class CInPoint;
 class COutPoint;
@@ -30,6 +29,7 @@ private:
 
 public:
     mutable CCriticalSection cs;
+	
     std::map<uint256, CTransaction> mapTx;
     std::map<COutPoint, CInPoint> mapNextTx;
 
@@ -42,19 +42,8 @@ public:
     void queryHashes(std::vector<uint256>& vtxid);
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
-
-    unsigned long size() const
-    {
-        LOCK(cs);
-        return mapTx.size();
-    }
-
-    bool exists(uint256 hash) const
-    {
-        LOCK(cs);
-        return (mapTx.count(hash) != 0);
-    }
-
+    unsigned long size() const;
+    bool exists(uint256 hash) const;
     bool lookup(uint256 hash, CTransaction& result) const;
 };
 

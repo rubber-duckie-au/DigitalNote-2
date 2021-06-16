@@ -29,7 +29,6 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "checkpoints.h"
-//#include "mnengine-relay.h"
 #include "cactivemasternode.h"
 #include "cmasternodedb.h"
 #include "cmasternodepayments.h"
@@ -62,6 +61,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "thread.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"
@@ -1432,3 +1432,4 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     return !fRequestShutdown;
 }
+

@@ -150,6 +150,7 @@ HEADERS += src/spork.h
 HEADERS += src/stealth.h
 HEADERS += src/strlcpy.h
 HEADERS += src/sync.h
+HEADERS += src/thread.h
 HEADERS += src/threadsafety.h
 HEADERS += src/tinyformat.h
 HEADERS += src/txdb.h

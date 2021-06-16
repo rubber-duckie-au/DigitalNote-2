@@ -11,7 +11,7 @@
 #include "main.h"
 #include "serialize.h"
 #include "hash.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "init.h"
 #include "masternode.h"
 #include "masternodeman.h"

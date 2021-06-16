@@ -3,7 +3,7 @@
 #include "util.h"
 #include "db.h"
 #include "serialize.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "ckeymetadata.h"
 #include "cstealthaddress.h"
 #include "cprivkey.h"

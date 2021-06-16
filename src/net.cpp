@@ -44,6 +44,7 @@
 #include "main_extern.h"
 #include "ctransaction.h"
 #include "init.h"
+#include "thread.h"
 
 #include "net.h"
 

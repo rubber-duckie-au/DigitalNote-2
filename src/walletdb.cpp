@@ -24,7 +24,7 @@
 #include "cstealthkeymetadata.h"
 #include "db.h"
 #include "cdbenv.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "cmasterkey.h"
 #include "ckey.h"
 #include "hash.h"

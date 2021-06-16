@@ -47,6 +47,7 @@
 #include "cbitcoinaddress.h"
 #include "cdigitalnotesecret.h"
 #include "cdigitalnoteaddress.h"
+#include "thread.h"
 
 #include "cwallet.h"
 

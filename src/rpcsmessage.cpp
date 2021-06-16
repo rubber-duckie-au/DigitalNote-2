@@ -20,7 +20,7 @@
 #include "smsg/db.h"
 #include "smsg/stored.h"
 #include "smsg/messagedata.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "util.h"
 #include "base58.h"
 #include "cdigitalnoteaddress.h"

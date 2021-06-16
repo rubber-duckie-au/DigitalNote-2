@@ -77,6 +77,7 @@
 	#include "allocators/secure_allocator.h"
 	#include "allocators/securestring.h"
 	
+	#include "thread.h"
 	#include "cbignum.h"
 	#include "cdigitalnoteaddress.h"
 	#include "cdigitalnotesecret.h"

@@ -8,7 +8,7 @@
 #include "util.h"
 #include "net.h"
 #include "cwallet.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "cblockindex.h"
 #include "cwallettx.h"
 #include "ckey.h"

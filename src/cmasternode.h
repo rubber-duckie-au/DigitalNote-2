@@ -6,11 +6,11 @@
 #include "ctxin.h"
 #include "net/cservice.h"
 #include "cpubkey.h"
-#include "cscript.h"
 #include "types/ccriticalsection.h"
 
 class uint256;
 class CMasternode;
+class CScript;
 
 bool operator==(const CMasternode& a, const CMasternode& b);
 bool operator!=(const CMasternode& a, const CMasternode& b);
@@ -62,8 +62,8 @@ public:
 
 	CMasternode();
 	CMasternode(const CMasternode& other);
-	CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std::vector<unsigned char> newSig, int64_t newSigTime, CPubKey newPubkey2,
-			int protocolVersionIn, CScript donationAddress, int donationPercentage);
+	CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std::vector<unsigned char> newSig, int64_t newSigTime,
+			CPubKey newPubkey2, int protocolVersionIn, CScript donationAddress, int donationPercentage);
 
 	void swap(CMasternode& first, CMasternode& second);
 	

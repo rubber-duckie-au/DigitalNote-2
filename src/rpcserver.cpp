@@ -12,7 +12,7 @@
 #include "rpcvelocity.h"
 #include "ui_interface.h"
 #include "main_extern.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "uint/uint256.h"
 #include "cchainparams.h"
 #include "chainparams.h"

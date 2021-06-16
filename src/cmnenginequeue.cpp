@@ -1,4 +1,5 @@
 #include <boost/lexical_cast.hpp>
+
 #include "util.h"
 #include "net.h"
 #include "ckey.h"
@@ -8,6 +9,7 @@
 #include "cmnenginesigner.h"
 #include "mnengine.h"
 #include "mnengine_extern.h"
+#include "thread.h"
 
 #include "cmnenginequeue.h"
 

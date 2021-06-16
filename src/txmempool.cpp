@@ -9,6 +9,7 @@
 #include "cinpoint.h"
 #include "ctxout.h"
 #include "ctxin.h"
+#include "thread.h"
 
 #include "txmempool.h"
 
@@ -100,6 +101,20 @@ void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
         vtxid.push_back((*mi).first);
 }
 
+unsigned long CTxMemPool::size() const
+{
+	LOCK(cs);
+	
+	return mapTx.size();
+}
+
+bool CTxMemPool::exists(uint256 hash) const
+{
+	LOCK(cs);
+	
+	return (mapTx.count(hash) != 0);
+}
+
 bool CTxMemPool::lookup(uint256 hash, CTransaction& result) const
 {
     LOCK(cs);
@@ -108,3 +123,4 @@ bool CTxMemPool::lookup(uint256 hash, CTransaction& result) const
     result = i->second;
     return true;
 }
+

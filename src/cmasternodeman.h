@@ -5,7 +5,7 @@
 #include <map>
 #include <boost/filesystem/path.hpp>
 
-#include "types/ccriticalblock.h"
+#include "types/ccriticalsection.h"
 
 class CNode;
 class CMasternode;

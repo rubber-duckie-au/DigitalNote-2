@@ -28,7 +28,7 @@
 #include "main_extern.h"
 #include "webwalletconnector.h"
 #include "chashwriter.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "ckey.h"
 #include "ctxout.h"
 #include "ctxin.h"

@@ -1,4 +1,4 @@
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "cscript.h"
 #include "ckey.h"
 #include "cpubkey.h"

@@ -9,7 +9,7 @@
 #include "cdiskblockpos.h"
 #include "cscript.h"
 #include "main_extern.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "main.h"
 #include "serialize.h"
 
