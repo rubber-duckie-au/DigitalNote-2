@@ -32,8 +32,6 @@ namespace boost
 class CNetAddr;
 class uint256;
 
-typedef int64_t CAmount;
-
 #define BEGIN(a)            ((char*)&(a))
 #define END(a)              ((char*)&((&(a))[1]))
 #define UBEGIN(a)           ((unsigned char*)&(a))

@@ -3,12 +3,16 @@
 
 #include <string>
 #include <vector>
-#include <boost/foreach.hpp>
+#include <list>
 
 #include "cmerkletx.h"
-#include "cwallet.h"
 #include "types/isminefilter.h"
+#include "types/mapvalue_t.h"
+#include "types/camount.h"
 #include "enums/changetype.h"
+#include "types/ctxdestination.h"
+
+class CWallet;
 
 void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue);
 void WriteOrderPos(const int64_t& nOrderPos, mapValue_t& mapValue);

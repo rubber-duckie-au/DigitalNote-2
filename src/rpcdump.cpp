@@ -10,6 +10,7 @@
 
 #include "init.h" // for pwalletMain
 #include "rpcserver.h"
+#include "cwallet.h"
 #include "cwallettx.h"
 #include "walletdb.h"
 #include "cblockindex.h"

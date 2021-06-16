@@ -4,7 +4,8 @@
 #include "compat.h"
 
 #include <QWidget>
-#include "util.h"
+
+#include "types/camount.h"
 
 QT_BEGIN_NAMESPACE
 class QDoubleSpinBox;

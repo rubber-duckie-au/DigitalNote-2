@@ -10,6 +10,7 @@
 #include "types/mapvalue_t.h"
 #include "types/txitems.h"
 #include "types/isminefilter.h"
+#include "types/camount.h"
 #include "enums/changetype.h"
 #include "enums/isminetype.h"
 #include "enums/dberrors.h"
@@ -26,8 +27,6 @@ class CKeyPool;
 class CMasterKey;
 class CKeyMetadata;
 class CStealthKeyMetadata;
-
-typedef int64_t CAmount;
 
 typedef std::map<CKeyID, CStealthKeyMetadata> StealthKeyMetaMap;
 

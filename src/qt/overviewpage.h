@@ -3,7 +3,7 @@
 
 #include "compat.h"
 
-#include "util.h"
+#include "types/camount.h"
 
 #include <QAbstractItemDelegate>
 #include <QTimer>
