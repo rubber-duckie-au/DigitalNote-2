@@ -11,7 +11,6 @@
 #include "init.h"
 #include "util.h"
 #include "instantx.h"
-#include "ui_interface.h"
 #include "cvalidationstate.h"
 #include "cwallet.h"
 #include "cwallettx.h"

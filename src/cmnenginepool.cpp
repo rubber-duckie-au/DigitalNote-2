@@ -33,6 +33,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "ui_translate.h"
 
 #include "cmnenginepool.h"
 
@@ -360,7 +361,7 @@ void CMNenginePool::CheckFinalTransaction()
 
             // not much we can do in this case
             UpdateState(POOL_STATUS_ACCEPTING_ENTRIES);
-            RelayCompletedTransaction(sessionID, true, _("Transaction not valid, please try again"));
+            RelayCompletedTransaction(sessionID, true, ui_translate("Transaction not valid, please try again"));
             
 			return;
         }
@@ -419,7 +420,7 @@ void CMNenginePool::CheckFinalTransaction()
         RelayInventory(inv);
 
         // Tell the clients it was successful
-        RelayCompletedTransaction(sessionID, false, _("Transaction created successfully."));
+        RelayCompletedTransaction(sessionID, false, ui_translate("Transaction created successfully."));
 
         // Randomly charge clients
         ChargeRandomFees();
@@ -729,7 +730,7 @@ void CMNenginePool::CheckTimeout()
         SetNull();
 
         UpdateState(POOL_STATUS_ERROR);
-        lastMessage = _("Session timed out.");
+        lastMessage = ui_translate("Session timed out.");
     }
 
     if(state == POOL_STATUS_SIGNING && GetTimeMillis()-lastTimeChanged >= (MNengine_SIGNING_TIMEOUT*1000)+addLagTime )
@@ -741,7 +742,7 @@ void CMNenginePool::CheckTimeout()
 		SetNull();
 
 		UpdateState(POOL_STATUS_ERROR);
-		lastMessage = _("Signing timed out.");
+		lastMessage = ui_translate("Signing timed out.");
     }
 }
 
@@ -921,7 +922,7 @@ bool CMNenginePool::AddEntry(const std::vector<CTxIn>& newInput, const int64_t& 
         if (in.prevout.IsNull() || nAmount < 0)
 		{
             LogPrint("mnengine", "CMNenginePool::AddEntry - input not valid!\n");
-            error = _("Input is not valid.");
+            error = ui_translate("Input is not valid.");
             
 			sessionUsers--;
             
@@ -932,7 +933,7 @@ bool CMNenginePool::AddEntry(const std::vector<CTxIn>& newInput, const int64_t& 
     if (!IsCollateralValid(txCollateral))
 	{
         LogPrint("mnengine", "CMNenginePool::AddEntry - collateral not valid!\n");
-		error = _("Collateral is not valid.");
+		error = ui_translate("Collateral is not valid.");
         
 		sessionUsers--;
         
@@ -943,7 +944,7 @@ bool CMNenginePool::AddEntry(const std::vector<CTxIn>& newInput, const int64_t& 
 	{
         LogPrint("mnengine", "CMNenginePool::AddEntry - entries is full!\n");
         
-		error = _("Entries are full.");
+		error = ui_translate("Entries are full.");
         
 		sessionUsers--;
 		
@@ -961,7 +962,7 @@ bool CMNenginePool::AddEntry(const std::vector<CTxIn>& newInput, const int64_t& 
                 if((CTxIn)s == in)
 				{
                     LogPrint("mnengine", "CMNenginePool::AddEntry - found in vin\n");
-                    error = _("Already have that input.");
+                    error = ui_translate("Already have that input.");
                     
 					sessionUsers--;
                     
@@ -1403,26 +1404,26 @@ std::string CMNenginePool::GetMessageByID(int messageID)
 {
     switch (messageID)
 	{
-		case ERR_ALREADY_HAVE: 			return _("Already have that input.");
-		case ERR_ENTRIES_FULL: 			return _("Entries are full.");
-		case ERR_EXISTING_TX: 			return _("Not compatible with existing transactions.");
-		case ERR_FEES: 					return _("Transaction fees are too high.");
-		case ERR_INVALID_COLLATERAL: 	return _("Collateral not valid.");
-		case ERR_INVALID_INPUT: 		return _("Input is not valid.");
-		case ERR_INVALID_SCRIPT: 		return _("Invalid script detected.");
-		case ERR_INVALID_TX: 			return _("Transaction not valid.");
-		case ERR_MAXIMUM: 				return _("Value more than MNengine pool maximum allows.");
-		case ERR_MN_LIST: 				return _("Not in the Masternode list.");
-		case ERR_MODE: 					return _("Incompatible mode.");
-		case ERR_NON_STANDARD_PUBKEY: 	return _("Non-standard public key detected.");
-		case ERR_NOT_A_MN: 				return _("This is not a Masternode.");
-		case ERR_QUEUE_FULL: 			return _("Masternode queue is full.");
-		case ERR_RECENT: 				return _("Last MNengine was too recent.");
-		case ERR_SESSION:				return _("Session not complete!");
-		case ERR_MISSING_TX:			return _("Missing input transaction information.");
-		case ERR_VERSION:				return _("Incompatible version.");
-		case MSG_SUCCESS:				return _("Transaction created successfully.");
-		case MSG_ENTRIES_ADDED: 		return _("Your entries added successfully.");
+		case ERR_ALREADY_HAVE: 			return ui_translate("Already have that input.");
+		case ERR_ENTRIES_FULL: 			return ui_translate("Entries are full.");
+		case ERR_EXISTING_TX: 			return ui_translate("Not compatible with existing transactions.");
+		case ERR_FEES: 					return ui_translate("Transaction fees are too high.");
+		case ERR_INVALID_COLLATERAL: 	return ui_translate("Collateral not valid.");
+		case ERR_INVALID_INPUT: 		return ui_translate("Input is not valid.");
+		case ERR_INVALID_SCRIPT: 		return ui_translate("Invalid script detected.");
+		case ERR_INVALID_TX: 			return ui_translate("Transaction not valid.");
+		case ERR_MAXIMUM: 				return ui_translate("Value more than MNengine pool maximum allows.");
+		case ERR_MN_LIST: 				return ui_translate("Not in the Masternode list.");
+		case ERR_MODE: 					return ui_translate("Incompatible mode.");
+		case ERR_NON_STANDARD_PUBKEY: 	return ui_translate("Non-standard public key detected.");
+		case ERR_NOT_A_MN: 				return ui_translate("This is not a Masternode.");
+		case ERR_QUEUE_FULL: 			return ui_translate("Masternode queue is full.");
+		case ERR_RECENT: 				return ui_translate("Last MNengine was too recent.");
+		case ERR_SESSION:				return ui_translate("Session not complete!");
+		case ERR_MISSING_TX:			return ui_translate("Missing input transaction information.");
+		case ERR_VERSION:				return ui_translate("Incompatible version.");
+		case MSG_SUCCESS:				return ui_translate("Transaction created successfully.");
+		case MSG_ENTRIES_ADDED: 		return ui_translate("Your entries added successfully.");
 		case MSG_NOERR:
 		default:						return "";
     }

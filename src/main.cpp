@@ -27,7 +27,6 @@
 #include "net.h"
 #include "txdb.h"
 #include "txmempool.h"
-#include "ui_interface.h"
 #include "velocity.h"
 #include "cmasternode.h"
 #include "cmasternodeman.h"
@@ -72,6 +71,8 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "thread.h"
+#include "ui_interface.h"
+#include "ui_translate.h"
 
 using namespace boost;
 
@@ -419,7 +420,7 @@ bool AbortNode(const std::string &strMessage, const std::string &userMessage)
 	LogPrintf("*** %s\n", strMessage);
     
 	uiInterface.ThreadSafeMessageBox(
-        userMessage.empty() ? _("Error: A fatal internal error occured, see debug.log for details") : userMessage,
+        userMessage.empty() ? ui_translate("Error: A fatal internal error occured, see debug.log for details") : userMessage,
         "",
 		CClientUIInterface::MSG_ERROR
 	);
@@ -2020,7 +2021,7 @@ bool CheckDiskSpace(uint64_t nAdditionalBytes)
     // Check for nMinDiskSpace bytes (currently 50MB)
     if (nFreeBytesAvailable < nMinDiskSpace + nAdditionalBytes)
     {
-        std::string strMessage = _("Error: Disk space is low!");
+        std::string strMessage = ui_translate("Error: Disk space is low!");
         strMiscWarning = strMessage;
         LogPrintf("*** %s\n", strMessage);
         uiInterface.ThreadSafeMessageBox(strMessage, "", CClientUIInterface::MSG_ERROR);
@@ -2312,7 +2313,7 @@ std::string GetWarnings(const std::string &strFor)
 	
     if (!CLIENT_VERSION_IS_RELEASE)
 	{
-        strStatusBar = _("This is a pre-release test build - use at your own risk - do not use for mining or merchant applications");
+        strStatusBar = ui_translate("This is a pre-release test build - use at your own risk - do not use for mining or merchant applications");
 	}
 	
     // Misc warnings like out of disk space and clock is wrong

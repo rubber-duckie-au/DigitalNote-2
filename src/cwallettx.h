@@ -8,6 +8,7 @@
 #include "cmerkletx.h"
 #include "cwallet.h"
 #include "types/isminefilter.h"
+#include "enums/changetype.h"
 
 void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue);
 void WriteOrderPos(const int64_t& nOrderPos, mapValue_t& mapValue);

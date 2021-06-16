@@ -11,9 +11,9 @@
 #include "init.h"
 #include "util.h"
 #include "main_extern.h"
-#include "ui_interface.h"
 #include "chainparams.h"
 #include "noui.h"
+#include "ui_translate.h"
 
 void WaitForShutdown(boost::thread_group* threadGroup)
 {
@@ -64,12 +64,12 @@ bool AppInit(int argc, char* argv[])
 		if (mapArgs.count("-?") || mapArgs.count("--help"))
 		{
 			// First part of help message is specific to bitcoind / RPC client
-			std::string strUsage = _("DigitalNote version") + " " + FormatFullVersion() + "\n\n" +
-				_("Usage:") + "\n" +
+			std::string strUsage = ui_translate("DigitalNote version") + " " + FormatFullVersion() + "\n\n" +
+				ui_translate("Usage:") + "\n" +
 				  "  DigitalNoted [options]                     " + "\n" +
-				  "  DigitalNoted [options] <command> [params]  " + _("Send command to -server or DigitalNoted") + "\n" +
-				  "  DigitalNoted [options] help                " + _("List commands") + "\n" +
-				  "  DigitalNoted [options] help <command>      " + _("Get help for a command") + "\n";
+				  "  DigitalNoted [options] <command> [params]  " + ui_translate("Send command to -server or DigitalNoted") + "\n" +
+				  "  DigitalNoted [options] help                " + ui_translate("List commands") + "\n" +
+				  "  DigitalNoted [options] help <command>      " + ui_translate("Get help for a command") + "\n";
 
 			strUsage += "\n" + HelpMessage();
 

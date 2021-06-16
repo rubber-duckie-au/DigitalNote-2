@@ -61,7 +61,6 @@
 #include "guiutil.h"
 #include "rpcconsole.h"
 #include "init.h"
-#include "ui_interface.h"
 #include "masternodemanager.h"
 #include "messagemodel.h"
 #include "messagepage.h"
@@ -76,6 +75,7 @@
 #include "thread.h"
 #include "cchainparams.h"
 #include "chainparams.h"
+#include "cclientuiinterface.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"

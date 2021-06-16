@@ -5,7 +5,7 @@
 #include <map>
 
 #include "cwalletinterface.h"
-#include "ui_interface.h"
+#include "enums/changetype.h"
 #include "dberrors.h"
 #include "mapvalue_t.h"
 #include "ckeymetadata.h"

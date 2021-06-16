@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <map>
-#include <boost/filesystem/path.hpp>
 
 #include "types/ccriticalsection.h"
 

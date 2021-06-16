@@ -21,9 +21,9 @@
 
 #include "rpcprotocol.h"
 #include "util.h"
-#include "ui_interface.h"
 #include "cchainparams.h"
 #include "chainparams.h"
+#include "ui_translate.h"
 
 #include "rpcclient.h"
 
@@ -35,7 +35,7 @@ Object CallRPC(const std::string& strMethod, const Array& params)
 {
     if (mapArgs["-rpcuser"] == "" && mapArgs["-rpcpassword"] == "")
         throw std::runtime_error(strprintf(
-            _("You must set rpcpassword=<password> in the configuration file:\n%s\n"
+            ui_translate("You must set rpcpassword=<password> in the configuration file:\n%s\n"
               "If the file does not exist, create it with owner-readable-only file permissions."),
                 GetConfigFile().string()));
 

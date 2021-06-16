@@ -38,7 +38,7 @@
 #include "comparevalueonly.h"
 #include "ccrypter.h"
 #include "cmasterkey.h"
-#include "csecret.h"
+#include "types/csecret.h"
 #include "ckey.h"
 #include "ctxout.h"
 #include "hash.h"
@@ -48,6 +48,8 @@
 #include "cdigitalnotesecret.h"
 #include "cdigitalnoteaddress.h"
 #include "thread.h"
+#include "ui_interface.h"
+#include "ui_translate.h"
 
 #include "cwallet.h"
 
@@ -2114,14 +2116,14 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
     {
         if (nValue < 0)
         {
-            strFailReason = _("Transaction amounts must be positive");
+            strFailReason = ui_translate("Transaction amounts must be positive");
             return false;
         }
         nValue += s.second;
     }
     if (vecSend.empty() || nValue < 0)
     {
-        strFailReason = _("Transaction amounts must be positive");
+        strFailReason = ui_translate("Transaction amounts must be positive");
         return false;
     }
 
@@ -2155,12 +2157,12 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
                         std::vector<valtype> vSolutions;
                         if (!Solver(txout.scriptPubKey, whichType, vSolutions))
                         {
-                            strFailReason = _("Invalid scriptPubKey");
+                            strFailReason = ui_translate("Invalid scriptPubKey");
                             return false;
                         }
                         if(whichType == TX_NONSTANDARD)
                         {
-                            strFailReason = _("Unknown transaction type");
+                            strFailReason = ui_translate("Unknown transaction type");
                             return false;
                         }
                         if(whichType == TX_NULL_DATA)
@@ -2169,7 +2171,7 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
 
                     if (!fOpReturn && txout.IsDust(MIN_RELAY_TX_FEE))
                     {
-                        strFailReason = _("Transaction amount too small");
+                        strFailReason = ui_translate("Transaction amount too small");
                         return false;
                     }
                     wtxNew.vout.push_back(txout);
@@ -2182,15 +2184,15 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
                 if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, coinControl, coin_type, useIX))
                 {
                     if(coin_type == ALL_COINS) {
-                        strFailReason = _(" Insufficient funds.");
+                        strFailReason = ui_translate(" Insufficient funds.");
                     } else if (coin_type == ONLY_NOT10000IFMN) {
-                        strFailReason = _(" Unable to locate enough MNengine non-denominated funds for this transaction.");
+                        strFailReason = ui_translate(" Unable to locate enough MNengine non-denominated funds for this transaction.");
                     } else if (coin_type == ONLY_NONDENOMINATED_NOT10000IFMN ) {
-                        strFailReason = _(" Unable to locate enough MNengine non-denominated funds for this transaction that are not equal 1000 XDN.");
+                        strFailReason = ui_translate(" Unable to locate enough MNengine non-denominated funds for this transaction that are not equal 1000 XDN.");
                     }
 
                     if(useIX){
-                        strFailReason += _(" InstantX requires inputs with at least 10 confirmations, you might need to wait a few minutes and try again.");
+                        strFailReason += ui_translate(" InstantX requires inputs with at least 10 confirmations, you might need to wait a few minutes and try again.");
                     }
                     return false;
                 }
@@ -2275,7 +2277,7 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
 				{
                     if (!SignSignature(*this, *coin.first, wtxNew, nIn++))
                     {
-                        strFailReason = _(" Signing transaction failed");
+                        strFailReason = ui_translate(" Signing transaction failed");
                         return false;
                     }
 				}
@@ -2284,7 +2286,7 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >&
                 unsigned int nBytes = ::GetSerializeSize(*(CTransaction*)&wtxNew, SER_NETWORK, PROTOCOL_VERSION);
                 if (nBytes >= MAX_STANDARD_TX_SIZE)
                 {
-                    strFailReason = _(" Transaction too large");
+                    strFailReason = ui_translate(" Transaction too large");
                     return false;
                 }
                 dPriority = wtxNew.ComputePriority(dPriority, nBytes);
@@ -2967,7 +2969,7 @@ std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string
 
     if (IsLocked())
     {
-        std::string strError = _("Error: Wallet locked, unable to create transaction!");
+        std::string strError = ui_translate("Error: Wallet locked, unable to create transaction!");
 		
         LogPrintf("SendMoney() : %s", strError);
         
@@ -2976,7 +2978,7 @@ std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string
 	
     if (fWalletUnlockStakingOnly)
     {
-        std::string strError = _("Error: Wallet unlocked for staking only, unable to create transaction.");
+        std::string strError = ui_translate("Error: Wallet unlocked for staking only, unable to create transaction.");
         
 		LogPrintf("SendMoney() : %s", strError);
         
@@ -2994,7 +2996,7 @@ std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string
         if (nValue + nFeeRequired > GetBalance())
 		{
             strError = strprintf(
-				_(
+				ui_translate(
 					"Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"
 				),
 				FormatMoney(nFeeRequired)
@@ -3011,7 +3013,7 @@ std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string
 
     if (!CommitTransaction(wtxNew, reservekey))
 	{
-        return _("Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+        return ui_translate("Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 	}
 	
     return "";
@@ -3022,9 +3024,9 @@ std::string CWallet::SendMoneyToDestination(const CTxDestination& address, int64
 {
     // Check amount
     if (nValue <= 0)
-        return _("Invalid amount");
+        return ui_translate("Invalid amount");
     if (nValue + nTransactionFee > GetBalance())
-        return _("Insufficient funds");
+        return ui_translate("Insufficient funds");
 
     // Parse DigitalNote address
     CScript scriptPubKey;
@@ -3402,13 +3404,13 @@ std::string CWallet::SendStealthMoney(CScript scriptPubKey, int64_t nValue, std:
 
     if (IsLocked())
     {
-        std::string strError = _("Error: Wallet locked, unable to create transaction  ");
+        std::string strError = ui_translate("Error: Wallet locked, unable to create transaction  ");
         LogPrintf("SendStealthMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (fWalletUnlockStakingOnly)
     {
-        std::string strError = _("Error: Wallet unlocked for staking only, unable to create transaction.");
+        std::string strError = ui_translate("Error: Wallet unlocked for staking only, unable to create transaction.");
         LogPrintf("SendStealthMoney() : %s\n", strError.c_str());
         return strError;
     }
@@ -3416,7 +3418,7 @@ std::string CWallet::SendStealthMoney(CScript scriptPubKey, int64_t nValue, std:
     {
         std::string strError;
         if (nValue + nFeeRequired > GetBalance())
-            strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
+            strError = strprintf(ui_translate("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
         else
             strError = "Failed to Create transaction";
 
@@ -3424,11 +3426,11 @@ std::string CWallet::SendStealthMoney(CScript scriptPubKey, int64_t nValue, std:
         return strError;
     }
 
-    if (fAskFee && !uiInterface.ThreadSafeAskFee(nFeeRequired, _("Sending...")))
+    if (fAskFee && !uiInterface.ThreadSafeAskFee(nFeeRequired, ui_translate("Sending...")))
         return "ABORTED";
 
     if (!CommitTransaction(wtxNew, reservekey))
-        return _("Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+        return ui_translate("Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
     return "";
 }
@@ -3940,7 +3942,7 @@ bool CWallet::TopUpKeyPool(unsigned int nSize)
 			LogPrintf("keypool added key %d, size=%u\n", nEnd, setKeyPool.size());
             
 			double dProgress = 100.f * nEnd / (nTargetSize + 1);
-            std::string strMsg = strprintf(_("Loading wallet... (%3.2f %%)"), dProgress);
+            std::string strMsg = strprintf(ui_translate("Loading wallet... (%3.2f %%)"), dProgress);
             uiInterface.InitMessage(strMsg);
         }
     }

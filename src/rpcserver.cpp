@@ -9,12 +9,13 @@
 #include "util.h"
 #include "base58.h"
 #include "rpcvelocity.h"
-#include "ui_interface.h"
 #include "main_extern.h"
 #include "uint/uint256.h"
 #include "cchainparams.h"
 #include "chainparams.h"
 #include "thread.h"
+#include "ui_interface.h"
+#include "ui_translate.h"
 
 #ifdef ENABLE_WALLET
 #include "cwallet.h"
@@ -636,16 +637,16 @@ void StartRPCThreads()
         
 		if (mapArgs.count("-server"))
 		{
-            strWhatAmI = strprintf(_("To use the %s option"), "\"-server\"");
+            strWhatAmI = strprintf(ui_translate("To use the %s option"), "\"-server\"");
 		}
         else if (mapArgs.count("-daemon"))
 		{
-            strWhatAmI = strprintf(_("To use the %s option"), "\"-daemon\"");
+            strWhatAmI = strprintf(ui_translate("To use the %s option"), "\"-daemon\"");
         }
 		
 		uiInterface.ThreadSafeMessageBox(
 			strprintf(
-				_(
+				ui_translate(
 					"%s, you must set a rpcpassword in the configuration file:\n"
 					"%s\n"
 					"It is recommended you use the following random password:\n"
@@ -744,7 +745,7 @@ void StartRPCThreads()
     }
     catch(boost::system::system_error &e)
     {
-        strerr = strprintf(_("An error occurred while setting up the RPC port %u for listening on IPv6, falling back to IPv4: %s"), endpoint.port(), e.what());
+        strerr = strprintf(ui_translate("An error occurred while setting up the RPC port %u for listening on IPv6, falling back to IPv4: %s"), endpoint.port(), e.what());
     }
 
     try
@@ -768,7 +769,7 @@ void StartRPCThreads()
     }
     catch(boost::system::system_error &e)
     {
-        strerr = strprintf(_("An error occurred while setting up the RPC port %u for listening on IPv4: %s"), endpoint.port(), e.what());
+        strerr = strprintf(ui_translate("An error occurred while setting up the RPC port %u for listening on IPv4: %s"), endpoint.port(), e.what());
     }
 
     if (!fListening)

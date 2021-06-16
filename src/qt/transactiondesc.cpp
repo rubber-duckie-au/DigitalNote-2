@@ -8,7 +8,6 @@
 #include "paymentserver.h"
 #include "transactionrecord.h"
 #include "util.h"
-#include "ui_interface.h"
 #include "txdb.h"
 #include "cwallettx.h"
 #include "script.h"

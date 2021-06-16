@@ -27,7 +27,6 @@
 #include "net.h"
 #include "ckey.h"
 #include "util.h"
-#include "ui_interface.h"
 #include "checkpoints.h"
 #include "cactivemasternode.h"
 #include "cmasternodedb.h"
@@ -62,6 +61,8 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "thread.h"
+#include "cclientuiinterface.h"
+#include "ui_translate.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"
@@ -212,54 +213,54 @@ bool static Bind(const CService &addr, bool fError = true) {
 // Core-specific options shared between UI and daemon
 std::string HelpMessage()
 {
-    std::string strUsage = _("Options:") + "\n";
-    strUsage += "  -?                     " + _("This help message") + "\n";
-    strUsage += "  -conf=<file>           " + _("Specify configuration file (default: DigitalNote.conf)") + "\n";
-    strUsage += "  -pid=<file>            " + _("Specify pid file (default: DigitalNoted.pid)") + "\n";
-    strUsage += "  -datadir=<dir>         " + _("Specify data directory") + "\n";
-    strUsage += "  -wallet=<dir>          " + _("Specify wallet file (within data directory)") + "\n";
-    strUsage += "  -dbcache=<n>           " + _("Set database cache size in megabytes (default: 100)") + "\n";
-    strUsage += "  -dblogsize=<n>         " + _("Set database disk log size in megabytes (default: 100)") + "\n";
-    strUsage += "  -timeout=<n>           " + _("Specify connection timeout in milliseconds (default: 5000)") + "\n";
-    strUsage += "  -proxy=<ip:port>       " + _("Connect through SOCKS5 proxy") + "\n";
-    strUsage += "  -tor=<ip:port>         " + _("Use proxy to reach tor hidden services (default: same as -proxy)") + "\n";
-    strUsage += "  -dns                   " + _("Allow DNS lookups for -addnode, -seednode and -connect") + "\n";
-    strUsage += "  -port=<port>           " + _("Listen for connections on <port> (default: 51441)") + "\n";
-    strUsage += "  -maxconnections=<n>    " + _("Maintain at most <n> connections to peers (default: 125)") + "\n";
-    strUsage += "  -addnode=<ip>          " + _("Add a node to connect to and attempt to keep the connection open") + "\n";
-    strUsage += "  -connect=<ip>          " + _("Connect only to the specified node(s)") + "\n";
-    strUsage += "  -seednode=<ip>         " + _("Connect to a node to retrieve peer addresses, and disconnect") + "\n";
-    strUsage += "  -externalip=<ip>       " + _("Specify your own public address") + "\n";
-    strUsage += "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n";
-    strUsage += "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n";
-    strUsage += "  -listen                " + _("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n";
-    strUsage += "  -bind=<addr>           " + _("Bind to given address. Use [host]:port notation for IPv6") + "\n";
-    strUsage += "  -dnsseed               " + _("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)") + "\n";
-    strUsage += "  -forcednsseed          " + _("Always query for peer addresses via DNS lookup (default: 0)") + "\n";
-    strUsage += "  -synctime              " + _("Sync time with other nodes. Disable if time on your system is precise e.g. syncing with NTP (default: 1)") + "\n";
-    strUsage += "  -banscore=<n>          " + _("Threshold for disconnecting misbehaving peers (default: 100)") + "\n";
-    strUsage += "  -bantime=<n>           " + _("Number of seconds to keep misbehaving peers from reconnecting (default: 86400)") + "\n";
-    strUsage += "  -maxreceivebuffer=<n>  " + _("Maximum per-connection receive buffer, <n>*1000 bytes (default: 5000)") + "\n";
-    strUsage += "  -maxsendbuffer=<n>     " + _("Maximum per-connection send buffer, <n>*1000 bytes (default: 1000)") + "\n";
+    std::string strUsage = ui_translate("Options:") + "\n";
+    strUsage += "  -?                     " + ui_translate("This help message") + "\n";
+    strUsage += "  -conf=<file>           " + ui_translate("Specify configuration file (default: DigitalNote.conf)") + "\n";
+    strUsage += "  -pid=<file>            " + ui_translate("Specify pid file (default: DigitalNoted.pid)") + "\n";
+    strUsage += "  -datadir=<dir>         " + ui_translate("Specify data directory") + "\n";
+    strUsage += "  -wallet=<dir>          " + ui_translate("Specify wallet file (within data directory)") + "\n";
+    strUsage += "  -dbcache=<n>           " + ui_translate("Set database cache size in megabytes (default: 100)") + "\n";
+    strUsage += "  -dblogsize=<n>         " + ui_translate("Set database disk log size in megabytes (default: 100)") + "\n";
+    strUsage += "  -timeout=<n>           " + ui_translate("Specify connection timeout in milliseconds (default: 5000)") + "\n";
+    strUsage += "  -proxy=<ip:port>       " + ui_translate("Connect through SOCKS5 proxy") + "\n";
+    strUsage += "  -tor=<ip:port>         " + ui_translate("Use proxy to reach tor hidden services (default: same as -proxy)") + "\n";
+    strUsage += "  -dns                   " + ui_translate("Allow DNS lookups for -addnode, -seednode and -connect") + "\n";
+    strUsage += "  -port=<port>           " + ui_translate("Listen for connections on <port> (default: 51441)") + "\n";
+    strUsage += "  -maxconnections=<n>    " + ui_translate("Maintain at most <n> connections to peers (default: 125)") + "\n";
+    strUsage += "  -addnode=<ip>          " + ui_translate("Add a node to connect to and attempt to keep the connection open") + "\n";
+    strUsage += "  -connect=<ip>          " + ui_translate("Connect only to the specified node(s)") + "\n";
+    strUsage += "  -seednode=<ip>         " + ui_translate("Connect to a node to retrieve peer addresses, and disconnect") + "\n";
+    strUsage += "  -externalip=<ip>       " + ui_translate("Specify your own public address") + "\n";
+    strUsage += "  -onlynet=<net>         " + ui_translate("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n";
+    strUsage += "  -discover              " + ui_translate("Discover own IP address (default: 1 when listening and no -externalip)") + "\n";
+    strUsage += "  -listen                " + ui_translate("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n";
+    strUsage += "  -bind=<addr>           " + ui_translate("Bind to given address. Use [host]:port notation for IPv6") + "\n";
+    strUsage += "  -dnsseed               " + ui_translate("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)") + "\n";
+    strUsage += "  -forcednsseed          " + ui_translate("Always query for peer addresses via DNS lookup (default: 0)") + "\n";
+    strUsage += "  -synctime              " + ui_translate("Sync time with other nodes. Disable if time on your system is precise e.g. syncing with NTP (default: 1)") + "\n";
+    strUsage += "  -banscore=<n>          " + ui_translate("Threshold for disconnecting misbehaving peers (default: 100)") + "\n";
+    strUsage += "  -bantime=<n>           " + ui_translate("Number of seconds to keep misbehaving peers from reconnecting (default: 86400)") + "\n";
+    strUsage += "  -maxreceivebuffer=<n>  " + ui_translate("Maximum per-connection receive buffer, <n>*1000 bytes (default: 5000)") + "\n";
+    strUsage += "  -maxsendbuffer=<n>     " + ui_translate("Maximum per-connection send buffer, <n>*1000 bytes (default: 1000)") + "\n";
 #ifdef USE_UPNP
 #if USE_UPNP
-    strUsage += "  -upnp                  " + _("Use UPnP to map the listening port (default: 1 when listening)") + "\n";
+    strUsage += "  -upnp                  " + ui_translate("Use UPnP to map the listening port (default: 1 when listening)") + "\n";
 #else
-    strUsage += "  -upnp                  " + _("Use UPnP to map the listening port (default: 0)") + "\n";
+    strUsage += "  -upnp                  " + ui_translate("Use UPnP to map the listening port (default: 0)") + "\n";
 #endif
 #endif
-    strUsage += "  -paytxfee=<amt>        " + _("Fee per KB to add to transactions you send") + "\n";
-    strUsage += "  -mininput=<amt>        " + _("When creating transactions, ignore inputs with value less than this (default: 0.01)") + "\n";
+    strUsage += "  -paytxfee=<amt>        " + ui_translate("Fee per KB to add to transactions you send") + "\n";
+    strUsage += "  -mininput=<amt>        " + ui_translate("When creating transactions, ignore inputs with value less than this (default: 0.01)") + "\n";
     if (fHaveGUI)
-        strUsage += "  -server                " + _("Accept command line and JSON-RPC commands") + "\n";
+        strUsage += "  -server                " + ui_translate("Accept command line and JSON-RPC commands") + "\n";
 #if !defined(WIN32)
     if (fHaveGUI)
-        strUsage += "  -daemon                " + _("Run in the background as a daemon and accept commands") + "\n";
+        strUsage += "  -daemon                " + ui_translate("Run in the background as a daemon and accept commands") + "\n";
 #endif
-    strUsage += "  -testnet               " + _("Use the test network") + "\n";
-    strUsage += "  -debug=<category>      " + _("Output debugging information (default: 0, supplying <category> is optional)") + "\n";
-    strUsage +=                               _("If <category> is not supplied, output all debugging information.") + "\n";
-    strUsage +=                               _("<category> can be:");
+    strUsage += "  -testnet               " + ui_translate("Use the test network") + "\n";
+    strUsage += "  -debug=<category>      " + ui_translate("Output debugging information (default: 0, supplying <category> is optional)") + "\n";
+    strUsage +=                               ui_translate("If <category> is not supplied, output all debugging information.") + "\n";
+    strUsage +=                               ui_translate("<category> can be:");
     strUsage +=                                 " addrman, alert, db, lock, rand, rpc, selectcoins, mempool, net,"; // Don't translate these and qt below
     strUsage +=                                 " coinage, coinstake, creation, stakemodifier";
     if (fHaveGUI){
@@ -267,67 +268,67 @@ std::string HelpMessage()
     }else{
         strUsage += ".\n";
     }
-    strUsage += "  -logtimestamps         " + _("Prepend debug output with timestamp") + "\n";
-    strUsage += "  -shrinkdebugfile       " + _("Shrink debug.log file on client startup (default: 1 when no -debug)") + "\n";
-    strUsage += "  -printtoconsole        " + _("Send trace/debug info to console instead of debug.log file") + "\n";
-    strUsage += "  -regtest               " + _("Enter regression test mode, which uses a special chain in which blocks can be "
+    strUsage += "  -logtimestamps         " + ui_translate("Prepend debug output with timestamp") + "\n";
+    strUsage += "  -shrinkdebugfile       " + ui_translate("Shrink debug.log file on client startup (default: 1 when no -debug)") + "\n";
+    strUsage += "  -printtoconsole        " + ui_translate("Send trace/debug info to console instead of debug.log file") + "\n";
+    strUsage += "  -regtest               " + ui_translate("Enter regression test mode, which uses a special chain in which blocks can be "
                                                 "solved instantly. This is intended for regression testing tools and app development.") + "\n";
-    strUsage += "  -rpcuser=<user>        " + _("Username for JSON-RPC connections") + "\n";
-    strUsage += "  -rpcpassword=<pw>      " + _("Password for JSON-RPC connections") + "\n";
-    strUsage += "  -rpcport=<port>        " + _("Listen for JSON-RPC connections on <port> (default: 10257)") + "\n";
-    strUsage += "  -rpcallowip=<ip>       " + _("Allow JSON-RPC connections from specified IP address") + "\n";
+    strUsage += "  -rpcuser=<user>        " + ui_translate("Username for JSON-RPC connections") + "\n";
+    strUsage += "  -rpcpassword=<pw>      " + ui_translate("Password for JSON-RPC connections") + "\n";
+    strUsage += "  -rpcport=<port>        " + ui_translate("Listen for JSON-RPC connections on <port> (default: 10257)") + "\n";
+    strUsage += "  -rpcallowip=<ip>       " + ui_translate("Allow JSON-RPC connections from specified IP address") + "\n";
     if (!fHaveGUI){
-        strUsage += "  -rpcconnect=<ip>       " + _("Send commands to node running on <ip> (default: 127.0.0.1)") + "\n";
-        strUsage += "  -rpcwait               " + _("Wait for RPC server to start") + "\n";
+        strUsage += "  -rpcconnect=<ip>       " + ui_translate("Send commands to node running on <ip> (default: 127.0.0.1)") + "\n";
+        strUsage += "  -rpcwait               " + ui_translate("Wait for RPC server to start") + "\n";
     }
-    strUsage += "  -rpcthreads=<n>        " + _("Set the number of threads to service RPC calls (default: 4)") + "\n";
-    strUsage += "  -blocknotify=<cmd>     " + _("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n";
-    strUsage += "  -walletnotify=<cmd>    " + _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n";
-    strUsage += "  -confchange            " + _("Require a confirmations for change (default: 0)") + "\n";
-    strUsage += "  -alertnotify=<cmd>     " + _("Execute command when a relevant alert is received (%s in cmd is replaced by message)") + "\n";
-    strUsage += "  -upgradewallet         " + _("Upgrade wallet to latest format") + "\n";
-    strUsage += "  -createwalletbackups=<n> " + _("Number of automatic wallet backups (default: 10)") + "\n";
-    strUsage += "  -keypool=<n>           " + _("Set key pool size to <n> (default: 1000) (litemode: 100)") + "\n";
-    strUsage += "  -rescan                " + _("Rescan the block chain for missing wallet transactions") + "\n";
-    strUsage += "  -salvagewallet         " + _("Attempt to recover private keys from a corrupt wallet.dat") + "\n";
-    strUsage += "  -checkblocks=<n>       " + _("How many blocks to check at startup (default: 500, 0 = all)") + "\n";
-    strUsage += "  -checklevel=<n>        " + _("How thorough the block verification is (0-6, default: 1)") + "\n";
-    strUsage += "  -loadblock=<file>      " + _("Imports blocks from external blk000?.dat file") + "\n";
-    strUsage += "  -maxorphanblocks=<n>   " + strprintf(_("Keep at most <n> unconnectable blocks in memory (default: %u)"), DEFAULT_MAX_ORPHAN_BLOCKS) + "\n";
-    strUsage += "  -backtoblock=<n>       " + _("Rollback local block chain to block height <n>") + "\n";
-    strUsage += "  -maxblockheight=<n>    " + _("Stop sync when block height reaches <n>") + "\n";
+    strUsage += "  -rpcthreads=<n>        " + ui_translate("Set the number of threads to service RPC calls (default: 4)") + "\n";
+    strUsage += "  -blocknotify=<cmd>     " + ui_translate("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n";
+    strUsage += "  -walletnotify=<cmd>    " + ui_translate("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n";
+    strUsage += "  -confchange            " + ui_translate("Require a confirmations for change (default: 0)") + "\n";
+    strUsage += "  -alertnotify=<cmd>     " + ui_translate("Execute command when a relevant alert is received (%s in cmd is replaced by message)") + "\n";
+    strUsage += "  -upgradewallet         " + ui_translate("Upgrade wallet to latest format") + "\n";
+    strUsage += "  -createwalletbackups=<n> " + ui_translate("Number of automatic wallet backups (default: 10)") + "\n";
+    strUsage += "  -keypool=<n>           " + ui_translate("Set key pool size to <n> (default: 1000) (litemode: 100)") + "\n";
+    strUsage += "  -rescan                " + ui_translate("Rescan the block chain for missing wallet transactions") + "\n";
+    strUsage += "  -salvagewallet         " + ui_translate("Attempt to recover private keys from a corrupt wallet.dat") + "\n";
+    strUsage += "  -checkblocks=<n>       " + ui_translate("How many blocks to check at startup (default: 500, 0 = all)") + "\n";
+    strUsage += "  -checklevel=<n>        " + ui_translate("How thorough the block verification is (0-6, default: 1)") + "\n";
+    strUsage += "  -loadblock=<file>      " + ui_translate("Imports blocks from external blk000?.dat file") + "\n";
+    strUsage += "  -maxorphanblocks=<n>   " + strprintf(ui_translate("Keep at most <n> unconnectable blocks in memory (default: %u)"), DEFAULT_MAX_ORPHAN_BLOCKS) + "\n";
+    strUsage += "  -backtoblock=<n>       " + ui_translate("Rollback local block chain to block height <n>") + "\n";
+    strUsage += "  -maxblockheight=<n>    " + ui_translate("Stop sync when block height reaches <n>") + "\n";
 
-    strUsage += "\n" + _("Block creation options:") + "\n";
-    strUsage += "  -blockminsize=<n>      "   + _("Set minimum block size in bytes (default: 0)") + "\n";
-    strUsage += "  -blockmaxsize=<n>      "   + _("Set maximum block size in bytes (default: 250000)") + "\n";
-    strUsage += "  -blockprioritysize=<n> "   + _("Set maximum size of high-priority/low-fee transactions in bytes (default: 50000)") + "\n";
-    strUsage += "  -scaleblocksizeoptions=<n>"    + strprintf(_("Adaptively scale block size options (max, min, priority) (default: %d)"), DEFAULT_SCALE_BLOCK_SIZE_OPTIONS) + "\n";
+    strUsage += "\n" + ui_translate("Block creation options:") + "\n";
+    strUsage += "  -blockminsize=<n>      "   + ui_translate("Set minimum block size in bytes (default: 0)") + "\n";
+    strUsage += "  -blockmaxsize=<n>      "   + ui_translate("Set maximum block size in bytes (default: 250000)") + "\n";
+    strUsage += "  -blockprioritysize=<n> "   + ui_translate("Set maximum size of high-priority/low-fee transactions in bytes (default: 50000)") + "\n";
+    strUsage += "  -scaleblocksizeoptions=<n>"    + strprintf(ui_translate("Adaptively scale block size options (max, min, priority) (default: %d)"), DEFAULT_SCALE_BLOCK_SIZE_OPTIONS) + "\n";
 
-    strUsage += "\n" + _("SSL options: (see the DigitalNote Wiki for SSL setup instructions)") + "\n";
-    strUsage += "  -rpcssl                                  " + _("Use OpenSSL (https) for JSON-RPC connections") + "\n";
-    strUsage += "  -rpcsslcertificatechainfile=<file.cert>  " + _("Server certificate file (default: server.cert)") + "\n";
-    strUsage += "  -rpcsslprivatekeyfile=<file.pem>         " + _("Server private key (default: server.pem)") + "\n";
-    strUsage += "  -rpcsslciphers=<ciphers>                 " + _("Acceptable ciphers (default: TLSv1.2+HIGH:TLSv1+HIGH:!SSLv3:!SSLv2:!aNULL:!eNULL:!3DES:@STRENGTH)") + "\n";
-    strUsage += "  -litemode=<n>          " + _("Disable all MasterNode related functionality (0-1, default: 0)") + "\n";
-    strUsage += "\n" + _("Masternode options:") + "\n";
-    strUsage += "  -masternode=<n>            " + _("Enable the client to act as a masternode (0-1, default: 0)") + "\n";
-    strUsage += "  -mnconf=<file>             " + _("Specify masternode configuration file (default: masternode.conf)") + "\n";
-    strUsage += "  -mnconflock=<n>            " + _("Lock masternodes from masternode configuration file (default: 1)") + "\n";
-    strUsage += "  -masternodeprivkey=<n>     " + _("Set the masternode private key") + "\n";
-    strUsage += "  -masternodeaddr=<n>        " + _("Set external address:port to get to this masternode (example: address:port)") + "\n";
-    strUsage += "  -masternodeminprotocol=<n> " + _("Ignore masternodes less than version (example: 61401; default : 0)") + "\n";
+    strUsage += "\n" + ui_translate("SSL options: (see the DigitalNote Wiki for SSL setup instructions)") + "\n";
+    strUsage += "  -rpcssl                                  " + ui_translate("Use OpenSSL (https) for JSON-RPC connections") + "\n";
+    strUsage += "  -rpcsslcertificatechainfile=<file.cert>  " + ui_translate("Server certificate file (default: server.cert)") + "\n";
+    strUsage += "  -rpcsslprivatekeyfile=<file.pem>         " + ui_translate("Server private key (default: server.pem)") + "\n";
+    strUsage += "  -rpcsslciphers=<ciphers>                 " + ui_translate("Acceptable ciphers (default: TLSv1.2+HIGH:TLSv1+HIGH:!SSLv3:!SSLv2:!aNULL:!eNULL:!3DES:@STRENGTH)") + "\n";
+    strUsage += "  -litemode=<n>          " + ui_translate("Disable all MasterNode related functionality (0-1, default: 0)") + "\n";
+    strUsage += "\n" + ui_translate("Masternode options:") + "\n";
+    strUsage += "  -masternode=<n>            " + ui_translate("Enable the client to act as a masternode (0-1, default: 0)") + "\n";
+    strUsage += "  -mnconf=<file>             " + ui_translate("Specify masternode configuration file (default: masternode.conf)") + "\n";
+    strUsage += "  -mnconflock=<n>            " + ui_translate("Lock masternodes from masternode configuration file (default: 1)") + "\n";
+    strUsage += "  -masternodeprivkey=<n>     " + ui_translate("Set the masternode private key") + "\n";
+    strUsage += "  -masternodeaddr=<n>        " + ui_translate("Set external address:port to get to this masternode (example: address:port)") + "\n";
+    strUsage += "  -masternodeminprotocol=<n> " + ui_translate("Ignore masternodes less than version (example: 61401; default : 0)") + "\n";
 
-    strUsage += "\n" + _("InstantX options:") + "\n";
-    strUsage += "  -enableinstantx=<n>    " + _("Enable instantx, show confirmations for locked transactions (bool, default: true)") + "\n";
-    strUsage += "  -instantxdepth=<n>     " + strprintf(_("Show N confirmations for a successfully locked transaction (0-9999, default: %u)"), nInstantXDepth) + "\n"; 
-    strUsage += _("Secure messaging options:") + "\n" +
-        "  -nosmsg                                  " + _("Disable secure messaging.") + "\n" +
-        "  -debugsmsg                               " + _("Log extra debug messages.") + "\n" +
-        "  -smsgscanchain                           " + _("Scan the block chain for public key addresses on startup.") + "\n";
-    strUsage += "  -stakethreshold=<n> " + _("This will set the output size of your stakes to never be below this number (default: 100)") + "\n";
-    strUsage += "  -liveforktoggle=<n> " + _("Toggle experimental features via block height testing fork, (example: -command=<fork_height>)") + "\n";
-    strUsage += "  -mnadvrelay=<n> " + _("Toggle MasterNode Advanced Relay System via 1/0, (example: -command=<true/false>)") + "\n";
-    strUsage += "  -webwallet=<n> " + _("Toggle web-wallet node flag via 1/0, (example: -command=<true/false>)") + "\n";
+    strUsage += "\n" + ui_translate("InstantX options:") + "\n";
+    strUsage += "  -enableinstantx=<n>    " + ui_translate("Enable instantx, show confirmations for locked transactions (bool, default: true)") + "\n";
+    strUsage += "  -instantxdepth=<n>     " + strprintf(ui_translate("Show N confirmations for a successfully locked transaction (0-9999, default: %u)"), nInstantXDepth) + "\n"; 
+    strUsage += ui_translate("Secure messaging options:") + "\n" +
+        "  -nosmsg                                  " + ui_translate("Disable secure messaging.") + "\n" +
+        "  -debugsmsg                               " + ui_translate("Log extra debug messages.") + "\n" +
+        "  -smsgscanchain                           " + ui_translate("Scan the block chain for public key addresses on startup.") + "\n";
+    strUsage += "  -stakethreshold=<n> " + ui_translate("This will set the output size of your stakes to never be below this number (default: 100)") + "\n";
+    strUsage += "  -liveforktoggle=<n> " + ui_translate("Toggle experimental features via block height testing fork, (example: -command=<fork_height>)") + "\n";
+    strUsage += "  -mnadvrelay=<n> " + ui_translate("Toggle MasterNode Advanced Relay System via 1/0, (example: -command=<true/false>)") + "\n";
+    strUsage += "  -webwallet=<n> " + ui_translate("Toggle web-wallet node flag via 1/0, (example: -command=<true/false>)") + "\n";
 
     return strUsage;
 }
@@ -492,7 +493,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // Check for -debugnet (deprecated)
     if (GetBoolArg("-debugnet", false))
-        InitWarning(_("Warning: Deprecated argument -debugnet ignored, use -debug=net"));
+        InitWarning(ui_translate("Warning: Deprecated argument -debugnet ignored, use -debug=net"));
     if (fDaemon)
         fServer = true;
     else
@@ -516,9 +517,9 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (mapArgs.count("-paytxfee"))
     {
         if (!ParseMoney(mapArgs["-paytxfee"], nTransactionFee))
-            return InitError(strprintf(_("Invalid amount for -paytxfee=<amount>: '%s'"), mapArgs["-paytxfee"]));
+            return InitError(strprintf(ui_translate("Invalid amount for -paytxfee=<amount>: '%s'"), mapArgs["-paytxfee"]));
         if (nTransactionFee > 0.25 * COIN)
-            InitWarning(_("Warning: -paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
+            InitWarning(ui_translate("Warning: -paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
     }
 #endif
 
@@ -528,7 +529,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (mapArgs.count("-mininput"))
     {
         if (!ParseMoney(mapArgs["-mininput"], nMinimumInputValue))
-            return InitError(strprintf(_("Invalid amount for -mininput=<amount>: '%s'"), mapArgs["-mininput"]));
+            return InitError(strprintf(ui_translate("Invalid amount for -mininput=<amount>: '%s'"), mapArgs["-mininput"]));
     }
 #endif
 
@@ -540,7 +541,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // Sanity check
     if (!InitSanityCheck())
-        return InitError(_("Initialization sanity check failed. DigitalNote is shutting down."));
+        return InitError(ui_translate("Initialization sanity check failed. DigitalNote is shutting down."));
 
     std::string strDataDir = GetDataDir().string();
 #ifdef ENABLE_WALLET
@@ -548,7 +549,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // strWalletFileName must be a plain filename without a directory
     if (strWalletFileName != boost::filesystem::basename(strWalletFileName) + boost::filesystem::extension(strWalletFileName))
-        return InitError(strprintf(_("Wallet %s resides outside data directory %s."), strWalletFileName, strDataDir));
+        return InitError(strprintf(ui_translate("Wallet %s resides outside data directory %s."), strWalletFileName, strDataDir));
 #endif
     // Make sure only a single DigitalNote process is using the data directory.
     boost::filesystem::path pathLockFile = GetDataDir() / ".lock";
@@ -556,7 +557,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (file) fclose(file);
     static boost::interprocess::file_lock lock(pathLockFile.string().c_str());
     if (!lock.try_lock())
-        return InitError(strprintf(_("Cannot obtain a lock on data directory %s. DigitalNote is probably already running."), strDataDir));
+        return InitError(strprintf(ui_translate("Cannot obtain a lock on data directory %s. DigitalNote is probably already running."), strDataDir));
 
     if (GetBoolArg("-shrinkdebugfile", !fDebug))
         ShrinkDebugFile();
@@ -572,9 +573,9 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (mapArgs.count("-masternodepaymentskey")) // masternode payments priv key
     {
         if (!masternodePayments.SetPrivKey(GetArg("-masternodepaymentskey", "")))
-            return InitError(_("Unable to sign masternode payment winner, wrong key?"));
+            return InitError(ui_translate("Unable to sign masternode payment winner, wrong key?"));
         if (!sporkManager.SetPrivKey(GetArg("-masternodepaymentskey", "")))
-            return InitError(_("Unable to sign spork message, wrong key?"));
+            return InitError(ui_translate("Unable to sign spork message, wrong key?"));
     }
 
     //ignore masternodes below protocol version
@@ -684,7 +685,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
 
 
-        uiInterface.InitMessage(_("Verifying database integrity..."));
+        uiInterface.InitMessage(ui_translate("Verifying database integrity..."));
 
         if (!bitdb.Open(GetDataDir()))
         {
@@ -707,7 +708,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             if (!bitdb.Open(GetDataDir()))
 			{
                 // if it still fails, it probably means we can't even create the database env
-                std::string msg = strprintf(_("Error initializing wallet database environment %s!"), strDataDir);
+                std::string msg = strprintf(ui_translate("Error initializing wallet database environment %s!"), strDataDir);
 				
                 return InitError(msg);
             }
@@ -727,7 +728,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             CDBEnv::VerifyResult r = bitdb.Verify(strWalletFileName, CWalletDB::Recover);
             if (r == CDBEnv::RECOVER_OK)
             {
-                std::string msg = strprintf(_("Warning: wallet.dat corrupt, data salvaged!"
+                std::string msg = strprintf(ui_translate("Warning: wallet.dat corrupt, data salvaged!"
                                          " Original wallet.dat saved as wallet.{timestamp}.bak in %s; if"
                                          " your balance or transactions are incorrect you should"
                                          " restore from a backup."), strDataDir);
@@ -736,7 +737,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 			
             if (r == CDBEnv::RECOVER_FAIL)
 			{
-                return InitError(_("wallet.dat corrupt, salvage failed"));
+                return InitError(ui_translate("wallet.dat corrupt, salvage failed"));
 			}
         }
     } // (!fDisableWallet)
@@ -776,7 +777,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 			
             if (net == NET_UNROUTABLE)
 			{
-                return InitError(strprintf(_("Unknown network specified in -onlynet: '%s'"), snet));
+                return InitError(strprintf(ui_translate("Unknown network specified in -onlynet: '%s'"), snet));
 			}
 			
             nets.insert(net);
@@ -806,7 +807,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         
 		if (!addrProxy.IsValid())
 		{
-            return InitError(strprintf(_("Invalid -proxy address: '%s'"), mapArgs["-proxy"]));
+            return InitError(strprintf(ui_translate("Invalid -proxy address: '%s'"), mapArgs["-proxy"]));
 		}
 		
         if (!IsLimited(NET_IPV4))
@@ -839,7 +840,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 		
 		if (!addrOnion.IsValid())
 		{
-            return InitError(strprintf(_("Invalid -tor address: '%s'"), mapArgs["-tor"]));
+            return InitError(strprintf(ui_translate("Invalid -tor address: '%s'"), mapArgs["-tor"]));
 		}
 		
         SetProxy(NET_TOR, addrOnion);
@@ -863,7 +864,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 				
                 if (!Lookup(strBind.c_str(), addrBind, GetListenPort(), false))
 				{
-                    return InitError(strprintf(_("Cannot resolve -bind address: '%s'"), strBind));
+                    return InitError(strprintf(ui_translate("Cannot resolve -bind address: '%s'"), strBind));
 				}
 				
                 fBound |= Bind(addrBind);
@@ -887,7 +888,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 		
         if (!fBound)
 		{
-            return InitError(_("Failed to listen on any port. Use -listen=0 if you want this."));
+            return InitError(ui_translate("Failed to listen on any port. Use -listen=0 if you want this."));
 		}
     }
 
@@ -899,7 +900,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             
 			if (!addrLocal.IsValid())
 			{
-                return InitError(strprintf(_("Cannot resolve -externalip address: '%s'"), strAddr));
+                return InitError(strprintf(ui_translate("Cannot resolve -externalip address: '%s'"), strAddr));
 			}
 			
             AddLocal(CService(strAddr, GetListenPort(), fNameLookup), LOCAL_MANUAL);
@@ -911,7 +912,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     {
         if (!ParseMoney(mapArgs["-reservebalance"], nReserveBalance))
         {
-            InitError(_("Invalid amount for -reservebalance=<amount>"));
+            InitError(ui_translate("Invalid amount for -reservebalance=<amount>"));
 			
             return false;
         }
@@ -926,13 +927,13 @@ bool AppInit2(boost::thread_group& threadGroup)
     // ********************************************************* Step 7: load blockchain
 
     maxBlockHeight = GetArg("-maxblockheight", -1);
-    uiInterface.InitMessage(_("Loading block index..."));
+    uiInterface.InitMessage(ui_translate("Loading block index..."));
 
     nStart = GetTimeMillis();
 	
     if (!LoadBlockIndex())
 	{
-        return InitError(_("Error loading block database"));
+        return InitError(ui_translate("Error loading block database"));
 	}
 
     // as LoadBlockIndex can take several minutes, it's possible the user
@@ -1032,7 +1033,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 	else
 	{
-        uiInterface.InitMessage(_("Loading wallet..."));
+        uiInterface.InitMessage(ui_translate("Loading wallet..."));
 
         nStart = GetTimeMillis();
         bool fFirstRun = true;
@@ -1043,22 +1044,22 @@ bool AppInit2(boost::thread_group& threadGroup)
         {
             if (nLoadWalletRet == DB_CORRUPT)
 			{
-                strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
+                strErrors << ui_translate("Error loading wallet.dat: Wallet corrupted") << "\n";
 			}
             else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
             {
-                std::string msg(_("Warning: error reading wallet.dat! All keys read correctly, but transaction data"
+                std::string msg(ui_translate("Warning: error reading wallet.dat! All keys read correctly, but transaction data"
                              " or address book entries might be missing or incorrect."));
                 
 				InitWarning(msg);
             }
             else if (nLoadWalletRet == DB_TOO_NEW)
 			{
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of DigitalNote") << "\n";
+                strErrors << ui_translate("Error loading wallet.dat: Wallet requires newer version of DigitalNote") << "\n";
 			}
             else if (nLoadWalletRet == DB_NEED_REWRITE)
             {
-                strErrors << _("Wallet needed to be rewritten: restart DigitalNote to complete") << "\n";
+                strErrors << ui_translate("Wallet needed to be rewritten: restart DigitalNote to complete") << "\n";
                 
 				LogPrintf("%s", strErrors.str());
                 
@@ -1066,7 +1067,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             }
             else
 			{
-                strErrors << _("Error loading wallet.dat") << "\n";
+                strErrors << ui_translate("Error loading wallet.dat") << "\n";
 			}
 		}
 
@@ -1088,7 +1089,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 			
             if (nMaxVersion < pwalletMain->GetVersion())
 			{
-                strErrors << _("Cannot downgrade wallet") << "\n";
+                strErrors << ui_translate("Cannot downgrade wallet") << "\n";
 			}
 			
             pwalletMain->SetMaxVersion(nMaxVersion);
@@ -1106,7 +1107,7 @@ bool AppInit2(boost::thread_group& threadGroup)
                 
 				if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultKey.GetID(), ""))
 				{
-                    strErrors << _("Cannot write default address") << "\n";
+                    strErrors << ui_translate("Cannot write default address") << "\n";
 				}
             }
 
@@ -1140,7 +1141,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 		
         if (pindexBest != pindexRescan && pindexBest && pindexRescan && pindexBest->nHeight > pindexRescan->nHeight)
         {
-            uiInterface.InitMessage(_("Rescanning..."));
+            uiInterface.InitMessage(ui_translate("Rescanning..."));
             LogPrintf("Rescanning last %i blocks (from block %i)...\n", pindexBest->nHeight - pindexRescan->nHeight, pindexRescan->nHeight);
             
 			nStart = GetTimeMillis();
@@ -1171,7 +1172,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // ********************************************************* Step 10: load peers
 
-    uiInterface.InitMessage(_("Loading addresses..."));
+    uiInterface.InitMessage(ui_translate("Loading addresses..."));
 
     nStart = GetTimeMillis();
 
@@ -1210,7 +1211,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 	}
 	
     // Check toggle switch for experimental feature testing fork
-    uiInterface.InitMessage(_("Checking experimental feature toggle..."));
+    uiInterface.InitMessage(ui_translate("Checking experimental feature toggle..."));
     
 	strLiveForkToggle = GetArg("-liveforktoggle", "");
     
@@ -1228,7 +1229,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
         else if(nLiveForkToggle < nBestHeight)
         {
-            return InitError(_("Invalid experimental testing feature fork toggle, please select a higher block than currently sync'd height\n"));
+            return InitError(ui_translate("Invalid experimental testing feature fork toggle, please select a higher block than currently sync'd height\n"));
         }
         else
         {
@@ -1242,7 +1243,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     // Check toggle switch for masternode advanced relay
-    uiInterface.InitMessage(_("Checking masternode advanced relay toggle..."));
+    uiInterface.InitMessage(ui_translate("Checking masternode advanced relay toggle..."));
     
 	fMnAdvRelay = GetBoolArg("-mnadvrelay", false);
     
@@ -1259,7 +1260,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         LogPrintf("No masternode advanced relay toggle detected... skipping...\n");
     }
 
-    uiInterface.InitMessage(_("Loading masternode cache..."));
+    uiInterface.InitMessage(ui_translate("Loading masternode cache..."));
 
     CMasternodeDB mndb;
     CMasternodeDB::ReadResult readResult = mndb.Read(mnodeman);
@@ -1312,7 +1313,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
             if(!mnEngineSigner.SetKey(strMasterNodePrivKey, errorMessage, key, pubkey))
             {
-                return InitError(_("Invalid masternodeprivkey. Please see documenation."));
+                return InitError(ui_translate("Invalid masternodeprivkey. Please see documenation."));
             }
 
             activeMasternode.pubKeyMasternode = pubkey;
@@ -1320,7 +1321,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
 		else
 		{
-            return InitError(_("You must specify a masternodeprivkey in the configuration. Please see documentation for help."));
+            return InitError(ui_translate("You must specify a masternodeprivkey in the configuration. Please see documentation for help."));
         }
 
         activeMasternode.ManageStatus();
@@ -1366,7 +1367,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     // reindex addresses found in blockchain
     if(GetBoolArg("-reindexaddr", false))
     {
-        uiInterface.InitMessage(_("Rebuilding address index..."));
+        uiInterface.InitMessage(ui_translate("Rebuilding address index..."));
         
 		CBlockIndex *pblockAddrIndex = pindexBest;
 		CTxDB txdbAddr("rw");
@@ -1418,7 +1419,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // ********************************************************* Step 12: finished
 
-    uiInterface.InitMessage(_("Done loading"));
+    uiInterface.InitMessage(ui_translate("Done loading"));
 
 #ifdef ENABLE_WALLET
     if (pwalletMain) {

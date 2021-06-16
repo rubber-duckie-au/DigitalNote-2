@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-#include "cprivkey.h"
+#include "types/cprivkey.h"
 
 /** Private key that includes an expiration date in case it never gets used. */
 class CWalletKey

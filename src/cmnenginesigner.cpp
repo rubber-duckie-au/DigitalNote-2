@@ -11,13 +11,13 @@
 #include "main_extern.h"
 #include "mining.h"
 #include "util.h"
-#include "ui_interface.h"
 #include "script.h"
 #include "cdigitalnotesecret.h"
 #include "cnodestination.h"
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "ui_translate.h"
 
 #include "cmnenginesigner.h"
 
@@ -51,7 +51,7 @@ bool CMNengineSigner::SetKey(const std::string &strSecret, std::string& errorMes
 
     if (!fGood)
 	{
-		errorMessage = _("");//NOTE: previous message contents - Invalid private key.
+		errorMessage = ui_translate("");//NOTE: previous message contents - Invalid private key.
         
 		return false;
     }
@@ -72,7 +72,7 @@ bool CMNengineSigner::SignMessage(const std::string &strMessage, std::string& er
 
     if (!key.SignCompact(ss.GetHash(), vchSig))
 	{
-        errorMessage = _("Signing failed.");
+        errorMessage = ui_translate("Signing failed.");
         
 		return false;
     }
@@ -89,7 +89,7 @@ bool CMNengineSigner::VerifyMessage(CPubKey pubkey, std::vector<unsigned char>& 
     CPubKey pubkey2;
     if (!pubkey2.RecoverCompact(ss.GetHash(), vchSig))
 	{
-        errorMessage = _("Error recovering public key.");
+        errorMessage = ui_translate("Error recovering public key.");
         
 		return false;
     }

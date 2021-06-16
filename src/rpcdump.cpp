@@ -10,7 +10,6 @@
 
 #include "init.h" // for pwalletMain
 #include "rpcserver.h"
-#include "ui_interface.h"
 #include "cwallettx.h"
 #include "walletdb.h"
 #include "cblockindex.h"
@@ -27,6 +26,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "ui_translate.h"
 
 using namespace json_spirit;
 
@@ -324,7 +324,7 @@ Value importwallet(const Array& params, bool fHelp)
     int64_t nFilesize = std::max((int64_t)1, (int64_t)file.tellg());
     bool fGood = true;
 
-    pwalletMain->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
+    pwalletMain->ShowProgress(ui_translate("Importing..."), 0); // show progress dialog in GUI
     
 	while (file.good())
 	{

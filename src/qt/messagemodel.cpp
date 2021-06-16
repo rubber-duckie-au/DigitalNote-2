@@ -17,7 +17,6 @@
 #include "optionsmodel.h"
 #include "walletmodel.h"
 #include "addresstablemodel.h"
-#include "ui_interface.h"
 #include "json/json_spirit.h"
 #include "script.h"
 #include "smsg.h"

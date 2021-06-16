@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "types/ec_point.h"
+#include "types/data_chunk.h"
 #include "stealth.h"
 
 class CPubKey;

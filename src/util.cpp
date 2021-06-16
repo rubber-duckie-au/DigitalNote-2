@@ -9,12 +9,13 @@
 
 #include "cchainparams.h"
 #include "chainparams.h"
-#include "ui_interface.h"
 #include "uint/uint256.h"
 #include "version.h"
 #include "main_const.h"
 #include "net/cnetaddr.h"
 #include "thread.h"
+#include "ui_interface.h"
+#include "ui_translate.h"
 
 #include <openssl/bio.h>
 #include <openssl/evp.h>
@@ -1420,7 +1421,7 @@ void AddTimeData(const CNetAddr& ip, int64_t nTime)
                 if (!fMatch)
                 {
                     fDone = true;
-                    std::string strMessage = _("Warning: Please check that your computer's date and time are correct! If your clock is wrong DigitalNote will not work properly.");
+                    std::string strMessage = ui_translate("Warning: Please check that your computer's date and time are correct! If your clock is wrong DigitalNote will not work properly.");
                     strMiscWarning = strMessage;
                     LogPrintf("*** %s\n", strMessage);
                     uiInterface.ThreadSafeMessageBox(strMessage, "", CClientUIInterface::MSG_WARNING);

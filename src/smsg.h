@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <string>
 
-#include "ui_interface.h"
+#include "enums/changetype.h"
 
 class CNode;
 class CDataStream;

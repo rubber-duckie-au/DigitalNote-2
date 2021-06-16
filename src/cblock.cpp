@@ -10,7 +10,6 @@
 #include "txdb-leveldb.h"
 #include "blocksizecalculator.h"
 #include "blockparams.h"
-#include "ui_interface.h"
 #include "kernel.h"
 #include "spork.h"
 #include "instantx.h"
@@ -43,6 +42,7 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "thread.h"
+#include "ui_translate.h"
 
 #include "cblock.h"
 
@@ -797,7 +797,7 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
 		if (nUpgraded > 100/2)
 		{
             // strMiscWarning is read by GetWarnings(), called by Qt and the JSON-RPC code to warn the user:
-            strMiscWarning = _("Warning: This version is obsolete, upgrade required!");
+            strMiscWarning = ui_translate("Warning: This version is obsolete, upgrade required!");
 		}
     }
 

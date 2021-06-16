@@ -16,7 +16,6 @@
 #include "addresstablemodel.h"
 #include "bitcoinunits.h"
 #include "cwallettx.h"
-#include "ui_interface.h"
 #include "main_extern.h"
 #include "thread.h"
 

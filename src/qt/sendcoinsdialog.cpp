@@ -30,6 +30,7 @@
 #include "main_const.h"
 #include "thread.h"
 #include "cdigitalnoteaddress.h"
+#include "cclientuiinterface.h"
 
 SendCoinsDialog::SendCoinsDialog(QWidget *parent) :
     QDialog(parent),

@@ -11,7 +11,7 @@
 
 #include "cdb.h"
 #include "dberrors.h"
-#include "cprivkey.h"
+#include "types/cprivkey.h"
 
 class CAccount;
 class CAccountingEntry;

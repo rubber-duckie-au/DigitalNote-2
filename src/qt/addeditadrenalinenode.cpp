@@ -7,7 +7,6 @@
 #include "ui_masternodemanager.h"
 
 #include "walletdb.h"
-#include "ui_interface.h"
 #include "util.h"
 #include "ckey.h"
 #include "init.h"

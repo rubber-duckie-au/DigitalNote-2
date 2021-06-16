@@ -1,7 +1,7 @@
 #ifndef CKEY_H
 #define CKEY_H
 
-#include "cprivkey.h"
+#include "types/cprivkey.h"
 
 class CKey;
 class CPubKey;

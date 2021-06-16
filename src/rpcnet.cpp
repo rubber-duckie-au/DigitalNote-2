@@ -8,7 +8,6 @@
 
 #include "rpcserver.h"
 #include "calert.h"
-#include "ui_interface.h"
 #include "cnodestatestats.h"
 #include "util.h"
 #include "json/json_spirit_value.h"
@@ -24,6 +23,7 @@
 #include "netbase.h"
 #include "net/csubnet.h"
 #include "thread.h"
+#include "ui_interface.h"
 
 using namespace json_spirit;
 

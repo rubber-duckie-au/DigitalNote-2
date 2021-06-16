@@ -24,7 +24,6 @@
 #include "cinv.h"
 #include "cchainparams.h"
 #include "chainparams.h"
-#include "ui_interface.h"
 #include "net/cnode.h"
 #include "net/cbanentry.h"
 #include "net/cnodestats.h"
@@ -45,6 +44,8 @@
 #include "ctransaction.h"
 #include "init.h"
 #include "thread.h"
+#include "ui_interface.h"
+#include "ui_translate.h"
 
 #include "net.h"
 
@@ -2106,11 +2107,11 @@ bool BindListenPort(const CService &addrBind, std::string& strError)
         
 		if (nErr == WSAEADDRINUSE)
 		{
-            strError = strprintf(_("Unable to bind to %s on this computer. DigitalNote is probably already running."), addrBind.ToString());
+            strError = strprintf(ui_translate("Unable to bind to %s on this computer. DigitalNote is probably already running."), addrBind.ToString());
         }
 		else
 		{
-            strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %d, %s)"), addrBind.ToString(), nErr, strerror(nErr));
+            strError = strprintf(ui_translate("Unable to bind to %s on this computer (bind returned error %d, %s)"), addrBind.ToString(), nErr, strerror(nErr));
 		}
 	
 		LogPrintf("%s\n", strError);

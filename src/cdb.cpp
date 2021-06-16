@@ -6,7 +6,7 @@
 #include "thread.h"
 #include "ckeymetadata.h"
 #include "cstealthaddress.h"
-#include "cprivkey.h"
+#include "types/cprivkey.h"
 #include "stealth.h"
 #include "cscript.h"
 #include "caccountingentry.h"

@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QFile>
 #include <boost/bind.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "bantablemodel.h"
 #include "guiconstants.h"
@@ -15,7 +16,6 @@
 #include "cchainparams.h"
 #include "chainparams.h"
 #include "calert.h"
-#include "ui_interface.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
 #include "cblock.h"
@@ -27,6 +27,8 @@
 #include "util.h"
 #include "cmasternodeman.h"
 #include "thread.h"
+#include "enums/changetype.h"
+#include "ui_interface.h"
 
 #include "clientmodel.h"
 

@@ -17,7 +17,6 @@
 #include "transactiontablemodel.h"
 #include "checkpoints.h"
 #include "db.h"
-#include "ui_interface.h"
 #include "walletdb.h" // for BackupWallet
 #include "spork.h"
 #include "coutput.h"
@@ -37,6 +36,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "ui_interface.h"
 
 #include "walletmodel.h"
 

@@ -30,7 +30,7 @@
 #include "transactiontablemodel.h"
 #include "walletmodel.h"
 #include "smsg.h"
-#include "ui_interface.h"
+#include "cclientuiinterface.h"
 
 #include "transactionview.h"
 

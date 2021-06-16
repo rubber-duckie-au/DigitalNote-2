@@ -14,12 +14,12 @@
 #include "net/cnode.h"
 #include "cchainparams.h"
 #include "chainparams.h"
-#include "ui_interface.h"
 #include "util.h"
 #include "thread.h"
 #include "serialize.h"
 #include "crypto/bmw/bmw512.h"
 #include "cpubkey.h"
+#include "ui_interface.h"
 
 #include "calert.h"
 
