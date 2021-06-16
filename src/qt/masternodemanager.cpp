@@ -38,7 +38,7 @@
 #include "rpcserver.h"
 #include "guiutil.h"
 #include "script.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "cdigitalnoteaddress.h"
 #include "cnodestination.h"
 #include "ckeyid.h"

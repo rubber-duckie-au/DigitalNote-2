@@ -18,7 +18,7 @@
 #include "cwallettx.h"
 #include "ui_interface.h"
 #include "main_extern.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 
 #include "transactiontablemodel.h"
 

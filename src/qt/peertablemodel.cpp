@@ -18,7 +18,7 @@
 #include "coutpoint.h"
 #include "main.h"
 #include "main_extern.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "peertablemodel.h"
 
 bool NodeLessThan::operator()(const CNodeCombinedStats &left, const CNodeCombinedStats &right) const

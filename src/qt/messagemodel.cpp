@@ -28,7 +28,7 @@
 #include "smsg/stored.h"
 #include "smsg/messagedata.h"
 #include "smsg/securemessage.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "cdigitalnoteaddress.h"
 #include "base58.h"
 #include "cnodestination.h"

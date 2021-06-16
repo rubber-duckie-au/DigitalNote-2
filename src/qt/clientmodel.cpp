@@ -26,6 +26,7 @@
 #include "cblockindex.h"
 #include "util.h"
 #include "cmasternodeman.h"
+#include "thread.h"
 
 #include "clientmodel.h"
 

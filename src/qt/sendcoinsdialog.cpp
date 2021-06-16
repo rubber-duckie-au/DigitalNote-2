@@ -28,7 +28,7 @@
 #include "cscript.h"
 #include "main_extern.h"
 #include "main_const.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "cdigitalnoteaddress.h"
 
 SendCoinsDialog::SendCoinsDialog(QWidget *parent) :

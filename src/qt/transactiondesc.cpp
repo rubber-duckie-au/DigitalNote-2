@@ -14,7 +14,7 @@
 #include "script.h"
 #include "main_extern.h"
 #include "main_const.h"
-#include "types/ccriticalblock.h"
+#include "thread.h"
 #include "ctxin.h"
 #include "ctxout.h"
 #include "cdigitalnoteaddress.h"
