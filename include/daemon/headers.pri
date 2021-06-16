@@ -108,7 +108,6 @@ HEADERS += src/hmac_sha512_ctx.h
 HEADERS += src/init.h
 HEADERS += src/instantx.h
 HEADERS += src/kernel.h
-HEADERS += src/key.h
 HEADERS += src/limitedmap.h
 HEADERS += src/main_const.h
 HEADERS += src/main_extern.h

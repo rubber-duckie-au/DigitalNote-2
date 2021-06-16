@@ -1,7 +1,6 @@
-//ORIGINAL_PATH: ../../src/ecwrapper.cpp----../../src/key.cpp----../../src/pubkey.cpp----../../src/script.cpp----../../src/scrypt.cpp----../../src/miner.cpp----../../src/checkpoints.cpp----../../src/addrman.cpp----../../src/db.cpp----../../src/wallet.cpp----../../src/crypter.cpp----../../src/protocol.cpp
+//ORIGINAL_PATH: ../../src/ecwrapper.cpp----../../src/pubkey.cpp----../../src/script.cpp----../../src/scrypt.cpp----../../src/miner.cpp----../../src/checkpoints.cpp----../../src/addrman.cpp----../../src/db.cpp----../../src/wallet.cpp----../../src/crypter.cpp----../../src/protocol.cpp
 
 #include "../../src/ecwrapper.cpp"
-#include "../../src/key.cpp"
 #include "../../src/pubkey.cpp"
 #include "../../src/script.cpp"
 #include "../../src/scrypt.cpp"

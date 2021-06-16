@@ -73,7 +73,6 @@ SOURCES += src/util.cpp
 SOURCES += src/hash.cpp
 SOURCES += src/netbase.cpp
 SOURCES += src/ecwrapper.cpp
-SOURCES += src/key.cpp
 SOURCES += src/pubkey.cpp
 SOURCES += src/script.cpp
 SOURCES += src/scrypt.cpp

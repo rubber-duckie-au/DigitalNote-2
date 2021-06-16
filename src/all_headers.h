@@ -186,7 +186,6 @@
 	#include "cnodestatestats.h"
 	#include "ctxoutcompressor.h"
 	#include "eccverifyhandle.h"
-	#include "key.h"
 	#include "masternode.h"
 	#include "masternodeman.h"
 	#include "message_start_size.h"
