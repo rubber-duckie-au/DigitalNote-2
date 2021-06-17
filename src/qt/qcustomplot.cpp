@@ -3239,13 +3239,16 @@ QCPLayoutInset::InsetPlacement QCPLayoutInset::insetPlacement(int index) const
 */
 Qt::Alignment QCPLayoutInset::insetAlignment(int index) const
 {
-  if (elementAt(index))
-    return mInsetAlignment.at(index);
-  else
-  {
-    qDebug() << Q_FUNC_INFO << "Invalid element index:" << index;
-    return 0;
-  }
+	if (elementAt(index))
+	{
+		return mInsetAlignment.at(index);
+	}
+	else
+	{
+		qDebug() << Q_FUNC_INFO << "Invalid element index:" << index;
+		
+		return Qt::AlignLeft;
+	}
 }
 
 /*!

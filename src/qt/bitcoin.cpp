@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
         splashSelect = ":/images/splash";
     }
 
-    QSplashScreen splash(QPixmap(splashSelect), 0);
+    QSplashScreen splash(QPixmap(splashSelect), Qt::Widget);
 
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min", false))
     {
