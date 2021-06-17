@@ -299,7 +299,6 @@ HEADERS += src/qt/flowlayout.h
 HEADERS += src/qt/masternodemanager.h
 HEADERS += src/qt/addeditadrenalinenode.h
 HEADERS += src/qt/adrenalinenodeconfigdialog.h
-HEADERS += src/qt/qcustomplot.h
 HEADERS += src/qt/messagepage.h
 HEADERS += src/qt/messagemodel.h
 HEADERS += src/qt/sendmessagesdialog.h

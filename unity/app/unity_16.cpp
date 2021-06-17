@@ -7,7 +7,6 @@
 #include "../../src/qt/rpcconsole.cpp"
 #include "../../src/qt/addeditadrenalinenode.cpp"
 #include "../../src/qt/adrenalinenodeconfigdialog.cpp"
-#include "../../src/qt/qcustomplot.cpp"
 #include "../../src/qt/messagepage.cpp"
 #include "../../src/qt/messagemodel.cpp"
 #include "../../src/qt/sendmessagesdialog.cpp"

@@ -238,7 +238,6 @@ SOURCES += src/qt/rpcconsole.cpp
 SOURCES += src/qt/masternodemanager.cpp
 SOURCES += src/qt/addeditadrenalinenode.cpp
 SOURCES += src/qt/adrenalinenodeconfigdialog.cpp
-SOURCES += src/qt/qcustomplot.cpp
 SOURCES += src/qt/messagepage.cpp
 SOURCES += src/qt/messagemodel.cpp
 SOURCES += src/qt/sendmessagesdialog.cpp
