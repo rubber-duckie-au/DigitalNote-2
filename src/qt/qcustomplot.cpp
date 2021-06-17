@@ -14313,16 +14313,20 @@ void QCPColorScale::setBarWidth(int width)
 */
 void QCPColorScale::setRangeDrag(bool enabled)
 {
-  if (!mAxisRect)
-  {
-    qDebug() << Q_FUNC_INFO << "internal axis rect was deleted";
-    return;
-  }
-  
-  if (enabled)
-    mAxisRect.data()->setRangeDrag(QCPAxis::orientation(mType));
-  else
-    mAxisRect.data()->setRangeDrag(0);
+	if (!mAxisRect)
+	{
+		qDebug() << Q_FUNC_INFO << "internal axis rect was deleted";
+		return;
+	}
+
+	if (enabled)
+	{
+		mAxisRect.data()->setRangeDrag(QCPAxis::orientation(mType));
+	}
+	else
+	{
+		mAxisRect.data()->setRangeDrag(0);
+	}
 }
 
 /*!

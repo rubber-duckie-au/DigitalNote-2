@@ -528,10 +528,12 @@ QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int 
 
 Qt::ItemFlags MessageModel::flags(const QModelIndex & index) const
 {
-    if(index.isValid())
-        return Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+	if(index.isValid())
+	{
+		return Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+	}
 
-    return 0;
+	return Qt::NoItemFlags;
 }
 
 QModelIndex MessageModel::index(int row, int column, const QModelIndex & parent) const
