@@ -1,7 +1,5 @@
 #include "compat.h"
 
-#include <boost/foreach.hpp>
-
 #include "cinv.h"
 #include "net/cbanentry.h"
 #include "net/cnodestats.h"
@@ -101,8 +99,12 @@ int CNode::GetRefCount()
 unsigned int CNode::GetTotalRecvSize()
 {
 	unsigned int total = 0;
-	BOOST_FOREACH(const CNetMessage &msg, vRecvMsg) 
+	
+	for(const CNetMessage &msg : vRecvMsg)
+	{
 		total += msg.vRecv.size() + 24;
+	}
+	
 	return total;
 }
 
@@ -137,8 +139,11 @@ bool CNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
 void CNode::SetRecvVersion(int nVersionIn)
 {
 	nRecvVersion = nVersionIn;
-	BOOST_FOREACH(CNetMessage &msg, vRecvMsg)
+
+	for(CNetMessage &msg : vRecvMsg)
+	{
 		msg.SetVersion(nVersionIn);
+	}
 }
 
 CNode* CNode::AddRef()
@@ -309,10 +314,14 @@ void CNode::PushMessage(const char* pszCommand)
 
 bool CNode::HasFulfilledRequest(std::string strRequest)
 {
-	BOOST_FOREACH(std::string& type, vecRequestsFulfilled)
+	for(std::string& type : vecRequestsFulfilled)
 	{
-		if(type == strRequest) return true;
+		if(type == strRequest)
+		{
+			return true;
+		}
 	}
+
 	return false;
 }
 

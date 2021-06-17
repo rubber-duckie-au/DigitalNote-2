@@ -1,7 +1,6 @@
 #include "compat.h"
 
 #include <boost/thread.hpp>
-#include <boost/foreach.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
 #include "util.h"
@@ -47,6 +46,7 @@
 #include "cdiskblockindex.h"
 #include "cdisktxpos.h"
 #include "ctxindex.h"
+#include "util/backwards.h"
 
 #include "cblock.h"
 
@@ -669,107 +669,107 @@ bool CBlock::ReadFromDisk(const CBlockIndex* pindex, bool fReadTransactions)
 
 bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
 {
-    uint256 hash = GetHash();
+	uint256 hash = GetHash();
 
-    if (!txdb.TxnBegin())
+	if (!txdb.TxnBegin())
 	{
-        return error("SetBestChain() : TxnBegin failed");
+		return error("SetBestChain() : TxnBegin failed");
 	}
-	
-    if (pindexGenesisBlock == NULL && hash == Params().HashGenesisBlock())
-    {
-        txdb.WriteHashBestChain(hash);
-        if (!txdb.TxnCommit())
+
+	if (pindexGenesisBlock == NULL && hash == Params().HashGenesisBlock())
+	{
+		txdb.WriteHashBestChain(hash);
+		if (!txdb.TxnCommit())
 		{
-            return error("SetBestChain() : TxnCommit failed");
+			return error("SetBestChain() : TxnCommit failed");
 		}
 		
-        pindexGenesisBlock = pindexNew;
-    }
-    else if (hashPrevBlock == hashBestChain)
-    {
-        if (!SetBestChainInner(txdb, pindexNew))
+		pindexGenesisBlock = pindexNew;
+	}
+	else if (hashPrevBlock == hashBestChain)
+	{
+		if (!SetBestChainInner(txdb, pindexNew))
 		{
-            return error("SetBestChain() : SetBestChainInner failed");
+			return error("SetBestChain() : SetBestChainInner failed");
 		}
-    }
-    else
-    {
-        // the first block in the new chain that will cause it to become the new best chain
-        CBlockIndex *pindexIntermediate = pindexNew;
+	}
+	else
+	{
+		// the first block in the new chain that will cause it to become the new best chain
+		CBlockIndex *pindexIntermediate = pindexNew;
 
-        // list of blocks that need to be connected afterwards
-        std::vector<CBlockIndex*> vpindexSecondary;
+		// list of blocks that need to be connected afterwards
+		std::vector<CBlockIndex*> vpindexSecondary;
 
-        // Reorganize is costly in terms of db load, as it works in a single db transaction.
-        // Try to limit how much needs to be done inside
-        while (pindexIntermediate->pprev && pindexIntermediate->pprev->nChainTrust > pindexBest->nChainTrust)
-        {
-            vpindexSecondary.push_back(pindexIntermediate);
-            pindexIntermediate = pindexIntermediate->pprev;
-        }
-
-        if (!vpindexSecondary.empty())
+		// Reorganize is costly in terms of db load, as it works in a single db transaction.
+		// Try to limit how much needs to be done inside
+		while (pindexIntermediate->pprev && pindexIntermediate->pprev->nChainTrust > pindexBest->nChainTrust)
 		{
-            LogPrintf("Postponing %u reconnects\n", vpindexSecondary.size());
+			vpindexSecondary.push_back(pindexIntermediate);
+			pindexIntermediate = pindexIntermediate->pprev;
+		}
+
+		if (!vpindexSecondary.empty())
+		{
+			LogPrintf("Postponing %u reconnects\n", vpindexSecondary.size());
 		}
 		
-        // Switch to new best branch
-        if (!Reorganize(txdb, pindexIntermediate))
-        {
-            txdb.TxnAbort();
-            InvalidChainFound(pindexNew);
-            
+		// Switch to new best branch
+		if (!Reorganize(txdb, pindexIntermediate))
+		{
+			txdb.TxnAbort();
+			InvalidChainFound(pindexNew);
+			
 			return error("SetBestChain() : Reorganize failed");
-        }
+		}
 
-        // Connect further blocks
-        BOOST_REVERSE_FOREACH(CBlockIndex *pindex, vpindexSecondary)
-        {
-            CBlock block;
-            if (!block.ReadFromDisk(pindex))
-            {
-                LogPrintf("SetBestChain() : ReadFromDisk failed\n");
-                
-				break;
-            }
-			
-            if (!txdb.TxnBegin())
+		// Connect further blocks
+		for(CBlockIndex *pindex : backwards(vpindexSecondary))
+		{
+			CBlock block;
+			if (!block.ReadFromDisk(pindex))
 			{
-                LogPrintf("SetBestChain() : TxnBegin 2 failed\n");
-                
+				LogPrintf("SetBestChain() : ReadFromDisk failed\n");
+				
 				break;
-            }
-			
-            // errors now are not fatal, we still did a reorganisation to a new chain in a valid way
-            if (!block.SetBestChainInner(txdb, pindex))
-			{
-                break;
 			}
-        }
-    }
+			
+			if (!txdb.TxnBegin())
+			{
+				LogPrintf("SetBestChain() : TxnBegin 2 failed\n");
+				
+				break;
+			}
+			
+			// errors now are not fatal, we still did a reorganisation to a new chain in a valid way
+			if (!block.SetBestChainInner(txdb, pindex))
+			{
+				break;
+			}
+		}
+	}
 
-    // Update best block in wallet (so we can detect restored wallets)
-    bool fIsInitialDownload = IsInitialBlockDownload();
-    if ((pindexNew->nHeight % 20160) == 0 || (!fIsInitialDownload && (pindexNew->nHeight % 144) == 0))
-    {
-        const CBlockLocator locator(pindexNew);
-        
+	// Update best block in wallet (so we can detect restored wallets)
+	bool fIsInitialDownload = IsInitialBlockDownload();
+	if ((pindexNew->nHeight % 20160) == 0 || (!fIsInitialDownload && (pindexNew->nHeight % 144) == 0))
+	{
+		const CBlockLocator locator(pindexNew);
+		
 		g_signals.SetBestChain(locator);
-    }
+	}
 
-    // New best block
-    hashBestChain = hash;
-    pindexBest = pindexNew;
-    pblockindexFBBHLast = NULL;
-    nBestHeight = pindexBest->nHeight;
-    nBestChainTrust = pindexNew->nChainTrust;
-    nTimeBestReceived = GetTime();
-    mempool.AddTransactionsUpdated(1);
+	// New best block
+	hashBestChain = hash;
+	pindexBest = pindexNew;
+	pblockindexFBBHLast = NULL;
+	nBestHeight = pindexBest->nHeight;
+	nBestChainTrust = pindexNew->nChainTrust;
+	nTimeBestReceived = GetTime();
+	mempool.AddTransactionsUpdated(1);
 
-    uint256 nBestBlockTrust = pindexBest->nHeight != 0 ? (pindexBest->nChainTrust - pindexBest->pprev->nChainTrust) : pindexBest->nChainTrust;
+	uint256 nBestBlockTrust = pindexBest->nHeight != 0 ? (pindexBest->nChainTrust - pindexBest->pprev->nChainTrust) : pindexBest->nChainTrust;
 
-    LogPrintf(
+	LogPrintf(
 		"SetBestChain: new best=%s  height=%d  trust=%s  blocktrust=%d  date=%s\n",
 		hashBestChain.ToString(), nBestHeight,
 		CBigNum(nBestChainTrust).ToString(),
@@ -777,43 +777,43 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
 		DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime())
 	);
 
-    // Check the version of the last 100 blocks to see if we need to upgrade:
-    if (!fIsInitialDownload)
-    {
-        int nUpgraded = 0;
-        const CBlockIndex* pindex = pindexBest;
-        
+	// Check the version of the last 100 blocks to see if we need to upgrade:
+	if (!fIsInitialDownload)
+	{
+		int nUpgraded = 0;
+		const CBlockIndex* pindex = pindexBest;
+		
 		for (int i = 0; i < 100 && pindex != NULL; i++)
-        {
-            if (pindex->nVersion > CBlock::CURRENT_VERSION)
+		{
+			if (pindex->nVersion > CBlock::CURRENT_VERSION)
 			{
-                ++nUpgraded;
+				++nUpgraded;
 			}
 			
-            pindex = pindex->pprev;
-        }
-        
+			pindex = pindex->pprev;
+		}
+		
 		if (nUpgraded > 0)
 		{
-            LogPrintf("SetBestChain: %d of last 100 blocks above version %d\n", nUpgraded, (int)CBlock::CURRENT_VERSION);
-        }
+			LogPrintf("SetBestChain: %d of last 100 blocks above version %d\n", nUpgraded, (int)CBlock::CURRENT_VERSION);
+		}
 		
 		if (nUpgraded > 100/2)
 		{
-            // strMiscWarning is read by GetWarnings(), called by Qt and the JSON-RPC code to warn the user:
-            strMiscWarning = ui_translate("Warning: This version is obsolete, upgrade required!");
+			// strMiscWarning is read by GetWarnings(), called by Qt and the JSON-RPC code to warn the user:
+			strMiscWarning = ui_translate("Warning: This version is obsolete, upgrade required!");
 		}
-    }
+	}
 
-    std::string strCmd = GetArg("-blocknotify", "");
+	std::string strCmd = GetArg("-blocknotify", "");
 
-    if (!fIsInitialDownload && !strCmd.empty())
-    {
-        boost::replace_all(strCmd, "%s", hashBestChain.GetHex());
-        boost::thread t(runCommand, strCmd); // thread runs free
-    }
+	if (!fIsInitialDownload && !strCmd.empty())
+	{
+		boost::replace_all(strCmd, "%s", hashBestChain.GetHex());
+		boost::thread t(runCommand, strCmd); // thread runs free
+	}
 
-    return true;
+	return true;
 }
 
 bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos, const uint256& hashProof)

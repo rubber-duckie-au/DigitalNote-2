@@ -13,7 +13,6 @@
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/bind.hpp>
-#include <boost/foreach.hpp>
 #include <boost/thread/thread.hpp>
 
 #include "calert.h"
@@ -75,6 +74,7 @@
 #include "ui_translate.h"
 #include "cblockindex.h"
 #include "ctxindex.h"
+#include "util/backwards.h"
 
 using namespace boost;
 
@@ -1680,150 +1680,150 @@ bool FindTransactionsByDestination(const CTxDestination &dest, std::vector<uint2
 
 bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
 {
-    LogPrintf("REORGANIZE\n");
+	LogPrintf("REORGANIZE\n");
 
-    // Find the fork
-    CBlockIndex* pfork = pindexBest;
-    CBlockIndex* plonger = pindexNew;
-    
+	// Find the fork
+	CBlockIndex* pfork = pindexBest;
+	CBlockIndex* plonger = pindexNew;
+
 	while (pfork != plonger)
-    {
-        while (plonger->nHeight > pfork->nHeight)
+	{
+		while (plonger->nHeight > pfork->nHeight)
 		{
-            if (!(plonger = plonger->pprev))
+			if (!(plonger = plonger->pprev))
 			{
-                return error("Reorganize() : plonger->pprev is null");
+				return error("Reorganize() : plonger->pprev is null");
 			}
 		}
 		
-        if (pfork == plonger)
+		if (pfork == plonger)
 		{
-            break;
+			break;
 		}
 		
-        if (!(pfork = pfork->pprev))
+		if (!(pfork = pfork->pprev))
 		{
-            return error("Reorganize() : pfork->pprev is null");
+			return error("Reorganize() : pfork->pprev is null");
 		}
-    }
+	}
 
-    // List of what to disconnect
-    std::vector<CBlockIndex*> vDisconnect;
-    for (CBlockIndex* pindex = pindexBest; pindex != pfork; pindex = pindex->pprev)
+	// List of what to disconnect
+	std::vector<CBlockIndex*> vDisconnect;
+	for (CBlockIndex* pindex = pindexBest; pindex != pfork; pindex = pindex->pprev)
 	{
-        vDisconnect.push_back(pindex);
+		vDisconnect.push_back(pindex);
 	}
-	
-    // List of what to connect
-    std::vector<CBlockIndex*> vConnect;
-    for (CBlockIndex* pindex = pindexNew; pindex != pfork; pindex = pindex->pprev)
+
+	// List of what to connect
+	std::vector<CBlockIndex*> vConnect;
+	for (CBlockIndex* pindex = pindexNew; pindex != pfork; pindex = pindex->pprev)
 	{
-        vConnect.push_back(pindex);
+		vConnect.push_back(pindex);
 	}
-	
+
 	reverse(vConnect.begin(), vConnect.end());
 
-    LogPrintf("REORGANIZE: Disconnect %u blocks; %s..%s\n", vDisconnect.size(), pfork->GetBlockHash().ToString(), pindexBest->GetBlockHash().ToString());
-    LogPrintf("REORGANIZE: Connect %u blocks; %s..%s\n", vConnect.size(), pfork->GetBlockHash().ToString(), pindexNew->GetBlockHash().ToString());
+	LogPrintf("REORGANIZE: Disconnect %u blocks; %s..%s\n", vDisconnect.size(), pfork->GetBlockHash().ToString(), pindexBest->GetBlockHash().ToString());
+	LogPrintf("REORGANIZE: Connect %u blocks; %s..%s\n", vConnect.size(), pfork->GetBlockHash().ToString(), pindexNew->GetBlockHash().ToString());
 
-    // Disconnect shorter branch
-    std::list<CTransaction> vResurrect;
-    for(CBlockIndex* pindex : vDisconnect)
-    {
-        CBlock block;
-        
+	// Disconnect shorter branch
+	std::list<CTransaction> vResurrect;
+	for(CBlockIndex* pindex : vDisconnect)
+	{
+		CBlock block;
+		
 		if (!block.ReadFromDisk(pindex))
 		{
-            return error("Reorganize() : ReadFromDisk for disconnect failed");
-        }
+			return error("Reorganize() : ReadFromDisk for disconnect failed");
+		}
 		
 		if (!block.DisconnectBlock(txdb, pindex))
 		{
-            return error("Reorganize() : DisconnectBlock %s failed", pindex->GetBlockHash().ToString());
+			return error("Reorganize() : DisconnectBlock %s failed", pindex->GetBlockHash().ToString());
 		}
 		
-        // Queue memory transactions to resurrect.
-        // We only do this for blocks after the last checkpoint (reorganisation before that
-        // point should only happen with -reindex/-loadblock, or a misbehaving peer.
-        BOOST_REVERSE_FOREACH(const CTransaction& tx, block.vtx)
+		// Queue memory transactions to resurrect.
+		// We only do this for blocks after the last checkpoint (reorganisation before that
+		// point should only happen with -reindex/-loadblock, or a misbehaving peer.
+		for(const CTransaction& tx : backwards(block.vtx))
 		{
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()) && pindex->nHeight > Checkpoints::GetTotalBlocksEstimate())
+			if (!(tx.IsCoinBase() || tx.IsCoinStake()) && pindex->nHeight > Checkpoints::GetTotalBlocksEstimate())
 			{
-                vResurrect.push_front(tx);
+				vResurrect.push_front(tx);
 			}
 		}
-    }
+	}
 
-    // Connect longer branch
-    std::vector<CTransaction> vDelete;
-    for (unsigned int i = 0; i < vConnect.size(); i++)
-    {
-        CBlockIndex* pindex = vConnect[i];
-        CBlock block;
-        
+	// Connect longer branch
+	std::vector<CTransaction> vDelete;
+	for (unsigned int i = 0; i < vConnect.size(); i++)
+	{
+		CBlockIndex* pindex = vConnect[i];
+		CBlock block;
+		
 		if (!block.ReadFromDisk(pindex))
 		{
-            return error("Reorganize() : ReadFromDisk for connect failed");
-        }
+			return error("Reorganize() : ReadFromDisk for connect failed");
+		}
 		
 		if (!block.ConnectBlock(txdb, pindex))
-        {
-            // Invalid block
-            return error("Reorganize() : ConnectBlock %s failed", pindex->GetBlockHash().ToString());
-        }
-
-        // Queue memory transactions to delete
-        for(const CTransaction& tx : block.vtx)
 		{
-            vDelete.push_back(tx);
+			// Invalid block
+			return error("Reorganize() : ConnectBlock %s failed", pindex->GetBlockHash().ToString());
 		}
-    }
-    
+
+		// Queue memory transactions to delete
+		for(const CTransaction& tx : block.vtx)
+		{
+			vDelete.push_back(tx);
+		}
+	}
+
 	if (!txdb.WriteHashBestChain(pindexNew->GetBlockHash()))
 	{
-        return error("Reorganize() : WriteHashBestChain failed");
+		return error("Reorganize() : WriteHashBestChain failed");
 	}
-	
-    // Make sure it's successfully written to disk before changing memory structure
-    if (!txdb.TxnCommit())
+
+	// Make sure it's successfully written to disk before changing memory structure
+	if (!txdb.TxnCommit())
 	{
-        return error("Reorganize() : TxnCommit failed");
+		return error("Reorganize() : TxnCommit failed");
 	}
-	
-    // Disconnect shorter branch
-    for(CBlockIndex* pindex : vDisconnect)
+
+	// Disconnect shorter branch
+	for(CBlockIndex* pindex : vDisconnect)
 	{
-        if (pindex->pprev)
+		if (pindex->pprev)
 		{
-            pindex->pprev->pnext = NULL;
+			pindex->pprev->pnext = NULL;
 		}
 	}
-	
-    // Connect longer branch
-    for(CBlockIndex* pindex : vConnect)
+
+	// Connect longer branch
+	for(CBlockIndex* pindex : vConnect)
 	{
-        if (pindex->pprev)
+		if (pindex->pprev)
 		{
-            pindex->pprev->pnext = pindex;
+			pindex->pprev->pnext = pindex;
 		}
 	}
-	
-    // Resurrect memory transactions that were in the disconnected branch
-    for(CTransaction& tx : vResurrect)
+
+	// Resurrect memory transactions that were in the disconnected branch
+	for(CTransaction& tx : vResurrect)
 	{
-        AcceptToMemoryPool(mempool, tx, false, NULL);
+		AcceptToMemoryPool(mempool, tx, false, NULL);
 	}
-	
-    // Delete redundant memory transactions that are in the connected branch
-    for(CTransaction& tx : vDelete)
+
+	// Delete redundant memory transactions that are in the connected branch
+	for(CTransaction& tx : vDelete)
 	{
-        mempool.remove(tx);
-        mempool.removeConflicts(tx);
-    }
+		mempool.remove(tx);
+		mempool.removeConflicts(tx);
+	}
 
-    LogPrintf("REORGANIZE: done\n");
+	LogPrintf("REORGANIZE: done\n");
 
-    return true;
+	return true;
 }
 
 void PushGetBlocks(CNode* pnode, CBlockIndex* pindexBegin, uint256 hashEnd)

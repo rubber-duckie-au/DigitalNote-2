@@ -1,4 +1,3 @@
-#include <boost/foreach.hpp>
 #include <boost/variant/static_visitor.hpp>
 
 #include "cbignum.h"

@@ -22,23 +22,25 @@
 
 bool NodeLessThan::operator()(const CNodeCombinedStats &left, const CNodeCombinedStats &right) const
 {
-    const CNodeStats *pLeft = &(left.nodeStats);
-    const CNodeStats *pRight = &(right.nodeStats);
+	const CNodeStats *pLeft = &(left.nodeStats);
+	const CNodeStats *pRight = &(right.nodeStats);
 
-    if (order == Qt::DescendingOrder)
-        std::swap(pLeft, pRight);
+	if (order == Qt::DescendingOrder)
+		std::swap(pLeft, pRight);
 
-    switch(column)
-    {
-    case PeerTableModel::Address:
-        return pLeft->addrName.compare(pRight->addrName) < 0;
-    case PeerTableModel::Subversion:
-        return pLeft->cleanSubVer.compare(pRight->cleanSubVer) < 0;
-    case PeerTableModel::Ping:
-        return pLeft->dPingTime < pRight->dPingTime;
-    }
+	switch(column)
+	{
+		case PeerTableModel::Address:
+			return pLeft->addrName.compare(pRight->addrName) < 0;
+		
+		case PeerTableModel::Subversion:
+			return pLeft->cleanSubVer.compare(pRight->cleanSubVer) < 0;
+		
+		case PeerTableModel::Ping:
+			return pLeft->dPingTime < pRight->dPingTime;
+	}
 
-    return false;
+	return false;
 }
 
 // private implementation
@@ -57,50 +59,58 @@ public:
     /** Pull a full list of peers from vNodes into our cache */
     void refreshPeers()
     {
-        {
-            TRY_LOCK(cs_vNodes, lockNodes);
-            if (!lockNodes)
-            {
-                // skip the refresh if we can't immediately get the lock
-                return;
-            }
-            cachedNodeStats.clear();
+		{
+			TRY_LOCK(cs_vNodes, lockNodes);
+			
+			if (!lockNodes)
+			{
+				// skip the refresh if we can't immediately get the lock
+				return;
+			}
+			
+			cachedNodeStats.clear();
+
 #if QT_VERSION >= 0x040700
-            cachedNodeStats.reserve(vNodes.size());
+			cachedNodeStats.reserve(vNodes.size());
 #endif
-            BOOST_FOREACH(CNode* pnode, vNodes)
-            {
-                CNodeCombinedStats stats;
-                stats.nodeStateStats.nMisbehavior = 0;
-                stats.fNodeStateStatsAvailable = false;
-                pnode->copyStats(stats.nodeStats);
-                cachedNodeStats.append(stats);
-            }
-        }
 
-        // if we can, retrieve the CNodeStateStats for each node.
-        {
-            TRY_LOCK(cs_main, lockMain);
-            if (lockMain)
-            {
-                BOOST_FOREACH(CNodeCombinedStats &stats, cachedNodeStats)
-                {
-                    stats.fNodeStateStatsAvailable = GetNodeStateStats(stats.nodeStats.nodeid, stats.nodeStateStats);
-                }
-            }
-        }
+			for(CNode* pnode : vNodes)
+			{
+				CNodeCombinedStats stats;
+				stats.nodeStateStats.nMisbehavior = 0;
+				stats.fNodeStateStatsAvailable = false;
+				pnode->copyStats(stats.nodeStats);
+				cachedNodeStats.append(stats);
+			}
+		}
+
+		// if we can, retrieve the CNodeStateStats for each node.
+		{
+			TRY_LOCK(cs_main, lockMain);
+			
+			if (lockMain)
+			{
+				for(CNodeCombinedStats &stats : cachedNodeStats)
+				{
+					stats.fNodeStateStatsAvailable = GetNodeStateStats(stats.nodeStats.nodeid, stats.nodeStateStats);
+				}
+			}
+		}
 
 
-        if (sortColumn >= 0) // sort cacheNodeStats (use stable sort to prevent rows jumping around unneceesarily)
-            std::stable_sort(cachedNodeStats.begin(), cachedNodeStats.end(), NodeLessThan(sortColumn, sortOrder));
+		if (sortColumn >= 0) // sort cacheNodeStats (use stable sort to prevent rows jumping around unneceesarily)
+		{
+			std::stable_sort(cachedNodeStats.begin(), cachedNodeStats.end(), NodeLessThan(sortColumn, sortOrder));
+		}
 
-        // build index map
-        mapNodeRows.clear();
-        int row = 0;
-        BOOST_FOREACH(CNodeCombinedStats &stats, cachedNodeStats)
-        {
-            mapNodeRows.insert(std::pair<NodeId, int>(stats.nodeStats.nodeid, row++));
-        }
+		// build index map
+		mapNodeRows.clear();
+		int row = 0;
+
+		for(CNodeCombinedStats &stats : cachedNodeStats)
+		{
+			mapNodeRows.insert(std::pair<NodeId, int>(stats.nodeStats.nodeid, row++));
+		}
     }
 
     int size()

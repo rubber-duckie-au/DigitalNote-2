@@ -7,7 +7,6 @@
 #include "compat.h"
 
 #include <memory>
-#include <boost/foreach.hpp>
 #include <openssl/sha.h>
 
 #include "blockparams.h"

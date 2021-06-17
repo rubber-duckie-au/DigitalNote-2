@@ -1,7 +1,6 @@
 #include "compat.h"
 
 #include <map>
-#include <boost/foreach.hpp>
 
 #include "util.h"
 #include "spork.h"
@@ -26,6 +25,7 @@
 #include "init.h"
 #include "ctxout.h"
 #include "cblockindex.h"
+#include "util/backwards.h"
 
 #include "instantx.h"
 
@@ -291,39 +291,48 @@ bool IsIXTXValid(const CTransaction& txCollateral)
 
 int64_t CreateNewLock(CTransaction tx)
 {
+	int64_t nTxAge = 0;
 
-    int64_t nTxAge = 0;
-    BOOST_REVERSE_FOREACH(CTxIn i, tx.vin){
-        nTxAge = GetInputAge(i);
-        if(nTxAge < 9)
-        {
-            LogPrintf("CreateNewLock - Transaction not found / too new: %d / %s\n", nTxAge, tx.GetHash().ToString().c_str());
-            return 0;
-        }
-    }
+	for(CTxIn i : backwards(tx.vin))
+	{
+		nTxAge = GetInputAge(i);
+		
+		if(nTxAge < 9)
+		{
+			LogPrintf("CreateNewLock - Transaction not found / too new: %d / %s\n", nTxAge, tx.GetHash().ToString().c_str());
+			
+			return 0;
+		}
+	}
 
-    /*
-        Use a blockheight newer than the input.
-        This prevents attackers from using transaction mallibility to predict which masternodes
-        they'll use.
-    */
-    int nBlockHeight = (pindexBest->nHeight - nTxAge)+4;
+	/*
+		Use a blockheight newer than the input.
+		This prevents attackers from using transaction mallibility to predict which masternodes
+		they'll use.
+	*/
+	int nBlockHeight = (pindexBest->nHeight - nTxAge)+4;
 
-    if (!mapTxLocks.count(tx.GetHash())){
-        LogPrintf("CreateNewLock - New Transaction Lock %s !\n", tx.GetHash().ToString().c_str());
+	if (!mapTxLocks.count(tx.GetHash()))
+	{
+		LogPrintf("CreateNewLock - New Transaction Lock %s !\n", tx.GetHash().ToString().c_str());
 
-        CTransactionLock newLock;
-        newLock.nBlockHeight = nBlockHeight;
-        newLock.nExpiration = GetTime()+(20*60); //locks expire after 20 minutes (20 confirmations)
-        newLock.nTimeout = GetTime()+(60*5);
-        newLock.txHash = tx.GetHash();
-        mapTxLocks.insert(std::make_pair(tx.GetHash(), newLock));
-    } else {
-        mapTxLocks[tx.GetHash()].nBlockHeight = nBlockHeight;
-        LogPrint("instantx", "CreateNewLock - Transaction Lock Exists %s !\n", tx.GetHash().ToString().c_str());
-    }
+		CTransactionLock newLock;
+		
+		newLock.nBlockHeight = nBlockHeight;
+		newLock.nExpiration = GetTime()+(20*60); //locks expire after 20 minutes (20 confirmations)
+		newLock.nTimeout = GetTime()+(60*5);
+		newLock.txHash = tx.GetHash();
+		
+		mapTxLocks.insert(std::make_pair(tx.GetHash(), newLock));
+	}
+	else
+	{
+		mapTxLocks[tx.GetHash()].nBlockHeight = nBlockHeight;
+		
+		LogPrint("instantx", "CreateNewLock - Transaction Lock Exists %s !\n", tx.GetHash().ToString().c_str());
+	}
 
-    return nBlockHeight;
+	return nBlockHeight;
 }
 
 // check if we need to vote on this transaction

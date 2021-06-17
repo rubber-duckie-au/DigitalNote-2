@@ -1,8 +1,6 @@
 #ifndef CNETCLEANUP_H
 #define CNETCLEANUP_H
 
-#include <boost/foreach.hpp>
-
 #include "net.h"
 #include "net/myclosesocket.h"
 #include "util.h"
@@ -10,54 +8,54 @@
 class CNetCleanup
 {
 public:
-    CNetCleanup()
-    {
-    }
-    ~CNetCleanup()
-    {
-        // Close sockets
-        BOOST_FOREACH(CNode* pnode, vNodes)
+	CNetCleanup()
+	{
+	}
+	~CNetCleanup()
+	{
+		// Close sockets
+		for(CNode* pnode : vNodes)
 		{
-            if (pnode->hSocket != INVALID_SOCKET)
+			if (pnode->hSocket != INVALID_SOCKET)
 			{
-                closesocket(pnode->hSocket);
+				closesocket(pnode->hSocket);
 			}
 		}
 		
-        BOOST_FOREACH(SOCKET hListenSocket, vhListenSocket)
+		for(SOCKET hListenSocket : vhListenSocket)
 		{
-            if (hListenSocket != INVALID_SOCKET)
+			if (hListenSocket != INVALID_SOCKET)
 			{
-                if (closesocket(hListenSocket) == SOCKET_ERROR)
+				if (closesocket(hListenSocket) == SOCKET_ERROR)
 				{
-                    LogPrintf("closesocket(hListenSocket) failed with error %d\n", WSAGetLastError());
+					LogPrintf("closesocket(hListenSocket) failed with error %d\n", WSAGetLastError());
 				}
 			}
 		}
 		
-        // clean up some globals (to help leak detection)
-        BOOST_FOREACH(CNode* pnode, vNodes)
+		// clean up some globals (to help leak detection)
+		for(CNode* pnode : vNodes)
 		{
-            delete pnode;
+			delete pnode;
 		}
 		
-        BOOST_FOREACH(CNode* pnode, vNodesDisconnected)
+		for(CNode* pnode : vNodesDisconnected)
 		{
-            delete pnode;
+			delete pnode;
 		}
 		
-        vNodes.clear();
-        vNodesDisconnected.clear();
-        delete semOutbound;
-        semOutbound = NULL;
-        delete pnodeLocalHost;
-        pnodeLocalHost = NULL;
+		vNodes.clear();
+		vNodesDisconnected.clear();
+		delete semOutbound;
+		semOutbound = NULL;
+		delete pnodeLocalHost;
+		pnodeLocalHost = NULL;
 
 #ifdef WIN32
-        // Shutdown Windows Sockets
-        WSACleanup();
+		// Shutdown Windows Sockets
+		WSACleanup();
 #endif
-    }
+	}
 };
 
 #endif // CNETCLEANUP_H

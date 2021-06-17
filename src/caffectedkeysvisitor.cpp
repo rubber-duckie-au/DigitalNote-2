@@ -1,5 +1,3 @@
-#include <boost/foreach.hpp>
-
 #include "script.h"
 #include "cscript.h"
 #include "cnodestination.h"

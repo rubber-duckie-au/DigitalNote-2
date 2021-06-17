@@ -1,7 +1,5 @@
 #include "compat.h"
 
-#include <boost/foreach.hpp>
-
 #include "uint/uint256.h"
 #include "txdb-leveldb.h"
 #include "cdisktxpos.h"

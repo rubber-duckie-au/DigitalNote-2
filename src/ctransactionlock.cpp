@@ -1,7 +1,5 @@
 #include "compat.h"
 
-#include <boost/foreach.hpp>
-
 #include "util.h"
 #include "cconsensusvote.h"
 #include "cmasternodeman.h"

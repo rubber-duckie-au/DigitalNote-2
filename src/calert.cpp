@@ -9,7 +9,6 @@
 #include <boost/thread.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/foreach.hpp>
 
 #include "net/cnode.h"
 #include "cchainparams.h"

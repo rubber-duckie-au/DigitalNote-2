@@ -1,5 +1,3 @@
-#include <boost/foreach.hpp>
-
 #include "serialize.h"
 #include "tinyformat.h"
 

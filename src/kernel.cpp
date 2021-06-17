@@ -6,7 +6,6 @@
 #include "compat.h"
 
 #include <boost/assign/list_of.hpp>
-#include <boost/foreach.hpp>
 
 #include "txdb.h"
 #include "ctxindex.h"

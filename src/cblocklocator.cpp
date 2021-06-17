@@ -1,5 +1,4 @@
 #include <map>
-#include <boost/foreach.hpp>
 
 #include "uint/uint256.h"
 #include "cblockindex.h"
