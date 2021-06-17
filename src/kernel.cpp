@@ -19,6 +19,9 @@
 #include "ctransaction.h"
 #include "cbignum.h"
 #include "script.h"
+#include "util.h"
+#include "cblockindex.h"
+#include "enums/serialize_type.h"
 
 #include "kernel.h"
 

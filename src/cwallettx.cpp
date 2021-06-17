@@ -20,6 +20,7 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "thread.h"
+#include "util.h"
 
 #include "cwallettx.h"
 

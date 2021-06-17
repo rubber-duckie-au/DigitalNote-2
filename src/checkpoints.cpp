@@ -12,6 +12,7 @@
 #include "cchainparams.h"
 #include "chainparams.h"
 #include "main_extern.h"
+#include "cblockindex.h"
 
 #include "checkpoints.h"
 

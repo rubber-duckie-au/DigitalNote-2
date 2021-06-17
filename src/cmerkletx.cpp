@@ -13,6 +13,10 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "thread.h"
+#include "serialize.h"
+#include "ctxindex.h"
+#include "util.h"
+#include "cblockindex.h"
 
 #include "cmerkletx.h"
 

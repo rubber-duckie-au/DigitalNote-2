@@ -25,6 +25,7 @@
 #include "masternode_extern.h"
 #include "init.h"
 #include "ctxout.h"
+#include "cblockindex.h"
 
 #include "instantx.h"
 

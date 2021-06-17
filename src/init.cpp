@@ -65,6 +65,7 @@
 #include "ui_translate.h"
 #include "ckeymetadata.h"
 #include "cstealthkeymetadata.h"
+#include "cblockindex.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

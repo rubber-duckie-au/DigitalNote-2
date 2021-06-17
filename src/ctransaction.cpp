@@ -18,6 +18,7 @@
 #include "ctxin.h"
 #include "cbignum.h"
 #include "script.h"
+#include "util.h"
 
 #include "ctransaction.h"
 

@@ -8,9 +8,11 @@
 #include <map>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/thread.hpp>
+#include <leveldb/db.h>
 #include <leveldb/cache.h>
 #include <leveldb/filter_policy.h>
-#include <boost/thread.hpp>
+#include <leveldb/write_batch.h>
 
 #include "txdb.h"
 #include "main_extern.h"
@@ -21,8 +23,45 @@
 #include "cblock.h"
 #include "ctxin.h"
 #include "ctxout.h"
+#include "uint/uint160.h"
+#include "ctxindex.h"
+#include "cdiskblockindex.h"
+#include "util.h"
+#include "enums/serialize_type.h"
 
 leveldb::DB *txdb; // global pointer for LevelDB object instance
+
+class CBatchScanner : public leveldb::WriteBatch::Handler
+{
+public:
+	std::string needle;
+	bool *deleted;
+	std::string *foundValue;
+	bool foundEntry;
+
+	CBatchScanner() : foundEntry(false)
+	{
+		
+	}
+
+	virtual void Put(const leveldb::Slice& key, const leveldb::Slice& value)
+	{
+		if (key.ToString() == needle)
+		{
+			foundEntry = true;
+			*deleted = false;
+			*foundValue = value.ToString();
+		}
+	}
+
+	virtual void Delete(const leveldb::Slice& key)
+	{
+		if (key.ToString() == needle) {
+			foundEntry = true;
+			*deleted = true;
+		}
+	}
+};
 
 static leveldb::Options GetOptions()
 {
@@ -179,6 +218,135 @@ void CTxDB::Close()
     activeBatch = NULL;
 }
 
+// When performing a read, if we have an active batch we need to check it first
+// before reading from the database, as the rest of the code assumes that once
+// a database transaction begins reads are consistent with it. It would be good
+// to change that assumption in future and avoid the performance hit, though in
+// practice it does not appear to be large.
+bool CTxDB::ScanBatch(const CDataStream &key, std::string *value, bool *deleted) const
+{
+    assert(activeBatch);
+    
+	*deleted = false;
+    CBatchScanner scanner;
+    scanner.needle = key.str();
+    scanner.deleted = deleted;
+    scanner.foundValue = value;
+    
+	leveldb::Status status = activeBatch->Iterate(&scanner);
+    if (!status.ok())
+	{
+        throw std::runtime_error(status.ToString());
+    }
+	
+    return scanner.foundEntry;
+}
+
+template<typename K, typename T>
+bool CTxDB::Read(const K& key, T& value)
+{
+	CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+	ssKey.reserve(1000);
+	ssKey << key;
+	std::string strValue;
+
+	bool readFromDb = true;
+	if (activeBatch) {
+		// First we must search for it in the currently pending set of
+		// changes to the db. If not found in the batch, go on to read disk.
+		bool deleted = false;
+		readFromDb = ScanBatch(ssKey, &strValue, &deleted) == false;
+		if (deleted) {
+			return false;
+		}
+	}
+	if (readFromDb) {
+		leveldb::Status status = pdb->Get(leveldb::ReadOptions(),
+										  ssKey.str(), &strValue);
+		if (!status.ok()) {
+			if (status.IsNotFound())
+				return false;
+			// Some unexpected error.
+			LogPrintf("LevelDB read failure: %s\n", status.ToString());
+			return false;
+		}
+	}
+	// Unserialize value
+	try {
+		CDataStream ssValue(strValue.data(), strValue.data() + strValue.size(),
+							SER_DISK, CLIENT_VERSION);
+		ssValue >> value;
+	}
+	catch (std::exception &e) {
+		return false;
+	}
+	return true;
+}
+
+template<typename K, typename T>
+bool CTxDB::Write(const K& key, const T& value)
+{
+	if (fReadOnly)
+		assert(!"Write called on database in read-only mode");
+
+	CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+	ssKey.reserve(1000);
+	ssKey << key;
+	CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+	ssValue.reserve(10000);
+	ssValue << value;
+
+	if (activeBatch) {
+		activeBatch->Put(ssKey.str(), ssValue.str());
+		return true;
+	}
+	leveldb::Status status = pdb->Put(leveldb::WriteOptions(), ssKey.str(), ssValue.str());
+	if (!status.ok()) {
+		LogPrintf("LevelDB write failure: %s\n", status.ToString());
+		return false;
+	}
+	return true;
+}
+
+template<typename K>
+bool CTxDB::Erase(const K& key)
+{
+	if (!pdb)
+		return false;
+	if (fReadOnly)
+		assert(!"Erase called on database in read-only mode");
+
+	CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+	ssKey.reserve(1000);
+	ssKey << key;
+	if (activeBatch) {
+		activeBatch->Delete(ssKey.str());
+		return true;
+	}
+	leveldb::Status status = pdb->Delete(leveldb::WriteOptions(), ssKey.str());
+	return (status.ok() || status.IsNotFound());
+}
+
+template<typename K>
+bool CTxDB::Exists(const K& key)
+{
+	CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+	ssKey.reserve(1000);
+	ssKey << key;
+	std::string unused;
+
+	if (activeBatch) {
+		bool deleted;
+		if (ScanBatch(ssKey, &unused, &deleted) && !deleted) {
+			return true;
+		}
+	}
+
+
+	leveldb::Status status = pdb->Get(leveldb::ReadOptions(), ssKey.str(), &unused);
+	return status.IsNotFound() == false;
+}
+
 bool CTxDB::TxnBegin()
 {
 	assert(!activeBatch);
@@ -227,62 +395,6 @@ bool CTxDB::ReadVersion(int& nVersion)
 bool CTxDB::WriteVersion(int nVersion)
 {
 	return Write(std::string("version"), nVersion);
-}
-
-class CBatchScanner : public leveldb::WriteBatch::Handler
-{
-public:
-	std::string needle;
-	bool *deleted;
-	std::string *foundValue;
-	bool foundEntry;
-
-	CBatchScanner() : foundEntry(false)
-	{
-		
-	}
-
-	virtual void Put(const leveldb::Slice& key, const leveldb::Slice& value)
-	{
-		if (key.ToString() == needle)
-		{
-			foundEntry = true;
-			*deleted = false;
-			*foundValue = value.ToString();
-		}
-	}
-
-	virtual void Delete(const leveldb::Slice& key)
-	{
-		if (key.ToString() == needle) {
-			foundEntry = true;
-			*deleted = true;
-		}
-	}
-};
-
-// When performing a read, if we have an active batch we need to check it first
-// before reading from the database, as the rest of the code assumes that once
-// a database transaction begins reads are consistent with it. It would be good
-// to change that assumption in future and avoid the performance hit, though in
-// practice it does not appear to be large.
-bool CTxDB::ScanBatch(const CDataStream &key, std::string *value, bool *deleted) const
-{
-    assert(activeBatch);
-    
-	*deleted = false;
-    CBatchScanner scanner;
-    scanner.needle = key.str();
-    scanner.deleted = deleted;
-    scanner.foundValue = value;
-    
-	leveldb::Status status = activeBatch->Iterate(&scanner);
-    if (!status.ok())
-	{
-        throw std::runtime_error(status.ToString());
-    }
-	
-    return scanner.foundEntry;
 }
 
 bool CTxDB::WriteAddrIndex(uint160 addrHash, uint256 txHash)

@@ -43,6 +43,10 @@
 #include "cstealthaddress.h"
 #include "thread.h"
 #include "ui_translate.h"
+#include "cblockindex.h"
+#include "cdiskblockindex.h"
+#include "cdisktxpos.h"
+#include "ctxindex.h"
 
 #include "cblock.h"
 

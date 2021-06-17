@@ -73,6 +73,8 @@
 #include "thread.h"
 #include "ui_interface.h"
 #include "ui_translate.h"
+#include "cblockindex.h"
+#include "ctxindex.h"
 
 using namespace boost;
 

@@ -37,6 +37,10 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "thread.h"
+#include "util.h"
+#include "cblockindex.h"
+#include "ctxindex.h"
+#include "enums/serialize_type.h"
 
 #include "miner.h"
 

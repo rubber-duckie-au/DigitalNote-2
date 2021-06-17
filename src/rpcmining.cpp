@@ -36,6 +36,10 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "cblockindex.h"
+#include "util.h"
+#include "enums/serialize_type.h"
+#include "ctxindex.h"
 
 using namespace json_spirit;
 using namespace boost::assign;
