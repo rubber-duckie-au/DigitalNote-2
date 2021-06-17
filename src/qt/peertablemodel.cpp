@@ -7,7 +7,6 @@
 #include <QDebug>
 #include <QList>
 #include <QTimer>
-#include <boost/foreach.hpp>
 
 #include "clientmodel.h"
 #include "guiconstants.h"
