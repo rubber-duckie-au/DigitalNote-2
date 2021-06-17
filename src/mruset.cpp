@@ -53,24 +53,6 @@ void mruset<T>::clear()
 }
 
 template <typename T>
-bool operator==(const mruset<T>& a, const mruset<T>& b)
-{
-	return a.set == b.set;
-}
-
-template <typename T>
-bool operator==(const mruset<T>& a, const std::set<T>& b)
-{
-	return a.set == b;
-}
-
-template <typename T>
-bool operator<(const mruset<T>& a, const mruset<T>& b)
-{
-	return a.set < b.set;
-}
-
-template <typename T>
 typename std::pair<typename mruset<T>::iterator, bool> mruset<T>::insert(const key_type& x)
 {
 	std::pair<iterator, bool> ret = set.insert(x);

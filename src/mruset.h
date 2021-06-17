@@ -7,18 +7,6 @@
 #include <set>
 #include <deque>
 
-template <typename T>
-class mruset;
-
-template <typename T>
-bool operator==(const mruset<T>& a, const mruset<T>& b);
-
-template <typename T>
-bool operator==(const mruset<T>& a, const std::set<T>& b);
-
-template <typename T>
-bool operator<(const mruset<T>& a, const mruset<T>& b);
-
 /** STL-like set container that only keeps the most recent N elements. */
 template <typename T>
 class mruset
@@ -46,9 +34,20 @@ public:
 	size_type count(const key_type& k) const;
 	void clear();
 	
-	friend bool operator==(const mruset<T>& a, const mruset<T>& b);
-	friend bool operator==(const mruset<T>& a, const std::set<T>& b);
-	friend bool operator<(const mruset<T>& a, const mruset<T>& b);
+	friend inline bool operator==(const mruset<T>& a, const mruset<T>& b)
+	{
+		return a.set == b.set;
+	}
+	
+	friend inline bool operator==(const mruset<T>& a, const std::set<T>& b)
+	{
+		return a.set == b;
+	}
+	
+	friend inline bool operator<(const mruset<T>& a, const mruset<T>& b)
+	{
+		return a.set < b.set;
+	}
 	
 	std::pair<iterator, bool> insert(const key_type& x);
 	size_type max_size() const;
