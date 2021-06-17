@@ -3,7 +3,9 @@
 
 #include <string>
 #include <vector>
+#include <set>
 #include <list>
+#include <utility>
 
 #include "cmerkletx.h"
 #include "types/isminefilter.h"
