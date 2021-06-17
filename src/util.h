@@ -46,6 +46,7 @@ class uint256;
 
 /* Format characters for (s)size_t and ptrdiff_t */
 #if defined(_MSC_VER) || defined(__MSVCRT__)
+
   /* (s)size_t and ptrdiff_t have the same size specifier in MSVC:
      http://msdn.microsoft.com/en-us/library/tcxf1dw6%28v=vs.100%29.aspx
    */
@@ -55,14 +56,17 @@ class uint256;
   #define PRIpdx    "Ix"
   #define PRIpdu    "Iu"
   #define PRIpdd    "Id"
+
 #else /* C99 standard */
+
   #define PRIszx    "zx"
   #define PRIszu    "zu"
   #define PRIszd    "zd"
   #define PRIpdx    "tx"
   #define PRIpdu    "tu"
   #define PRIpdd    "td"
-#endif
+
+#endif // defined(_MSC_VER) || defined(__MSVCRT__)
 
 // Align by increasing pointer, must have extra space at end of buffer
 template <size_t nBytes, typename T>
@@ -81,16 +85,22 @@ T* alignup(T* p)
 }
 
 #ifdef WIN32
+
 #define MSG_NOSIGNAL        0
 #define MSG_DONTWAIT        0
 
 #ifndef S_IRUSR
+
 #define S_IRUSR             0400
 #define S_IWUSR             0200
-#endif
-#else
+
+#endif // S_IRUSR
+
+#else // WIN32
+
 #define MAX_PATH            1024
-#endif
+
+#endif // WIN32
 
 void MilliSleep(int64_t n);
 

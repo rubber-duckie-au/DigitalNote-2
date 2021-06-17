@@ -35,17 +35,6 @@ class CTransaction;
 // Learn more: http://code.google.com/p/leveldb/
 class CTxDB
 {
-public:
-    CTxDB(const char* pszMode="r+");
-    ~CTxDB() {
-        // Note that this is not the same as Close() because it deletes only
-        // data scoped to this TxDB object.
-        delete activeBatch;
-    }
-
-    // Destroys the underlying shared global state accessed by this TxDB.
-    void Close();
-
 private:
     leveldb::DB *pdb;  // Points to the global instance.
 
@@ -55,6 +44,13 @@ private:
     leveldb::Options options;
     bool fReadOnly;
     int nVersion;
+
+public:
+    CTxDB(const char* pszMode="r+");
+    ~CTxDB();
+
+    // Destroys the underlying shared global state accessed by this TxDB.
+    void Close();
 
 protected:
     // Returns true and sets (value,false) if activeBatch contains the given key
@@ -171,24 +167,9 @@ protected:
 public:
     bool TxnBegin();
     bool TxnCommit();
-    bool TxnAbort()
-    {
-        delete activeBatch;
-        activeBatch = NULL;
-        return true;
-    }
-
-    bool ReadVersion(int& nVersion)
-    {
-        nVersion = 0;
-        return Read(std::string("version"), nVersion);
-    }
-
-    bool WriteVersion(int nVersion)
-    {
-        return Write(std::string("version"), nVersion);
-    }
-
+    bool TxnAbort();
+    bool ReadVersion(int& nVersion);
+    bool WriteVersion(int nVersion);
     bool ReadAddrIndex(uint160 addrHash, std::vector<uint256>& txHashes);
     bool WriteAddrIndex(uint160 addrHash, uint256 txHash);
     bool ReadTxIndex(uint256 hash, CTxIndex& txindex);
