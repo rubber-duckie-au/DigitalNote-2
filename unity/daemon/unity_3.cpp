@@ -1,4 +1,4 @@
-//ORIGINAL_PATH: ../../src/ckeymetadata.cpp----../../src/cstealthaddress.cpp----../../src/cscriptcompressor.cpp----../../src/cscriptvisitor.cpp----../../src/cscript.cpp----../../src/cscriptnum.cpp----../../src/caffectedkeysvisitor.cpp----../../src/ckeystoreisminevisitor.cpp----../../src/csignaturecache.cpp----../../src/signaturechecker.cpp----../../src/caccountingentry.cpp----../../src/caccount.cpp
+//ORIGINAL_PATH: src/ckeymetadata.cpp----src/cstealthaddress.cpp----src/cscriptcompressor.cpp----src/cscriptvisitor.cpp----src/cscript.cpp----src/cscriptnum.cpp----src/caffectedkeysvisitor.cpp----src/ckeystoreisminevisitor.cpp----src/csignaturecache.cpp----src/signaturechecker.cpp----src/caccountingentry.cpp----src/caccount.cpp
 
 #include "../../src/ckeymetadata.cpp"
 #include "../../src/cstealthaddress.cpp"
