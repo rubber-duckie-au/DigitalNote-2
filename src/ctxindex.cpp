@@ -7,6 +7,8 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "ctransaction.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "ctxindex.h"
 

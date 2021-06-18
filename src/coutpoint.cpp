@@ -1,6 +1,8 @@
 #include "tinyformat.h"
 #include "serialize.h"
 #include "chashwriter.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "coutpoint.h"
 

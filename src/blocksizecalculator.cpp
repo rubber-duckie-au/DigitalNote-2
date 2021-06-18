@@ -13,6 +13,8 @@
 #include "main.h"
 #include "serialize.h"
 #include "enums/serialize_type.h"
+#include "cautofile.h"
+#include "version.h"
 
 #include "blocksizecalculator.h"
 

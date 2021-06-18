@@ -5,6 +5,8 @@
 #include "serialize.h"
 #include "chashwriter.h"
 #include "util.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "cstealthaddress.h"
 

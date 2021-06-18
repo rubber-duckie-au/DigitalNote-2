@@ -1,3 +1,7 @@
+#include <cstring>
+
+#include "serialize.h"
+
 #include "net/cnetmessage.h"
 
 CNetMessage::CNetMessage(int nTypeIn, int nVersionIn) : hdrbuf(nTypeIn, nVersionIn), vRecv(nTypeIn, nVersionIn) {

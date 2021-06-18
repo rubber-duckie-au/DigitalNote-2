@@ -7,6 +7,7 @@
 #include "ctxout.h"
 #include "ctxin.h"
 #include "ctransaction.h"
+#include "cdatastream.h"
 
 #include "cdiskblockindex.h"
 

@@ -9,6 +9,7 @@
 #include "ctxin.h"
 #include "ctxout.h"
 #include "enums/serialize_type.h"
+#include "version.h"
 
 #include "walletmodeltransaction.h"
 

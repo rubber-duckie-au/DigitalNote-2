@@ -1,4 +1,5 @@
 #include "serialize.h"
+#include "cdatastream.h"
 
 #include "smsg/address.h"
 

@@ -3,6 +3,7 @@
 #include "util.h"
 #include "serialize.h"
 #include "hash.h"
+#include "cdatastream.h"
 
 #include "cwalletkey.h"
 

@@ -47,6 +47,7 @@
 #include "cdisktxpos.h"
 #include "ctxindex.h"
 #include "util/backwards.h"
+#include "cautofile.h"
 
 #include "cblock.h"
 

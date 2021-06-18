@@ -6,6 +6,8 @@
 #include "net/cbanentry.h"
 #include "hash.h"
 #include "net/csubnet.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "net/cbandb.h"
 

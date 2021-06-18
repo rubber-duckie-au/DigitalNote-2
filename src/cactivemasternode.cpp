@@ -31,6 +31,7 @@
 #include "ckeyid.h"
 #include "cscriptid.h"
 #include "cstealthaddress.h"
+#include "version.h"
 
 #include "cactivemasternode.h"
 

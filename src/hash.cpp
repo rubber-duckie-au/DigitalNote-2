@@ -7,6 +7,7 @@
 #include "uint/uint256.h"
 #include "types/ec_point.h"
 #include "serialize.h"
+#include "cdatastream.h"
 
 #include "hash.h"
 

@@ -2,6 +2,8 @@
 
 #include "serialize.h"
 #include "enums/serialize_type.h"
+#include "version.h"
+#include "cdatastream.h"
 
 #include "caddress.h"
 

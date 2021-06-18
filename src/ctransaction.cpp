@@ -17,6 +17,8 @@
 #include "cbignum.h"
 #include "script.h"
 #include "util.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "ctransaction.h"
 

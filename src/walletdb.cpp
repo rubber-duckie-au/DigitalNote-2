@@ -35,6 +35,7 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "thread.h"
+#include "cdatastream.h"
 
 #include "walletdb.h"
 

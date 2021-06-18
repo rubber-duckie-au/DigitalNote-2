@@ -75,6 +75,7 @@
 #include "cblockindex.h"
 #include "ctxindex.h"
 #include "util/backwards.h"
+#include "cautofile.h"
 
 //
 // Global state

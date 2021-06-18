@@ -114,6 +114,9 @@ SOURCES += src/ccoincontrol.cpp
 SOURCES += src/ui_translate.cpp
 SOURCES += src/limitedmap.cpp
 SOURCES += src/mruset.cpp
+SOURCES += src/cautofile.cpp
+SOURCES += src/csizecomputer.cpp
+SOURCES += src/cdatastream.cpp
 
 SOURCES += src/cbignum_ctx.cpp
 SOURCES += src/cbignum.cpp

@@ -5,6 +5,8 @@
 #include "chainparams.h"
 #include "hash.h"
 #include "cmasternodeman.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "cmasternodedb.h"
 

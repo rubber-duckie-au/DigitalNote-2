@@ -6,6 +6,7 @@
 #include "masternode_extern.h"
 #include "blockparams.h"
 #include "net/cnetaddr.h"
+#include "version.h"
 
 #include "ctransactionlock.h"
 

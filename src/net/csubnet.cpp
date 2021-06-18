@@ -3,6 +3,7 @@
 #include "serialize.h"
 #include "netbase.h"
 #include "util.h"
+#include "cdatastream.h"
 
 #include "net/csubnet.h"
 

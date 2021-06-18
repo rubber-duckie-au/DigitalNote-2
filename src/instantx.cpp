@@ -26,6 +26,7 @@
 #include "ctxout.h"
 #include "cblockindex.h"
 #include "util/backwards.h"
+#include "version.h"
 
 #include "instantx.h"
 

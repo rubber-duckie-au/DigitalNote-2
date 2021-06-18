@@ -4,6 +4,8 @@
 #include "serialize.h"
 #include "ckeyid.h"
 #include "cscriptid.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "cscriptcompressor.h"
 

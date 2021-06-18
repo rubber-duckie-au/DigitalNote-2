@@ -5,6 +5,8 @@
 #include "chainparams.h"
 #include "hash.h"
 #include "caddrman.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "net/caddrdb.h"
 

@@ -5,6 +5,8 @@
 #include "chashwriter.h"
 #include "uint/uint256.h"
 #include "hash.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "ctxout.h"
 

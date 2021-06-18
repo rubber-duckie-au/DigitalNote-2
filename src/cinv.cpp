@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include "util.h"
+#include "cdatastream.h"
 
 #include "cinv.h"
 

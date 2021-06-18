@@ -1,5 +1,6 @@
 #include "net/banreason.h"
 #include "serialize.h"
+#include "cdatastream.h"
 
 #include "net/cbanentry.h"
 

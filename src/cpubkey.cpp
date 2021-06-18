@@ -8,6 +8,7 @@
 #include "uint/uint256.h"
 #include "crypto/bmw/bmw512.h"
 #include "secp256k1_context_verify.h"
+#include "cdatastream.h"
 
 #include "cpubkey.h"
 

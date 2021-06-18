@@ -1,8 +1,8 @@
 #ifndef CNETMESSAGE_H
 #define CNETMESSAGE_H
 
-#include "serialize.h"
 #include "cmessageheader.h"
+#include "cdatastream.h"
 
 class CNetMessage {
 public:

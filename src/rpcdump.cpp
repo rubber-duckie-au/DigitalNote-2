@@ -29,6 +29,7 @@
 #include "cstealthaddress.h"
 #include "ui_translate.h"
 #include "ckeymetadata.h"
+#include "version.h"
 
 void EnsureWalletIsUnlocked();
 

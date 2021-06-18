@@ -17,6 +17,7 @@
 #include "ctxindex.h"
 #include "util.h"
 #include "cblockindex.h"
+#include "cdatastream.h"
 
 #include "cmerkletx.h"
 

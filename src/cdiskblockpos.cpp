@@ -1,13 +1,16 @@
 #include "tinyformat.h"
 #include "serialize.h"
+#include "cdatastream.h"
 
 #include "cdiskblockpos.h"
 
-CDiskBlockPos::CDiskBlockPos() {
+CDiskBlockPos::CDiskBlockPos()
+{
 	SetNull();
 }
 
-CDiskBlockPos::CDiskBlockPos(int nFileIn, unsigned int nPosIn) {
+CDiskBlockPos::CDiskBlockPos(int nFileIn, unsigned int nPosIn)
+{
 	nFile = nFileIn;
 	nPos = nPosIn;
 }
@@ -61,11 +64,13 @@ void CDiskBlockPos::Unserialize(Stream& s, int nType, int nVersion)
 template void CDiskBlockPos::Serialize<CDataStream>(CDataStream& s, int nType, int nVersion) const;
 template void CDiskBlockPos::Unserialize<CDataStream>(CDataStream& s, int nType, int nVersion);
 
-bool operator==(const CDiskBlockPos &a, const CDiskBlockPos &b) {
+bool operator==(const CDiskBlockPos &a, const CDiskBlockPos &b)
+{
 	return (a.nFile == b.nFile && a.nPos == b.nPos);
 }
 
-bool operator!=(const CDiskBlockPos &a, const CDiskBlockPos &b) {
+bool operator!=(const CDiskBlockPos &a, const CDiskBlockPos &b)
+{
 	return !(a == b);
 }
 
@@ -84,3 +89,4 @@ std::string CDiskBlockPos::ToString() const
 {
 	return strprintf("CBlockDiskPos(nFile=%i, nPos=%i)", nFile, nPos);
 }
+

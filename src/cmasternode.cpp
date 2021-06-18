@@ -18,6 +18,7 @@
 #include "cmnenginepool.h"
 #include "mnengine_extern.h"
 #include "thread.h"
+#include "cdatastream.h"
 
 #include "cmasternode.h"
 

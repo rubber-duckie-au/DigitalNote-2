@@ -2,6 +2,8 @@
 #include "ctxout.h"
 #include "cscriptcompressor.h"
 #include "chashwriter.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "ctxoutcompressor.h"
 

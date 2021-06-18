@@ -8,6 +8,7 @@
 #include "uint/uint256.h"
 #include "crypto/bmw/bmw512.h"
 #include "net/cservice.h"
+#include "cdatastream.h"
 
 #include "net/cnetaddr.h"
 

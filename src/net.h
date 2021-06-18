@@ -32,9 +32,6 @@ namespace boost {
     class thread_group;
 }
 
-
-typedef std::map<CSubNet, CBanEntry> banmap_t;
-
 enum
 {
     LOCAL_NONE,   // unknown

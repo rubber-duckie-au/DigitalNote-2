@@ -18,6 +18,8 @@
 #include "cdbenv.h"
 #include "cmasterkey.h"
 #include "ckeyid.h"
+#include "version.h"
+#include "cdatastream.h"
 
 #include "cdb.h"
 
@@ -246,8 +248,8 @@ template bool CDB::Write<std::pair<std::string, CScript>, char>(const std::pair<
 template bool CDB::Write<std::pair<std::string, CKeyID>, CStealthKeyMetadata>(const std::pair<std::string, CKeyID>&, const CStealthKeyMetadata&, bool);
 template bool CDB::Write<std::pair<std::string, uint160>, CScript>(const std::pair<std::string, uint160>&, const CScript&, bool);
 template bool CDB::Write<std::pair<std::string, uint256>, CWalletTx>(std::pair<std::string, uint256> const&, const CWalletTx&, bool);
-template bool CDB::Write<boost::tuples::tuple<std::string, std::string, unsigned long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>, CAccountingEntry>(const boost::tuples::tuple<std::string, std::string, unsigned long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>&, const CAccountingEntry&, bool);
-template bool CDB::Write<boost::tuples::tuple<std::string, std::string, unsigned long long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>, CAccountingEntry>(const boost::tuples::tuple<std::string, std::string, unsigned long long, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type, boost::tuples::null_type>&, const CAccountingEntry&, bool);
+template bool CDB::Write<boost::tuples::tuple<std::string, std::string, unsigned long>, CAccountingEntry>(const boost::tuples::tuple<std::string, std::string, unsigned long>&, const CAccountingEntry&, bool);
+template bool CDB::Write<boost::tuples::tuple<std::string, std::string, unsigned long long>, CAccountingEntry>(const boost::tuples::tuple<std::string, std::string, unsigned long long>&, const CAccountingEntry&, bool);
 template bool CDB::Write<std::string, long>(const std::string&, const long&, bool);
 template bool CDB::Write<std::string, long long>(const std::string&, const long long&, bool);
 template bool CDB::Write<std::string, CPubKey>(const std::string&, const CPubKey&, bool);

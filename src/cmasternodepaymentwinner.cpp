@@ -1,6 +1,7 @@
 #include "util.h"
 #include "hash.h"
 #include "serialize.h"
+#include "cdatastream.h"
 
 #include "cmasternodepaymentwinner.h"
 

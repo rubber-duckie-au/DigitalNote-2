@@ -28,6 +28,7 @@
 #include "cdiskblockindex.h"
 #include "util.h"
 #include "enums/serialize_type.h"
+#include "cdatastream.h"
 
 leveldb::DB *txdb; // global pointer for LevelDB object instance
 

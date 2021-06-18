@@ -5,6 +5,7 @@
 #include "cbignum_error.h"
 #include "cbignum_ctx.h"
 #include "util.h"
+#include "cdatastream.h"
 
 #include "cbignum.h"
 

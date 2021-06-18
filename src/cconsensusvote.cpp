@@ -12,6 +12,7 @@
 #include "masternode_extern.h"
 #include "cmnenginesigner.h"
 #include "mnengine_extern.h"
+#include "cdatastream.h"
 
 #include "cconsensusvote.h"
 

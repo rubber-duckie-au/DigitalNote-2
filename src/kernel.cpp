@@ -21,6 +21,7 @@
 #include "util.h"
 #include "cblockindex.h"
 #include "enums/serialize_type.h"
+#include "cdatastream.h"
 
 #include "kernel.h"
 

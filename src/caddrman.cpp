@@ -3,6 +3,7 @@
 #include "caddrinfo.h"
 #include "addrman.h"
 #include "thread.h"
+#include "cdatastream.h"
 
 #include "caddrman.h"
 

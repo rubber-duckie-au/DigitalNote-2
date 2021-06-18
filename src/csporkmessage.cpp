@@ -3,7 +3,8 @@
 #include "uint/uint256.h"
 #include "util.h"
 #include "hash.h"
-#include "serialize.h"
+#include "csizecomputer.h"
+#include "cdatastream.h"
 
 #include "csporkmessage.h"
 

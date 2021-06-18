@@ -154,17 +154,21 @@ HEADERS += src/wallet.h
 HEADERS += src/webwalletconnector.h
 HEADERS += src/ui_interface.h
 HEADERS += src/ui_translate.h
+HEADERS += src/cautofile.h
+HEADERS += src/cdatastream.h
 
 HEADERS += src/cbignum.h
 HEADERS += src/cbignum_ctx.h
 HEADERS += src/cbignum_error.h
 HEADERS += src/cbignum_const.h
 
+HEADERS += src/types/camount.h
 HEADERS += src/types/ccriticalblock.h
 HEADERS += src/types/ccriticalsection.h
 HEADERS += src/types/cprivkey.h
 HEADERS += src/types/cryptedkeymap.h
 HEADERS += src/types/csecret.h
+HEADERS += src/types/cserializedata.h
 HEADERS += src/types/ctxdestination.h
 HEADERS += src/types/data_chunk.h
 HEADERS += src/types/ec_point.h

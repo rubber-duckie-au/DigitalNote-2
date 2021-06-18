@@ -1,6 +1,7 @@
 #include "serialize.h"
 #include "enums/serialize_type.h"
 #include "cwallettx.h"
+#include "cdatastream.h"
 
 #include "caccountingentry.h"
 

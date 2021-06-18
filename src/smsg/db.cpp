@@ -9,6 +9,8 @@
 #include "ckeyid.h"
 #include "cpubkey.h"
 #include "enums/serialize_type.h"
+#include "version.h"
+#include "cdatastream.h"
 
 #include "smsg/db.h"
 

@@ -4,6 +4,7 @@
 
 #include "util.h"
 #include "netbase.h"
+#include "cdatastream.h"
 
 #include "net/cservice.h"
 

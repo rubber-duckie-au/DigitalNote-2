@@ -27,6 +27,7 @@
 #include "cblockindex.h"
 #include "enums/serialize_type.h"
 #include "ctxindex.h"
+#include "version.h"
 
 #ifdef ENABLE_WALLET
 #include "coutput.h"

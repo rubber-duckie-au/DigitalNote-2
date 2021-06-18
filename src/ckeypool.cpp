@@ -2,6 +2,7 @@
 
 #include "util.h"
 #include "enums/serialize_type.h"
+#include "cdatastream.h"
 
 #include "ckeypool.h"
 

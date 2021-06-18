@@ -7,6 +7,7 @@
 #include "serialize.h"
 #include "enums/serialize_type.h"
 #include "main_extern.h"
+#include "cdatastream.h"
 
 #include "cblocklocator.h"
 

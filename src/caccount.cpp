@@ -1,5 +1,6 @@
 #include "serialize.h"
 #include "enums/serialize_type.h"
+#include "cdatastream.h"
 
 #include "caccount.h"
 

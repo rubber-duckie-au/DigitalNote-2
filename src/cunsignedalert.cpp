@@ -1,5 +1,6 @@
 #include "serialize.h"
 #include "tinyformat.h"
+#include "cdatastream.h"
 
 #include "cunsignedalert.h"
 

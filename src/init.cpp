@@ -66,6 +66,7 @@
 #include "ckeymetadata.h"
 #include "cstealthkeymetadata.h"
 #include "cblockindex.h"
+#include "version.h"
 
 #ifdef ENABLE_WALLET
 #include "db.h"

@@ -3,6 +3,8 @@
 #include "util.h"
 #include "serialize.h"
 #include "chashwriter.h"
+#include "cautofile.h"
+#include "cdatastream.h"
 
 #include "ctxin.h"
 

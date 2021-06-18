@@ -4,6 +4,7 @@
 #include "cchainparams.h"
 #include "chainparams.h"
 #include "util.h"
+#include "cdatastream.h"
 
 #include "cmessageheader.h"
 

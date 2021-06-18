@@ -12,6 +12,9 @@
 #include "net/myclosesocket.h"
 #include "thread.h"
 #include "enums/serialize_type.h"
+#include "version.h"
+#include "types/cserializedata.h"
+#include "cdatastream.h"
 
 #include "net/cnode.h"
 

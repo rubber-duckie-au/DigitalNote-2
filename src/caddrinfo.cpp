@@ -5,6 +5,8 @@
 #include "enums/serialize_type.h"
 #include "crypto/bmw/bmw512.h"
 #include "addrman.h"
+#include "cdatastream.h"
+#include "types/cserializedata.h"
 
 #include "caddrinfo.h"
 
