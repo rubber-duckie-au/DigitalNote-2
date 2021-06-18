@@ -2,4 +2,3 @@
 
 #include "../../src/crypto/common/sha256.cpp"
 #include "../../src/crypto/common/sha512.cpp"
-#include "../../src/rpcsmessage.cpp"
