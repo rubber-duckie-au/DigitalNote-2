@@ -48,8 +48,6 @@
 #include "addeditadrenalinenode.h"
 #include "adrenalinenodeconfigdialog.h"
 
-using namespace json_spirit;
-
 MasternodeManager::MasternodeManager(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::MasternodeManager),

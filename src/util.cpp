@@ -1111,7 +1111,6 @@ void PrintExceptionContinue(std::exception* pex, const char* pszThread)
 
 boost::filesystem::path GetDefaultDataDir()
 {
-    namespace fs = boost::filesystem;
     // Windows < Vista: C:\Documents and Settings\Username\Application Data\XDN
     // Windows >= Vista: C:\Users\Username\AppData\Roaming\XDN
     // Mac: ~/Library/Application Support/XDN
@@ -1120,16 +1119,16 @@ boost::filesystem::path GetDefaultDataDir()
     // Windows
     return GetSpecialFolderPath(CSIDL_APPDATA) / "XDN";
 #else
-    fs::path pathRet;
+    boost::filesystem::path pathRet;
     char* pszHome = getenv("HOME");
     if (pszHome == NULL || strlen(pszHome) == 0)
-        pathRet = fs::path("/");
+        pathRet = boost::filesystem::path("/");
     else
-        pathRet = fs::path(pszHome);
+        pathRet = boost::filesystem::path(pszHome);
 #ifdef MAC_OSX
     // Mac
     pathRet /= "Library/Application Support";
-    fs::create_directory(pathRet);
+    boost::filesystem::create_directory(pathRet);
     return pathRet / "XDN";
 #else
     // Unix
@@ -1143,14 +1142,12 @@ static CCriticalSection csPathCached;
 
 const boost::filesystem::path &GetDataDir(bool fNetSpecific)
 {
-    namespace fs = boost::filesystem;
-
     LOCK(csPathCached);
 
     int nNet = CChainParams_Network::MAX_NETWORK_TYPES;
     if (fNetSpecific) nNet = Params().NetworkID();
 
-    fs::path &path = pathCached[nNet];
+    boost::filesystem::path &path = pathCached[nNet];
 
     // This can be called during exceptions by LogPrintf(), so we cache the
     // value so we don't have to do memory allocations after that.
@@ -1158,8 +1155,8 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
         return path;
 
     if (mapArgs.count("-datadir")) {
-        path = fs::system_complete(mapArgs["-datadir"]);
-        if (!fs::is_directory(path)) {
+        path = boost::filesystem::system_complete(mapArgs["-datadir"]);
+        if (!boost::filesystem::is_directory(path)) {
             path = "";
             return path;
         }
@@ -1169,7 +1166,7 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
     if (fNetSpecific)
         path /= Params().DataDir();
 
-    fs::create_directory(path);
+    boost::filesystem::create_directory(path);
 
     return path;
 }
@@ -1506,17 +1503,15 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
 #ifdef WIN32
 boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate)
 {
-    namespace fs = boost::filesystem;
-
     char pszPath[MAX_PATH] = "";
 
     if(SHGetSpecialFolderPathA(NULL, pszPath, nFolder, fCreate))
     {
-        return fs::path(pszPath);
+        return boost::filesystem::path(pszPath);
     }
 
     LogPrintf("SHGetSpecialFolderPathA() failed, could not obtain requested path.\n");
-    return fs::path("");
+    return boost::filesystem::path("");
 }
 #endif
 

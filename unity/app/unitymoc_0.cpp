@@ -45,3 +45,6 @@
 #include "../../build/app_and_daemon/moc_blockbrowser.cpp"
 #include "../../build/app_and_daemon/moc_qvalidatedtextedit.cpp"
 #include "../../build/app_and_daemon/moc_mrichtextedit.cpp"
+#include "../../build/app_and_daemon/moc_paymentserver.cpp"
+#include "../../build/app_and_daemon/moc_masternodemanager.cpp"
+#include "../../build/app_and_daemon/moc_qrcodedialog.cpp"

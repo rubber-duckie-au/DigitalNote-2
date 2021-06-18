@@ -16,13 +16,10 @@
 #include <QUrl>
 #include <boost/filesystem/path.hpp>
 
-
 #include "guiconstants.h"
 #include "util.h"
 
 #include "paymentserver.h"
-
-using namespace boost;
 
 const int BITCOIN_IPC_CONNECT_TIMEOUT = 1000; // milliseconds
 const QString BITCOIN_IPC_PREFIX("DigitalNote:");
