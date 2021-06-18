@@ -465,6 +465,7 @@ template CDataStream& CDataStream::operator<< <unsigned int>(unsigned int const&
 template CDataStream& CDataStream::operator<< <long>(long const&);
 template CDataStream& CDataStream::operator<< <unsigned long>(unsigned long const&);
 template CDataStream& CDataStream::operator<< <long long>(long long const&);
+template CDataStream& CDataStream::operator<< <unsigned long long>(unsigned long long const&);
 template CDataStream& CDataStream::operator<< <bool>(bool const&);
 template CDataStream& CDataStream::operator<< <char>(char const&);
 template CDataStream& CDataStream::operator<< <unsigned char>(unsigned char const&);
@@ -542,6 +543,8 @@ template CDataStream& CDataStream::operator>><int>(int&);
 template CDataStream& CDataStream::operator>><unsigned int>(unsigned int&);
 template CDataStream& CDataStream::operator>><long>(long&);
 template CDataStream& CDataStream::operator>><unsigned long>(unsigned long&);
+template CDataStream& CDataStream::operator>><long long>(long long&);
+template CDataStream& CDataStream::operator>><unsigned long long>(unsigned long long&);
 template CDataStream& CDataStream::operator>><bool>(bool&);
 template CDataStream& CDataStream::operator>><char>(char&);
 
