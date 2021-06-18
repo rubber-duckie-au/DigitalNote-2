@@ -16,8 +16,6 @@
 
 #include "blocksizecalculator.h"
 
-using namespace BlockSizeCalculator;
-
 static std::vector<unsigned int> blocksizes;
 static bool sorted = false;
 
@@ -29,7 +27,7 @@ unsigned int BlockSizeCalculator::ComputeBlockSize(CBlockIndex *pblockindex, uns
 
 	LOCK(cs_main);
 
-	proposedMaxBlockSize = ::GetMedianBlockSize(pblockindex, pastblocks);
+	proposedMaxBlockSize = BlockSizeCalculator::GetMedianBlockSize(pblockindex, pastblocks);
 
 	if (proposedMaxBlockSize > 0)
 	{
@@ -51,7 +49,7 @@ unsigned int BlockSizeCalculator::ComputeBlockSize(CBlockIndex *pblockindex, uns
 
 inline unsigned int BlockSizeCalculator::GetMedianBlockSize(CBlockIndex *pblockindex, unsigned int pastblocks)
 {
-	blocksizes = ::GetBlockSizes(pblockindex, pastblocks);
+	blocksizes = BlockSizeCalculator::GetBlockSizes(pblockindex, pastblocks);
 
 	if(!sorted)
 	{
@@ -92,12 +90,12 @@ inline std::vector<unsigned int> BlockSizeCalculator::GetBlockSizes(CBlockIndex 
 
 	if (blocksizes.size() > 0)
 	{
-		int latestBlockSize = ::GetBlockSize(pblockindex);
+		int latestBlockSize = BlockSizeCalculator::GetBlockSize(pblockindex);
 
 		if (latestBlockSize != -1)
 		{
 			CBlockIndex *firstBlockIndex = FindBlockByHeight(firstBlock);
-			int oldestBlockSize = ::GetBlockSize(firstBlockIndex);
+			int oldestBlockSize = BlockSizeCalculator::GetBlockSize(firstBlockIndex);
 			
 			if (oldestBlockSize != -1)
 			{
@@ -122,7 +120,7 @@ inline std::vector<unsigned int> BlockSizeCalculator::GetBlockSizes(CBlockIndex 
 	{
 		while (pblockindex != NULL && pblockindex->nHeight > firstBlock)
 		{
-			int blocksize = ::GetBlockSize(pblockindex);
+			int blocksize = BlockSizeCalculator::GetBlockSize(pblockindex);
 			
 			if (blocksize != -1)
 			{

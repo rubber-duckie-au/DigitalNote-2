@@ -6,8 +6,6 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/tuple/tuple.hpp>
 
-using namespace boost;
-
 class uint256;
 class CPubKey;
 

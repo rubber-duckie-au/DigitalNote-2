@@ -34,100 +34,96 @@
 #include "cwallettx.h"
 #endif // ENABLE_WALLET
 
-using namespace boost;
-using namespace boost::assign;
-using namespace json_spirit;
-
-void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, bool fIncludeHex)
+void ScriptPubKeyToJSON(const CScript& scriptPubKey, json_spirit::Object& out, bool fIncludeHex)
 {
     txnouttype type;
     std::vector<CTxDestination> addresses;
     int nRequired;
 
-    out.push_back(Pair("asm", scriptPubKey.ToString()));
+    out.push_back(json_spirit::Pair("asm", scriptPubKey.ToString()));
 
     if (fIncludeHex)
 	{
-        out.push_back(Pair("hex", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
+        out.push_back(json_spirit::Pair("hex", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
 	}
 	
     if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired))
     {
-        out.push_back(Pair("type", GetTxnOutputType(type)));
+        out.push_back(json_spirit::Pair("type", GetTxnOutputType(type)));
         
 		return;
     }
 
-    out.push_back(Pair("reqSigs", nRequired));
-    out.push_back(Pair("type", GetTxnOutputType(type)));
+    out.push_back(json_spirit::Pair("reqSigs", nRequired));
+    out.push_back(json_spirit::Pair("type", GetTxnOutputType(type)));
 
-    Array a;
+    json_spirit::Array a;
     for(const CTxDestination& addr : addresses)
 	{
         a.push_back(CDigitalNoteAddress(addr).ToString());
 	}
 	
-    out.push_back(Pair("addresses", a));
+    out.push_back(json_spirit::Pair("addresses", a));
 }
 
-void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
+void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spirit::Object& entry)
 {
-    entry.push_back(Pair("txid", tx.GetHash().GetHex()));
-    entry.push_back(Pair("version", tx.nVersion));
-    entry.push_back(Pair("time", (int64_t)tx.nTime));
-    entry.push_back(Pair("locktime", (int64_t)tx.nLockTime));
+    entry.push_back(json_spirit::Pair("txid", tx.GetHash().GetHex()));
+    entry.push_back(json_spirit::Pair("version", tx.nVersion));
+    entry.push_back(json_spirit::Pair("time", (int64_t)tx.nTime));
+    entry.push_back(json_spirit::Pair("locktime", (int64_t)tx.nLockTime));
     
-	Array vin;
+	json_spirit::Array vin;
 	
     for(const CTxIn& txin : tx.vin)
     {
-        Object in;
+        json_spirit::Object in;
 		
         if (tx.IsCoinBase())
 		{
-            in.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+            in.push_back(json_spirit::Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
 		}
         else
         {
-            in.push_back(Pair("txid", txin.prevout.hash.GetHex()));
-            in.push_back(Pair("vout", (int64_t)txin.prevout.n));
+            in.push_back(json_spirit::Pair("txid", txin.prevout.hash.GetHex()));
+            in.push_back(json_spirit::Pair("vout", (int64_t)txin.prevout.n));
             
-			Object o;
+			json_spirit::Object o;
             
-			o.push_back(Pair("asm", txin.scriptSig.ToString()));
-            o.push_back(Pair("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+			o.push_back(json_spirit::Pair("asm", txin.scriptSig.ToString()));
+            o.push_back(json_spirit::Pair("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
             
-			in.push_back(Pair("scriptSig", o));
+			in.push_back(json_spirit::Pair("scriptSig", o));
         }
         
-		in.push_back(Pair("sequence", (int64_t)txin.nSequence));
+		in.push_back(json_spirit::Pair("sequence", (int64_t)txin.nSequence));
         vin.push_back(in);
     }
     
-	entry.push_back(Pair("vin", vin));
-    Array vout;
+	entry.push_back(json_spirit::Pair("vin", vin));
+    json_spirit::Array vout;
     
 	for (unsigned int i = 0; i < tx.vout.size(); i++)
     {
         const CTxOut& txout = tx.vout[i];
-        Object out;
+        json_spirit::Object out;
         
-		out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
-        out.push_back(Pair("n", (int64_t)i));
+		out.push_back(json_spirit::Pair("value", ValueFromAmount(txout.nValue)));
+        out.push_back(json_spirit::Pair("n", (int64_t)i));
         
-		Object o;
+		json_spirit::Object o;
         
 		ScriptPubKeyToJSON(txout.scriptPubKey, o, true);
         
-		out.push_back(Pair("scriptPubKey", o));
+		out.push_back(json_spirit::Pair("scriptPubKey", o));
         vout.push_back(out);
     }
 	
-    entry.push_back(Pair("vout", vout));
+    entry.push_back(json_spirit::Pair("vout", vout));
 
     if (hashBlock != 0)
     {
-        entry.push_back(Pair("blockhash", hashBlock.GetHex()));
+        entry.push_back(json_spirit::Pair("blockhash", hashBlock.GetHex()));
         std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
         
 		if (mi != mapBlockIndex.end() && (*mi).second)
@@ -136,18 +132,18 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
             
 			if (pindex->IsInMainChain())
             {
-                entry.push_back(Pair("confirmations", 1 + nBestHeight - pindex->nHeight));
-                entry.push_back(Pair("blocktime", (int64_t)pindex->nTime));
+                entry.push_back(json_spirit::Pair("confirmations", 1 + nBestHeight - pindex->nHeight));
+                entry.push_back(json_spirit::Pair("blocktime", (int64_t)pindex->nTime));
             }
             else
 			{
-                entry.push_back(Pair("confirmations", 0));
+                entry.push_back(json_spirit::Pair("confirmations", 0));
 			}
         }
     }
 }
 
-Value getrawtransaction(const Array& params, bool fHelp)
+json_spirit::Value getrawtransaction(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -155,7 +151,7 @@ Value getrawtransaction(const Array& params, bool fHelp)
             "getrawtransaction <txid> [verbose=0]\n"
             "If verbose=0, returns a string that is\n"
             "serialized, hex-encoded data for <txid>.\n"
-            "If verbose is non-zero, returns an Object\n"
+            "If verbose is non-zero, returns an json_spirit::Object\n"
             "with information about <txid>."
 		);
 	}
@@ -187,9 +183,9 @@ Value getrawtransaction(const Array& params, bool fHelp)
         return strHex;
 	}
 	
-    Object result;
+    json_spirit::Object result;
     
-	result.push_back(Pair("hex", strHex));
+	result.push_back(json_spirit::Pair("hex", strHex));
     
 	TxToJSON(tx, hashBlock, result);
 	
@@ -197,7 +193,7 @@ Value getrawtransaction(const Array& params, bool fHelp)
 }
 
 #ifdef ENABLE_WALLET
-Value listunspent(const Array& params, bool fHelp)
+json_spirit::Value listunspent(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
 	{
@@ -206,12 +202,12 @@ Value listunspent(const Array& params, bool fHelp)
             "Returns array of unspent transaction outputs\n"
             "with between minconf and maxconf (inclusive) confirmations.\n"
             "Optionally filtered to only include txouts paid to specified addresses.\n"
-            "Results are an array of Objects, each of which has:\n"
+            "Results are an array of json_spirit::Objects, each of which has:\n"
             "{txid, vout, scriptPubKey, amount, confirmations}"
 		);
 	}
 	
-    RPCTypeCheck(params, list_of(int_type)(int_type)(array_type));
+    RPCTypeCheck(params, boost::assign::list_of(json_spirit::int_type)(json_spirit::int_type)(json_spirit::array_type));
 
     int nMinDepth = 1;
     if (params.size() > 0)
@@ -229,9 +225,9 @@ Value listunspent(const Array& params, bool fHelp)
     
 	if (params.size() > 2)
     {
-        Array inputs = params[2].get_array();
+        json_spirit::Array inputs = params[2].get_array();
         
-		for(Value& input : inputs)
+		for(json_spirit::Value& input : inputs)
         {
             CDigitalNoteAddress address(input.get_str());
             
@@ -249,7 +245,7 @@ Value listunspent(const Array& params, bool fHelp)
         }
     }
 
-    Array results;
+    json_spirit::Array results;
     std::vector<COutput> vecOutputs;
     
 	assert(pwalletMain != NULL);
@@ -279,23 +275,23 @@ Value listunspent(const Array& params, bool fHelp)
 
         int64_t nValue = out.tx->vout[out.i].nValue;
         const CScript& pk = out.tx->vout[out.i].scriptPubKey;
-        Object entry;
+        json_spirit::Object entry;
         
-		entry.push_back(Pair("txid", out.tx->GetHash().GetHex()));
-        entry.push_back(Pair("vout", out.i));
+		entry.push_back(json_spirit::Pair("txid", out.tx->GetHash().GetHex()));
+        entry.push_back(json_spirit::Pair("vout", out.i));
         
 		CTxDestination address;
 		if (ExtractDestination(out.tx->vout[out.i].scriptPubKey, address))
         {
-            entry.push_back(Pair("address", CDigitalNoteAddress(address).ToString()));
+            entry.push_back(json_spirit::Pair("address", CDigitalNoteAddress(address).ToString()));
             
 			if (pwalletMain->mapAddressBook.count(address))
 			{
-                entry.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
+                entry.push_back(json_spirit::Pair("account", pwalletMain->mapAddressBook[address]));
 			}
         }
         
-		entry.push_back(Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
+		entry.push_back(json_spirit::Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
         
 		if (pk.IsPayToScriptHash())
         {
@@ -308,14 +304,14 @@ Value listunspent(const Array& params, bool fHelp)
                 
 				if (pwalletMain->GetCScript(hash, redeemScript))
 				{
-                    entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
+                    entry.push_back(json_spirit::Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
 				}
             }
         }
         
-		entry.push_back(Pair("amount",ValueFromAmount(nValue)));
-        entry.push_back(Pair("confirmations",out.nDepth));
-        entry.push_back(Pair("spendable", out.fSpendable));
+		entry.push_back(json_spirit::Pair("amount",ValueFromAmount(nValue)));
+        entry.push_back(json_spirit::Pair("confirmations",out.nDepth));
+        entry.push_back(json_spirit::Pair("spendable", out.fSpendable));
 		
         results.push_back(entry);
     }
@@ -324,7 +320,7 @@ Value listunspent(const Array& params, bool fHelp)
 }
 #endif // ENABLE_WALLET
 
-Value createrawtransaction(const Array& params, bool fHelp)
+json_spirit::Value createrawtransaction(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
 	{
@@ -339,19 +335,19 @@ Value createrawtransaction(const Array& params, bool fHelp)
 		);
 	}
 
-    RPCTypeCheck(params, list_of(array_type)(obj_type));
+    RPCTypeCheck(params, boost::assign::list_of(json_spirit::array_type)(json_spirit::obj_type));
 
-    Array inputs = params[0].get_array();
-    Object sendTo = params[1].get_obj();
+    json_spirit::Array inputs = params[0].get_array();
+    json_spirit::Object sendTo = params[1].get_obj();
 
     CTransaction rawTx;
 
-    for(Value& input : inputs)
+    for(json_spirit::Value& input : inputs)
     {
-        const Object& o = input.get_obj();
+        const json_spirit::Object& o = input.get_obj();
 
-        const Value& txid_v = find_value(o, "txid");
-        if (txid_v.type() != str_type)
+        const json_spirit::Value& txid_v = find_value(o, "txid");
+        if (txid_v.type() != json_spirit::str_type)
 		{
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing txid key");
         }
@@ -362,8 +358,8 @@ Value createrawtransaction(const Array& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected hex txid");
 		}
 		
-        const Value& vout_v = find_value(o, "vout");
-        if (vout_v.type() != int_type)
+        const json_spirit::Value& vout_v = find_value(o, "vout");
+        if (vout_v.type() != json_spirit::int_type)
 		{
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing vout key");
         }
@@ -380,7 +376,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
 
     std::set<CDigitalNoteAddress> setAddress;
 	
-    for(const Pair& s : sendTo)
+    for(const json_spirit::Pair& s : sendTo)
     {
         CDigitalNoteAddress address(s.name_);
         if (!address.IsValid())
@@ -410,7 +406,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
     return HexStr(ss.begin(), ss.end());
 }
 
-Value decoderawtransaction(const Array& params, bool fHelp)
+json_spirit::Value decoderawtransaction(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -420,7 +416,7 @@ Value decoderawtransaction(const Array& params, bool fHelp)
 		);
 	}
 	
-    RPCTypeCheck(params, list_of(str_type));
+    RPCTypeCheck(params, boost::assign::list_of(json_spirit::str_type));
 
     std::vector<unsigned char> txData(ParseHex(params[0].get_str()));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
@@ -435,13 +431,13 @@ Value decoderawtransaction(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     }
 
-    Object result;
+    json_spirit::Object result;
     TxToJSON(tx, 0, result);
 
     return result;
 }
 
-Value decodescript(const Array& params, bool fHelp)
+json_spirit::Value decodescript(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -451,9 +447,9 @@ Value decodescript(const Array& params, bool fHelp)
 		);
 	}
 
-    RPCTypeCheck(params, list_of(str_type));
+    RPCTypeCheck(params, boost::assign::list_of(json_spirit::str_type));
 
-    Object r;
+    json_spirit::Object r;
     CScript script;
     if (params[0].get_str().size() > 0)
 	{
@@ -468,12 +464,12 @@ Value decodescript(const Array& params, bool fHelp)
     
 	ScriptPubKeyToJSON(script, r, false);
 
-    r.push_back(Pair("p2sh", CDigitalNoteAddress(script.GetID()).ToString()));
+    r.push_back(json_spirit::Pair("p2sh", CDigitalNoteAddress(script.GetID()).ToString()));
 	
     return r;
 }
 
-Value signrawtransaction(const Array& params, bool fHelp)
+json_spirit::Value signrawtransaction(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 4)
 	{
@@ -495,7 +491,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
 		);
 	}
 	
-    RPCTypeCheck(params, list_of(str_type)(array_type)(array_type)(str_type), true);
+    RPCTypeCheck(params, boost::assign::list_of(json_spirit::str_type)(json_spirit::array_type)(json_spirit::array_type)(json_spirit::str_type), true);
 
     std::vector<unsigned char> txData(ParseHex(params[0].get_str()));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
@@ -556,12 +552,12 @@ Value signrawtransaction(const Array& params, bool fHelp)
     bool fGivenKeys = false;
     CBasicKeyStore tempKeystore;
 	
-    if (params.size() > 2 && params[2].type() != null_type)
+    if (params.size() > 2 && params[2].type() != json_spirit::null_type)
     {
         fGivenKeys = true;
-        Array keys = params[2].get_array();
+        json_spirit::Array keys = params[2].get_array();
         
-		for(Value k : keys)
+		for(json_spirit::Value k : keys)
         {
             CDigitalNoteSecret vchSecret;
             bool fGood = vchSecret.SetString(k.get_str());
@@ -583,20 +579,20 @@ Value signrawtransaction(const Array& params, bool fHelp)
 #endif // ENABLE_WALLET
 
     // Add previous txouts given in the RPC call:
-    if (params.size() > 1 && params[1].type() != null_type)
+    if (params.size() > 1 && params[1].type() != json_spirit::null_type)
     {
-        Array prevTxs = params[1].get_array();
+        json_spirit::Array prevTxs = params[1].get_array();
         
-		for(Value& p : prevTxs)
+		for(json_spirit::Value& p : prevTxs)
         {
-            if (p.type() != obj_type)
+            if (p.type() != json_spirit::obj_type)
 			{
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "expected object with {\"txid'\",\"vout\",\"scriptPubKey\"}");
 			}
 			
-            Object prevOut = p.get_obj();
+            json_spirit::Object prevOut = p.get_obj();
 
-            RPCTypeCheck(prevOut, map_list_of("txid", str_type)("vout", int_type)("scriptPubKey", str_type));
+            RPCTypeCheck(prevOut, boost::assign::map_list_of("txid", json_spirit::str_type)("vout", json_spirit::int_type)("scriptPubKey", json_spirit::str_type));
 
             std::string txidHex = find_value(prevOut, "txid").get_str();
             if (!IsHex(txidHex))
@@ -644,10 +640,10 @@ Value signrawtransaction(const Array& params, bool fHelp)
             // given), add redeemScript to the tempKeystore so it can be signed:
             if (fGivenKeys && scriptPubKey.IsPayToScriptHash())
             {
-                RPCTypeCheck(prevOut, map_list_of("txid", str_type)("vout", int_type)("scriptPubKey", str_type)("redeemScript",str_type));
-                Value v = find_value(prevOut, "redeemScript");
+                RPCTypeCheck(prevOut, boost::assign::map_list_of("txid", json_spirit::str_type)("vout", json_spirit::int_type)("scriptPubKey", json_spirit::str_type)("redeemScript",json_spirit::str_type));
+                json_spirit::Value v = find_value(prevOut, "redeemScript");
                 
-				if (!(v == Value::null))
+				if (!(v == json_spirit::Value::null))
                 {
                     std::vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
                     CScript redeemScript(rsData.begin(), rsData.end());
@@ -665,7 +661,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
 #endif // ENABLE_WALLET
 
     int nHashType = SIGHASH_ALL;
-    if (params.size() > 3 && params[3].type() != null_type)
+    if (params.size() > 3 && params[3].type() != json_spirit::null_type)
     {
         static std::map<std::string, int> mapSigHashValues =
             boost::assign::map_list_of(std::string("ALL"), int(SIGHASH_ALL))
@@ -722,18 +718,18 @@ Value signrawtransaction(const Array& params, bool fHelp)
 		}
     }
 
-    Object result;
+    json_spirit::Object result;
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     
 	ssTx << mergedTx;
 	
-    result.push_back(Pair("hex", HexStr(ssTx.begin(), ssTx.end())));
-    result.push_back(Pair("complete", fComplete));
+    result.push_back(json_spirit::Pair("hex", HexStr(ssTx.begin(), ssTx.end())));
+    result.push_back(json_spirit::Pair("complete", fComplete));
 
     return result;
 }
 
-Value sendrawtransaction(const Array& params, bool fHelp)
+json_spirit::Value sendrawtransaction(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
 	{
@@ -743,7 +739,7 @@ Value sendrawtransaction(const Array& params, bool fHelp)
 		);
 	}
 	
-    RPCTypeCheck(params, list_of(str_type));
+    RPCTypeCheck(params, boost::assign::list_of(json_spirit::str_type));
 
     // parse hex string from parameter
     std::vector<unsigned char> txData(ParseHex(params[0].get_str()));
@@ -791,7 +787,7 @@ Value sendrawtransaction(const Array& params, bool fHelp)
     return hashTx.GetHex();
 }
 
-Value searchrawtransactions(const Array &params, bool fHelp)
+json_spirit::Value searchrawtransactions(const json_spirit::Array &params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 4)
 	{
@@ -854,7 +850,7 @@ Value searchrawtransactions(const Array &params, bool fHelp)
 		it++;
 	}
 	
-    Array result;
+    json_spirit::Array result;
     while (it != vtxhash.end() && nCount--)
 	{
         CTransaction tx;
@@ -863,8 +859,8 @@ Value searchrawtransactions(const Array &params, bool fHelp)
         if (!GetTransaction(*it, tx, hashBlock))
         {
            // throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Cannot read transaction from disk");
-           Object obj;
-		   obj.push_back(Pair("ERROR", "Cannot read transaction from disk"));
+           json_spirit::Object obj;
+		   obj.push_back(json_spirit::Pair("ERROR", "Cannot read transaction from disk"));
 		   
 		   result.push_back(obj);
 		}
@@ -877,10 +873,10 @@ Value searchrawtransactions(const Array &params, bool fHelp)
 			std::string strHex = HexStr(ssTx.begin(), ssTx.end());
 			if (fVerbose)
 			{
-				Object object;
+				json_spirit::Object object;
 				TxToJSON(tx, hashBlock, object);
 				
-				object.push_back(Pair("hex", strHex));
+				object.push_back(json_spirit::Pair("hex", strHex));
 				result.push_back(object);
 			}
 			else

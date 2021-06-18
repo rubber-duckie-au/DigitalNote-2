@@ -6,7 +6,6 @@
 #include "compat.h"
 
 #include <boost/filesystem.hpp>
-#include <boost/foreach.hpp>
 #include <boost/thread.hpp>
 
 #include "serialize.h"
@@ -38,8 +37,6 @@
 #include "thread.h"
 
 #include "walletdb.h"
-
-using namespace boost;
 
 static uint64_t nAccountingEntryNumber = 0;
 extern bool fWalletUnlockStakingOnly;
@@ -391,7 +388,7 @@ DBErrors CWalletDB::ReorderTransactions(CWallet* pwallet)
         {
             int64_t nOrderPosOff = 0;
 			
-            BOOST_FOREACH(const int64_t& nOffsetStart, nOrderPosOffsets)
+            for(const int64_t& nOffsetStart : nOrderPosOffsets)
             {
                 if (nOrderPos >= nOffsetStart)
 				{
@@ -895,7 +892,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         pwallet->nTimeFirstKey = 1; // 0 would be considered 'no value'
 	}
 
-    BOOST_FOREACH(uint256 hash, wss.vWalletUpgrade)
+    for(uint256 hash : wss.vWalletUpgrade)
 	{
         WriteTx(hash, pwallet->mapWallet[hash]);
 	}
@@ -919,7 +916,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
     pwallet->laccentries.clear();
     ListAccountCreditDebit("*", pwallet->laccentries);
 	
-    BOOST_FOREACH(CAccountingEntry& entry, pwallet->laccentries)
+    for(CAccountingEntry& entry : pwallet->laccentries)
 	{
         pwallet->wtxOrdered.insert(std::make_pair(entry.nOrderPos, TxPair((CWalletTx*)0, &entry)));
     }
@@ -1022,9 +1019,9 @@ bool BackupWallet(const CWallet& wallet, const std::string& strDest)
                 bitdb.mapFileUseCount.erase(wallet.strWalletFile);
 
                 // Copy wallet.dat
-                filesystem::path pathSrc = GetDataDir() / wallet.strWalletFile;
-                filesystem::path pathDest(strDest);
-                if (filesystem::is_directory(pathDest))
+                boost::filesystem::path pathSrc = GetDataDir() / wallet.strWalletFile;
+                boost::filesystem::path pathDest(strDest);
+                if (boost::filesystem::is_directory(pathDest))
 				{
                     pathDest /= wallet.strWalletFile;
 				}
@@ -1032,16 +1029,16 @@ bool BackupWallet(const CWallet& wallet, const std::string& strDest)
                 try
 				{
 #if BOOST_VERSION >= 104000
-                    filesystem::copy_file(pathSrc, pathDest, filesystem::copy_option::overwrite_if_exists);
+                    boost::filesystem::copy_file(pathSrc, pathDest, boost::filesystem::copy_option::overwrite_if_exists);
 #else
-                    filesystem::copy_file(pathSrc, pathDest);
+                    boost::filesystem::copy_file(pathSrc, pathDest);
 #endif
 
                     LogPrintf("copied wallet.dat to %s\n", pathDest.string());
 					
                     return true;
                 }
-				catch(const filesystem::filesystem_error &e)
+				catch(const boost::filesystem::filesystem_error &e)
 				{
                     LogPrintf("error copying wallet.dat to %s - %s\n", pathDest.string(), e.what());
                     
@@ -1116,7 +1113,7 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
     CWalletScanState wss;
     DbTxn* ptxn = dbenv.TxnBegin();
 	
-    BOOST_FOREACH(CDBEnv::KeyValPair& row, salvagedData)
+    for(CDBEnv::KeyValPair& row : salvagedData)
     {
         if (fOnlyKeys)
         {

@@ -3,27 +3,13 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "rpcprotocol.h"
+#include <stdint.h>
+#include <boost/algorithm/string.hpp>
 
 #include "util.h"
-
-#include <stdint.h>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
-#include <boost/bind.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/foreach.hpp>
-#include <boost/iostreams/concepts.hpp>
-#include <boost/iostreams/stream.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
 #include "json/json_spirit_writer_template.h"
 
-using namespace boost;
-using namespace boost::asio;
-using namespace json_spirit;
+#include "rpcprotocol.h"
 
 // Number of bytes to allocate and read at most at once in post data
 const size_t POST_READ_SIZE = 256 * 1024;
@@ -233,37 +219,37 @@ int ReadHTTPMessage(std::basic_istream<char>& stream, std::map<std::string,
 // http://www.codeproject.com/KB/recipes/JSON_Spirit.aspx
 //
 
-std::string JSONRPCRequest(const std::string& strMethod, const Array& params, const Value& id)
+std::string JSONRPCRequest(const std::string& strMethod, const json_spirit::Array& params, const json_spirit::Value& id)
 {
-    Object request;
-    request.push_back(Pair("method", strMethod));
-    request.push_back(Pair("params", params));
-    request.push_back(Pair("id", id));
-    return write_string(Value(request), false) + "\n";
+    json_spirit::Object request;
+    request.push_back(json_spirit::Pair("method", strMethod));
+    request.push_back(json_spirit::Pair("params", params));
+    request.push_back(json_spirit::Pair("id", id));
+    return write_string(json_spirit::Value(request), false) + "\n";
 }
 
-Object JSONRPCReplyObj(const Value& result, const Value& error, const Value& id)
+json_spirit::Object JSONRPCReplyObj(const json_spirit::Value& result, const json_spirit::Value& error, const json_spirit::Value& id)
 {
-    Object reply;
-    if (error.type() != null_type)
-        reply.push_back(Pair("result", Value::null));
+    json_spirit::Object reply;
+    if (error.type() != json_spirit::null_type)
+        reply.push_back(json_spirit::Pair("result", json_spirit::Value::null));
     else
-        reply.push_back(Pair("result", result));
-    reply.push_back(Pair("error", error));
-    reply.push_back(Pair("id", id));
+        reply.push_back(json_spirit::Pair("result", result));
+    reply.push_back(json_spirit::Pair("error", error));
+    reply.push_back(json_spirit::Pair("id", id));
     return reply;
 }
 
-std::string JSONRPCReply(const Value& result, const Value& error, const Value& id)
+std::string JSONRPCReply(const json_spirit::Value& result, const json_spirit::Value& error, const json_spirit::Value& id)
 {
-    Object reply = JSONRPCReplyObj(result, error, id);
-    return write_string(Value(reply), false) + "\n";
+    json_spirit::Object reply = JSONRPCReplyObj(result, error, id);
+    return write_string(json_spirit::Value(reply), false) + "\n";
 }
 
-Object JSONRPCError(int code, const std::string& message)
+json_spirit::Object JSONRPCError(int code, const std::string& message)
 {
-    Object error;
-    error.push_back(Pair("code", code));
-    error.push_back(Pair("message", message));
+    json_spirit::Object error;
+    error.push_back(json_spirit::Pair("code", code));
+    error.push_back(json_spirit::Pair("message", message));
     return error;
 }

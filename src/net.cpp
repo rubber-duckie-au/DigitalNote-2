@@ -53,9 +53,6 @@
 // Dump addresses to peers.dat every 15 minutes (900s)
 #define DUMP_ADDRESSES_INTERVAL 900
 
-
-using namespace boost;
-
 static const int MAX_OUTBOUND_CONNECTIONS = 12;
 
 //

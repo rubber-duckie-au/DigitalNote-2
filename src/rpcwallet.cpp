@@ -39,8 +39,6 @@
 #include "cstealthaddress.h"
 #include "enums/serialize_type.h"
 
-using namespace json_spirit;
-
 int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
 
@@ -83,47 +81,47 @@ void EnsureWalletIsUnlocked()
 	}
 }
 
-void WalletTxToJSON(const CWalletTx& wtx, Object& entry)
+void WalletTxToJSON(const CWalletTx& wtx, json_spirit::Object& entry)
 {
     int confirms = wtx.GetDepthInMainChain(false);
     int confirmsTotal = GetIXConfirmations(wtx.GetHash()) + confirms;
     
-	entry.push_back(Pair("confirmations", confirmsTotal));
-    entry.push_back(Pair("bcconfirmations", confirms));
+	entry.push_back(json_spirit::Pair("confirmations", confirmsTotal));
+    entry.push_back(json_spirit::Pair("bcconfirmations", confirms));
     
 	if (wtx.IsCoinBase() || wtx.IsCoinStake())
 	{
-        entry.push_back(Pair("generated", true));
+        entry.push_back(json_spirit::Pair("generated", true));
     }
 	
 	if (confirms > 0)
     {
-        entry.push_back(Pair("blockhash", wtx.hashBlock.GetHex()));
-        entry.push_back(Pair("blockindex", wtx.nIndex));
-        entry.push_back(Pair("blocktime", (int64_t)(mapBlockIndex[wtx.hashBlock]->nTime)));
+        entry.push_back(json_spirit::Pair("blockhash", wtx.hashBlock.GetHex()));
+        entry.push_back(json_spirit::Pair("blockindex", wtx.nIndex));
+        entry.push_back(json_spirit::Pair("blocktime", (int64_t)(mapBlockIndex[wtx.hashBlock]->nTime)));
     }
     
 	uint256 hash = wtx.GetHash();
-    Array conflicts;
+    json_spirit::Array conflicts;
 	
-    entry.push_back(Pair("txid", hash.GetHex()));
+    entry.push_back(json_spirit::Pair("txid", hash.GetHex()));
 	
     for(const uint256& conflict : wtx.GetConflicts())
 	{
         conflicts.push_back(conflict.GetHex());
     }
 	
-	entry.push_back(Pair("walletconflicts", conflicts));
-    entry.push_back(Pair("time", wtx.GetTxTime()));
-    entry.push_back(Pair("timereceived", (int64_t)wtx.nTimeReceived));
+	entry.push_back(json_spirit::Pair("walletconflicts", conflicts));
+    entry.push_back(json_spirit::Pair("time", wtx.GetTxTime()));
+    entry.push_back(json_spirit::Pair("timereceived", (int64_t)wtx.nTimeReceived));
     
 	for(const std::pair<std::string, std::string>& item : wtx.mapValue)
 	{
-        entry.push_back(Pair(item.first, item.second));
+        entry.push_back(json_spirit::Pair(item.first, item.second));
 	}
 }
 
-std::string AccountFromValue(const Value& value)
+std::string AccountFromValue(const json_spirit::Value& value)
 {
     std::string strAccount = value.get_str();
     
@@ -138,10 +136,10 @@ std::string AccountFromValue(const Value& value)
 //
 // Used by addmultisigaddress / createmultisig:
 //
-CScript _createmultisig(const Array& params)
+CScript _createmultisig(const json_spirit::Array& params)
 {
     int nRequired = params[0].get_int();
-    const Array& keys = params[1].get_array();
+    const json_spirit::Array& keys = params[1].get_array();
 
     // Gather public keys
     if (nRequired < 1)
@@ -225,7 +223,7 @@ CScript _createmultisig(const Array& params)
 	return result;
 }
 
-Value createmultisig(const Array& params, bool fHelp)
+json_spirit::Value createmultisig(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 2)
     {
@@ -261,14 +259,14 @@ Value createmultisig(const Array& params, bool fHelp)
     CScriptID innerID = inner.GetID();
     CDigitalNoteAddress address(innerID);
 
-    Object result;
-    result.push_back(Pair("address", address.ToString()));
-    result.push_back(Pair("redeemScript", HexStr(inner.begin(), inner.end())));
+    json_spirit::Object result;
+    result.push_back(json_spirit::Pair("address", address.ToString()));
+    result.push_back(json_spirit::Pair("redeemScript", HexStr(inner.begin(), inner.end())));
 
     return result;
 }
 
-Value getnewpubkey(const Array& params, bool fHelp)
+json_spirit::Value getnewpubkey(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -304,7 +302,7 @@ Value getnewpubkey(const Array& params, bool fHelp)
     return HexStr(newKey.begin(), newKey.end());
 }
 
-Value getnewaddress(const Array& params, bool fHelp)
+json_spirit::Value getnewaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -397,7 +395,7 @@ CDigitalNoteAddress GetAccountAddress(const std::string &strAccount, bool bForce
     return CDigitalNoteAddress(account.vchPubKey.GetID());
 }
 
-Value getaccountaddress(const Array& params, bool fHelp)
+json_spirit::Value getaccountaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -419,14 +417,14 @@ Value getaccountaddress(const Array& params, bool fHelp)
     // Parse the account first so we don't generate a key if there's an error
     std::string strAccount = AccountFromValue(params[0]);
 
-    Value ret;
+    json_spirit::Value ret;
 
     ret = GetAccountAddress(strAccount).ToString();
 
     return ret;
 }
 
-Value setaccount(const Array& params, bool fHelp)
+json_spirit::Value setaccount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -482,10 +480,10 @@ Value setaccount(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_MISC_ERROR, "setaccount can only be used with own address");
 	}
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value getaccount(const Array& params, bool fHelp)
+json_spirit::Value getaccount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -520,7 +518,7 @@ Value getaccount(const Array& params, bool fHelp)
     return strAccount;
 }
 
-Value getaddressesbyaccount(const Array& params, bool fHelp)
+json_spirit::Value getaddressesbyaccount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -543,7 +541,7 @@ Value getaddressesbyaccount(const Array& params, bool fHelp)
     std::string strAccount = AccountFromValue(params[0]);
 
     // Find all addresses that have the given account
-    Array ret;
+    json_spirit::Array ret;
     
 	for(const std::pair<CDigitalNoteAddress, std::string>& item : pwalletMain->mapAddressBook)
     {
@@ -559,7 +557,7 @@ Value getaddressesbyaccount(const Array& params, bool fHelp)
     return ret;
 }
 
-Value sendtoaddress(const Array& params, bool fHelp)
+json_spirit::Value sendtoaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)
 	{
@@ -604,17 +602,17 @@ Value sendtoaddress(const Array& params, bool fHelp)
     std::string sNarr;
 
     // Wallet comments
-    if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
+    if (params.size() > 2 && params[2].type() != json_spirit::null_type && !params[2].get_str().empty())
 	{
         wtx.mapValue["comment"] = params[2].get_str();
     }
 	
-	if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
+	if (params.size() > 3 && params[3].type() != json_spirit::null_type && !params[3].get_str().empty())
 	{
         wtx.mapValue["to"]      = params[3].get_str();
     }
 	
-	if (params.size() > 4 && params[4].type() != null_type && !params[4].get_str().empty())
+	if (params.size() > 4 && params[4].type() != json_spirit::null_type && !params[4].get_str().empty())
 	{
         sNarr = params[4].get_str();
     }
@@ -634,7 +632,7 @@ Value sendtoaddress(const Array& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
-Value listaddressgroupings(const Array& params, bool fHelp)
+json_spirit::Value listaddressgroupings(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp)
 	{
@@ -661,16 +659,16 @@ Value listaddressgroupings(const Array& params, bool fHelp)
         );
 	}
 
-    Array jsonGroupings;
+    json_spirit::Array jsonGroupings;
     std::map<CTxDestination, int64_t> balances = pwalletMain->GetAddressBalances();
     
 	for(std::set<CTxDestination> grouping : pwalletMain->GetAddressGroupings())
     {
-        Array jsonGrouping;
+        json_spirit::Array jsonGrouping;
 		
         for(CTxDestination address : grouping)
         {
-            Array addressInfo;
+            json_spirit::Array addressInfo;
             
 			addressInfo.push_back(CDigitalNoteAddress(address).ToString());
             addressInfo.push_back(ValueFromAmount(balances[address]));
@@ -693,7 +691,7 @@ Value listaddressgroupings(const Array& params, bool fHelp)
     return jsonGroupings;
 }
 
-Value signmessage(const Array& params, bool fHelp)
+json_spirit::Value signmessage(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
 	{
@@ -755,7 +753,7 @@ Value signmessage(const Array& params, bool fHelp)
     return EncodeBase64(&vchSig[0], vchSig.size());
 }
 
-Value getreceivedbyaddress(const Array& params, bool fHelp)
+json_spirit::Value getreceivedbyaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -837,7 +835,7 @@ void GetAccountAddresses(const std::string &strAccount, std::set<CTxDestination>
     }
 }
 
-Value getreceivedbyaccount(const Array& params, bool fHelp)
+json_spirit::Value getreceivedbyaccount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -942,7 +940,7 @@ int64_t GetAccountBalance(const std::string& strAccount, int nMinDepth, const is
 	return GetAccountBalance(walletdb, strAccount, nMinDepth, filter);
 }
 
-Value getbalance(const Array& params, bool fHelp)
+json_spirit::Value getbalance(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
 	{
@@ -1039,7 +1037,7 @@ Value getbalance(const Array& params, bool fHelp)
     return ValueFromAmount(nBalance);
 }
 
-Value movecmd(const Array& params, bool fHelp)
+json_spirit::Value movecmd(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 3 || params.size() > 5)
 	{
@@ -1122,7 +1120,7 @@ Value movecmd(const Array& params, bool fHelp)
     return true;
 }
 
-Value sendfrom(const Array& params, bool fHelp)
+json_spirit::Value sendfrom(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 3 || params.size() > 7)
 	{
@@ -1173,18 +1171,18 @@ Value sendfrom(const Array& params, bool fHelp)
     CWalletTx wtx;
     wtx.strFromAccount = strAccount;
 
-    if (params.size() > 4 && params[4].type() != null_type && !params[4].get_str().empty())
+    if (params.size() > 4 && params[4].type() != json_spirit::null_type && !params[4].get_str().empty())
 	{
         wtx.mapValue["comment"] = params[4].get_str();
     }
 	
-	if (params.size() > 5 && params[5].type() != null_type && !params[5].get_str().empty())
+	if (params.size() > 5 && params[5].type() != json_spirit::null_type && !params[5].get_str().empty())
 	{
         wtx.mapValue["to"]      = params[5].get_str();
 	}
 	
     std::string sNarr;
-    if (params.size() > 6 && params[6].type() != null_type && !params[6].get_str().empty())
+    if (params.size() > 6 && params[6].type() != json_spirit::null_type && !params[6].get_str().empty())
 	{
         sNarr = params[6].get_str();
 	}
@@ -1211,7 +1209,7 @@ Value sendfrom(const Array& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
-Value sendmany(const Array& params, bool fHelp)
+json_spirit::Value sendmany(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)
 	{
@@ -1242,7 +1240,7 @@ Value sendmany(const Array& params, bool fHelp)
 	}
 	
     std::string strAccount = AccountFromValue(params[0]);
-    Object sendTo = params[1].get_obj();
+    json_spirit::Object sendTo = params[1].get_obj();
     int nMinDepth = 1;
     
 	if (params.size() > 2)
@@ -1253,7 +1251,7 @@ Value sendmany(const Array& params, bool fHelp)
     CWalletTx wtx;
     wtx.strFromAccount = strAccount;
     
-	if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
+	if (params.size() > 3 && params[3].type() != json_spirit::null_type && !params[3].get_str().empty())
 	{
         wtx.mapValue["comment"] = params[3].get_str();
 	}
@@ -1262,7 +1260,7 @@ Value sendmany(const Array& params, bool fHelp)
     std::vector<std::pair<CScript, int64_t> > vecSend;
 
     int64_t totalAmount = 0;
-    for(const Pair& s : sendTo)
+    for(const json_spirit::Pair& s : sendTo)
     {
         CDigitalNoteAddress address(s.name_);
         if (!address.IsValid())
@@ -1321,9 +1319,9 @@ Value sendmany(const Array& params, bool fHelp)
 }
 
 // Defined in rpcmisc.cpp
-extern CScript _createmultisig_redeemScript(const Array& params);
+extern CScript _createmultisig_redeemScript(const json_spirit::Array& params);
 
-Value addmultisigaddress(const Array& params, bool fHelp)
+json_spirit::Value addmultisigaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
     {
@@ -1354,7 +1352,7 @@ Value addmultisigaddress(const Array& params, bool fHelp)
     }
 
     int nRequired = params[0].get_int();
-    const Array& keys = params[1].get_array();
+    const json_spirit::Array& keys = params[1].get_array();
     std::string strAccount;
     
 	if (params.size() > 2)
@@ -1442,7 +1440,7 @@ Value addmultisigaddress(const Array& params, bool fHelp)
 	return CDigitalNoteAddress(innerID).ToString();
 }
 
-Value addredeemscript(const Array& params, bool fHelp)
+json_spirit::Value addredeemscript(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
     {
@@ -1490,7 +1488,7 @@ struct tallyitem
     }
 };
 
-Value ListReceived(const Array& params, bool fByAccounts)
+json_spirit::Value ListReceived(const json_spirit::Array& params, bool fByAccounts)
 {
     // Minimum confirmations
     int nMinDepth = 1;
@@ -1562,7 +1560,7 @@ Value ListReceived(const Array& params, bool fByAccounts)
     }
 
     // Reply
-    Array ret;
+    json_spirit::Array ret;
     std::map<std::string, tallyitem> mapAccountTally;
     
 	for(const std::pair<CDigitalNoteAddress, std::string>& item : pwalletMain->mapAddressBook)
@@ -1600,20 +1598,20 @@ Value ListReceived(const Array& params, bool fByAccounts)
         }
         else
         {
-            Object obj;
+            json_spirit::Object obj;
 			
             if(fIsWatchonly)
 			{
-                obj.push_back(Pair("involvesWatchonly", true));
+                obj.push_back(json_spirit::Pair("involvesWatchonly", true));
 			}
             
-			obj.push_back(Pair("address",       address.ToString()));
-            obj.push_back(Pair("account",       strAccount));
-            obj.push_back(Pair("amount",        ValueFromAmount(nAmount)));
-            obj.push_back(Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
-            obj.push_back(Pair("bcconfirmations", (nBCConf == std::numeric_limits<int>::max() ? 0 : nBCConf)));
+			obj.push_back(json_spirit::Pair("address",       address.ToString()));
+            obj.push_back(json_spirit::Pair("account",       strAccount));
+            obj.push_back(json_spirit::Pair("amount",        ValueFromAmount(nAmount)));
+            obj.push_back(json_spirit::Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
+            obj.push_back(json_spirit::Pair("bcconfirmations", (nBCConf == std::numeric_limits<int>::max() ? 0 : nBCConf)));
             
-            Array transactions;
+            json_spirit::Array transactions;
 			if (it != mapTally.end())
             {
                 for(const uint256& item : (*it).second.txids)
@@ -1622,7 +1620,7 @@ Value ListReceived(const Array& params, bool fByAccounts)
                 }
             }
 			
-            obj.push_back(Pair("txids", transactions));
+            obj.push_back(json_spirit::Pair("txids", transactions));
             
 			ret.push_back(obj);
         }
@@ -1635,17 +1633,17 @@ Value ListReceived(const Array& params, bool fByAccounts)
             CAmount nAmount = (*it).second.nAmount;
             int nConf = (*it).second.nConf;
             int nBCConf = (*it).second.nBCConf;
-            Object obj;
+            json_spirit::Object obj;
             
 			if((*it).second.fIsWatchonly)
 			{
-                obj.push_back(Pair("involvesWatchonly", true));
+                obj.push_back(json_spirit::Pair("involvesWatchonly", true));
             }
 			
-			obj.push_back(Pair("account",       (*it).first));
-            obj.push_back(Pair("amount",        ValueFromAmount(nAmount)));
-            obj.push_back(Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
-            obj.push_back(Pair("bcconfirmations", (nBCConf == std::numeric_limits<int>::max() ? 0 : nBCConf)));
+			obj.push_back(json_spirit::Pair("account",       (*it).first));
+            obj.push_back(json_spirit::Pair("amount",        ValueFromAmount(nAmount)));
+            obj.push_back(json_spirit::Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
+            obj.push_back(json_spirit::Pair("bcconfirmations", (nBCConf == std::numeric_limits<int>::max() ? 0 : nBCConf)));
             
 			ret.push_back(obj);
         }
@@ -1654,7 +1652,7 @@ Value ListReceived(const Array& params, bool fByAccounts)
     return ret;
 }
 
-Value listreceivedbyaddress(const Array& params, bool fHelp)
+json_spirit::Value listreceivedbyaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
 	{
@@ -1689,7 +1687,7 @@ Value listreceivedbyaddress(const Array& params, bool fHelp)
     return ListReceived(params, false);
 }
 
-Value listreceivedbyaccount(const Array& params, bool fHelp)
+json_spirit::Value listreceivedbyaccount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
 	{
@@ -1725,17 +1723,17 @@ Value listreceivedbyaccount(const Array& params, bool fHelp)
     return ListReceived(params, true);
 }
 
-static void MaybePushAddress(Object & entry, const CTxDestination &dest)
+static void MaybePushAddress(json_spirit::Object & entry, const CTxDestination &dest)
 {
     CDigitalNoteAddress addr;
     
 	if (addr.Set(dest))
 	{
-        entry.push_back(Pair("address", addr.ToString()));
+        entry.push_back(json_spirit::Pair("address", addr.ToString()));
 	}
 }
 
-void ListTransactions(const CWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, Array& ret, const isminefilter& filter)
+void ListTransactions(const CWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, json_spirit::Array& ret, const isminefilter& filter)
 {
     CAmount nFee;
     std::string strSentAccount;
@@ -1752,18 +1750,18 @@ void ListTransactions(const CWalletTx& wtx, const std::string& strAccount, int n
     {
         for(const std::pair<CTxDestination, int64_t>& s : listSent)
         {
-            Object entry;
+            json_spirit::Object entry;
 			
             if(involvesWatchonly || (::IsMine(*pwalletMain, s.first) & ISMINE_WATCH_ONLY))
 			{
-                entry.push_back(Pair("involvesWatchonly", true));
+                entry.push_back(json_spirit::Pair("involvesWatchonly", true));
 			}
 			
-            entry.push_back(Pair("account", strSentAccount));
+            entry.push_back(json_spirit::Pair("account", strSentAccount));
             MaybePushAddress(entry, s.first);
-            entry.push_back(Pair("category", "send"));
-            entry.push_back(Pair("amount", ValueFromAmount(-s.second)));
-            entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
+            entry.push_back(json_spirit::Pair("category", "send"));
+            entry.push_back(json_spirit::Pair("amount", ValueFromAmount(-s.second)));
+            entry.push_back(json_spirit::Pair("fee", ValueFromAmount(-nFee)));
             
 			if (fLong) // TODO: reference this again
 			{
@@ -1790,43 +1788,43 @@ void ListTransactions(const CWalletTx& wtx, const std::string& strAccount, int n
 			
 			if (fAllAccounts || (account == strAccount))
             {
-                Object entry;
+                json_spirit::Object entry;
 				
                 if(involvesWatchonly || (::IsMine(*pwalletMain, r.first) & ISMINE_WATCH_ONLY))
 				{
-                    entry.push_back(Pair("involvesWatchonly", true));
+                    entry.push_back(json_spirit::Pair("involvesWatchonly", true));
                 }
 				
-				entry.push_back(Pair("account", account));
+				entry.push_back(json_spirit::Pair("account", account));
                 MaybePushAddress(entry, r.first);
                 
 				if (wtx.IsCoinBase() || wtx.IsCoinStake())
                 {
                     if (wtx.GetDepthInMainChain() < 1)
 					{
-                        entry.push_back(Pair("category", "orphan"));
+                        entry.push_back(json_spirit::Pair("category", "orphan"));
 					}
                     else if (wtx.GetBlocksToMaturity() > 0)
 					{
-                        entry.push_back(Pair("category", "immature"));
+                        entry.push_back(json_spirit::Pair("category", "immature"));
 					}
                     else
 					{
-                        entry.push_back(Pair("category", "generate"));
+                        entry.push_back(json_spirit::Pair("category", "generate"));
 					}
                 }
                 else
                 {
-                    entry.push_back(Pair("category", "receive"));
+                    entry.push_back(json_spirit::Pair("category", "receive"));
                 }
 				
                 if (!wtx.IsCoinStake())
 				{
-                    entry.push_back(Pair("amount", ValueFromAmount(r.second)));
+                    entry.push_back(json_spirit::Pair("amount", ValueFromAmount(r.second)));
 				}
                 else
                 {
-                    entry.push_back(Pair("amount", ValueFromAmount(-nFee)));
+                    entry.push_back(json_spirit::Pair("amount", ValueFromAmount(-nFee)));
                     stop = true; // only one coinstake output
                 }
                 
@@ -1846,26 +1844,26 @@ void ListTransactions(const CWalletTx& wtx, const std::string& strAccount, int n
     }
 }
 
-void AcentryToJSON(const CAccountingEntry& acentry, const std::string& strAccount, Array& ret)
+void AcentryToJSON(const CAccountingEntry& acentry, const std::string& strAccount, json_spirit::Array& ret)
 {
     bool fAllAccounts = (strAccount == std::string("*"));
 
     if (fAllAccounts || acentry.strAccount == strAccount)
     {
-        Object entry;
+        json_spirit::Object entry;
         
-		entry.push_back(Pair("account", acentry.strAccount));
-        entry.push_back(Pair("category", "move"));
-        entry.push_back(Pair("time", (int64_t)acentry.nTime));
-        entry.push_back(Pair("amount", ValueFromAmount(acentry.nCreditDebit)));
-        entry.push_back(Pair("otheraccount", acentry.strOtherAccount));
-        entry.push_back(Pair("comment", acentry.strComment));
+		entry.push_back(json_spirit::Pair("account", acentry.strAccount));
+        entry.push_back(json_spirit::Pair("category", "move"));
+        entry.push_back(json_spirit::Pair("time", (int64_t)acentry.nTime));
+        entry.push_back(json_spirit::Pair("amount", ValueFromAmount(acentry.nCreditDebit)));
+        entry.push_back(json_spirit::Pair("otheraccount", acentry.strOtherAccount));
+        entry.push_back(json_spirit::Pair("comment", acentry.strComment));
         
 		ret.push_back(entry);
     }
 }
 
-Value listtransactions(const Array& params, bool fHelp)
+json_spirit::Value listtransactions(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 4)
 	{
@@ -1961,7 +1959,7 @@ Value listtransactions(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Negative from");
 	}
 	
-    Array ret;
+    json_spirit::Array ret;
 
     const TxItems & txOrdered = pwalletMain->wtxOrdered;
 
@@ -1997,9 +1995,9 @@ Value listtransactions(const Array& params, bool fHelp)
         nCount = ret.size() - nFrom;
     }
 	
-	Array::iterator first = ret.begin();
+	json_spirit::Array::iterator first = ret.begin();
     std::advance(first, nFrom);
-    Array::iterator last = ret.begin();
+    json_spirit::Array::iterator last = ret.begin();
     std::advance(last, nFrom+nCount);
 
     if (last != ret.end())
@@ -2017,13 +2015,13 @@ Value listtransactions(const Array& params, bool fHelp)
     return ret;
 }
 
-Value listaccounts(const Array& params, bool fHelp)
+json_spirit::Value listaccounts(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
 	{
         throw std::runtime_error(
             "listaccounts ( minconf includeWatchonly)\n"
-            "\nReturns Object that has account names as keys, account balances as values.\n"
+            "\nReturns json_spirit::Object that has account names as keys, account balances as values.\n"
             "\nArguments:\n"
             "1. minconf          (numeric, optional, default=1) Only onclude transactions with at least this many confirmations\n"
             "2. includeWatchonly (bool, optional, default=false) Include balances in watchonly addresses (see 'importaddress')\n"
@@ -2113,16 +2111,16 @@ Value listaccounts(const Array& params, bool fHelp)
         mapAccountBalances[entry.strAccount] += entry.nCreditDebit;
 	}
 	
-    Object ret;
+    json_spirit::Object ret;
 	for(const std::pair<std::string, CAmount>& accountBalance : mapAccountBalances)
 	{
-        ret.push_back(Pair(accountBalance.first, ValueFromAmount(accountBalance.second)));
+        ret.push_back(json_spirit::Pair(accountBalance.first, ValueFromAmount(accountBalance.second)));
     }
 	
     return ret;
 }
 
-Value listsinceblock(const Array& params, bool fHelp)
+json_spirit::Value listsinceblock(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp)
 	{
@@ -2191,7 +2189,7 @@ Value listsinceblock(const Array& params, bool fHelp)
 	
     int depth = pindex ? (1 + nBestHeight - pindex->nHeight) : -1;
 
-    Array transactions;
+    json_spirit::Array transactions;
 
     for (std::map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); it++)
     {
@@ -2222,14 +2220,14 @@ Value listsinceblock(const Array& params, bool fHelp)
         lastblock = block ? block->GetBlockHash() : 0;
     }
 
-    Object ret;
-    ret.push_back(Pair("transactions", transactions));
-    ret.push_back(Pair("lastblock", lastblock.GetHex()));
+    json_spirit::Object ret;
+    ret.push_back(json_spirit::Pair("transactions", transactions));
+    ret.push_back(json_spirit::Pair("lastblock", lastblock.GetHex()));
 
     return ret;
 }
 
-Value gettransaction(const Array& params, bool fHelp)
+json_spirit::Value gettransaction(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -2278,7 +2276,7 @@ Value gettransaction(const Array& params, bool fHelp)
 		filter = filter | ISMINE_WATCH_ONLY;
 	}
 	
-    Object entry;
+    json_spirit::Object entry;
 
     if (pwalletMain->mapWallet.count(hash))
     {
@@ -2291,20 +2289,20 @@ Value gettransaction(const Array& params, bool fHelp)
         int64_t nNet = nCredit - nDebit;
         int64_t nFee = (wtx.IsFromMe(filter) ? wtx.GetValueOut() - nDebit : 0);
 
-        entry.push_back(Pair("amount", ValueFromAmount(nNet - nFee)));
+        entry.push_back(json_spirit::Pair("amount", ValueFromAmount(nNet - nFee)));
         
 		if (wtx.IsFromMe(filter))
 		{
-            entry.push_back(Pair("fee", ValueFromAmount(nFee)));
+            entry.push_back(json_spirit::Pair("fee", ValueFromAmount(nFee)));
 		}
 		
         WalletTxToJSON(wtx, entry);
 
-        Array details;
+        json_spirit::Array details;
         
 		ListTransactions(pwalletMain->mapWallet[hash], "*", 0, false, details, filter);
         
-		entry.push_back(Pair("details", details));
+		entry.push_back(json_spirit::Pair("details", details));
     }
     else
     {
@@ -2317,11 +2315,11 @@ Value gettransaction(const Array& params, bool fHelp)
             
 			if (hashBlock == 0)
 			{
-                entry.push_back(Pair("confirmations", 0));
+                entry.push_back(json_spirit::Pair("confirmations", 0));
 			}
             else
             {
-                entry.push_back(Pair("blockhash", hashBlock.GetHex()));
+                entry.push_back(json_spirit::Pair("blockhash", hashBlock.GetHex()));
                 std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
                 
 				if (mi != mapBlockIndex.end() && (*mi).second)
@@ -2330,11 +2328,11 @@ Value gettransaction(const Array& params, bool fHelp)
                     
 					if (pindex->IsInMainChain())
 					{
-                        entry.push_back(Pair("confirmations", 1 + nBestHeight - pindex->nHeight));
+                        entry.push_back(json_spirit::Pair("confirmations", 1 + nBestHeight - pindex->nHeight));
 					}
                     else
 					{
-                        entry.push_back(Pair("confirmations", 0));
+                        entry.push_back(json_spirit::Pair("confirmations", 0));
 					}
                 }
             }
@@ -2348,7 +2346,7 @@ Value gettransaction(const Array& params, bool fHelp)
     return entry;
 }
 
-Value backupwallet(const Array& params, bool fHelp)
+json_spirit::Value backupwallet(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -2370,10 +2368,10 @@ Value backupwallet(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Wallet backup failed!");
 	}
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value keypoolrefill(const Array& params, bool fHelp)
+json_spirit::Value keypoolrefill(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -2420,7 +2418,7 @@ Value keypoolrefill(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing keypool.");
 	}
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
 static void LockWallet(CWallet* pWallet)
@@ -2431,7 +2429,7 @@ static void LockWallet(CWallet* pWallet)
     pWallet->Lock();
 }
 
-Value walletpassphrase(const Array& params, bool fHelp)
+json_spirit::Value walletpassphrase(const json_spirit::Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 3))
 	{
@@ -2522,10 +2520,10 @@ Value walletpassphrase(const Array& params, bool fHelp)
         fWalletUnlockStakingOnly = false;
 	}
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value walletpassphrasechange(const Array& params, bool fHelp)
+json_spirit::Value walletpassphrasechange(const json_spirit::Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 2))
 	{
@@ -2574,10 +2572,10 @@ Value walletpassphrasechange(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The wallet passphrase entered was incorrect.");
 	}
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value walletlock(const Array& params, bool fHelp)
+json_spirit::Value walletlock(const json_spirit::Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 0))
 	{
@@ -2615,10 +2613,10 @@ Value walletlock(const Array& params, bool fHelp)
         nWalletUnlockTime = 0;
     }
 
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value encryptwallet(const Array& params, bool fHelp)
+json_spirit::Value encryptwallet(const json_spirit::Array& params, bool fHelp)
 {
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() != 1))
 	{
@@ -2684,7 +2682,7 @@ Value encryptwallet(const Array& params, bool fHelp)
 }
 
 // ppcoin: reserve balance from being staked for network protection
-Value reservebalance(const Array& params, bool fHelp)
+json_spirit::Value reservebalance(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
 	{
@@ -2728,15 +2726,15 @@ Value reservebalance(const Array& params, bool fHelp)
         }
     }
 
-    Object result;
-    result.push_back(Pair("reserve", (nReserveBalance > 0)));
-    result.push_back(Pair("amount", ValueFromAmount(nReserveBalance)));
+    json_spirit::Object result;
+    result.push_back(json_spirit::Pair("reserve", (nReserveBalance > 0)));
+    result.push_back(json_spirit::Pair("amount", ValueFromAmount(nReserveBalance)));
     
 	return result;
 }
 
 // ppcoin: check wallet integrity
-Value checkwallet(const Array& params, bool fHelp)
+json_spirit::Value checkwallet(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
 	{
@@ -2749,23 +2747,23 @@ Value checkwallet(const Array& params, bool fHelp)
     int nMismatchSpent;
     int64_t nBalanceInQuestion;
     pwalletMain->FixSpentCoins(nMismatchSpent, nBalanceInQuestion, true);
-    Object result;
+    json_spirit::Object result;
     
 	if (nMismatchSpent == 0)
 	{
-        result.push_back(Pair("wallet check passed", true));
+        result.push_back(json_spirit::Pair("wallet check passed", true));
 	}
     else
     {
-        result.push_back(Pair("mismatched spent coins", nMismatchSpent));
-        result.push_back(Pair("amount in question", ValueFromAmount(nBalanceInQuestion)));
+        result.push_back(json_spirit::Pair("mismatched spent coins", nMismatchSpent));
+        result.push_back(json_spirit::Pair("amount in question", ValueFromAmount(nBalanceInQuestion)));
     }
     
 	return result;
 }
 
 // ppcoin: repair wallet
-Value repairwallet(const Array& params, bool fHelp)
+json_spirit::Value repairwallet(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
 	{
@@ -2778,23 +2776,23 @@ Value repairwallet(const Array& params, bool fHelp)
     int nMismatchSpent;
     int64_t nBalanceInQuestion;
     pwalletMain->FixSpentCoins(nMismatchSpent, nBalanceInQuestion);
-    Object result;
+    json_spirit::Object result;
     
 	if (nMismatchSpent == 0)
 	{
-        result.push_back(Pair("wallet check passed", true));
+        result.push_back(json_spirit::Pair("wallet check passed", true));
 	}
     else
     {
-        result.push_back(Pair("mismatched spent coins", nMismatchSpent));
-        result.push_back(Pair("amount affected by repair", ValueFromAmount(nBalanceInQuestion)));
+        result.push_back(json_spirit::Pair("mismatched spent coins", nMismatchSpent));
+        result.push_back(json_spirit::Pair("amount affected by repair", ValueFromAmount(nBalanceInQuestion)));
     }
 	
     return result;
 }
 
 // NovaCoin: resend unconfirmed wallet transactions
-Value resendtx(const Array& params, bool fHelp)
+json_spirit::Value resendtx(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -2806,11 +2804,11 @@ Value resendtx(const Array& params, bool fHelp)
 	
     ResendWalletTransactions(true);
 
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
 // ppcoin: make a public-private key pair
-Value makekeypair(const Array& params, bool fHelp)
+json_spirit::Value makekeypair(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -2832,14 +2830,14 @@ Value makekeypair(const Array& params, bool fHelp)
 
     CPrivKey vchPrivKey = key.GetPrivKey();
     
-	Object result;
-    result.push_back(Pair("PrivateKey", HexStr<CPrivKey::iterator>(vchPrivKey.begin(), vchPrivKey.end())));
-    result.push_back(Pair("PublicKey", HexStr(key.GetPubKey())));
+	json_spirit::Object result;
+    result.push_back(json_spirit::Pair("PrivateKey", HexStr<CPrivKey::iterator>(vchPrivKey.begin(), vchPrivKey.end())));
+    result.push_back(json_spirit::Pair("PublicKey", HexStr(key.GetPubKey())));
 	
     return result;
 }
 
-Value settxfee(const Array& params, bool fHelp)
+json_spirit::Value settxfee(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
 	{
@@ -2862,7 +2860,7 @@ Value settxfee(const Array& params, bool fHelp)
     return true;
 }
 
-Value getnewstealthaddress(const Array& params, bool fHelp)
+json_spirit::Value getnewstealthaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -2899,7 +2897,7 @@ Value getnewstealthaddress(const Array& params, bool fHelp)
     return sxAddr.Encoded();
 }
 
-Value liststealthaddresses(const Array& params, bool fHelp)
+json_spirit::Value liststealthaddresses(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -2933,7 +2931,7 @@ Value liststealthaddresses(const Array& params, bool fHelp)
 		}
     }
 
-    Object result;
+    json_spirit::Object result;
 
     //std::set<CStealthAddress>::iterator it;
     //for (it = pwalletMain->stealthAddresses.begin(); it != pwalletMain->stealthAddresses.end(); ++it)
@@ -2948,25 +2946,25 @@ Value liststealthaddresses(const Array& params, bool fHelp)
 		
         if (fShowSecrets)
         {
-            Object objA;
+            json_spirit::Object objA;
             
-			objA.push_back(Pair("Label        ", it->label));
-            objA.push_back(Pair("Address      ", it->Encoded()));
-            objA.push_back(Pair("Scan Secret  ", HexStr(it->scan_secret.begin(), it->scan_secret.end())));
-            objA.push_back(Pair("Spend Secret ", HexStr(it->spend_secret.begin(), it->spend_secret.end())));
+			objA.push_back(json_spirit::Pair("Label        ", it->label));
+            objA.push_back(json_spirit::Pair("Address      ", it->Encoded()));
+            objA.push_back(json_spirit::Pair("Scan Secret  ", HexStr(it->scan_secret.begin(), it->scan_secret.end())));
+            objA.push_back(json_spirit::Pair("Spend Secret ", HexStr(it->spend_secret.begin(), it->spend_secret.end())));
             
-			result.push_back(Pair("Stealth Address", objA));
+			result.push_back(json_spirit::Pair("Stealth Address", objA));
         }
 		else
         {
-            result.push_back(Pair("Stealth Address", it->Encoded() + " - " + it->label));
+            result.push_back(json_spirit::Pair("Stealth Address", it->Encoded() + " - " + it->label));
         }
     }
 
     return result;
 }
 
-Value importstealthaddress(const Array& params, bool fHelp)
+json_spirit::Value importstealthaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2)
 	{
@@ -3047,7 +3045,7 @@ Value importstealthaddress(const Array& params, bool fHelp)
     sxAddr.scan_secret = vchScanSecret;
     sxAddr.spend_secret = vchSpendSecret;
 
-    Object result;
+    json_spirit::Object result;
     bool fFound = false;
     
 	// -- find if address already exists
@@ -3069,7 +3067,7 @@ Value importstealthaddress(const Array& params, bool fHelp)
 				break;
             }
 
-            result.push_back(Pair("result", "Import failed - stealth address exists."));
+            result.push_back(json_spirit::Pair("result", "Import failed - stealth address exists."));
             
 			return result;
         }
@@ -3077,13 +3075,13 @@ Value importstealthaddress(const Array& params, bool fHelp)
 
     if (fFound)
     {
-        result.push_back(Pair("result", "Success, updated " + sxAddr.Encoded()));
+        result.push_back(json_spirit::Pair("result", "Success, updated " + sxAddr.Encoded()));
     }
 	else
     {
         pwalletMain->stealthAddresses.insert(sxAddr);
         
-		result.push_back(Pair("result", "Success, imported " + sxAddr.Encoded()));
+		result.push_back(json_spirit::Pair("result", "Success, imported " + sxAddr.Encoded()));
     }
 
     if (!pwalletMain->AddStealthAddress(sxAddr))
@@ -3094,7 +3092,7 @@ Value importstealthaddress(const Array& params, bool fHelp)
     return result;
 }
 
-Value sendtostealthaddress(const Array& params, bool fHelp)
+json_spirit::Value sendtostealthaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 5)
 	{
@@ -3114,7 +3112,7 @@ Value sendtostealthaddress(const Array& params, bool fHelp)
     CAmount nAmount = AmountFromValue(params[1]);
 
     std::string sNarr;
-    if (params.size() > 4 && params[4].type() != null_type && !params[4].get_str().empty())
+    if (params.size() > 4 && params[4].type() != json_spirit::null_type && !params[4].get_str().empty())
 	{
         sNarr = params[4].get_str();
 	}
@@ -3125,22 +3123,22 @@ Value sendtostealthaddress(const Array& params, bool fHelp)
 	}
 	
     CStealthAddress sxAddr;
-    Object result;
+    json_spirit::Object result;
 
     if (!sxAddr.SetEncoded(sEncoded))
     {
-        result.push_back(Pair("result", "Invalid DigitalNote stealth address."));
+        result.push_back(json_spirit::Pair("result", "Invalid DigitalNote stealth address."));
         
 		return result;
     }
 	
     CWalletTx wtx;
-    if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
+    if (params.size() > 2 && params[2].type() != json_spirit::null_type && !params[2].get_str().empty())
 	{
         wtx.mapValue["comment"] = params[2].get_str();
     }
 	
-	if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
+	if (params.size() > 3 && params[3].type() != json_spirit::null_type && !params[3].get_str().empty())
 	{
         wtx.mapValue["to"]      = params[3].get_str();
 	}
@@ -3153,12 +3151,12 @@ Value sendtostealthaddress(const Array& params, bool fHelp)
 	
     return wtx.GetHash().GetHex();
 
-    result.push_back(Pair("result", "Not implemented yet."));
+    result.push_back(json_spirit::Pair("result", "Not implemented yet."));
 
     return result;
 }
 
-Value scanforalltxns(const Array& params, bool fHelp)
+json_spirit::Value scanforalltxns(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -3168,7 +3166,7 @@ Value scanforalltxns(const Array& params, bool fHelp)
 		);
 	}
 	
-    Object result;
+    json_spirit::Object result;
     int32_t nFromHeight = 0;
 
     CBlockIndex *pindex = pindexGenesisBlock;
@@ -3202,12 +3200,12 @@ Value scanforalltxns(const Array& params, bool fHelp)
         pwalletMain->ReacceptWalletTransactions();
     }
 
-    result.push_back(Pair("result", "Scan complete."));
+    result.push_back(json_spirit::Pair("result", "Scan complete."));
 
     return result;
 }
 
-Value scanforstealthtxns(const Array& params, bool fHelp)
+json_spirit::Value scanforstealthtxns(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
 	{
@@ -3217,7 +3215,7 @@ Value scanforstealthtxns(const Array& params, bool fHelp)
 		);
 	}
 	
-    Object result;
+    json_spirit::Object result;
     uint32_t nBlocks = 0;
     uint32_t nTransactions = 0;
     int32_t nFromHeight = 0;
@@ -3274,13 +3272,13 @@ Value scanforstealthtxns(const Array& params, bool fHelp)
     char cbuf[256];
     snprintf(cbuf, sizeof(cbuf), "%u new stealth transactions.", pwalletMain->nFoundStealth);
 
-    result.push_back(Pair("result", "Scan complete."));
-    result.push_back(Pair("found", std::string(cbuf)));
+    result.push_back(json_spirit::Pair("result", "Scan complete."));
+    result.push_back(json_spirit::Pair("found", std::string(cbuf)));
 
     return result;
 }
 
-Value cclistcoins(const Array& params, bool fHelp)
+json_spirit::Value cclistcoins(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -3290,31 +3288,31 @@ Value cclistcoins(const Array& params, bool fHelp)
 		);
 	}
 	
-	Array result;
+	json_spirit::Array result;
 
 	std::vector<COutput> vCoins;
     pwalletMain->AvailableCoins(vCoins);
 
     for(const COutput& out : vCoins)
     {
-		Object coutput;
+		json_spirit::Object coutput;
 		int64_t nHeight = nBestHeight - out.nDepth;
 		CBlockIndex* pindex = FindBlockByHeight(nHeight);
 
 		CTxDestination outputAddress;
 		ExtractDestination(out.tx->vout[out.i].scriptPubKey, outputAddress);
 		
-		coutput.push_back(Pair("Address", CDigitalNoteAddress(outputAddress).ToString()));
-		coutput.push_back(Pair("Output Hash", out.tx->GetHash().ToString()));
-		coutput.push_back(Pair("blockIndex", out.i));
+		coutput.push_back(json_spirit::Pair("Address", CDigitalNoteAddress(outputAddress).ToString()));
+		coutput.push_back(json_spirit::Pair("Output Hash", out.tx->GetHash().ToString()));
+		coutput.push_back(json_spirit::Pair("blockIndex", out.i));
 		
 		double dAmount = double(out.tx->vout[out.i].nValue) / double(COIN);
 		
-		coutput.push_back(Pair("Value", dAmount));
-		coutput.push_back(Pair("Confirmations", int(out.nDepth)));
+		coutput.push_back(json_spirit::Pair("Value", dAmount));
+		coutput.push_back(json_spirit::Pair("Confirmations", int(out.nDepth)));
 		
 		double dAge = double(GetTime() - pindex->nTime);
-		coutput.push_back(Pair("Age (days)", (dAge/(60*60*24))));
+		coutput.push_back(json_spirit::Pair("Age (days)", (dAge/(60*60*24))));
 		
 		uint64_t nWeight = 0;
 		pwalletMain->GetStakeWeightFromValue(out.tx->GetTxTime(), out.tx->vout[out.i].nValue, nWeight);
@@ -3326,8 +3324,8 @@ Value cclistcoins(const Array& params, bool fHelp)
 		
 		double nReward = (double)GetProofOfStakeReward(pindexBest->pprev, 0, 0);
 		
-		coutput.push_back(Pair("Weight", int(nWeight)));
-		coutput.push_back(Pair("Potential Stake", nReward));
+		coutput.push_back(json_spirit::Pair("Weight", int(nWeight)));
+		coutput.push_back(json_spirit::Pair("Potential Stake", nReward));
 		
 		result.push_back(coutput);
 	}

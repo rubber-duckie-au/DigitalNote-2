@@ -8,7 +8,7 @@
 ## 4: Open all unity_*.cpp and replace "src/" to "../../src/" to path to the correct paths.
 
 ##UNITY_BUILD = 1
-##UNITY_MOC_MODE = MOC_LVL_0
+##UNITY_MOC_MODE = MOC_LVL_1
 ##include(../../include/qmakeUnity/qmake_unity.pri)
 
 ## ------------------------------------------------------------------------------------

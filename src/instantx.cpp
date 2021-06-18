@@ -29,8 +29,6 @@
 
 #include "instantx.h"
 
-//using namespace boost;
-
 std::map<uint256, CTransaction> mapTxLockReq;
 std::map<uint256, CTransaction> mapTxLockReqRejected;
 std::map<uint256, CConsensusVote> mapTxLockVote;

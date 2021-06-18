@@ -6,8 +6,6 @@
 #include "compat.h"
 
 #include <stdint.h>
-#include <boost/foreach.hpp>
-#include <boost/assign/list_of.hpp>
 
 #include "json/json_spirit_utils.h"
 #include "json/json_spirit_value.h"
@@ -41,12 +39,7 @@
 #include "wallet.h"
 #endif
 
-
-using namespace boost;
-using namespace boost::assign;
-using namespace json_spirit;
-
-Value getinfo(const Array& params, bool fHelp)
+json_spirit::Value getinfo(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -59,60 +52,60 @@ Value getinfo(const Array& params, bool fHelp)
     proxyType proxy;
     GetProxy(NET_IPV4, proxy);
 
-    Object obj, diff;
-    obj.push_back(Pair("version", FormatFullVersion()));
-    obj.push_back(Pair("protocolversion",(int)PROTOCOL_VERSION));
+    json_spirit::Object obj, diff;
+    obj.push_back(json_spirit::Pair("version", FormatFullVersion()));
+    obj.push_back(json_spirit::Pair("protocolversion",(int)PROTOCOL_VERSION));
 
 #ifdef ENABLE_WALLET
 
     if (pwalletMain)
 	{
-        obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
-        obj.push_back(Pair("balance", ValueFromAmount(pwalletMain->GetBalance())));
-        obj.push_back(Pair("newmint", ValueFromAmount(pwalletMain->GetNewMint())));
-        obj.push_back(Pair("stake", ValueFromAmount(pwalletMain->GetStake())));
+        obj.push_back(json_spirit::Pair("walletversion", pwalletMain->GetVersion()));
+        obj.push_back(json_spirit::Pair("balance", ValueFromAmount(pwalletMain->GetBalance())));
+        obj.push_back(json_spirit::Pair("newmint", ValueFromAmount(pwalletMain->GetNewMint())));
+        obj.push_back(json_spirit::Pair("stake", ValueFromAmount(pwalletMain->GetStake())));
     }
 
 #endif // ENABLE_WALLET
 
-    obj.push_back(Pair("blocks", (int)nBestHeight));
-    obj.push_back(Pair("timeoffset", (int64_t)GetTimeOffset()));
-    obj.push_back(Pair("moneysupply", ValueFromAmount(pindexBest->nMoneySupply)));
-    obj.push_back(Pair("connections", (int)vNodes.size()));
-    obj.push_back(Pair("proxy", (proxy.first.IsValid() ? proxy.first.ToStringIPPort() : std::string())));
-    obj.push_back(Pair("ip", GetLocalAddress(NULL).ToStringIP()));
+    obj.push_back(json_spirit::Pair("blocks", (int)nBestHeight));
+    obj.push_back(json_spirit::Pair("timeoffset", (int64_t)GetTimeOffset()));
+    obj.push_back(json_spirit::Pair("moneysupply", ValueFromAmount(pindexBest->nMoneySupply)));
+    obj.push_back(json_spirit::Pair("connections", (int)vNodes.size()));
+    obj.push_back(json_spirit::Pair("proxy", (proxy.first.IsValid() ? proxy.first.ToStringIPPort() : std::string())));
+    obj.push_back(json_spirit::Pair("ip", GetLocalAddress(NULL).ToStringIP()));
 
-    diff.push_back(Pair("proof-of-work", GetDifficulty()));
-    diff.push_back(Pair("proof-of-stake", GetDifficulty(GetLastBlockIndex(pindexBest, true))));
+    diff.push_back(json_spirit::Pair("proof-of-work", GetDifficulty()));
+    diff.push_back(json_spirit::Pair("proof-of-stake", GetDifficulty(GetLastBlockIndex(pindexBest, true))));
     
-	obj.push_back(Pair("difficulty", diff));
-    obj.push_back(Pair("testnet", TestNet()));
+	obj.push_back(json_spirit::Pair("difficulty", diff));
+    obj.push_back(json_spirit::Pair("testnet", TestNet()));
 
 #ifdef ENABLE_WALLET
 
     if (pwalletMain)
 	{
-        obj.push_back(Pair("keypoololdest", (int64_t)pwalletMain->GetOldestKeyPoolTime()));
-        obj.push_back(Pair("keypoolsize", (int)pwalletMain->GetKeyPoolSize()));
+        obj.push_back(json_spirit::Pair("keypoololdest", (int64_t)pwalletMain->GetOldestKeyPoolTime()));
+        obj.push_back(json_spirit::Pair("keypoolsize", (int)pwalletMain->GetKeyPoolSize()));
     }
     
-	obj.push_back(Pair("paytxfee", ValueFromAmount(nTransactionFee)));
-    obj.push_back(Pair("mininput", ValueFromAmount(nMinimumInputValue)));
+	obj.push_back(json_spirit::Pair("paytxfee", ValueFromAmount(nTransactionFee)));
+    obj.push_back(json_spirit::Pair("mininput", ValueFromAmount(nMinimumInputValue)));
     
 	if (pwalletMain && pwalletMain->IsCrypted())
 	{
-        obj.push_back(Pair("unlocked_until", (int64_t)nWalletUnlockTime));
+        obj.push_back(json_spirit::Pair("unlocked_until", (int64_t)nWalletUnlockTime));
 	}
 	
 #endif // ENABLE_WALLET
 
-    obj.push_back(Pair("errors", GetWarnings("statusbar")));
+    obj.push_back(json_spirit::Pair("errors", GetWarnings("statusbar")));
 	
     return obj;
 }
 
 #ifdef ENABLE_WALLET
-class DescribeAddressVisitor : public boost::static_visitor<Object>
+class DescribeAddressVisitor : public boost::static_visitor<json_spirit::Object>
 {
 private:
     isminetype mine;
@@ -123,33 +116,33 @@ public:
 		
 	}
 
-    Object operator()(const CNoDestination &dest) const
+    json_spirit::Object operator()(const CNoDestination &dest) const
 	{
-		return Object();
+		return json_spirit::Object();
 	}
 
-    Object operator()(const CKeyID &keyID) const
+    json_spirit::Object operator()(const CKeyID &keyID) const
 	{
-        Object obj;
+        json_spirit::Object obj;
         CPubKey vchPubKey;
         
-		obj.push_back(Pair("isscript", false));
+		obj.push_back(json_spirit::Pair("isscript", false));
         
 		if (mine == ISMINE_SPENDABLE)
 		{
             pwalletMain->GetPubKey(keyID, vchPubKey);
             
-			obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
-            obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
+			obj.push_back(json_spirit::Pair("pubkey", HexStr(vchPubKey)));
+            obj.push_back(json_spirit::Pair("iscompressed", vchPubKey.IsCompressed()));
         }
 		
         return obj;
     }
 
-    Object operator()(const CScriptID &scriptID) const
+    json_spirit::Object operator()(const CScriptID &scriptID) const
 	{
-        Object obj;
-        obj.push_back(Pair("isscript", true));
+        json_spirit::Object obj;
+        obj.push_back(json_spirit::Pair("isscript", true));
         
 		if (mine != ISMINE_NO)
 		{
@@ -163,39 +156,39 @@ public:
             
 			ExtractDestinations(subscript, whichType, addresses, nRequired);
             
-			obj.push_back(Pair("script", GetTxnOutputType(whichType)));
-            obj.push_back(Pair("hex", HexStr(subscript.begin(), subscript.end())));
+			obj.push_back(json_spirit::Pair("script", GetTxnOutputType(whichType)));
+            obj.push_back(json_spirit::Pair("hex", HexStr(subscript.begin(), subscript.end())));
             
-			Array a;
+			json_spirit::Array a;
             
 			for(const CTxDestination& addr : addresses)
 			{
                 a.push_back(CDigitalNoteAddress(addr).ToString());
             }
 			
-			obj.push_back(Pair("addresses", a));
+			obj.push_back(json_spirit::Pair("addresses", a));
             
 			if (whichType == TX_MULTISIG)
 			{
-                obj.push_back(Pair("sigsrequired", nRequired));
+                obj.push_back(json_spirit::Pair("sigsrequired", nRequired));
 			}
         }
 		
         return obj;
     }
 
-    Object operator()(const CStealthAddress &stxAddr) const
+    json_spirit::Object operator()(const CStealthAddress &stxAddr) const
 	{
-        Object obj;
+        json_spirit::Object obj;
         
-		obj.push_back(Pair("todo", true));
+		obj.push_back(json_spirit::Pair("todo", true));
         
 		return obj;
     }
 };
 #endif // ENABLE_WALLET
 
-Value validateaddress(const Array& params, bool fHelp)
+json_spirit::Value validateaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -208,32 +201,32 @@ Value validateaddress(const Array& params, bool fHelp)
     CDigitalNoteAddress address(params[0].get_str());
     bool isValid = address.IsValid();
 
-    Object ret;
-    ret.push_back(Pair("isvalid", isValid));
+    json_spirit::Object ret;
+    ret.push_back(json_spirit::Pair("isvalid", isValid));
     
 	if (isValid)
     {
         CTxDestination dest = address.Get();
         std::string currentAddress = address.ToString();
         
-		ret.push_back(Pair("address", currentAddress));
+		ret.push_back(json_spirit::Pair("address", currentAddress));
 #ifdef ENABLE_WALLET
         
 		isminetype mine = pwalletMain ? IsMine(*pwalletMain, dest) : ISMINE_NO;
         
-		ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
+		ret.push_back(json_spirit::Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
         
 		if (mine != ISMINE_NO) {
-            ret.push_back(Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
+            ret.push_back(json_spirit::Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
             
-			Object detail = boost::apply_visitor(DescribeAddressVisitor(mine), dest);
+			json_spirit::Object detail = boost::apply_visitor(DescribeAddressVisitor(mine), dest);
             
 			ret.insert(ret.end(), detail.begin(), detail.end());
         }
         
 		if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
 		{
-            ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest]));
+            ret.push_back(json_spirit::Pair("account", pwalletMain->mapAddressBook[dest]));
 		}
 #endif // ENABLE_WALLET
     }
@@ -241,7 +234,7 @@ Value validateaddress(const Array& params, bool fHelp)
     return ret;
 }
 
-Value validatepubkey(const Array& params, bool fHelp)
+json_spirit::Value validatepubkey(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || !params.size() || params.size() > 2)
 	{
@@ -261,34 +254,34 @@ Value validatepubkey(const Array& params, bool fHelp)
     CDigitalNoteAddress address;
     address.Set(keyID);
 
-    Object ret;
-    ret.push_back(Pair("isvalid", isValid));
+    json_spirit::Object ret;
+    ret.push_back(json_spirit::Pair("isvalid", isValid));
     
 	if (isValid)
     {
         CTxDestination dest = address.Get();
         std::string currentAddress = address.ToString();
         
-		ret.push_back(Pair("address", currentAddress));
-        ret.push_back(Pair("iscompressed", isCompressed));
+		ret.push_back(json_spirit::Pair("address", currentAddress));
+        ret.push_back(json_spirit::Pair("iscompressed", isCompressed));
 #ifdef ENABLE_WALLET
         
 		isminetype mine = pwalletMain ? IsMine(*pwalletMain, dest) : ISMINE_NO;
         
-		ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
+		ret.push_back(json_spirit::Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
         
 		if (mine != ISMINE_NO)
 		{
-        	ret.push_back(Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
+        	ret.push_back(json_spirit::Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
         	
-			Object detail = boost::apply_visitor(DescribeAddressVisitor(mine), dest);
+			json_spirit::Object detail = boost::apply_visitor(DescribeAddressVisitor(mine), dest);
             
 			ret.insert(ret.end(), detail.begin(), detail.end());
         }
 		
         if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
 		{
-            ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest]));
+            ret.push_back(json_spirit::Pair("account", pwalletMain->mapAddressBook[dest]));
 		}
 #endif // ENABLE_WALLET
     }
@@ -296,7 +289,7 @@ Value validatepubkey(const Array& params, bool fHelp)
     return ret;
 }
 
-Value verifymessage(const Array& params, bool fHelp)
+json_spirit::Value verifymessage(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
 	{
@@ -346,16 +339,16 @@ Value verifymessage(const Array& params, bool fHelp)
 /*
     Used for updating/reading spork settings on the network
 */
-Value spork(const Array& params, bool fHelp)
+json_spirit::Value spork(const json_spirit::Array& params, bool fHelp)
 {
     if(params.size() == 1 && params[0].get_str() == "show")
 	{
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();
 
-        Object ret;
+        json_spirit::Object ret;
         while(it != mapSporksActive.end())
 		{
-            ret.push_back(Pair(sporkManager.GetSporkNameByID(it->second.nSporkID), it->second.nValue));
+            ret.push_back(json_spirit::Pair(sporkManager.GetSporkNameByID(it->second.nSporkID), it->second.nValue));
             it++;
         }
 		

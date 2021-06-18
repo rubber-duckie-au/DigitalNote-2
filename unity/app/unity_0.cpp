@@ -1,4 +1,4 @@
-//ORIGINAL_PATH: ../../src/caddrman.cpp----../../src/caddrinfo.cpp----../../src/cinv.cpp----../../src/caddress.cpp----../../src/cmessageheader.cpp----../../src/cregtestparams.cpp----../../src/ctestnetparams.cpp----../../src/cmainparams.cpp----../../src/cchainparams.cpp----../../src/eccverifyhandle.cpp----../../src/cextpubkey.cpp----../../src/secp256k1_context_verify.cpp
+//ORIGINAL_PATH: src/caddrman.cpp----src/caddrinfo.cpp----src/cinv.cpp----src/caddress.cpp----src/cmessageheader.cpp----src/cregtestparams.cpp----src/ctestnetparams.cpp----src/cmainparams.cpp----src/cchainparams.cpp----src/eccverifyhandle.cpp----src/cextpubkey.cpp----src/secp256k1_context_verify.cpp
 
 #include "../../src/caddrman.cpp"
 #include "../../src/caddrinfo.cpp"

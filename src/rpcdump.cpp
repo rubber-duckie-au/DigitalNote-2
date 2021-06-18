@@ -30,35 +30,31 @@
 #include "ui_translate.h"
 #include "ckeymetadata.h"
 
-using namespace json_spirit;
-
 void EnsureWalletIsUnlocked();
-
-namespace bt = boost::posix_time;
 
 // Extended DecodeDumpTime implementation, see this page for details:
 // http://stackoverflow.com/questions/3786201/parsing-of-date-time-from-string-boost
 const std::locale formats[] = {
-    std::locale(std::locale::classic(),new bt::time_input_facet("%Y-%m-%dT%H:%M:%SZ")),
-    std::locale(std::locale::classic(),new bt::time_input_facet("%Y-%m-%d %H:%M:%S")),
-    std::locale(std::locale::classic(),new bt::time_input_facet("%Y/%m/%d %H:%M:%S")),
-    std::locale(std::locale::classic(),new bt::time_input_facet("%d.%m.%Y %H:%M:%S")),
-    std::locale(std::locale::classic(),new bt::time_input_facet("%Y-%m-%d"))
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%Y-%m-%dT%H:%M:%SZ")),
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%Y-%m-%d %H:%M:%S")),
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%Y/%m/%d %H:%M:%S")),
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%d.%m.%Y %H:%M:%S")),
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%Y-%m-%d"))
 };
 
 const size_t formats_n = sizeof(formats) / sizeof(formats[0]);
 
-std::time_t pt_to_time_t(const bt::ptime& pt)
+std::time_t pt_to_time_t(const boost::posix_time::ptime& pt)
 {
-    bt::ptime timet_start(boost::gregorian::date(1970,1,1));
-    bt::time_duration diff = pt - timet_start;
+    boost::posix_time::ptime timet_start(boost::gregorian::date(1970,1,1));
+    boost::posix_time::time_duration diff = pt - timet_start;
 	
-    return diff.ticks() / bt::time_duration::rep_type::ticks_per_second;
+    return diff.ticks() / boost::posix_time::time_duration::rep_type::ticks_per_second;
 }
 
 int64_t DecodeDumpTime(const std::string& s)
 {
-    bt::ptime pt;
+    boost::posix_time::ptime pt;
 
     for(size_t i = 0; i< formats_n; ++i)
     {
@@ -67,7 +63,7 @@ int64_t DecodeDumpTime(const std::string& s)
 		is.imbue(formats[i]);
         is >> pt;
 		
-        if(pt != bt::ptime())
+        if(pt != boost::posix_time::ptime())
 		{
 			break;
 		}
@@ -140,7 +136,7 @@ public:
     }
 };
 
-Value importprivkey(const Array& params, bool fHelp)
+json_spirit::Value importprivkey(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
 	{
@@ -196,7 +192,7 @@ Value importprivkey(const Array& params, bool fHelp)
 	// Don't throw error in case a key is already there
 	if (pwalletMain->HaveKey(vchAddress))
 	{
-		return Value::null;
+		return json_spirit::Value::null;
 	}
 	
 	pwalletMain->mapKeyMetadata[vchAddress].nCreateTime = 1;
@@ -215,10 +211,10 @@ Value importprivkey(const Array& params, bool fHelp)
 		pwalletMain->ReacceptWalletTransactions();
 	}
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value importaddress(const Array& params, bool fHelp)
+json_spirit::Value importaddress(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
 	{
@@ -284,7 +280,7 @@ Value importaddress(const Array& params, bool fHelp)
 	// Don't throw error in case an address is already there
 	if (pwalletMain->HaveWatchOnly(script))
 	{
-		return Value::null;
+		return json_spirit::Value::null;
 	}
 	
 	pwalletMain->MarkDirty();
@@ -300,10 +296,10 @@ Value importaddress(const Array& params, bool fHelp)
 		pwalletMain->ReacceptWalletTransactions();
 	}
 
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value importwallet(const Array& params, bool fHelp)
+json_spirit::Value importwallet(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -436,10 +432,10 @@ Value importwallet(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error adding some keys to wallet");
 	}
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value dumpprivkey(const Array& params, bool fHelp)
+json_spirit::Value dumpprivkey(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -478,7 +474,7 @@ Value dumpprivkey(const Array& params, bool fHelp)
     return CDigitalNoteSecret(vchSecret).ToString();
 }
 
-Value dumpwallet(const Array& params, bool fHelp)
+json_spirit::Value dumpwallet(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -552,6 +548,7 @@ Value dumpwallet(const Array& params, bool fHelp)
     file << "\n";
     file << "# End of dump\n";
     file.close();
-    return Value::null;
+	
+    return json_spirit::Value::null;
 }
 

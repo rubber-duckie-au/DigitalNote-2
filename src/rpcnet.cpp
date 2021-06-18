@@ -4,8 +4,6 @@
 
 #include "compat.h"
 
-#include <boost/foreach.hpp>
-
 #include "rpcserver.h"
 #include "calert.h"
 #include "cnodestatestats.h"
@@ -25,9 +23,7 @@
 #include "thread.h"
 #include "ui_interface.h"
 
-using namespace json_spirit;
-
-Value getconnectioncount(const Array& params, bool fHelp)
+json_spirit::Value getconnectioncount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -42,7 +38,7 @@ Value getconnectioncount(const Array& params, bool fHelp)
     return (int)vNodes.size();
 }
 
-Value ping(const Array& params, bool fHelp)
+json_spirit::Value ping(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -62,7 +58,7 @@ Value ping(const Array& params, bool fHelp)
         pNode->fPingQueued = true;
     }
 
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
 static void CopyNodeStats(std::vector<CNodeStats>& vstats)
@@ -82,7 +78,7 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
     }
 }
 
-Value getpeerinfo(const Array& params, bool fHelp)
+json_spirit::Value getpeerinfo(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -94,46 +90,46 @@ Value getpeerinfo(const Array& params, bool fHelp)
 	
     std::vector<CNodeStats> vstats;
     CopyNodeStats(vstats);
-    Array ret;
+    json_spirit::Array ret;
 
     for(const CNodeStats& stats : vstats)
 	{
-        Object obj;
+        json_spirit::Object obj;
         CNodeStateStats statestats;
         bool fStateStats = GetNodeStateStats(stats.nodeid, statestats);
         
-		obj.push_back(Pair("addr", stats.addrName));
+		obj.push_back(json_spirit::Pair("addr", stats.addrName));
         
 		if (!(stats.addrLocal.empty()))
 		{
-            obj.push_back(Pair("addrlocal", stats.addrLocal));
+            obj.push_back(json_spirit::Pair("addrlocal", stats.addrLocal));
         }
 		
-		obj.push_back(Pair("services", strprintf("%08x", stats.nServices)));
-        obj.push_back(Pair("lastsend", (int64_t)stats.nLastSend));
-        obj.push_back(Pair("lastrecv", (int64_t)stats.nLastRecv));
-        obj.push_back(Pair("bytessent", (int64_t)stats.nSendBytes));
-        obj.push_back(Pair("bytesrecv", (int64_t)stats.nRecvBytes));
-        obj.push_back(Pair("conntime", (int64_t)stats.nTimeConnected));
-        obj.push_back(Pair("timeoffset", stats.nTimeOffset));
-        obj.push_back(Pair("pingtime", stats.dPingTime));
+		obj.push_back(json_spirit::Pair("services", strprintf("%08x", stats.nServices)));
+        obj.push_back(json_spirit::Pair("lastsend", (int64_t)stats.nLastSend));
+        obj.push_back(json_spirit::Pair("lastrecv", (int64_t)stats.nLastRecv));
+        obj.push_back(json_spirit::Pair("bytessent", (int64_t)stats.nSendBytes));
+        obj.push_back(json_spirit::Pair("bytesrecv", (int64_t)stats.nRecvBytes));
+        obj.push_back(json_spirit::Pair("conntime", (int64_t)stats.nTimeConnected));
+        obj.push_back(json_spirit::Pair("timeoffset", stats.nTimeOffset));
+        obj.push_back(json_spirit::Pair("pingtime", stats.dPingTime));
         
 		if (stats.dPingWait > 0.0)
 		{
-            obj.push_back(Pair("pingwait", stats.dPingWait));
+            obj.push_back(json_spirit::Pair("pingwait", stats.dPingWait));
 		}
 		
-        obj.push_back(Pair("version", stats.nVersion));
-        obj.push_back(Pair("subver", stats.strSubVer));
-        obj.push_back(Pair("inbound", stats.fInbound));
-        obj.push_back(Pair("startingheight", stats.nStartingHeight));
+        obj.push_back(json_spirit::Pair("version", stats.nVersion));
+        obj.push_back(json_spirit::Pair("subver", stats.strSubVer));
+        obj.push_back(json_spirit::Pair("inbound", stats.fInbound));
+        obj.push_back(json_spirit::Pair("startingheight", stats.nStartingHeight));
         
 		if (fStateStats)
 		{
-            obj.push_back(Pair("banscore", statestats.nMisbehavior));
+            obj.push_back(json_spirit::Pair("banscore", statestats.nMisbehavior));
         }
 		
-        obj.push_back(Pair("syncnode", stats.fSyncNode));
+        obj.push_back(json_spirit::Pair("syncnode", stats.fSyncNode));
 
         ret.push_back(obj);
     }
@@ -141,7 +137,7 @@ Value getpeerinfo(const Array& params, bool fHelp)
     return ret;
 }
 
-Value addnode(const Array& params, bool fHelp)
+json_spirit::Value addnode(const json_spirit::Array& params, bool fHelp)
 {
     std::string strCommand;
     
@@ -171,7 +167,7 @@ Value addnode(const Array& params, bool fHelp)
         CAddress addr;
         ConnectNode(addr, strNode.c_str());
         
-		return Value::null;
+		return json_spirit::Value::null;
     }
 
     LOCK(cs_vAddedNodes);
@@ -204,10 +200,10 @@ Value addnode(const Array& params, bool fHelp)
         vAddedNodes.erase(it);
     }
 
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value getaddednodeinfo(const Array& params, bool fHelp)
+json_spirit::Value getaddednodeinfo(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -256,17 +252,17 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
 
     if (!fDns)
     {
-        Object ret;
+        json_spirit::Object ret;
 		
         for(std::string& strAddNode : laddedNodes)
 		{
-            ret.push_back(Pair("addednode", strAddNode));
+            ret.push_back(json_spirit::Pair("addednode", strAddNode));
         }
 		
 		return ret;
     }
 
-    Array ret;
+    json_spirit::Array ret;
     std::list<std::pair<std::string, std::vector<CService> > > laddedAddreses(0);
     
 	for(std::string& strAddNode : laddedNodes)
@@ -279,12 +275,12 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
 		}
         else
         {
-            Object obj;
-            Array addresses;
+            json_spirit::Object obj;
+            json_spirit::Array addresses;
             
-			obj.push_back(Pair("addednode", strAddNode));
-            obj.push_back(Pair("connected", false));
-            obj.push_back(Pair("addresses", addresses));
+			obj.push_back(json_spirit::Pair("addednode", strAddNode));
+            obj.push_back(json_spirit::Pair("connected", false));
+            obj.push_back(json_spirit::Pair("addresses", addresses));
         }
     }
 
@@ -292,17 +288,17 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
     
 	for (std::list<std::pair<std::string, std::vector<CService> > >::iterator it = laddedAddreses.begin(); it != laddedAddreses.end(); it++)
     {
-        Object obj;
-        obj.push_back(Pair("addednode", it->first));
+        json_spirit::Object obj;
+        obj.push_back(json_spirit::Pair("addednode", it->first));
 
-        Array addresses;
+        json_spirit::Array addresses;
         bool fConnected = false;
 		
         for(CService& addrNode : it->second)
         {
             bool fFound = false;
-            Object node;
-            node.push_back(Pair("address", addrNode.ToString()));
+            json_spirit::Object node;
+            node.push_back(json_spirit::Pair("address", addrNode.ToString()));
             for(CNode* pnode : vNodes)
 			{
                 if (pnode->addr == addrNode)
@@ -310,7 +306,7 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
                     fFound = true;
                     fConnected = true;
                     
-					node.push_back(Pair("connected", pnode->fInbound ? "inbound" : "outbound"));
+					node.push_back(json_spirit::Pair("connected", pnode->fInbound ? "inbound" : "outbound"));
                     
 					break;
                 }
@@ -318,14 +314,14 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
 			
 			if (!fFound)
 			{
-                node.push_back(Pair("connected", "false"));
+                node.push_back(json_spirit::Pair("connected", "false"));
             }
 			
 			addresses.push_back(node);
         }
         
-		obj.push_back(Pair("connected", fConnected));
-        obj.push_back(Pair("addresses", addresses));
+		obj.push_back(json_spirit::Pair("connected", fConnected));
+        obj.push_back(json_spirit::Pair("addresses", addresses));
         
 		ret.push_back(obj);
     }
@@ -337,7 +333,7 @@ Value getaddednodeinfo(const Array& params, bool fHelp)
 // There is a known deadlock situation with ThreadMessageHandler
 // ThreadMessageHandler: holds cs_vSend and acquiring cs_main in SendMessages()
 // ThreadRPCServer: holds cs_main and acquiring cs_vSend in alert.RelayTo()/PushMessage()/BeginMessage()
-Value sendalert(const Array& params, bool fHelp)
+json_spirit::Value sendalert(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 6)
 	{
@@ -402,23 +398,23 @@ Value sendalert(const Array& params, bool fHelp)
 		}
     }
 
-    Object result;
-    result.push_back(Pair("strStatusBar", alert.strStatusBar));
-    result.push_back(Pair("nVersion", alert.nVersion));
-    result.push_back(Pair("nMinVer", alert.nMinVer));
-    result.push_back(Pair("nMaxVer", alert.nMaxVer));
-    result.push_back(Pair("nPriority", alert.nPriority));
-    result.push_back(Pair("nID", alert.nID));
+    json_spirit::Object result;
+    result.push_back(json_spirit::Pair("strStatusBar", alert.strStatusBar));
+    result.push_back(json_spirit::Pair("nVersion", alert.nVersion));
+    result.push_back(json_spirit::Pair("nMinVer", alert.nMinVer));
+    result.push_back(json_spirit::Pair("nMaxVer", alert.nMaxVer));
+    result.push_back(json_spirit::Pair("nPriority", alert.nPriority));
+    result.push_back(json_spirit::Pair("nID", alert.nID));
     
 	if (alert.nCancel > 0)
 	{
-        result.push_back(Pair("nCancel", alert.nCancel));
+        result.push_back(json_spirit::Pair("nCancel", alert.nCancel));
 	}
 	
     return result;
 }
 
-Value getnettotals(const Array& params, bool fHelp)
+json_spirit::Value getnettotals(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
 	{
@@ -429,16 +425,16 @@ Value getnettotals(const Array& params, bool fHelp)
 		);
 	}
 
-    Object obj;
+    json_spirit::Object obj;
     
-	obj.push_back(Pair("totalbytesrecv", CNode::GetTotalBytesRecv()));
-    obj.push_back(Pair("totalbytessent", CNode::GetTotalBytesSent()));
-    obj.push_back(Pair("timemillis", GetTimeMillis()));
+	obj.push_back(json_spirit::Pair("totalbytesrecv", CNode::GetTotalBytesRecv()));
+    obj.push_back(json_spirit::Pair("totalbytessent", CNode::GetTotalBytesSent()));
+    obj.push_back(json_spirit::Pair("timemillis", GetTimeMillis()));
 	
     return obj;
 }
 
-Value setban(const Array& params, bool fHelp)
+json_spirit::Value setban(const json_spirit::Array& params, bool fHelp)
 {
     std::string strCommand;
     if (params.size() >= 2)
@@ -529,10 +525,10 @@ Value setban(const Array& params, bool fHelp)
     DumpBanlist(); //store banlist to disk
     uiInterface.BannedListChanged();
 
-    return Value::null;
+    return json_spirit::Value::null;
 }
 
-Value listbanned(const Array& params, bool fHelp)
+json_spirit::Value listbanned(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -548,15 +544,15 @@ Value listbanned(const Array& params, bool fHelp)
     banmap_t banMap;
     CNode::GetBanned(banMap);
 
-    Array bannedAddresses;
+    json_spirit::Array bannedAddresses;
     for (banmap_t::iterator it = banMap.begin(); it != banMap.end(); it++)
     {
         CBanEntry banEntry = (*it).second;
-        Object rec;
-        rec.push_back(Pair("address", (*it).first.ToString()));
-        rec.push_back(Pair("banned_until", banEntry.nBanUntil));
-        rec.push_back(Pair("ban_created", banEntry.nCreateTime));
-        rec.push_back(Pair("ban_reason", banEntry.banReasonToString()));
+        json_spirit::Object rec;
+        rec.push_back(json_spirit::Pair("address", (*it).first.ToString()));
+        rec.push_back(json_spirit::Pair("banned_until", banEntry.nBanUntil));
+        rec.push_back(json_spirit::Pair("ban_created", banEntry.nCreateTime));
+        rec.push_back(json_spirit::Pair("ban_reason", banEntry.banReasonToString()));
 
         bannedAddresses.push_back(rec);
     }
@@ -564,7 +560,7 @@ Value listbanned(const Array& params, bool fHelp)
     return bannedAddresses;
 }
 
-Value clearbanned(const Array& params, bool fHelp)
+json_spirit::Value clearbanned(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -581,5 +577,5 @@ Value clearbanned(const Array& params, bool fHelp)
     DumpBanlist(); //store banlist to disk
     uiInterface.BannedListChanged();
 	
-    return Value::null;
+    return json_spirit::Value::null;
 }

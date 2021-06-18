@@ -83,8 +83,6 @@ Notes:
 #include "util.h"
 #include "cblockindex.h"
 
-using namespace json_spirit;
-
 namespace DigitalNote {
 namespace SMSG {
 // Extern

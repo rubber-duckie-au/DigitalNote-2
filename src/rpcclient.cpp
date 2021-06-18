@@ -11,7 +11,6 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/foreach.hpp>
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/lexical_cast.hpp>
@@ -27,11 +26,7 @@
 
 #include "rpcclient.h"
 
-using namespace boost;
-using namespace boost::asio;
-using namespace json_spirit;
-
-Object CallRPC(const std::string& strMethod, const Array& params)
+json_spirit::Object CallRPC(const std::string& strMethod, const json_spirit::Array& params)
 {
     if (mapArgs["-rpcuser"] == "" && mapArgs["-rpcpassword"] == "")
         throw std::runtime_error(strprintf(
@@ -42,11 +37,11 @@ Object CallRPC(const std::string& strMethod, const Array& params)
     // Connect to localhost
     bool fUseSSL = GetBoolArg("-rpcssl", false);
     ioContext io_context;
-    ssl::context context(ssl::context::sslv23);
-    context.set_options(ssl::context::no_sslv2);
-    asio::ssl::stream<asio::ip::tcp::socket> sslStream(io_context, context);
-    SSLIOStreamDevice<asio::ip::tcp> d(sslStream, fUseSSL);
-    iostreams::stream< SSLIOStreamDevice<asio::ip::tcp> > stream(d);
+    boost::asio::ssl::context context(boost::asio::ssl::context::sslv23);
+    context.set_options(boost::asio::ssl::context::no_sslv2);
+    boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sslStream(io_context, context);
+    SSLIOStreamDevice<boost::asio::ip::tcp> d(sslStream, fUseSSL);
+    boost::iostreams::stream< SSLIOStreamDevice<boost::asio::ip::tcp> > stream(d);
 
     bool fWait = GetBoolArg("-rpcwait", false); // -rpcwait means try until server has started
     do {
@@ -85,10 +80,10 @@ Object CallRPC(const std::string& strMethod, const Array& params)
         throw std::runtime_error("no response from server");
 
     // Parse reply
-    Value valReply;
+    json_spirit::Value valReply;
     if (!read_string(strReply, valReply))
         throw std::runtime_error("couldn't parse reply from server");
-    const Object& reply = valReply.get_obj();
+    const json_spirit::Object& reply = valReply.get_obj();
     if (reply.empty())
         throw std::runtime_error("expected reply to have result, error and id properties");
 
@@ -198,9 +193,9 @@ CRPCConvertTable::CRPCConvertTable()
 static CRPCConvertTable rpcCvtTable;
 
 // Convert strings to command-specific RPC representation
-Array RPCConvertValues(const std::string &strMethod, const std::vector<std::string> &strParams)
+json_spirit::Array RPCConvertValues(const std::string &strMethod, const std::vector<std::string> &strParams)
 {
-    Array params;
+    json_spirit::Array params;
 
     for (unsigned int idx = 0; idx < strParams.size(); idx++) {
         const std::string& strVal = strParams[idx];
@@ -212,7 +207,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
 
         // parse string as JSON, insert bool/number/object/etc. value
         else {
-            Value jVal;
+            json_spirit::Value jVal;
             if (!read_string(strVal, jVal))
                 throw std::runtime_error(std::string("Error parsing JSON:")+strVal);
             params.push_back(jVal);
@@ -243,16 +238,16 @@ int CommandLineRPC(int argc, char *argv[])
 
         // Parameters default to strings
         std::vector<std::string> strParams(&argv[2], &argv[argc]);
-        Array params = RPCConvertValues(strMethod, strParams);
+        json_spirit::Array params = RPCConvertValues(strMethod, strParams);
 
         // Execute
-        Object reply = CallRPC(strMethod, params);
+        json_spirit::Object reply = CallRPC(strMethod, params);
 
         // Parse reply
-        const Value& result = find_value(reply, "result");
-        const Value& error  = find_value(reply, "error");
+        const json_spirit::Value& result = find_value(reply, "result");
+        const json_spirit::Value& error  = find_value(reply, "error");
 
-        if (error.type() != null_type)
+        if (error.type() != json_spirit::null_type)
         {
             // Error
             strPrint = "error: " + write_string(error, false);
@@ -262,9 +257,9 @@ int CommandLineRPC(int argc, char *argv[])
         else
         {
             // Result
-            if (result.type() == null_type)
+            if (result.type() == json_spirit::null_type)
                 strPrint = "";
-            else if (result.type() == str_type)
+            else if (result.type() == json_spirit::str_type)
                 strPrint = result.get_str();
             else
                 strPrint = write_string(result, true);

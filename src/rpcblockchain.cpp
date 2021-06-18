@@ -3,8 +3,6 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <boost/foreach.hpp>
-
 #include "rpcserver.h"
 #include "kernel.h"
 #include "checkpoints.h"
@@ -19,8 +17,6 @@
 #include "ctxin.h"
 #include "ctransaction.h"
 #include "enums/serialize_type.h"
-
-using namespace json_spirit;
 
 extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spirit::Object& entry);
 
@@ -125,11 +121,11 @@ double GetPoSKernelPS()
     return result;
 }
 
-Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPrintTransactionDetail)
+json_spirit::Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPrintTransactionDetail)
 {
-    Object result;
+    json_spirit::Object result;
     
-	result.push_back(Pair("hash", block.GetHash().GetHex()));
+	result.push_back(json_spirit::Pair("hash", block.GetHash().GetHex()));
     
 	int confirmations = -1;
     // Only report confirmations if the block is on the main chain
@@ -138,43 +134,43 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
         confirmations = nBestHeight - blockindex->nHeight + 1;
     }
 	
-	result.push_back(Pair("confirmations", confirmations));
-    result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION)));
-    result.push_back(Pair("height", blockindex->nHeight));
-    result.push_back(Pair("version", block.nVersion));
-    result.push_back(Pair("merkleroot", block.hashMerkleRoot.GetHex()));
-    result.push_back(Pair("mint", ValueFromAmount(blockindex->nMint)));
-    result.push_back(Pair("time", (int64_t)block.GetBlockTime()));
-    result.push_back(Pair("nonce", (uint64_t)block.nNonce));
-    result.push_back(Pair("bits", strprintf("%08x", block.nBits)));
-    result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
-    result.push_back(Pair("blocktrust", leftTrim(blockindex->GetBlockTrust().GetHex(), '0')));
-    result.push_back(Pair("chaintrust", leftTrim(blockindex->nChainTrust.GetHex(), '0')));
+	result.push_back(json_spirit::Pair("confirmations", confirmations));
+    result.push_back(json_spirit::Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION)));
+    result.push_back(json_spirit::Pair("height", blockindex->nHeight));
+    result.push_back(json_spirit::Pair("version", block.nVersion));
+    result.push_back(json_spirit::Pair("merkleroot", block.hashMerkleRoot.GetHex()));
+    result.push_back(json_spirit::Pair("mint", ValueFromAmount(blockindex->nMint)));
+    result.push_back(json_spirit::Pair("time", (int64_t)block.GetBlockTime()));
+    result.push_back(json_spirit::Pair("nonce", (uint64_t)block.nNonce));
+    result.push_back(json_spirit::Pair("bits", strprintf("%08x", block.nBits)));
+    result.push_back(json_spirit::Pair("difficulty", GetDifficulty(blockindex)));
+    result.push_back(json_spirit::Pair("blocktrust", leftTrim(blockindex->GetBlockTrust().GetHex(), '0')));
+    result.push_back(json_spirit::Pair("chaintrust", leftTrim(blockindex->nChainTrust.GetHex(), '0')));
     
 	if (blockindex->pprev)
 	{
-        result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
+        result.push_back(json_spirit::Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
     }
 	
 	if (blockindex->pnext)
 	{
-        result.push_back(Pair("nextblockhash", blockindex->pnext->GetBlockHash().GetHex()));
+        result.push_back(json_spirit::Pair("nextblockhash", blockindex->pnext->GetBlockHash().GetHex()));
 	}
 	
-    result.push_back(Pair("flags", strprintf("%s%s", blockindex->IsProofOfStake()? "proof-of-stake" : "proof-of-work", blockindex->GeneratedStakeModifier()? " stake-modifier": "")));
-    result.push_back(Pair("proofhash", blockindex->hashProof.GetHex()));
-    result.push_back(Pair("entropybit", (int)blockindex->GetStakeEntropyBit()));
-    result.push_back(Pair("modifier", strprintf("%016x", blockindex->nStakeModifier)));
-    result.push_back(Pair("modifierv2", blockindex->bnStakeModifierV2.GetHex()));
+    result.push_back(json_spirit::Pair("flags", strprintf("%s%s", blockindex->IsProofOfStake()? "proof-of-stake" : "proof-of-work", blockindex->GeneratedStakeModifier()? " stake-modifier": "")));
+    result.push_back(json_spirit::Pair("proofhash", blockindex->hashProof.GetHex()));
+    result.push_back(json_spirit::Pair("entropybit", (int)blockindex->GetStakeEntropyBit()));
+    result.push_back(json_spirit::Pair("modifier", strprintf("%016x", blockindex->nStakeModifier)));
+    result.push_back(json_spirit::Pair("modifierv2", blockindex->bnStakeModifierV2.GetHex()));
     
-	Array txinfo;
+	json_spirit::Array txinfo;
 	for(const CTransaction& tx : block.vtx)
     {
         if (fPrintTransactionDetail)
         {
-            Object entry;
+            json_spirit::Object entry;
 
-            entry.push_back(Pair("txid", tx.GetHash().GetHex()));
+            entry.push_back(json_spirit::Pair("txid", tx.GetHash().GetHex()));
             TxToJSON(tx, 0, entry);
 
             txinfo.push_back(entry);
@@ -185,17 +181,17 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
 		}
     }
 
-    result.push_back(Pair("tx", txinfo));
+    result.push_back(json_spirit::Pair("tx", txinfo));
 
     if (block.IsProofOfStake())
 	{
-        result.push_back(Pair("signature", HexStr(block.vchBlockSig.begin(), block.vchBlockSig.end())));
+        result.push_back(json_spirit::Pair("signature", HexStr(block.vchBlockSig.begin(), block.vchBlockSig.end())));
 	}
 	
     return result;
 }
 
-Value getbestblockhash(const Array& params, bool fHelp)
+json_spirit::Value getbestblockhash(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -208,7 +204,7 @@ Value getbestblockhash(const Array& params, bool fHelp)
     return hashBestChain.GetHex();
 }
 
-Value getblockcount(const Array& params, bool fHelp)
+json_spirit::Value getblockcount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -221,7 +217,7 @@ Value getblockcount(const Array& params, bool fHelp)
     return nBestHeight;
 }
 
-Value getdifficulty(const Array& params, bool fHelp)
+json_spirit::Value getdifficulty(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -231,13 +227,13 @@ Value getdifficulty(const Array& params, bool fHelp)
 		);
 	}
 	
-    //Object obj;
-    //obj.push_back(Pair("proof-of-work",        GetDifficulty()));
-    //obj.push_back(Pair("proof-of-stake",       GetDifficulty(GetLastBlockIndex(pindexBest, true))));
+    //json_spirit::Object obj;
+    //obj.push_back(json_spirit::Pair("proof-of-work",        GetDifficulty()));
+    //obj.push_back(json_spirit::Pair("proof-of-stake",       GetDifficulty(GetLastBlockIndex(pindexBest, true))));
     return GetDifficulty(GetLastBlockIndex(pindexBest, true));
 }
 
-Value getrawmempool(const Array& params, bool fHelp)
+json_spirit::Value getrawmempool(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -250,7 +246,7 @@ Value getrawmempool(const Array& params, bool fHelp)
     std::vector<uint256> vtxid;
     mempool.queryHashes(vtxid);
 
-    Array a;
+    json_spirit::Array a;
     for(const uint256& hash : vtxid)
 	{
         a.push_back(hash.ToString());
@@ -259,7 +255,7 @@ Value getrawmempool(const Array& params, bool fHelp)
     return a;
 }
 
-Value getblockhash(const Array& params, bool fHelp)
+json_spirit::Value getblockhash(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
 	{
@@ -280,7 +276,7 @@ Value getblockhash(const Array& params, bool fHelp)
     return pblockindex->phashBlock->GetHex();
 }
 
-Value getblock(const Array& params, bool fHelp)
+json_spirit::Value getblock(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -306,7 +302,7 @@ Value getblock(const Array& params, bool fHelp)
     return blockToJSON(block, pblockindex, params.size() > 1 ? params[1].get_bool() : false);
 }
 
-Value getblockbynumber(const Array& params, bool fHelp)
+json_spirit::Value getblockbynumber(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
 	{
@@ -339,7 +335,7 @@ Value getblockbynumber(const Array& params, bool fHelp)
 }
 
 // ppcoin: get information of sync-checkpoint
-Value getcheckpoint(const Array& params, bool fHelp)
+json_spirit::Value getcheckpoint(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
 	{
@@ -349,14 +345,14 @@ Value getcheckpoint(const Array& params, bool fHelp)
 		);
 	}
 	
-    Object result;
+    json_spirit::Object result;
     const CBlockIndex* pindexCheckpoint = Checkpoints::AutoSelectSyncCheckpoint();
 
-    result.push_back(Pair("synccheckpoint", pindexCheckpoint->GetBlockHash().ToString().c_str()));
-    result.push_back(Pair("height", pindexCheckpoint->nHeight));
-    result.push_back(Pair("timestamp", DateTimeStrFormat(pindexCheckpoint->GetBlockTime()).c_str()));
+    result.push_back(json_spirit::Pair("synccheckpoint", pindexCheckpoint->GetBlockHash().ToString().c_str()));
+    result.push_back(json_spirit::Pair("height", pindexCheckpoint->nHeight));
+    result.push_back(json_spirit::Pair("timestamp", DateTimeStrFormat(pindexCheckpoint->GetBlockTime()).c_str()));
 
-    result.push_back(Pair("policy", "rolling"));
+    result.push_back(json_spirit::Pair("policy", "rolling"));
 
     return result;
 }
