@@ -1234,7 +1234,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
         }
 		
         // Devops Address Set and Updates
-        strVfyDevopsAddress = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18";
+        strVfyDevopsAddress = "dafC1LknpDu7eALTf5DPcnPq2dwq7f9YPE";
         
 		if(pindexBest->GetBlockTime() < nPaymentUpdate_2)
 		{

@@ -462,11 +462,11 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 					{
                         if(GetTime() < nPaymentUpdate_2)
 						{
-							devopaddress = CBitcoinAddress("dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7");
+                            devopaddress = CBitcoinAddress("dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18");
 						} // TODO: nothing, already set to a valid DigitalNote address
                         else
 						{
-							devopaddress = CBitcoinAddress("dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18");
+                            devopaddress = CBitcoinAddress("dafC1LknpDu7eALTf5DPcnPq2dwq7f9YPE");
 						}
                     }
 					else if (Params().NetworkID() == CChainParams::TESTNET)
