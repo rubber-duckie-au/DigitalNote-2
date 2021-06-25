@@ -29,3 +29,6 @@ Makefile.*
 ## leveldb lib
 !src/leveldb/Makefile
 src/leveldb-2.11/build
+qdbusxml2cpp_wrapper.bat
+uic_wrapper.bat
+digitalnote-qt_plugin_import.cpp
