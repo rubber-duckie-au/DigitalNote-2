@@ -1,13 +1,3 @@
-#include "messagepage.h"
-#include "ui_messagepage.h"
-
-#include "sendmessagesdialog.h"
-#include "mrichtextedit.h"
-#include "messagemodel.h"
-#include "bitcoingui.h"
-#include "csvmodelwriter.h"
-#include "guiutil.h"
-
 #include <QSortFilterProxyModel>
 #include <QClipboard>
 #include <QMessageBox>
@@ -15,9 +5,19 @@
 #include <QStyledItemDelegate>
 #include <QAbstractTextDocumentLayout>
 #include <QPainter>
-
 #include <QToolBar>
 #include <QMenu>
+
+#include "sendmessagesdialog.h"
+#include "qt/plugins/mrichtexteditor/mrichtextedit.h"
+#include "messagemodel.h"
+#include "bitcoingui.h"
+#include "csvmodelwriter.h"
+#include "guiutil.h"
+#include "smsg.h"
+
+#include "messagepage.h"
+#include "ui_messagepage.h"
 
 #define DECORATION_SIZE 64
 #define NUM_ITEMS 3
@@ -31,7 +31,7 @@ protected:
 
 void MessageViewDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
-    QStyleOptionViewItemV4 optionV4 = option;
+    QStyleOptionViewItem optionV4 = option;
     initStyleOption(&optionV4, index);
 
     QStyle *style = optionV4.widget? optionV4.widget->style() : QApplication::style();
@@ -62,7 +62,7 @@ void MessageViewDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
 
 QSize MessageViewDelegate::sizeHint ( const QStyleOptionViewItem & option, const QModelIndex & index ) const
 {
-    QStyleOptionViewItemV4 options = option;
+    QStyleOptionViewItem options = option;
     initStyleOption(&options, index);
 
     QTextDocument doc;
@@ -177,7 +177,7 @@ void MessagePage::on_sendButton_clicked()
     std::string message = ui->messageEdit->toHtml().toStdString();
     std::string addFrom = replyFromAddress.toStdString();
 
-    if (SecureMsgSend(addFrom, sendTo, message, sError) != 0)
+    if (DigitalNote::SMSG::Send(addFrom, sendTo, message, sError) != 0)
     {
         QMessageBox::warning(NULL, tr("Send Secure Message"),
             tr("Send failed: %1.").arg(sError.c_str()),

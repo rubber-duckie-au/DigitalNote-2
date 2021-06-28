@@ -5,18 +5,21 @@
 #ifndef BITCOIN_INIT_H
 #define BITCOIN_INIT_H
 
-#include "wallet.h"
+#include <string>
+
+class CWallet;
 
 namespace boost {
     class thread_group;
 } // namespace boost
 
 extern CWallet* pwalletMain;
+extern bool fOnlyTor;
+
 void StartShutdown();
 bool ShutdownRequested();
 void Shutdown();
 bool AppInit2(boost::thread_group& threadGroup);
 std::string HelpMessage();
-extern bool fOnlyTor;
 
 #endif

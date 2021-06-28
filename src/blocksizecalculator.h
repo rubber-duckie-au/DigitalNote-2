@@ -6,17 +6,15 @@
 #ifndef blocksizecalculator_h
 #define blocksizecalculator_h
 
-#include <iostream>
 #include <vector>
-#include <map>
-#include <algorithm>
-#include "main.h"
-#include "util.h"
-#include "clientversion.h"
 
-using namespace std;
+#include "main_const.h"
 
-namespace BlockSizeCalculator {
+class CBlockIndex;
+class CAutoFile;
+
+namespace BlockSizeCalculator
+{
     unsigned int ComputeBlockSize(CBlockIndex*, unsigned int pastblocks = NUM_BLOCKS_FOR_MEDIAN_BLOCK);
     inline unsigned int GetMedianBlockSize(CBlockIndex*, unsigned int pastblocks = NUM_BLOCKS_FOR_MEDIAN_BLOCK);
     inline std::vector<unsigned int> GetBlockSizes(CBlockIndex*, unsigned int pastblocks = NUM_BLOCKS_FOR_MEDIAN_BLOCK);

@@ -13,8 +13,6 @@
 #include <string>
 #include <vector>
 #include "serialize.h"
-#include "allocators.h"
-
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <openssl/bio.h>
@@ -31,10 +29,10 @@
 #define UEND(a)             ((unsigned char*)&((&(a))[1]))
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
-/** This is needed because the foreach macro can't get over the comma in pair<t1, t2> */
-#define PAIRTYPE(t1, t2)    std::pair<t1, t2>
 
+extern const signed char p_util_hexdigit[256];
 
+signed char HexDigit(char c);
 
 std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = NULL);
 std::string DecodeBase64(const std::string& str);
@@ -90,21 +88,6 @@ inline std::string HexStr(const T& vch, bool fSpaces=false)
  * Format a paragraph of text to a fixed width, adding spaces for
  * indentation to any added line.
  */
-std::string FormatParagraph(const std::string in, size_t width=79, size_t indent=0);
-
-/**
- * Timing-attack-resistant comparison.
- * Takes time proportional to length
- * of first argument.
- */
-template <typename T>
-bool TimingResistantEqual(const T& a, const T& b)
-{
-    if (b.size() == 0) return a.size() == 0;
-    size_t accumulator = a.size() ^ b.size();
-    for (size_t i = 0; i < a.size(); i++)
-        accumulator |= a[i] ^ b[i%b.size()];
-    return accumulator == 0;
-}
+std::string FormatParagraph(const std::string &in, size_t width=79, size_t indent=0);
 
 #endif // BITCOIN_UTILSTRENCODINGS_H

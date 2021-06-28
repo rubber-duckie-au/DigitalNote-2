@@ -71,27 +71,60 @@ sudo -i
 ```
 ### CREATE SWAP FILE FOR DAEMON BUILD (if system has less than 2GB of RAM)
 ```
-cd ~; sudo fallocate -l 3G /swapfile; ls -lh /swapfile; sudo chmod 600 /swapfile; ls -lh /swapfile; sudo mkswap /swapfile; sudo swapon /swapfile; sudo swapon --show; sudo cp /etc/fstab /etc/fstab.bak; echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+cd ~
+sudo fallocate -l 3G /swapfile
+ls -lh /swapfile
+sudo chmod 600 /swapfile
+ls -lh /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+sudo swapon --show
+sudo cp /etc/fstab /etc/fstab.bak
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
 ### Dependencies install
 ```
-cd ~; sudo apt-get install -y ntp git build-essential libssl-dev libdb-dev libdb++-dev libboost-all-dev libqrencode-dev libcurl4-openssl-dev curl libzip-dev; apt-get update -y; apt-get install -y git make automake build-essential libboost-all-dev; apt-get install -y yasm binutils libcurl4-openssl-dev openssl libssl-dev; sudo apt-get install -y libgmp-dev; sudo apt-get install -y libtool;
+cd ~
+sudo apt-get install -y ntp git build-essential libssl-dev libdb-dev libdb++-dev libboost-all-dev libqrencode-dev libcurl4-openssl-dev curl libzip-dev
+apt-get update -y
+apt-get install -y git make automake yasm binutils libcurl4-openssl-dev openssl libgmp-dev libtool qt5-default qttools5-dev-tools miniupnpc
 ```
 
 ### Dependencies build and link
 ```
-cd ~; wget http://download.oracle.com/berkeley-db/db-6.2.32.NC.tar.gz; tar zxf db-6.2.32.NC.tar.gz; cd db-6.2.32.NC/build_unix; ../dist/configure --enable-cxx --disable-shared; make; sudo make install; sudo ln -s /usr/local/BerkeleyDB.6.2/lib/libdb-6.2.so /usr/lib/libdb-6.2.so; sudo ln -s /usr/local/BerkeleyDB.6.2/lib/libdb_cxx-6.2.so /usr/lib/libdb_cxx-6.2.so; export BDB_INCLUDE_PATH="/usr/local/BerkeleyDB.6.2/include"; export BDB_LIB_PATH="/usr/local/BerkeleyDB.6.2/lib"
+cd ~;
+wget http://download.oracle.com/berkeley-db/db-6.2.32.NC.tar.gz
+tar zxf db-6.2.32.NC.tar.gz
+cd db-6.2.32.NC/build_unix
+../dist/configure --enable-cxx --disable-shared
+make
+sudo make install
+sudo ln -s /usr/local/BerkeleyDB.6.2/lib/libdb-6.2.so /usr/lib/libdb-6.2.so
+sudo ln -s /usr/local/BerkeleyDB.6.2/lib/libdb_cxx-6.2.so /usr/lib/libdb_cxx-6.2.so
+export BDB_INCLUDE_PATH="/usr/local/BerkeleyDB.6.2/include"
+export BDB_LIB_PATH="/usr/local/BerkeleyDB.6.2/lib"
 ```
 
 ### GitHub pull (Source Download)
 ```
-cd ~; git clone https://github.com/DigitalNoteXDN/DigitalNote-2 DigitalNote
+cd ~
+git clone https://github.com/DigitalNoteXDN/DigitalNote-2 DigitalNote
 ```
 
 ### Build DigitalNote daemon
 ```
-cd ~; cd ~/DigitalNote/src; chmod a+x obj; chmod a+x leveldb/build_detect_platform; chmod a+x secp256k1; chmod a+x leveldb; chmod a+x ~/DigitalNote/src; chmod a+x ~/DigitalNote; make -f makefile.unix USE_UPNP=-; cd ~; cp -r ~/DigitalNote/src/DigitalNoted /usr/local/bin/DigitalNoted;
+cd ~
+cd ~/DigitalNote/src
+chmod a+x obj
+chmod a+x leveldb/build_detect_platform
+chmod a+x secp256k1
+chmod a+x leveldb
+chmod a+x ~/DigitalNote/src
+chmod a+x ~/DigitalNote
+make -f makefile.unix USE_UPNP=-
+cd ~
+sudo cp -r ~/DigitalNote/src/DigitalNoted /usr/local/bin/DigitalNoted
 ```
 
 ### (Optional) Build DigitalNote-QT (GUI wallet) on Linux 
@@ -100,26 +133,36 @@ cd ~; cd ~/DigitalNote/src; chmod a+x obj; chmod a+x leveldb/build_detect_platfo
 
 If you recompiling some other time you don't have to repeat previous steps, but need to define those variables. Skip this command if this is your first build and previous steps were performed in current terminal session.
 ```
-export BDB_INCLUDE_PATH="/usr/local/BerkeleyDB.6.2/include"; export BDB_LIB_PATH="/usr/local/BerkeleyDB.6.2/lib"
+export BDB_INCLUDE_PATH="/usr/local/BerkeleyDB.6.2/include"
+export BDB_LIB_PATH="/usr/local/BerkeleyDB.6.2/lib"
 ```
 
 With UPNP:
 
 ```
-cd ~; cd ~/DigitalNote; qmake -qt=qt5; make
+cd ~/DigitalNote
+qmake -qt=qt5
+make
 ```
 
 **Recommended Without** UPNP:
 
 ```
-cd ~; cd ~/DigitalNote; qmake -qt=qt5 USE_UPNP=-; make
+cd ~/DigitalNote
+qmake -qt=qt5 USE_UPNP=-
+make
 ```
 
 
 
 ### Create config file for daemon
 ```
-cd ~; sudo ufw allow 18092/tcp; sudo ufw allow 18094/tcp; sudo ufw allow 22/tcp; sudo mkdir ~/.XDN; cat << "CONFIG" >> ~/.XDN/DigitalNote.conf
+sudo ufw allow 18092/tcp
+sudo ufw allow 18094/tcp
+sudo ufw allow 22/tcp
+sudo mkdir ~/.XDN
+
+cat << "CONFIG" >> ~/.XDN/DigitalNote.conf
 listen=1
 server=1
 daemon=1
@@ -131,12 +174,17 @@ port=18092
 rpcconnect=127.0.0.1
 rpcallowip=127.0.0.1
 CONFIG
-chmod 700 ~/.XDN/DigitalNote.conf; chmod 700 ~/.XDN; ls -la ~/.XDN
+
+chmod 700 ~/.XDN/DigitalNote.conf
+chmod 700 ~/.XDN
+ls -la ~/.XDN
 ```
 
 ### Run DigitalNote daemon
 ```
-cd ~; DigitalNoted; DigitalNoted getinfo
+cd ~
+DigitalNoted
+DigitalNoted getinfo
 ```
 
 ### Troubleshooting

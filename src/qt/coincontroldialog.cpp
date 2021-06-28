@@ -1,17 +1,4 @@
-#include "coincontroldialog.h"
-#include "ui_coincontroldialog.h"
-
-#include "addresstablemodel.h"
-#include "bitcoinunits.h"
-#include "base58.h"
-#include "chain.h"
-#include "guiutil.h"
-#include "init.h"
-#include "optionsmodel.h"
-#include "walletmodel.h"
-
-#include "coincontrol.h"
-#include "wallet.h"
+#include "compat.h"
 
 #include <ctime>
 #include <QMessageBox>
@@ -26,7 +13,25 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 
-using namespace std;
+#include "addresstablemodel.h"
+#include "bitcoinunits.h"
+#include "guiutil.h"
+#include "init.h"
+#include "optionsmodel.h"
+#include "walletmodel.h"
+#include "ccoincontrol.h"
+#include "coutput.h"
+#include "cwallettx.h"
+#include "wallet.h"
+#include "script.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "main_const.h"
+#include "cdigitalnoteaddress.h"
+
+#include "coincontroldialog.h"
+#include "ui_coincontroldialog.h"
+
 QList<qint64> CoinControlDialog::payAmounts;
 CCoinControl* CoinControlDialog::coinControl = new CCoinControl();
 
@@ -496,7 +501,7 @@ QString CoinControlDialog::getPriorityLabel(double dPriority)
 // shows count of locked unspent outputs
 void CoinControlDialog::updateLabelLocked()
 {
-    vector<COutPoint> vOutpts;
+    std::vector<COutPoint> vOutpts;
     model->listLockedCoins(vOutpts);
     if (vOutpts.size() > 0)
     {
@@ -551,9 +556,8 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     coinControl->ListSelected(vCoinControl);
     model->getOutputs(vCoinControl, vOutputs);
 
-    BOOST_FOREACH(const COutput& out, vOutputs)
+    for(const COutput& out : vOutputs)
     {
-
         // Quantity
         nQuantity++;
 
@@ -594,12 +598,12 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         int64_t nFee = nTransactionFee * (1 + (int64_t)nBytes / 1000);
 
         // IX Fee
-        if(coinControl->useInstantX) nFee = max(nFee, CENT);
+        if(coinControl->useInstantX) nFee = std::max(nFee, CENT);
 
         // Min Fee
         int64_t nMinFee = GetMinFee(txDummy, nBytes, AllowFree(dPriority), GMF_SEND);
 
-        nPayFee = max(nFee, nMinFee);
+        nPayFee = std::max(nFee, nMinFee);
 
         if (nPayAmount > 0)
         {
@@ -716,7 +720,7 @@ void CoinControlDialog::updateView()
     std::map<QString, std::vector<COutput> > mapCoins;
     model->listCoins(mapCoins);
 
-    BOOST_FOREACH(const PAIRTYPE(QString, std::vector<COutput>)& coins, mapCoins)
+    for(const std::pair<QString, std::vector<COutput>>& coins : mapCoins)
     {
         QTreeWidgetItem *itemWalletAddress = new QTreeWidgetItem();
         itemWalletAddress->setCheckState(COLUMN_CHECKBOX, Qt::Unchecked);
@@ -744,7 +748,8 @@ void CoinControlDialog::updateView()
         double dPrioritySum = 0;
         int nChildren = 0;
         int nInputSum = 0;
-        BOOST_FOREACH(const COutput& out, coins.second)
+        
+		for(const COutput& out : coins.second)
         {
             int nInputSize = 148; // 180 if uncompressed public key
             nSum += out.tx->vout[out.i].nValue;

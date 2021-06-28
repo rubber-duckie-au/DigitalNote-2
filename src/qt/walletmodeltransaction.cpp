@@ -2,9 +2,16 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "walletmodeltransaction.h"
+#include "compat.h"
 
-#include "wallet.h"
+#include "cwallettx.h"
+#include "creservekey.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "enums/serialize_type.h"
+#include "version.h"
+
+#include "walletmodeltransaction.h"
 
 WalletModelTransaction::WalletModelTransaction(const QList<SendCoinsRecipient> &recipients) :
     recipients(recipients),

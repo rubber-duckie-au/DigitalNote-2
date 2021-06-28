@@ -1,4 +1,11 @@
-#include "transactiontablemodel.h"
+#include "compat.h"
+
+#include <QList>
+#include <QColor>
+#include <QIcon>
+#include <QDateTime>
+#include <QDebug>
+#include <boost/bind.hpp>
 
 #include "guiutil.h"
 #include "transactionrecord.h"
@@ -8,16 +15,11 @@
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
 #include "bitcoinunits.h"
+#include "cwallettx.h"
+#include "main_extern.h"
+#include "thread.h"
 
-#include "wallet.h"
-#include "ui_interface.h"
-
-#include <QList>
-#include <QColor>
-#include <QIcon>
-#include <QDateTime>
-#include <QDebug>
-#include <boost/bind.hpp>
+#include "transactiontablemodel.h"
 
 // Amount column is right-aligned it contains numbers
 static int column_alignments[] = {
@@ -91,9 +93,9 @@ public:
         qDebug() << "TransactionTablePriv::updateWallet : " + QString::fromStdString(hash.ToString()) + " " + QString::number(status);
 
         // Find bounds of this transaction in model
-        QList<TransactionRecord>::iterator lower = qLowerBound(
+        QList<TransactionRecord>::iterator lower = std::lower_bound(
             cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
-        QList<TransactionRecord>::iterator upper = qUpperBound(
+        QList<TransactionRecord>::iterator upper = std::upper_bound(
             cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
         int lowerIndex = (lower - cachedWallet.begin());
         int upperIndex = (upper - cachedWallet.begin());

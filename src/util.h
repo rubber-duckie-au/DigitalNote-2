@@ -2,52 +2,36 @@
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #ifndef BITCOIN_UTIL_H
 #define BITCOIN_UTIL_H
 
-#ifndef WIN32
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#endif
-
-#ifdef WIN32
-#include <windows.h>
-#endif
-
-#include "serialize.h"
-#include "tinyformat.h"
-
+#include <algorithm>
 #include <map>
 #include <list>
 #include <utility>
 #include <vector>
 #include <string>
-
-#include <boost/thread.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/date_time/gregorian/gregorian_types.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
-
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/buffer.h>
-#include <openssl/crypto.h> // for OPENSSL_cleanse()
-#include <openssl/rand.h>
-#include <openssl/bn.h>
-
 #include <stdint.h>
 
+#ifndef WIN32
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+
+#include "serialize.h"
+#include "tinyformat.h"
+#include "allocators/securestring.h"
+
+namespace boost
+{
+	namespace filesystem
+	{
+		class path;
+	}
+}
 
 class CNetAddr;
 class uint256;
-
-static const int64_t COIN = 100000000;
-static const int64_t CENT = 1000000;
-
-typedef int64_t CAmount;
 
 #define BEGIN(a)            ((char*)&(a))
 #define END(a)              ((char*)&((&(a))[1]))
@@ -62,6 +46,7 @@ typedef int64_t CAmount;
 
 /* Format characters for (s)size_t and ptrdiff_t */
 #if defined(_MSC_VER) || defined(__MSVCRT__)
+
   /* (s)size_t and ptrdiff_t have the same size specifier in MSVC:
      http://msdn.microsoft.com/en-us/library/tcxf1dw6%28v=vs.100%29.aspx
    */
@@ -71,17 +56,17 @@ typedef int64_t CAmount;
   #define PRIpdx    "Ix"
   #define PRIpdu    "Iu"
   #define PRIpdd    "Id"
+
 #else /* C99 standard */
+
   #define PRIszx    "zx"
   #define PRIszu    "zu"
   #define PRIszd    "zd"
   #define PRIpdx    "tx"
   #define PRIpdu    "tu"
   #define PRIpdd    "td"
-#endif
 
-// This is needed because the foreach macro can't get over the comma in pair<t1, t2>
-#define PAIRTYPE(t1, t2)    std::pair<t1, t2>
+#endif // defined(_MSC_VER) || defined(__MSVCRT__)
 
 // Align by increasing pointer, must have extra space at end of buffer
 template <size_t nBytes, typename T>
@@ -92,31 +77,32 @@ T* alignup(T* p)
         T* ptr;
         size_t n;
     } u;
-    u.ptr = p;
+    
+	u.ptr = p;
     u.n = (u.n + (nBytes-1)) & ~(nBytes-1);
+	
     return u.ptr;
 }
 
 #ifdef WIN32
+
 #define MSG_NOSIGNAL        0
 #define MSG_DONTWAIT        0
 
 #ifndef S_IRUSR
+
 #define S_IRUSR             0400
 #define S_IWUSR             0200
-#endif
-#else
-#define MAX_PATH            1024
-#endif
 
-inline void MilliSleep(int64_t n)
-{
-#if BOOST_VERSION >= 105000
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
-#else
-    boost::this_thread::sleep(boost::posix_time::milliseconds(n));
-#endif
-}
+#endif // S_IRUSR
+
+#else // WIN32
+
+#define MAX_PATH            1024
+
+#endif // WIN32
+
+void MilliSleep(int64_t n);
 
 //Dark features
 extern bool fMasterNode;
@@ -203,22 +189,31 @@ TINYFORMAT_FOREACH_ARGNUM(MAKE_ERROR_AND_LOG_FUNC)
  */
 static inline int LogPrint(const char* category, const char* format)
 {
-    if(!LogAcceptCategory(category)) return 0;
-    return LogPrintStr(format);
+    if(!LogAcceptCategory(category))
+	{
+		return 0;
+    }
+	
+	return LogPrintStr(format);
 }
+
 static inline bool error(const char* format)
 {
     LogPrintStr(std::string("ERROR: ") + format + "\n");
-    return false;
+    
+	return false;
 }
+
 static inline int errorN(int n, const char* format)
 {
     LogPrintStr(std::string("ERROR: ") + format + "\n");
+	
     return n;
 }
 
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+extern const signed char p_util_hexdigit[256];
 
 void RandAddSeed();
 void RandAddSeedPerfmon();
@@ -280,8 +275,6 @@ void runCommand(std::string strCommand);
 long hex2long(const char *hexString);
 
 
-
-
 /**
  * Convert string to signed 32-bit integer with strict parse error feedback.
  * @returns true if the entire string could be parsed as valid integer,
@@ -289,14 +282,32 @@ long hex2long(const char *hexString);
  */
 bool ParseInt32(const std::string& str, int32_t *out);
 
+template<typename T>
+std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
+{
+    std::string rv;
+    static const char hexmap[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
+                                     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    rv.reserve((itend-itbegin)*3);
+    for(T it = itbegin; it < itend; ++it)
+    {
+        unsigned char val = (unsigned char)(*it);
+        if(fSpaces && it != itbegin)
+            rv.push_back(' ');
+        rv.push_back(hexmap[val>>4]);
+        rv.push_back(hexmap[val&15]);
+    }
 
-/** 
- * Format a paragraph of text to a fixed width, adding spaces for
- * indentation to any added line.
- */
-std::string FormatParagraph(const std::string in, size_t width=79, size_t indent=0);
+    return rv;
+}
 
+template<typename T>
+std::string HexStr(const T& vch, bool fSpaces=false)
+{
+    return HexStr(vch.begin(), vch.end(), fSpaces);
+}
 
+signed char HexDigit(char c);
 
 inline std::string i64tostr(int64_t n)
 {
@@ -356,55 +367,9 @@ inline std::string leftTrim(std::string src, char chr)
     return src;
 }
 
-template<typename T>
-std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
-{
-    std::string rv;
-    static const char hexmap[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
-                                     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    rv.reserve((itend-itbegin)*3);
-    for(T it = itbegin; it < itend; ++it)
-    {
-        unsigned char val = (unsigned char)(*it);
-        if(fSpaces && it != itbegin)
-            rv.push_back(' ');
-        rv.push_back(hexmap[val>>4]);
-        rv.push_back(hexmap[val&15]);
-    }
-
-    return rv;
-}
-
-template<typename T>
-inline std::string HexStr(const T& vch, bool fSpaces=false)
-{
-    return HexStr(vch.begin(), vch.end(), fSpaces);
-}
-
-inline int64_t GetPerformanceCounter()
-{
-    int64_t nCounter = 0;
-#ifdef WIN32
-    QueryPerformanceCounter((LARGE_INTEGER*)&nCounter);
-#else
-    timeval t;
-    gettimeofday(&t, NULL);
-    nCounter = (int64_t) t.tv_sec * 1000000 + t.tv_usec;
-#endif
-    return nCounter;
-}
-
-inline int64_t GetTimeMillis()
-{
-    return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
-            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_milliseconds();
-}
-
-inline int64_t GetTimeMicros()
-{
-    return (boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
-            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_microseconds();
-}
+int64_t GetPerformanceCounter();
+int64_t GetTimeMillis();
+int64_t GetTimeMicros();
 
 std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime);
 
@@ -516,7 +481,8 @@ bool TimingResistantEqual(const T& a, const T& b)
 /** Median filter over a stream of values.
  * Returns the median of the last N numbers
  */
-template <typename T> class CMedianFilter
+template <typename T>
+class CMedianFilter
 {
 private:
     std::vector<T> vValues;
@@ -569,92 +535,21 @@ public:
     }
 };
 
-#ifdef WIN32
-inline void SetThreadPriority(int nPriority)
-{
-    SetThreadPriority(GetCurrentThread(), nPriority);
-}
-#else
-
+#ifndef WIN32
 #define THREAD_PRIORITY_LOWEST          PRIO_MAX
 #define THREAD_PRIORITY_BELOW_NORMAL    2
 #define THREAD_PRIORITY_NORMAL          0
 #define THREAD_PRIORITY_ABOVE_NORMAL    0
-
-inline void SetThreadPriority(int nPriority)
-{
-    // It's unclear if it's even possible to change thread priorities on Linux,
-    // but we really and truly need it for the generation threads.
-#ifdef PRIO_THREAD
-    setpriority(PRIO_THREAD, 0, nPriority);
-#else
-    setpriority(PRIO_PROCESS, 0, nPriority);
 #endif
-}
-#endif
+void SetThreadPriority(int nPriority);
 
 void RenameThread(const char* name);
+uint32_t ByteReverse(uint32_t value);
 
-inline uint32_t ByteReverse(uint32_t value)
-{
-    value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
-    return (value<<16) | (value>>16);
-}
+template <typename Callable>
+void LoopForever(const char* name, Callable func, int64_t msecs);
 
-// Standard wrapper for do-something-forever thread functions.
-// "Forever" really means until the thread is interrupted.
-// Use it like:
-//   new boost::thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, 900000));
-// or maybe:
-//    boost::function<void()> f = boost::bind(&FunctionWithArg, argument);
-//    threadGroup.create_thread(boost::bind(&LoopForever<boost::function<void()> >, "nothing", f, milliseconds));
-template <typename Callable> void LoopForever(const char* name,  Callable func, int64_t msecs)
-{
-    std::string s = strprintf("DigitalNote-%s", name);
-    RenameThread(s.c_str());
-    LogPrintf("%s thread start\n", name);
-    try
-    {
-        while (1)
-        {
-            MilliSleep(msecs);
-            func();
-        }
-    }
-    catch (boost::thread_interrupted)
-    {
-        LogPrintf("%s thread stop\n", name);
-        throw;
-    }
-    catch (std::exception& e) {
-        PrintException(&e, name);
-    }
-    catch (...) {
-        PrintException(NULL, name);
-    }
-}
-// .. and a wrapper that just calls func once
-template <typename Callable> void TraceThread(const char* name,  Callable func)
-{
-    std::string s = strprintf("DigitalNote-%s", name);
-    RenameThread(s.c_str());
-    try
-    {
-        LogPrintf("%s thread start\n", name);
-        func();
-        LogPrintf("%s thread exit\n", name);
-    }
-    catch (boost::thread_interrupted)
-    {
-        LogPrintf("%s thread interrupt\n", name);
-        throw;
-    }
-    catch (std::exception& e) {
-        PrintException(&e, name);
-    }
-    catch (...) {
-        PrintException(NULL, name);
-    }
-}
+template <typename Callable>
+void TraceThread(const char* name,  Callable func);
 
 #endif

@@ -3,32 +3,42 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "walletmodel.h"
-
-#include "addresstablemodel.h"
-#include "guiconstants.h"
-#include "optionsmodel.h"
-#include "transactiontablemodel.h"
-
-#include "base58.h"
-#include "checkpoints.h"
-#include "db.h"
-#include "keystore.h"
-#include "main.h"
-#include "ui_interface.h"
-#include "wallet.h"
-#include "walletdb.h" // for BackupWallet
-#include "spork.h"
-#include "smessage.h"
+#include "compat.h"
 
 #include <stdint.h>
-
 #include <QDebug>
 #include <QSet>
 #include <QTimer>
 #include <boost/bind.hpp>
 
-using namespace std;
+#include "addresstablemodel.h"
+#include "guiconstants.h"
+#include "optionsmodel.h"
+#include "transactiontablemodel.h"
+#include "checkpoints.h"
+#include "db.h"
+#include "walletdb.h" // for BackupWallet
+#include "spork.h"
+#include "coutput.h"
+#include "cwallettx.h"
+#include "creservekey.h"
+#include "wallet.h"
+#include "script.h"
+#include "main_extern.h"
+#include "main_const.h"
+#include "thread.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "coutpoint.h"
+#include "coutput.h"
+#include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+#include "ui_interface.h"
+
+#include "walletmodel.h"
 
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet),
@@ -59,19 +69,25 @@ WalletModel::~WalletModel()
 
 CAmount WalletModel::getBalance(const CCoinControl *coinControl) const
 {
-    if (coinControl)
-    {
-        CAmount nBalance = 0;
-        std::vector<COutput> vCoins;
-        wallet->AvailableCoins(vCoins, true, coinControl);
-        BOOST_FOREACH(const COutput& out, vCoins)
-        if(out.fSpendable)
-                nBalance += out.tx->vout[out.i].nValue;
+	if (coinControl)
+	{
+		CAmount nBalance = 0;
+		std::vector<COutput> vCoins;
+		
+		wallet->AvailableCoins(vCoins, true, coinControl);
+		
+		for(const COutput& out : vCoins)
+		{
+			if(out.fSpendable)
+			{
+				nBalance += out.tx->vout[out.i].nValue;
+			}
+		}
+		
+		return nBalance;
+	}
 
-        return nBalance;
-    }
-
-    return wallet->GetBalance();
+	return wallet->GetBalance();
 }
 
 CAmount WalletModel::getStake() const
@@ -376,11 +392,11 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
                     CScript scriptPubKey;
                     scriptPubKey.SetDestination(addrTo.Get());
 
-                    vecSend.push_back(make_pair(scriptPubKey, rcp.amount));
+                    vecSend.push_back(std::make_pair(scriptPubKey, rcp.amount));
 
                     CScript scriptP = CScript() << OP_RETURN << ephem_pubkey;
 
-                    vecSend.push_back(make_pair(scriptP, 0));
+                    vecSend.push_back(std::make_pair(scriptP, 0));
 
                     continue;
                 } else {
@@ -391,7 +407,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
 
             CScript scriptPubKey;
             scriptPubKey.SetDestination(CDigitalNoteAddress(sAddr).Get());
-            vecSend.push_back(make_pair(scriptPubKey, rcp.amount));
+            vecSend.push_back(std::make_pair(scriptPubKey, rcp.amount));
         }
 
         CReserveKey keyChange(wallet);
@@ -576,7 +592,7 @@ static void NotifyTransactionChanged(WalletModel *walletmodel, CWallet *wallet, 
 {
     if (fQueueNotifications)
     {
-        vQueueNotifications.push_back(make_pair(hash, status));
+        vQueueNotifications.push_back(std::make_pair(hash, status));
         return;
     }
 
@@ -600,9 +616,11 @@ static void ShowProgress(WalletModel *walletmodel, const std::string &title, int
     if (nProgress == 100)
     {
           fQueueNotifications = false;
-        BOOST_FOREACH(const PAIRTYPE(uint256, ChangeType)& notification, vQueueNotifications)
-            NotifyTransactionChanged(walletmodel, NULL, notification.first, notification.second);
-        if (vQueueNotifications.size() > 10) // prevent balloon spam, show maximum 10 balloons
+        for(const std::pair<uint256, ChangeType>& notification : vQueueNotifications)
+        {
+			NotifyTransactionChanged(walletmodel, NULL, notification.first, notification.second);
+		}
+		if (vQueueNotifications.size() > 10) // prevent balloon spam, show maximum 10 balloons
             QMetaObject::invokeMethod(walletmodel, "setProcessingQueuedTransactions", Qt::QueuedConnection, Q_ARG(bool, true));
         for (unsigned int i = 0; i < vQueueNotifications.size(); ++i)
         {
@@ -695,7 +713,8 @@ bool WalletModel::getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const
 void WalletModel::getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs)
 {
     LOCK2(cs_main, wallet->cs_wallet);
-    BOOST_FOREACH(const COutPoint& outpoint, vOutpoints)
+    
+	for(const COutPoint& outpoint : vOutpoints)
     {
         if (!wallet->mapWallet.count(outpoint.hash)) continue;
         int nDepth = wallet->mapWallet[outpoint.hash].GetDepthInMainChain();
@@ -717,7 +736,7 @@ void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) 
     wallet->ListLockedCoins(vLockedCoins);
 
     // add locked coins
-    BOOST_FOREACH(const COutPoint& outpoint, vLockedCoins)
+    for(const COutPoint& outpoint : vLockedCoins)
     {
         if (!wallet->mapWallet.count(outpoint.hash)) continue;
         int nDepth = wallet->mapWallet[outpoint.hash].GetDepthInMainChain();
@@ -727,7 +746,7 @@ void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) 
             vCoins.push_back(out);
     }
 
-    BOOST_FOREACH(const COutput& out, vCoins)
+    for(const COutput& out : vCoins)
     {
         COutput cout = out;
 

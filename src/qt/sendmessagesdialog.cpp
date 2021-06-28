@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "sendmessagesdialog.h"
 #include "ui_sendmessagesdialog.h"
 //#include "init.h"

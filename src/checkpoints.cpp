@@ -2,15 +2,19 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <boost/assign/list_of.hpp> // for 'map_list_of()'
-#include <boost/foreach.hpp>
+#include "compat.h"
 
-#include "checkpoints.h"
+#include <boost/assign/list_of.hpp> // for 'map_list_of()'
 
 #include "txdb.h"
-#include "main.h"
-#include "uint256.h"
+#include "uint/uint256.h"
+#include "cchainparams.h"
+#include "chainparams.h"
+#include "main_extern.h"
+#include "cblockindex.h"
+#include "util/backwards.h"
 
+#include "checkpoints.h"
 
 static const int nCheckpointSpan = 5000;
 
@@ -65,16 +69,20 @@ namespace Checkpoints
 
     CBlockIndex* GetLastCheckpoint(const std::map<uint256, CBlockIndex*>& mapBlockIndex)
     {
-        MapCheckpoints& checkpoints = (TestNet() ? mapCheckpointsTestnet : mapCheckpoints);
+		MapCheckpoints& checkpoints = (TestNet() ? mapCheckpointsTestnet : mapCheckpoints);
 
-        BOOST_REVERSE_FOREACH(const MapCheckpoints::value_type& i, checkpoints)
-        {
-            const uint256& hash = i.second;
-            std::map<uint256, CBlockIndex*>::const_iterator t = mapBlockIndex.find(hash);
-            if (t != mapBlockIndex.end())
-                return t->second;
-        }
-        return NULL;
+		for(const MapCheckpoints::value_type& i : backwards(checkpoints))
+		{
+			const uint256& hash = i.second;
+			std::map<uint256, CBlockIndex*>::const_iterator t = mapBlockIndex.find(hash);
+			
+			if (t != mapBlockIndex.end())
+			{
+				return t->second;
+			}
+		}
+		
+		return NULL;
     }
 
     // Automatically select a suitable sync-checkpoint

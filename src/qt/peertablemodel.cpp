@@ -2,38 +2,44 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "peertablemodel.h"
-
-#include "clientmodel.h"
-#include "guiconstants.h"
-#include "guiutil.h"
-
-#include "net.h"
-#include "sync.h"
+#include "compat.h"
 
 #include <QDebug>
 #include <QList>
 #include <QTimer>
 
+#include "clientmodel.h"
+#include "guiconstants.h"
+#include "guiutil.h"
+#include "net.h"
+#include "net/cnode.h"
+#include "coutpoint.h"
+#include "main.h"
+#include "main_extern.h"
+#include "peertablemodel.h"
+#include "thread.h"
+
 bool NodeLessThan::operator()(const CNodeCombinedStats &left, const CNodeCombinedStats &right) const
 {
-    const CNodeStats *pLeft = &(left.nodeStats);
-    const CNodeStats *pRight = &(right.nodeStats);
+	const CNodeStats *pLeft = &(left.nodeStats);
+	const CNodeStats *pRight = &(right.nodeStats);
 
-    if (order == Qt::DescendingOrder)
-        std::swap(pLeft, pRight);
+	if (order == Qt::DescendingOrder)
+		std::swap(pLeft, pRight);
 
-    switch(column)
-    {
-    case PeerTableModel::Address:
-        return pLeft->addrName.compare(pRight->addrName) < 0;
-    case PeerTableModel::Subversion:
-        return pLeft->cleanSubVer.compare(pRight->cleanSubVer) < 0;
-    case PeerTableModel::Ping:
-        return pLeft->dPingTime < pRight->dPingTime;
-    }
+	switch(column)
+	{
+		case PeerTableModel::Address:
+			return pLeft->addrName.compare(pRight->addrName) < 0;
+		
+		case PeerTableModel::Subversion:
+			return pLeft->cleanSubVer.compare(pRight->cleanSubVer) < 0;
+		
+		case PeerTableModel::Ping:
+			return pLeft->dPingTime < pRight->dPingTime;
+	}
 
-    return false;
+	return false;
 }
 
 // private implementation
@@ -52,50 +58,58 @@ public:
     /** Pull a full list of peers from vNodes into our cache */
     void refreshPeers()
     {
-        {
-            TRY_LOCK(cs_vNodes, lockNodes);
-            if (!lockNodes)
-            {
-                // skip the refresh if we can't immediately get the lock
-                return;
-            }
-            cachedNodeStats.clear();
+		{
+			TRY_LOCK(cs_vNodes, lockNodes);
+			
+			if (!lockNodes)
+			{
+				// skip the refresh if we can't immediately get the lock
+				return;
+			}
+			
+			cachedNodeStats.clear();
+
 #if QT_VERSION >= 0x040700
-            cachedNodeStats.reserve(vNodes.size());
+			cachedNodeStats.reserve(vNodes.size());
 #endif
-            BOOST_FOREACH(CNode* pnode, vNodes)
-            {
-                CNodeCombinedStats stats;
-                stats.nodeStateStats.nMisbehavior = 0;
-                stats.fNodeStateStatsAvailable = false;
-                pnode->copyStats(stats.nodeStats);
-                cachedNodeStats.append(stats);
-            }
-        }
 
-        // if we can, retrieve the CNodeStateStats for each node.
-        {
-            TRY_LOCK(cs_main, lockMain);
-            if (lockMain)
-            {
-                BOOST_FOREACH(CNodeCombinedStats &stats, cachedNodeStats)
-                {
-                    stats.fNodeStateStatsAvailable = GetNodeStateStats(stats.nodeStats.nodeid, stats.nodeStateStats);
-                }
-            }
-        }
+			for(CNode* pnode : vNodes)
+			{
+				CNodeCombinedStats stats;
+				stats.nodeStateStats.nMisbehavior = 0;
+				stats.fNodeStateStatsAvailable = false;
+				pnode->copyStats(stats.nodeStats);
+				cachedNodeStats.append(stats);
+			}
+		}
+
+		// if we can, retrieve the CNodeStateStats for each node.
+		{
+			TRY_LOCK(cs_main, lockMain);
+			
+			if (lockMain)
+			{
+				for(CNodeCombinedStats &stats : cachedNodeStats)
+				{
+					stats.fNodeStateStatsAvailable = GetNodeStateStats(stats.nodeStats.nodeid, stats.nodeStateStats);
+				}
+			}
+		}
 
 
-        if (sortColumn >= 0) // sort cacheNodeStats (use stable sort to prevent rows jumping around unneceesarily)
-            qStableSort(cachedNodeStats.begin(), cachedNodeStats.end(), NodeLessThan(sortColumn, sortOrder));
+		if (sortColumn >= 0) // sort cacheNodeStats (use stable sort to prevent rows jumping around unneceesarily)
+		{
+			std::stable_sort(cachedNodeStats.begin(), cachedNodeStats.end(), NodeLessThan(sortColumn, sortOrder));
+		}
 
-        // build index map
-        mapNodeRows.clear();
-        int row = 0;
-        BOOST_FOREACH(CNodeCombinedStats &stats, cachedNodeStats)
-        {
-            mapNodeRows.insert(std::pair<NodeId, int>(stats.nodeStats.nodeid, row++));
-        }
+		// build index map
+		mapNodeRows.clear();
+		int row = 0;
+
+		for(CNodeCombinedStats &stats : cachedNodeStats)
+		{
+			mapNodeRows.insert(std::pair<NodeId, int>(stats.nodeStats.nodeid, row++));
+		}
     }
 
     int size()
@@ -192,8 +206,10 @@ QVariant PeerTableModel::headerData(int section, Qt::Orientation orientation, in
 Qt::ItemFlags PeerTableModel::flags(const QModelIndex &index) const
 {
     if(!index.isValid())
-        return 0;
-
+	{
+        return Qt::NoItemFlags;
+	}
+	
     Qt::ItemFlags retval = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
     return retval;
 }

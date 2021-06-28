@@ -5,45 +5,11 @@
  * The DigitalNote Developers 2018-2020
  */
 
+#include "compat.h"
+
+#include <iostream>
+
 #include <QApplication>
-
-#include "bitcoingui.h"
-
-#include "transactiontablemodel.h"
-#include "addressbookpage.h"
-#include "sendcoinsdialog.h"
-#include "signverifymessagedialog.h"
-#include "optionsdialog.h"
-#include "aboutdialog.h"
-#include "clientmodel.h"
-#include "walletmodel.h"
-#include "editaddressdialog.h"
-#include "editconfigdialog.h"
-#include "optionsmodel.h"
-#include "transactiondescdialog.h"
-#include "addresstablemodel.h"
-#include "transactionview.h"
-#include "overviewpage.h"
-#include "bitcoinunits.h"
-#include "guiconstants.h"
-#include "askpassphrasedialog.h"
-#include "notificator.h"
-#include "guiutil.h"
-#include "rpcconsole.h"
-#include "wallet.h"
-#include "main.h"
-#include "init.h"
-#include "ui_interface.h"
-#include "masternodemanager.h"
-#include "messagemodel.h"
-#include "messagepage.h"
-#include "blockbrowser.h"
-#include "importprivatekeydialog.h"
-
-#ifdef Q_OS_MAC
-#include "macdockiconhandler.h"
-#endif
-
 #include <QMenuBar>
 #include <QMenu>
 #include <QIcon>
@@ -71,7 +37,51 @@
 #include <QTextDocument>
 #include <QInputDialog>
 
-#include <iostream>
+#include <boost/filesystem/path.hpp>
+
+#include "transactiontablemodel.h"
+#include "addressbookpage.h"
+#include "sendcoinsdialog.h"
+#include "signverifymessagedialog.h"
+#include "optionsdialog.h"
+#include "aboutdialog.h"
+#include "clientmodel.h"
+#include "walletmodel.h"
+#include "editaddressdialog.h"
+#include "editconfigdialog.h"
+#include "optionsmodel.h"
+#include "transactiondescdialog.h"
+#include "addresstablemodel.h"
+#include "transactionview.h"
+#include "overviewpage.h"
+#include "bitcoinunits.h"
+#include "guiconstants.h"
+#include "askpassphrasedialog.h"
+#include "notificator.h"
+#include "guiutil.h"
+#include "rpcconsole.h"
+#include "init.h"
+#include "masternodemanager.h"
+#include "messagemodel.h"
+#include "messagepage.h"
+#include "blockbrowser.h"
+#include "importprivatekeydialog.h"
+#include "cblock.h"
+#include "mining.h"
+#include "wallet.h"
+#include "net.h"
+#include "cscript.h"
+#include "main_extern.h"
+#include "thread.h"
+#include "cchainparams.h"
+#include "chainparams.h"
+#include "cclientuiinterface.h"
+
+#ifdef Q_OS_MAC
+#include "macdockiconhandler.h"
+#endif
+
+#include "bitcoingui.h"
 
 extern bool fOnlyTor;
 extern CWallet* pwalletMain;
@@ -1364,14 +1374,14 @@ void DigitalNoteGUI::editConfig()
 
 void DigitalNoteGUI::editConfigExt()
 {
-    filesystem::path path = GetConfigFile();
+    boost::filesystem::path path = GetConfigFile();
     QString pathString = QString::fromStdString(path.string());
     QDesktopServices::openUrl(QUrl::fromLocalFile(pathString));
 }
 
 void DigitalNoteGUI::openDataDir()
 {
-    filesystem::path path = GetDataDir();
+    boost::filesystem::path path = GetDataDir();
     QString pathString = QString::fromStdString(path.string());
     QDesktopServices::openUrl(QUrl::fromLocalFile(pathString));
 }

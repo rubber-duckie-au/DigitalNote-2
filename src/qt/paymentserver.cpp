@@ -2,14 +2,9 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
+
 #include <QApplication>
-
-#include "paymentserver.h"
-
-#include "guiconstants.h"
-#include "ui_interface.h"
-#include "util.h"
-
 #include <QByteArray>
 #include <QDataStream>
 #include <QDebug>
@@ -19,8 +14,12 @@
 #include <QLocalSocket>
 #include <QStringList>
 #include <QUrl>
+#include <boost/filesystem/path.hpp>
 
-using namespace boost;
+#include "guiconstants.h"
+#include "util.h"
+
+#include "paymentserver.h"
 
 const int BITCOIN_IPC_CONNECT_TIMEOUT = 1000; // milliseconds
 const QString BITCOIN_IPC_PREFIX("DigitalNote:");

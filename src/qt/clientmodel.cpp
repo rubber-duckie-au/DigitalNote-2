@@ -1,4 +1,11 @@
-#include "clientmodel.h"
+#include "compat.h"
+
+#include <QDateTime>
+#include <QTimer>
+#include <QDebug>
+#include <QFile>
+#include <boost/bind.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "bantablemodel.h"
 #include "guiconstants.h"
@@ -6,18 +13,24 @@
 #include "addresstablemodel.h"
 #include "peertablemodel.h"
 #include "transactiontablemodel.h"
-
+#include "cchainparams.h"
 #include "chainparams.h"
-#include "alert.h"
-#include "main.h"
-#include "ui_interface.h"
+#include "calert.h"
 #include "masternodeman.h"
+#include "masternode_extern.h"
+#include "cblock.h"
+#include "net/cnode.h"
+#include "net.h"
+#include "main.h"
+#include "main_extern.h"
+#include "cblockindex.h"
+#include "util.h"
+#include "cmasternodeman.h"
+#include "thread.h"
+#include "enums/changetype.h"
+#include "ui_interface.h"
 
-#include <QDateTime>
-#include <QTimer>
-#include <QDebug>
-#include <QFile>
-#include <boost/bind.hpp>
+#include "clientmodel.h"
 
 static const int64_t nClientStartupTime = GetTime();
 

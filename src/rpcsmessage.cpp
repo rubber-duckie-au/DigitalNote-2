@@ -2,66 +2,79 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "main.h"
-#include "rpcserver.h"
-
 #include <boost/lexical_cast.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
-#include "smessage.h"
+#include "rpcserver.h"
 #include "init.h" // pwalletMain
-
-using namespace json_spirit;
-using namespace std;
+#include "cwallet.h"
+#include "script.h"
+#include "smsg.h"
+#include "smsg_const.h"
+#include "smsg_extern.h"
+#include "smsg/bucket.h"
+#include "smsg/options.h"
+#include "smsg/address.h"
+#include "smsg/db.h"
+#include "smsg/stored.h"
+#include "smsg/messagedata.h"
+#include "thread.h"
+#include "util.h"
+#include "base58.h"
+#include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
 
 extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, json_spirit::Object& entry);
 
-
-
-Value smsgenable(const Array& params, bool fHelp)
+json_spirit::Value smsgenable(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgenable \n"
             "Enable secure messaging.");
     
-    if (fSecMsgEnabled)
-        throw runtime_error("Secure messaging is already enabled.");
+    if (DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is already enabled.");
     
-    Object result;
-    if (!SecureMsgEnable())
+    json_spirit::Object result;
+    if (!DigitalNote::SMSG::Enable())
     {
-        result.push_back(Pair("result", "Failed to enable secure messaging."));
+        result.push_back(json_spirit::Pair("result", "Failed to enable secure messaging."));
     } else
     {
-        result.push_back(Pair("result", "Enabled secure messaging."));
+        result.push_back(json_spirit::Pair("result", "Enabled secure messaging."));
     }
     return result;
 }
 
-Value smsgdisable(const Array& params, bool fHelp)
+json_spirit::Value smsgdisable(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgdisable \n"
             "Disable secure messaging.");
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is already disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is already disabled.");
     
-    Object result;
-    if (!SecureMsgDisable())
+    json_spirit::Object result;
+    if (!DigitalNote::SMSG::Disable())
     {
-        result.push_back(Pair("result", "Failed to disable secure messaging."));
+        result.push_back(json_spirit::Pair("result", "Failed to disable secure messaging."));
     } else
     {
-        result.push_back(Pair("result", "Disabled secure messaging."));
+        result.push_back(json_spirit::Pair("result", "Disabled secure messaging."));
     }
     return result;
 }
 
-Value smsgoptions(const Array& params, bool fHelp)
+json_spirit::Value smsgoptions(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgoptions [list|set <optname> <value>]\n"
             "List and manage options.");
     
@@ -71,21 +84,21 @@ Value smsgoptions(const Array& params, bool fHelp)
         mode = params[0].get_str();
     };
     
-    Object result;
+    json_spirit::Object result;
     
     if (mode == "list")
     {
-        result.push_back(Pair("option", std::string("newAddressRecv = ") + (smsgOptions.fNewAddressRecv ? "true" : "false")));
-        result.push_back(Pair("option", std::string("newAddressAnon = ") + (smsgOptions.fNewAddressAnon ? "true" : "false")));
+        result.push_back(json_spirit::Pair("option", std::string("newAddressRecv = ") + (DigitalNote::SMSG::ext_options.fNewAddressRecv ? "true" : "false")));
+        result.push_back(json_spirit::Pair("option", std::string("newAddressAnon = ") + (DigitalNote::SMSG::ext_options.fNewAddressAnon ? "true" : "false")));
         
-        result.push_back(Pair("result", "Success."));
+        result.push_back(json_spirit::Pair("result", "Success."));
     } else
     if (mode == "set")
     {
         if (params.size() < 3)
         {
-            result.push_back(Pair("result", "Too few parameters."));
-            result.push_back(Pair("expected", "set <optname> <value>"));
+            result.push_back(json_spirit::Pair("result", "Too few parameters."));
+            result.push_back(json_spirit::Pair("expected", "set <optname> <value>"));
             return result;
         };
         
@@ -96,57 +109,57 @@ Value smsgoptions(const Array& params, bool fHelp)
         {
             if (value == "+" || value == "on"  || value == "true"  || value == "1")
             {
-                smsgOptions.fNewAddressRecv = true;
+                DigitalNote::SMSG::ext_options.fNewAddressRecv = true;
             } else
             if (value == "-" || value == "off" || value == "false" || value == "0")
             {
-                smsgOptions.fNewAddressRecv = false;
+                DigitalNote::SMSG::ext_options.fNewAddressRecv = false;
             } else
             {
-                result.push_back(Pair("result", "Unknown value."));
+                result.push_back(json_spirit::Pair("result", "Unknown value."));
                 return result;
             };
-            result.push_back(Pair("set option", std::string("newAddressRecv = ") + (smsgOptions.fNewAddressRecv ? "true" : "false")));
+            result.push_back(json_spirit::Pair("set option", std::string("newAddressRecv = ") + (DigitalNote::SMSG::ext_options.fNewAddressRecv ? "true" : "false")));
         } else
         if (optname == "newAddressAnon")
         {
             if (value == "+" || value == "on"  || value == "true"  || value == "1")
             {
-                smsgOptions.fNewAddressAnon = true;
+                DigitalNote::SMSG::ext_options.fNewAddressAnon = true;
             } else
             if (value == "-" || value == "off" || value == "false" || value == "0")
             {
-                smsgOptions.fNewAddressAnon = false;
+                DigitalNote::SMSG::ext_options.fNewAddressAnon = false;
             } else
             {
-                result.push_back(Pair("result", "Unknown value."));
+                result.push_back(json_spirit::Pair("result", "Unknown value."));
                 return result;
             };
-            result.push_back(Pair("set option", std::string("newAddressAnon = ") + (smsgOptions.fNewAddressAnon ? "true" : "false")));
+            result.push_back(json_spirit::Pair("set option", std::string("newAddressAnon = ") + (DigitalNote::SMSG::ext_options.fNewAddressAnon ? "true" : "false")));
         } else
         {
-            result.push_back(Pair("result", "Option not found."));
+            result.push_back(json_spirit::Pair("result", "Option not found."));
             return result;
         };
     } else
     {
-        result.push_back(Pair("result", "Unknown Mode."));
-        result.push_back(Pair("expected", "smsgoption [list|set <optname> <value>]"));
+        result.push_back(json_spirit::Pair("result", "Unknown Mode."));
+        result.push_back(json_spirit::Pair("expected", "smsgoption [list|set <optname> <value>]"));
     };
     return result;
 }
 
-Value smsglocalkeys(const Array& params, bool fHelp)
+json_spirit::Value smsglocalkeys(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]\n"
             "List and manage keys.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
-    Object result;
+    json_spirit::Object result;
     
     std::string mode = "whitelist";
     if (params.size() > 0)
@@ -156,124 +169,141 @@ Value smsglocalkeys(const Array& params, bool fHelp)
     
     char cbuf[256];
     
-    if (mode == "whitelist"
-        || mode == "all")
+    if (mode == "whitelist" || mode == "all")
     {
         uint32_t nKeys = 0;
         int all = mode == "all" ? 1 : 0;
-        for (std::vector<SecMsgAddress>::iterator it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+        for (std::vector<DigitalNote::SMSG::Address>::iterator it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
-            if (!all 
-                && !it->fReceiveEnabled)
+            if (!all && !it->fReceiveEnabled)
+			{
                 continue;
-            
+            }
+			
             CDigitalNoteAddress coinAddress(it->sAddress);
             if (!coinAddress.IsValid())
+			{
                 continue;
-            
+            }
+			
             std::string sPublicKey;
-            
             CKeyID keyID;
+			
             if (!coinAddress.GetKeyID(keyID))
+			{
                 continue;
-            
+            }
+			
             CPubKey pubKey;
             if (!pwalletMain->GetPubKey(keyID, pubKey))
+			{
                 continue;
-            if (!pubKey.IsValid()
-                || !pubKey.IsCompressed())
+			}
+			
+            if (!pubKey.IsValid() || !pubKey.IsCompressed())
             {
                 continue;
-            };
-            
+            }
             
             sPublicKey = EncodeBase58(pubKey.Raw());
             
             std::string sLabel = pwalletMain->mapAddressBook[keyID];
             std::string sInfo;
-            if (all)
+            
+			if (all)
+			{
                 sInfo = std::string("Receive ") + (it->fReceiveEnabled ? "on,  " : "off, ");
-            sInfo += std::string("Anon ") + (it->fReceiveAnon ? "on" : "off");
-            result.push_back(Pair("key", it->sAddress + " - " + sPublicKey + " " + sInfo + " - " + sLabel));
+            }
+			
+			sInfo += std::string("Anon ") + (it->fReceiveAnon ? "on" : "off");
+            result.push_back(json_spirit::Pair("key", it->sAddress + " - " + sPublicKey + " " + sInfo + " - " + sLabel));
             
             nKeys++;
-        };
+        }
         
         
         snprintf(cbuf, sizeof(cbuf), "%u keys listed.", nKeys);
-        result.push_back(Pair("result", std::string(cbuf)));
+        result.push_back(json_spirit::Pair("result", std::string(cbuf)));
         
-    } else
-    if (mode == "recv")
+    }
+	else if (mode == "recv")
     {
         if (params.size() < 3)
         {
-            result.push_back(Pair("result", "Too few parameters."));
-            result.push_back(Pair("expected", "recv <+/-> <address>"));
+            result.push_back(json_spirit::Pair("result", "Too few parameters."));
+            result.push_back(json_spirit::Pair("expected", "recv <+/-> <address>"));
             return result;
-        };
+        }
         
         std::string op      = params[1].get_str();
         std::string addr    = params[2].get_str();
         
-        std::vector<SecMsgAddress>::iterator it;
-        for (it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+        std::vector<DigitalNote::SMSG::Address>::iterator it;
+        for (it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (addr != it->sAddress)
-                continue;
+			{
+				continue;
+			}
+		
             break;
-        };
+        }
         
-        if (it == smsgAddresses.end())
+        if (it == DigitalNote::SMSG::ext_addresses.end())
         {
-            result.push_back(Pair("result", "Address not found."));
+            result.push_back(json_spirit::Pair("result", "Address not found."));
             return result;
         };
         
         if (op == "+" || op == "on"  || op == "add" || op == "a")
         {
             it->fReceiveEnabled = true;
-        } else
-        if (op == "-" || op == "off" || op == "rem" || op == "r")
+        }
+		else if (op == "-" || op == "off" || op == "rem" || op == "r")
         {
             it->fReceiveEnabled = false;
-        } else
+        }
+		else
         {
-            result.push_back(Pair("result", "Unknown operation."));
+            result.push_back(json_spirit::Pair("result", "Unknown operation."));
             return result;
-        };
+        }
         
         std::string sInfo;
         sInfo = std::string("Receive ") + (it->fReceiveEnabled ? "on, " : "off,");
         sInfo += std::string("Anon ") + (it->fReceiveAnon ? "on" : "off");
-        result.push_back(Pair("result", "Success."));
-        result.push_back(Pair("key", it->sAddress + " " + sInfo));
-        return result;
+        result.push_back(json_spirit::Pair("result", "Success."));
+        result.push_back(json_spirit::Pair("key", it->sAddress + " " + sInfo));
         
-    } else
-    if (mode == "anon")
+		return result;
+    }
+	else if (mode == "anon")
     {
         if (params.size() < 3)
         {
-            result.push_back(Pair("result", "Too few parameters."));
-            result.push_back(Pair("expected", "anon <+/-> <address>"));
+            result.push_back(json_spirit::Pair("result", "Too few parameters."));
+            result.push_back(json_spirit::Pair("expected", "anon <+/-> <address>"));
+			
             return result;
-        };
+        }
         
         std::string op      = params[1].get_str();
         std::string addr    = params[2].get_str();
         
-        std::vector<SecMsgAddress>::iterator it;
-        for (it = smsgAddresses.begin(); it != smsgAddresses.end(); ++it)
+        std::vector<DigitalNote::SMSG::Address>::iterator it;
+        for (it = DigitalNote::SMSG::ext_addresses.begin(); it != DigitalNote::SMSG::ext_addresses.end(); ++it)
         {
             if (addr != it->sAddress)
+			{
                 continue;
+			}
+			
             break;
-        };
+        }
         
-        if (it == smsgAddresses.end())
+        if (it == DigitalNote::SMSG::ext_addresses.end())
         {
-            result.push_back(Pair("result", "Address not found."));
+            result.push_back(json_spirit::Pair("result", "Address not found."));
             return result;
         };
         
@@ -286,178 +316,187 @@ Value smsglocalkeys(const Array& params, bool fHelp)
             it->fReceiveAnon = false;
         } else
         {
-            result.push_back(Pair("result", "Unknown operation."));
+            result.push_back(json_spirit::Pair("result", "Unknown operation."));
             return result;
         };
         
         std::string sInfo;
         sInfo = std::string("Receive ") + (it->fReceiveEnabled ? "on, " : "off,");
         sInfo += std::string("Anon ") + (it->fReceiveAnon ? "on" : "off");
-        result.push_back(Pair("result", "Success."));
-        result.push_back(Pair("key", it->sAddress + " " + sInfo));
+        result.push_back(json_spirit::Pair("result", "Success."));
+        result.push_back(json_spirit::Pair("key", it->sAddress + " " + sInfo));
         return result;
         
-    } else
-    if (mode == "wallet")
+    }
+	else if (mode == "wallet")
     {
         uint32_t nKeys = 0;
-        BOOST_FOREACH(const PAIRTYPE(CTxDestination, std::string)& entry, pwalletMain->mapAddressBook)
+        for(const std::pair<CTxDestination, std::string>& entry : pwalletMain->mapAddressBook)
         {
             if (!IsMine(*pwalletMain, entry.first))
+			{
                 continue;
-            
+            }
+			
             CDigitalNoteAddress coinAddress(entry.first);
             if (!coinAddress.IsValid())
+			{
                 continue;
-            
+            }
+			
             std::string address;
             std::string sPublicKey;
             address = coinAddress.ToString();
             
             CKeyID keyID;
             if (!coinAddress.GetKeyID(keyID))
+			{
                 continue;
-            
+            }
+			
             CPubKey pubKey;
             if (!pwalletMain->GetPubKey(keyID, pubKey))
+			{
                 continue;
-            if (!pubKey.IsValid()
-                || !pubKey.IsCompressed())
+			}
+			
+            if (!pubKey.IsValid() || !pubKey.IsCompressed())
             {
                 continue;
-            };
+            }
             
             sPublicKey = EncodeBase58(pubKey.Raw());
             
-            result.push_back(Pair("key", address + " - " + sPublicKey + " - " + entry.second));
+            result.push_back(json_spirit::Pair("key", address + " - " + sPublicKey + " - " + entry.second));
             nKeys++;
-        };
+        }
         
         snprintf(cbuf, sizeof(cbuf), "%u keys listed from wallet.", nKeys);
-        result.push_back(Pair("result", std::string(cbuf)));
-    } else
+        result.push_back(json_spirit::Pair("result", std::string(cbuf)));
+    }
+	else
     {
-        result.push_back(Pair("result", "Unknown Mode."));
-        result.push_back(Pair("expected", "smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]"));
-    };
+        result.push_back(json_spirit::Pair("result", "Unknown Mode."));
+        result.push_back(json_spirit::Pair("expected", "smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]"));
+    }
     
     return result;
 };
 
-Value smsgscanchain(const Array& params, bool fHelp)
+json_spirit::Value smsgscanchain(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgscanchain \n"
             "Look for public keys in the block chain.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
-    Object result;
-    if (!SecureMsgScanBlockChain())
+    json_spirit::Object result;
+    if (!DigitalNote::SMSG::ScanBlockChain())
     {
-        result.push_back(Pair("result", "Scan Chain Failed."));
+        result.push_back(json_spirit::Pair("result", "Scan Chain Failed."));
     } else
     {
-        result.push_back(Pair("result", "Scan Chain Completed."));
+        result.push_back(json_spirit::Pair("result", "Scan Chain Completed."));
     }
     return result;
 }
 
-Value smsgscanbuckets(const Array& params, bool fHelp)
+json_spirit::Value smsgscanbuckets(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgscanbuckets \n"
             "Force rescan of all messages in the bucket store.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
     
-    Object result;
-    if (!SecureMsgScanBuckets())
+    json_spirit::Object result;
+    if (!DigitalNote::SMSG::ScanBuckets())
     {
-        result.push_back(Pair("result", "Scan Buckets Failed."));
+        result.push_back(json_spirit::Pair("result", "Scan Buckets Failed."));
     } else
     {
-        result.push_back(Pair("result", "Scan Buckets Completed."));
+        result.push_back(json_spirit::Pair("result", "Scan Buckets Completed."));
     }
     return result;
 }
 
-Value smsgaddkey(const Array& params, bool fHelp)
+json_spirit::Value smsgaddkey(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgaddkey <address> <pubkey>\n"
             "Add address, pubkey pair to database.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addr = params[0].get_str();
     std::string pubk = params[1].get_str();
     
-    Object result;
-    int rv = SecureMsgAddAddress(addr, pubk);
+    json_spirit::Object result;
+    int rv = DigitalNote::SMSG::AddAddress(addr, pubk);
     if (rv != 0)
     {
-        result.push_back(Pair("result", "Public key not added to db."));
+        result.push_back(json_spirit::Pair("result", "Public key not added to db."));
         switch (rv)
         {
-            case 2:     result.push_back(Pair("reason", "publicKey is invalid."));                  break;
-            case 3:     result.push_back(Pair("reason", "publicKey does not match address."));      break;
-            case 4:     result.push_back(Pair("reason", "address is already in db."));              break;
-            case 5:     result.push_back(Pair("reason", "address is invalid."));                    break;
-            default:    result.push_back(Pair("reason", "error."));                                 break;
+            case 2:     result.push_back(json_spirit::Pair("reason", "publicKey is invalid."));                  break;
+            case 3:     result.push_back(json_spirit::Pair("reason", "publicKey does not match address."));      break;
+            case 4:     result.push_back(json_spirit::Pair("reason", "address is already in db."));              break;
+            case 5:     result.push_back(json_spirit::Pair("reason", "address is invalid."));                    break;
+            default:    result.push_back(json_spirit::Pair("reason", "error."));                                 break;
         };
     } else
     {
-        result.push_back(Pair("result", "Added public key to db."));
+        result.push_back(json_spirit::Pair("result", "Added public key to db."));
     };
     
     return result;
 }
 
-Value smsggetpubkey(const Array& params, bool fHelp)
+json_spirit::Value smsggetpubkey(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsggetpubkey <address>\n"
             "Return the base58 encoded compressed public key for an address.\n"
             "Tests localkeys first, then looks in public key db.\n");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     
     std::string address   = params[0].get_str();
     std::string publicKey;
     
-    Object result;
-    int rv = SecureMsgGetLocalPublicKey(address, publicKey);
+    json_spirit::Object result;
+    int rv = DigitalNote::SMSG::GetLocalPublicKey(address, publicKey);
     switch (rv)
     {
         case 0:
-            result.push_back(Pair("result", "Success."));
-            result.push_back(Pair("address in wallet", address));
-            result.push_back(Pair("compressed public key", publicKey));
+            result.push_back(json_spirit::Pair("result", "Success."));
+            result.push_back(json_spirit::Pair("address in wallet", address));
+            result.push_back(json_spirit::Pair("compressed public key", publicKey));
             return result; // success, don't check db
         case 2:
         case 3:
-            result.push_back(Pair("result", "Failed."));
-            result.push_back(Pair("message", "Invalid address."));
+            result.push_back(json_spirit::Pair("result", "Failed."));
+            result.push_back(json_spirit::Pair("message", "Invalid address."));
             return result;
         case 4:
             break; // check db
         //case 1:
         default:
-            result.push_back(Pair("result", "Failed."));
-            result.push_back(Pair("message", "Error."));
+            result.push_back(json_spirit::Pair("result", "Failed."));
+            result.push_back(json_spirit::Pair("message", "Error."));
             return result;
     };
     
@@ -467,13 +506,13 @@ Value smsggetpubkey(const Array& params, bool fHelp)
     CKeyID keyID;
     if (!coinAddress.GetKeyID(keyID))
     {
-        result.push_back(Pair("result", "Failed."));
-        result.push_back(Pair("message", "Invalid address."));
+        result.push_back(json_spirit::Pair("result", "Failed."));
+        result.push_back(json_spirit::Pair("message", "Invalid address."));
         return result;
     };
     
     CPubKey cpkFromDB;
-    rv = SecureMsgGetStoredKey(keyID, cpkFromDB);
+    rv = DigitalNote::SMSG::GetStoredKey(keyID, cpkFromDB);
     
     switch (rv)
     {
@@ -481,100 +520,100 @@ Value smsggetpubkey(const Array& params, bool fHelp)
             if (!cpkFromDB.IsValid()
                 || !cpkFromDB.IsCompressed())
             {
-                result.push_back(Pair("result", "Failed."));
-                result.push_back(Pair("message", "Invalid address."));
+                result.push_back(json_spirit::Pair("result", "Failed."));
+                result.push_back(json_spirit::Pair("message", "Invalid address."));
             } else
             {
                 //cpkFromDB.SetCompressedPubKey(); // make sure key is compressed
                 publicKey = EncodeBase58(cpkFromDB.Raw());
                 
-                result.push_back(Pair("result", "Success."));
-                result.push_back(Pair("peer address in DB", address));
-                result.push_back(Pair("compressed public key", publicKey));
+                result.push_back(json_spirit::Pair("result", "Success."));
+                result.push_back(json_spirit::Pair("peer address in DB", address));
+                result.push_back(json_spirit::Pair("compressed public key", publicKey));
             };
             break;
         case 2:
-            result.push_back(Pair("result", "Failed."));
-            result.push_back(Pair("message", "Address not found in wallet or db."));
+            result.push_back(json_spirit::Pair("result", "Failed."));
+            result.push_back(json_spirit::Pair("message", "Address not found in wallet or db."));
             return result;
         //case 1:
         default:
-            result.push_back(Pair("result", "Failed."));
-            result.push_back(Pair("message", "Error, GetStoredKey()."));
+            result.push_back(json_spirit::Pair("result", "Failed."));
+            result.push_back(json_spirit::Pair("message", "Error, GetStoredKey()."));
             return result;
     };
     
     return result;
 }
 
-Value smsgsend(const Array& params, bool fHelp)
+json_spirit::Value smsgsend(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgsend <addrFrom> <addrTo> <message>\n"
             "Send an encrypted message from addrFrom to addrTo.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addrFrom  = params[0].get_str();
     std::string addrTo    = params[1].get_str();
     std::string msg       = params[2].get_str();
     
     
-    Object result;
+    json_spirit::Object result;
     
     std::string sError;
-    if (SecureMsgSend(addrFrom, addrTo, msg, sError) != 0)
+    if (DigitalNote::SMSG::Send(addrFrom, addrTo, msg, sError) != 0)
     {
-        result.push_back(Pair("result", "Send failed."));
-        result.push_back(Pair("error", sError));
+        result.push_back(json_spirit::Pair("result", "Send failed."));
+        result.push_back(json_spirit::Pair("error", sError));
     } else
-        result.push_back(Pair("result", "Sent."));
+        result.push_back(json_spirit::Pair("result", "Sent."));
 
     return result;
 }
 
-Value smsgsendanon(const Array& params, bool fHelp)
+json_spirit::Value smsgsendanon(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgsendanon <addrTo> <message>\n"
             "Send an anonymous encrypted message to addrTo.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string addrFrom  = "anon";
     std::string addrTo    = params[0].get_str();
     std::string msg       = params[1].get_str();
     
     
-    Object result;
+    json_spirit::Object result;
     std::string sError;
-    if (SecureMsgSend(addrFrom, addrTo, msg, sError) != 0)
+    if (DigitalNote::SMSG::Send(addrFrom, addrTo, msg, sError) != 0)
     {
-        result.push_back(Pair("result", "Send failed."));
-        result.push_back(Pair("error", sError));
+        result.push_back(json_spirit::Pair("result", "Send failed."));
+        result.push_back(json_spirit::Pair("error", sError));
     } else
-        result.push_back(Pair("result", "Sent."));
+        result.push_back(json_spirit::Pair("result", "Sent."));
 
     return result;
 }
 
-Value smsginbox(const Array& params, bool fHelp)
+json_spirit::Value smsginbox(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1) // defaults to read
-        throw runtime_error(
+        throw std::runtime_error(
             "smsginbox [all|unread|clear]\n" 
             "Decrypt and display all received messages.\n"
             "Warning: clear will delete all messages.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
     
     std::string mode = "unread";
     if (params.size() > 0)
@@ -583,14 +622,14 @@ Value smsginbox(const Array& params, bool fHelp)
     }
     
     
-    Object result;
+    json_spirit::Object result;
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
         
-        SecMsgDB dbInbox;
+        DigitalNote::SMSG::DB dbInbox;
         
         if (!dbInbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
         
         uint32_t nMessages = 0;
         char cbuf[256];
@@ -612,15 +651,15 @@ Value smsginbox(const Array& params, bool fHelp)
             dbInbox.TxnCommit();
             
             snprintf(cbuf, sizeof(cbuf), "Deleted %u messages.", nMessages);
-            result.push_back(Pair("result", std::string(cbuf)));
+            result.push_back(json_spirit::Pair("result", std::string(cbuf)));
         } else
         if (mode == "all"
             || mode == "unread")
         {
             int fCheckReadStatus = mode == "unread" ? 1 : 0;
             
-            SecMsgStored smsgStored;
-            MessageData msg;
+            DigitalNote::SMSG::Stored smsgStored;
+            DigitalNote::SMSG::Message msg;
             
             dbInbox.TxnBegin();
             
@@ -632,19 +671,19 @@ Value smsginbox(const Array& params, bool fHelp)
                     continue;
                 
                 uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-                if (SecureMsgDecrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+                if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
                 {
-                    Object objM;
-                    objM.push_back(Pair("received", getTimeString(smsgStored.timeReceived, cbuf, sizeof(cbuf))));
-                    objM.push_back(Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
-                    objM.push_back(Pair("from", msg.sFromAddress));
-                    objM.push_back(Pair("to", smsgStored.sAddrTo));
-                    objM.push_back(Pair("text", std::string((char*)&msg.vchMessage[0]))); // ugh
+                    json_spirit::Object objM;
+                    objM.push_back(json_spirit::Pair("received", getTimeString(smsgStored.timeReceived, cbuf, sizeof(cbuf))));
+                    objM.push_back(json_spirit::Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
+                    objM.push_back(json_spirit::Pair("from", msg.sFromAddress));
+                    objM.push_back(json_spirit::Pair("to", smsgStored.sAddrTo));
+                    objM.push_back(json_spirit::Pair("text", std::string((char*)&msg.vchMessage[0]))); // ugh
                     
-                    result.push_back(Pair("message", objM));
+                    result.push_back(json_spirit::Pair("message", objM));
                 } else
                 {
-                    result.push_back(Pair("message", "Could not decrypt."));
+                    result.push_back(json_spirit::Pair("message", "Could not decrypt."));
                 };
                 
                 if (fCheckReadStatus)
@@ -658,31 +697,31 @@ Value smsginbox(const Array& params, bool fHelp)
             dbInbox.TxnCommit();
             
             snprintf(cbuf, sizeof(cbuf), "%u messages shown.", nMessages);
-            result.push_back(Pair("result", std::string(cbuf)));
+            result.push_back(json_spirit::Pair("result", std::string(cbuf)));
             
         } else
         {
-            result.push_back(Pair("result", "Unknown Mode."));
-            result.push_back(Pair("expected", "[all|unread|clear]."));
+            result.push_back(json_spirit::Pair("result", "Unknown Mode."));
+            result.push_back(json_spirit::Pair("expected", "[all|unread|clear]."));
         };
     }
     
     return result;
 };
 
-Value smsgoutbox(const Array& params, bool fHelp)
+json_spirit::Value smsgoutbox(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1) // defaults to read
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgoutbox [all|clear]\n" 
             "Decrypt and display all sent messages.\n"
             "Warning: clear will delete all sent messages.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
     
     std::string mode = "all";
     if (params.size() > 0)
@@ -691,19 +730,19 @@ Value smsgoutbox(const Array& params, bool fHelp)
     }
     
     
-    Object result;
+    json_spirit::Object result;
     
     std::string sPrefix("sm");
     unsigned char chKey[18];
     memset(&chKey[0], 0, 18);
     
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
         
-        SecMsgDB dbOutbox;
+        DigitalNote::SMSG::DB dbOutbox;
         
         if (!dbOutbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
         
         uint32_t nMessages = 0;
         char cbuf[256];
@@ -723,40 +762,40 @@ Value smsgoutbox(const Array& params, bool fHelp)
             
             
             snprintf(cbuf, sizeof(cbuf), "Deleted %u messages.", nMessages);
-            result.push_back(Pair("result", std::string(cbuf)));
+            result.push_back(json_spirit::Pair("result", std::string(cbuf)));
         } else
         if (mode == "all")
         {
-            SecMsgStored smsgStored;
-            MessageData msg;
+            DigitalNote::SMSG::Stored smsgStored;
+            DigitalNote::SMSG::Message msg;
             leveldb::Iterator* it = dbOutbox.pdb->NewIterator(leveldb::ReadOptions());
             while (dbOutbox.NextSmesg(it, sPrefix, chKey, smsgStored))
             {
                 uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
                 
-                if (SecureMsgDecrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+                if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
                 {
-                    Object objM;
-                    objM.push_back(Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
-                    objM.push_back(Pair("from", msg.sFromAddress));
-                    objM.push_back(Pair("to", smsgStored.sAddrTo));
-                    objM.push_back(Pair("text", std::string((char*)&msg.vchMessage[0]))); // ugh
+                    json_spirit::Object objM;
+                    objM.push_back(json_spirit::Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
+                    objM.push_back(json_spirit::Pair("from", msg.sFromAddress));
+                    objM.push_back(json_spirit::Pair("to", smsgStored.sAddrTo));
+                    objM.push_back(json_spirit::Pair("text", std::string((char*)&msg.vchMessage[0]))); // ugh
                     
-                    result.push_back(Pair("message", objM));
+                    result.push_back(json_spirit::Pair("message", objM));
                 } else
                 {
-                    result.push_back(Pair("message", "Could not decrypt."));
+                    result.push_back(json_spirit::Pair("message", "Could not decrypt."));
                 };
                 nMessages++;
             };
             delete it;
             
             snprintf(cbuf, sizeof(cbuf), "%u sent messages shown.", nMessages);
-            result.push_back(Pair("result", std::string(cbuf)));
+            result.push_back(json_spirit::Pair("result", std::string(cbuf)));
         } else
         {
-            result.push_back(Pair("result", "Unknown Mode."));
-            result.push_back(Pair("expected", "[all|clear]."));
+            result.push_back(json_spirit::Pair("result", "Unknown Mode."));
+            result.push_back(json_spirit::Pair("expected", "[all|clear]."));
         };
     }
     
@@ -764,15 +803,15 @@ Value smsgoutbox(const Array& params, bool fHelp)
 };
 
 
-Value smsgbuckets(const Array& params, bool fHelp)
+json_spirit::Value smsgbuckets(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
             "smsgbuckets [stats|dump]\n"
             "Display some statistics.");
     
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
     
     std::string mode = "stats";
     if (params.size() > 0)
@@ -780,7 +819,7 @@ Value smsgbuckets(const Array& params, bool fHelp)
         mode = params[0].get_str();
     };
     
-    Object result;
+    json_spirit::Object result;
     
     char cbuf[256];
     if (mode == "stats")
@@ -789,13 +828,13 @@ Value smsgbuckets(const Array& params, bool fHelp)
         uint32_t nMessages = 0;
         uint64_t nBytes = 0;
         {
-            LOCK(cs_smsg);
-            std::map<int64_t, SecMsgBucket>::iterator it;
-            it = smsgBuckets.begin();
+            LOCK(DigitalNote::SMSG::ext_cs);
+            std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it;
+            it = DigitalNote::SMSG::ext_buckets.begin();
             
-            for (it = smsgBuckets.begin(); it != smsgBuckets.end(); ++it)
+            for (it = DigitalNote::SMSG::ext_buckets.begin(); it != DigitalNote::SMSG::ext_buckets.end(); ++it)
             {
-                std::set<SecMsgToken>& tokenSet = it->second.setTokens;
+                std::set<DigitalNote::SMSG::Token>& tokenSet = it->second.setTokens;
                 
                 std::string sBucket = boost::lexical_cast<std::string>(it->first);
                 std::string sFile = sBucket + "_01.dat";
@@ -808,12 +847,12 @@ Value smsgbuckets(const Array& params, bool fHelp)
                 nBuckets++;
                 nMessages += tokenSet.size();
                 
-                Object objM;
-                objM.push_back(Pair("bucket", sBucket));
-                objM.push_back(Pair("time", getTimeString(it->first, cbuf, sizeof(cbuf))));
-                objM.push_back(Pair("no. messages", snContents));
-                objM.push_back(Pair("hash", sHash));
-                objM.push_back(Pair("last changed", getTimeString(it->second.timeChanged, cbuf, sizeof(cbuf))));
+                json_spirit::Object objM;
+                objM.push_back(json_spirit::Pair("bucket", sBucket));
+                objM.push_back(json_spirit::Pair("time", getTimeString(it->first, cbuf, sizeof(cbuf))));
+                objM.push_back(json_spirit::Pair("no. messages", snContents));
+                objM.push_back(json_spirit::Pair("hash", sHash));
+                objM.push_back(json_spirit::Pair("last changed", getTimeString(it->second.timeChanged, cbuf, sizeof(cbuf))));
                 
                 boost::filesystem::path fullPath = GetDataDir() / "smsgStore" / sFile;
 
@@ -822,9 +861,9 @@ Value smsgbuckets(const Array& params, bool fHelp)
                 {
                     // -- If there is a file for an empty bucket something is wrong.
                     if (tokenSet.size() == 0)
-                        objM.push_back(Pair("file size", "Empty bucket."));
+                        objM.push_back(json_spirit::Pair("file size", "Empty bucket."));
                     else
-                        objM.push_back(Pair("file size, error", "File not found."));
+                        objM.push_back(json_spirit::Pair("file size, error", "File not found."));
                 } else
                 {
                     try {
@@ -832,36 +871,36 @@ Value smsgbuckets(const Array& params, bool fHelp)
                         uint64_t nFBytes = 0;
                         nFBytes = boost::filesystem::file_size(fullPath);
                         nBytes += nFBytes;
-                        objM.push_back(Pair("file size", bytesReadable(nFBytes)));
+                        objM.push_back(json_spirit::Pair("file size", bytesReadable(nFBytes)));
                     } catch (const boost::filesystem::filesystem_error& ex)
                     {
-                        objM.push_back(Pair("file size, error", ex.what()));
+                        objM.push_back(json_spirit::Pair("file size, error", ex.what()));
                     };
                 };
                 
-                result.push_back(Pair("bucket", objM));
+                result.push_back(json_spirit::Pair("bucket", objM));
             };
-        }; // LOCK(cs_smsg);
+        }; // LOCK(DigitalNote::SMSG::ext_cs);
         
         
         std::string snBuckets = boost::lexical_cast<std::string>(nBuckets);
         std::string snMessages = boost::lexical_cast<std::string>(nMessages);
         
-        Object objM;
-        objM.push_back(Pair("buckets", snBuckets));
-        objM.push_back(Pair("messages", snMessages));
-        objM.push_back(Pair("size", bytesReadable(nBytes)));
-        result.push_back(Pair("total", objM));
+        json_spirit::Object objM;
+        objM.push_back(json_spirit::Pair("buckets", snBuckets));
+        objM.push_back(json_spirit::Pair("messages", snMessages));
+        objM.push_back(json_spirit::Pair("size", bytesReadable(nBytes)));
+        result.push_back(json_spirit::Pair("total", objM));
         
     } else
     if (mode == "dump")
     {
         {
-            LOCK(cs_smsg);
-            std::map<int64_t, SecMsgBucket>::iterator it;
-            it = smsgBuckets.begin();
+            LOCK(DigitalNote::SMSG::ext_cs);
+            std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it;
+            it = DigitalNote::SMSG::ext_buckets.begin();
             
-            for (it = smsgBuckets.begin(); it != smsgBuckets.end(); ++it)
+            for (it = DigitalNote::SMSG::ext_buckets.begin(); it != DigitalNote::SMSG::ext_buckets.end(); ++it)
             {
                 std::string sFile = boost::lexical_cast<std::string>(it->first) + "_01.dat";
                 
@@ -870,29 +909,29 @@ Value smsgbuckets(const Array& params, bool fHelp)
                     boost::filesystem::remove(fullPath);
                 } catch (const boost::filesystem::filesystem_error& ex)
                 {
-                    //objM.push_back(Pair("file size, error", ex.what()));
+                    //objM.push_back(json_spirit::Pair("file size, error", ex.what()));
                     printf("Error removing bucket file %s.\n", ex.what());
                 };
             };
-            smsgBuckets.clear();
-        }; // LOCK(cs_smsg);
+            DigitalNote::SMSG::ext_buckets.clear();
+        }; // LOCK(DigitalNote::SMSG::ext_cs);
         
-        result.push_back(Pair("result", "Removed all buckets."));
+        result.push_back(json_spirit::Pair("result", "Removed all buckets."));
         
     } else
     {
-        result.push_back(Pair("result", "Unknown Mode."));
-        result.push_back(Pair("expected", "[stats|dump]."));
+        result.push_back(json_spirit::Pair("result", "Unknown Mode."));
+        result.push_back(json_spirit::Pair("expected", "[stats|dump]."));
     };
     
 
     return result;
 };
 
-Value smsggetmessagesforaccount(const Array& params, bool fHelp)
+json_spirit::Value smsggetmessagesforaccount(const json_spirit::Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
-        throw runtime_error(
+        throw std::runtime_error(
                 "smsggetmessagesforaccount \"account\" [all|unread]\n"
                 "Decrypt and display all messages for an account."
                 "smsggetmessagesforaccount \"account\"\n"
@@ -900,58 +939,63 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
                 "\nArguments:\n"
                 "1. \"account\"  (string, required) The account name.\n");
 
-    if (!fSecMsgEnabled)
-        throw runtime_error("Secure messaging is disabled.");
+    if (!DigitalNote::SMSG::ext_enabled)
+        throw std::runtime_error("Secure messaging is disabled.");
 
     if (pwalletMain->IsLocked())
-        throw runtime_error("Wallet is locked.");
+        throw std::runtime_error("Wallet is locked.");
 
     std::string strAccount;
     if (params.size() > 0)
     {
         strAccount = params[0].get_str();
-    } else {
-        throw runtime_error("Account is required.");
+    }
+	else
+	{
+        throw std::runtime_error("Account is required.");
     }
 
-    Object result;
+    json_spirit::Object result;
     uint32_t nMessages = 0;
-    Array resMessagesIn;
-    Array resMessagesOut;
+    json_spirit::Array resMessagesIn;
+    json_spirit::Array resMessagesOut;
     std::vector<std::string> accountAddresses;
     char cbuf[256];
 
     // Find all addresses that have the given account
-    BOOST_FOREACH(const PAIRTYPE(CDigitalNoteAddress, string)& item, pwalletMain->mapAddressBook)
+    for(const std::pair<CDigitalNoteAddress, std::string>& item : pwalletMain->mapAddressBook)
     {
         const CDigitalNoteAddress& address = item.first;
-        const string& strName = item.second;
+        const std::string& strName = item.second;
+		
         if (strName == strAccount)
+		{
             accountAddresses.push_back(address.ToString());
+		}
     }
 
 
     // get 'in' messages
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
 
-        SecMsgDB dbInbox;
+        DigitalNote::SMSG::DB dbInbox;
 
         if (!dbInbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
 
         std::string sPrefix("im");
         unsigned char chKey[18];
 
-        SecMsgStored smsgStored;
-        MessageData msg;
+        DigitalNote::SMSG::Stored smsgStored;
+        DigitalNote::SMSG::Message msg;
 
         dbInbox.TxnBegin();
 
         leveldb::Iterator *it = dbInbox.pdb->NewIterator(leveldb::ReadOptions());
         while (dbInbox.NextSmesg(it, sPrefix, chKey, smsgStored)) {
             uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-            if (SecureMsgDecrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
+            if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
                 bool oneOfTheAccountMessages = false;
                 for (std::string accountAddress : accountAddresses) {
                     if (smsgStored.sAddrTo == accountAddress) {
@@ -964,17 +1008,17 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
                     continue;
                 }
 
-                Object objM;
-                objM.push_back(Pair("received", getTimeString(smsgStored.timeReceived, cbuf, sizeof(cbuf))));
-                objM.push_back(Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
-                objM.push_back(Pair("from", msg.sFromAddress));
-                objM.push_back(Pair("to", smsgStored.sAddrTo));
-                objM.push_back(Pair("text", std::string((char *) &msg.vchMessage[0]))); // ugh
+                json_spirit::Object objM;
+                objM.push_back(json_spirit::Pair("received", getTimeString(smsgStored.timeReceived, cbuf, sizeof(cbuf))));
+                objM.push_back(json_spirit::Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
+                objM.push_back(json_spirit::Pair("from", msg.sFromAddress));
+                objM.push_back(json_spirit::Pair("to", smsgStored.sAddrTo));
+                objM.push_back(json_spirit::Pair("text", std::string((char *) &msg.vchMessage[0]))); // ugh
 
                 resMessagesIn.push_back(objM);
             } else {
-                Object objM;
-                objM.push_back(Pair("message", "Could not decrypt."));
+                json_spirit::Object objM;
+                objM.push_back(json_spirit::Pair("message", "Could not decrypt."));
                 resMessagesIn.push_back(objM);
             };
 
@@ -986,26 +1030,26 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
 
     // get 'out' messages
     {
-        LOCK(cs_smsgDB);
+        LOCK(DigitalNote::SMSG::ext_cs_db);
 
-        SecMsgDB dbOutbox;
+        DigitalNote::SMSG::DB dbOutbox;
         std::string sPrefix("sm");
         unsigned char chKey[18];
         memset(&chKey[0], 0, 18);
 
         if (!dbOutbox.Open("cr+"))
-            throw runtime_error("Could not open DB.");
+            throw std::runtime_error("Could not open DB.");
 
-        SecMsgStored smsgStored;
-        MessageData msg;
+        DigitalNote::SMSG::Stored smsgStored;
+        DigitalNote::SMSG::Message msg;
         leveldb::Iterator *it = dbOutbox.pdb->NewIterator(leveldb::ReadOptions());
         while (dbOutbox.NextSmesg(it, sPrefix, chKey, smsgStored)) {
             uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-            if (SecureMsgDecrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
+            if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0) {
                 bool oneOfTheAccountMessages = false;
                 for (std::string accountAddress : accountAddresses) {
                     if (fDebugSmsg)
-                        LogPrint("smessage", "Comparing from address with account addresses %s vs %s \n", accountAddress, msg.sFromAddress);
+                        LogPrint("smsg", "Comparing from address with account addresses %s vs %s \n", accountAddress, msg.sFromAddress);
 
                     if (msg.sFromAddress == accountAddress) {
                         oneOfTheAccountMessages = true;
@@ -1016,16 +1060,16 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
                     continue;
                 }
 
-                Object objM;
-                objM.push_back(Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
-                objM.push_back(Pair("from", msg.sFromAddress));
-                objM.push_back(Pair("to", smsgStored.sAddrTo));
-                objM.push_back(Pair("text", std::string((char *) &msg.vchMessage[0])));
+                json_spirit::Object objM;
+                objM.push_back(json_spirit::Pair("sent", getTimeString(msg.timestamp, cbuf, sizeof(cbuf))));
+                objM.push_back(json_spirit::Pair("from", msg.sFromAddress));
+                objM.push_back(json_spirit::Pair("to", smsgStored.sAddrTo));
+                objM.push_back(json_spirit::Pair("text", std::string((char *) &msg.vchMessage[0])));
 
                 resMessagesOut.push_back(objM);
             } else {
-                Object objM;
-                objM.push_back(Pair("message", "Could not decrypt."));
+                json_spirit::Object objM;
+                objM.push_back(json_spirit::Pair("message", "Could not decrypt."));
                 resMessagesOut.push_back(objM);
             };
             nMessages++;
@@ -1034,10 +1078,10 @@ Value smsggetmessagesforaccount(const Array& params, bool fHelp)
     }
 
 
-    result.push_back(Pair("messagesIn", resMessagesIn));
-    result.push_back(Pair("messagesOut", resMessagesOut));
+    result.push_back(json_spirit::Pair("messagesIn", resMessagesIn));
+    result.push_back(json_spirit::Pair("messagesOut", resMessagesOut));
     snprintf(cbuf, sizeof(cbuf), "%u messages shown.", nMessages);
-    result.push_back(Pair("result", std::string(cbuf)));
+    result.push_back(json_spirit::Pair("result", std::string(cbuf)));
 
     return result;
 };

@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "addeditadrenalinenode.h"
 #include "ui_addeditadrenalinenode.h"
 #include "masternodeconfig.h"
@@ -5,13 +7,10 @@
 #include "ui_masternodemanager.h"
 
 #include "walletdb.h"
-#include "wallet.h"
-#include "ui_interface.h"
 #include "util.h"
-#include "key.h"
-#include "script.h"
+#include "ckey.h"
 #include "init.h"
-#include "base58.h"
+
 #include <QMessageBox>
 #include <QClipboard>
 
@@ -86,7 +85,7 @@ void AddEditAdrenalineNode::on_okButton_clicked()
         std::string sOutputIndex = ui->outputindexLineEdit->text().toStdString();
 
         boost::filesystem::path pathConfigFile = GetDataDir() / "masternode.conf";
-        boost::filesystem::ofstream stream (pathConfigFile.string(), ios::out | ios::app);
+        boost::filesystem::ofstream stream (pathConfigFile.string(), std::ios::out | std::ios::app);
         if (stream.is_open())
         {
             stream << sAlias << " " << sAddress << " " << sMasternodePrivKey << " " << sTxHash << " " << sOutputIndex << std::endl;

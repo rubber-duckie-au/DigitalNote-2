@@ -1,9 +1,10 @@
+#include "compat.h"
+
 #include "optionsdialog.h"
 #include "ui_optionsdialog.h"
 
 #include "bitcoinunits.h"
 #include "monitoreddatamapper.h"
-#include "netbase.h"
 #include "optionsmodel.h"
 
 #include <QDir>
@@ -190,6 +191,9 @@ bool OptionsDialog::eventFilter(QObject *object, QEvent *event)
 {
     if(event->type() == QEvent::FocusOut)
     {   
-    return QDialog::eventFilter(object, event);
+		return QDialog::eventFilter(object, event);
     }
+	
+	return false;
 }
+

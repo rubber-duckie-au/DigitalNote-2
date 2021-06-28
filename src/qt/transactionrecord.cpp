@@ -1,12 +1,27 @@
-#include "transactionrecord.h"
-
-#include "base58.h"
-#include "util.h"
-#include "wallet.h"
-#include "mnengine.h"
-#include "instantx.h"
+#include "compat.h"
 
 #include <stdint.h>
+
+#include "util.h"
+#include "mnengine.h"
+#include "instantx.h"
+#include "cwallettx.h"
+#include "mining.h"
+#include "script.h"
+#include "main_const.h"
+#include "main_extern.h"
+#include "cblockindex.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+#include "thread.h"
+#include "cwallet.h"
+
+#include "transactionrecord.h"
 
 /* Return positive answer if transaction should be shown in list.
  */
@@ -41,7 +56,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         //
         // Credit
         //
-        BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+        for(const CTxOut& txout : wtx.vout)
         {
             isminetype mine = wallet->IsMine(txout);
             if(mine)
@@ -76,7 +91,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     if (hashPrev == hash)
                         continue; // last coinstake output
                     CAmount nValueOut = 0;
-                    BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+					
+                    for(const CTxOut& txout : wtx.vout)
                     {
                         if (IsMine(*wallet,txout.scriptPubKey))
                             nValueOut += txout.nValue;
@@ -97,7 +113,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         int nFromMe = 0;
         bool involvesWatchAddress = false;
         isminetype fAllFromMe = ISMINE_SPENDABLE;
-        BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+        
+		for(const CTxIn& txin : wtx.vin)
         {
             if(wallet->IsMine(txin)) {
                 nFromMe++;
@@ -109,7 +126,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
 
         isminetype fAllToMe = ISMINE_SPENDABLE;
         int nToMe = 0;
-        BOOST_FOREACH(const CTxOut& txout, wtx.vout) {
+		
+        for(const CTxOut& txout : wtx.vout) {
             if(wallet->IsMine(txout)) {
                 nToMe++;
             }

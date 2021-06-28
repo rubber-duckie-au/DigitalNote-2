@@ -3,11 +3,13 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "chain.h"
-#include "txmempool.h"
-#include "main.h" // for CTransaction
+#include "ctransaction.h"
+#include "cinpoint.h"
+#include "ctxout.h"
+#include "ctxin.h"
+#include "thread.h"
 
-using namespace std;
+#include "txmempool.h"
 
 CTxMemPool::CTxMemPool()
 {
@@ -42,40 +44,58 @@ bool CTxMemPool::addUnchecked(const uint256& hash, CTransaction &tx)
 
 bool CTxMemPool::remove(const CTransaction &tx, bool fRecursive)
 {
-    // Remove transaction from memory pool
-    {
-        LOCK(cs);
-        uint256 hash = tx.GetHash();
-        if (mapTx.count(hash))
-        {
-            if (fRecursive) {
-                for (unsigned int i = 0; i < tx.vout.size(); i++) {
-                    std::map<COutPoint, CInPoint>::iterator it = mapNextTx.find(COutPoint(hash, i));
-                    if (it != mapNextTx.end())
-                        remove(*it->second.ptx, true);
-                }
-            }
-            BOOST_FOREACH(const CTxIn& txin, tx.vin)
-                mapNextTx.erase(txin.prevout);
-            mapTx.erase(hash);
-            nTransactionsUpdated++;
-        }
-    }
-    return true;
+	// Remove transaction from memory pool
+	{
+		LOCK(cs);
+		
+		uint256 hash = tx.GetHash();
+		if (mapTx.count(hash))
+		{
+			if (fRecursive)
+			{
+				for (unsigned int i = 0; i < tx.vout.size(); i++)
+				{
+					std::map<COutPoint, CInPoint>::iterator it = mapNextTx.find(COutPoint(hash, i));
+					
+					if (it != mapNextTx.end())
+					{
+						remove(*it->second.ptx, true);
+					}
+				}
+			}
+			
+			for(const CTxIn& txin : tx.vin)
+			{
+				mapNextTx.erase(txin.prevout);
+			}
+			
+			mapTx.erase(hash);
+			nTransactionsUpdated++;
+		}
+	}
+	
+	return true;
 }
 
 bool CTxMemPool::removeConflicts(const CTransaction &tx)
 {
     // Remove transactions which depend on inputs of tx, recursively
     LOCK(cs);
-    BOOST_FOREACH(const CTxIn &txin, tx.vin) {
+    
+	for(const CTxIn &txin : tx.vin)
+	{
         std::map<COutPoint, CInPoint>::iterator it = mapNextTx.find(txin.prevout);
-        if (it != mapNextTx.end()) {
+        if (it != mapNextTx.end())
+		{
             const CTransaction &txConflict = *it->second.ptx;
-            if (txConflict != tx)
+            
+			if (txConflict != tx)
+			{
                 remove(txConflict, true);
+			}
         }
     }
+	
     return true;
 }
 
@@ -93,8 +113,22 @@ void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
 
     LOCK(cs);
     vtxid.reserve(mapTx.size());
-    for (map<uint256, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
+    for (std::map<uint256, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
         vtxid.push_back((*mi).first);
+}
+
+unsigned long CTxMemPool::size() const
+{
+	LOCK(cs);
+	
+	return mapTx.size();
+}
+
+bool CTxMemPool::exists(uint256 hash) const
+{
+	LOCK(cs);
+	
+	return (mapTx.count(hash) != 0);
 }
 
 bool CTxMemPool::lookup(uint256 hash, CTransaction& result) const
@@ -105,3 +139,4 @@ bool CTxMemPool::lookup(uint256 hash, CTransaction& result) const
     result = i->second;
     return true;
 }
+

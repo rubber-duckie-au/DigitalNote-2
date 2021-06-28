@@ -1,16 +1,28 @@
+#include "compat.h"
+
 #include "transactiondesc.h"
 
 #include "bitcoinunits.h"
 #include "guiutil.h"
 #include "blockparams.h"
-#include "base58.h"
-#include "main.h"
 #include "paymentserver.h"
 #include "transactionrecord.h"
 #include "util.h"
-#include "ui_interface.h"
-#include "wallet.h"
 #include "txdb.h"
+#include "cwallet.h"
+#include "cwallettx.h"
+#include "script.h"
+#include "main_extern.h"
+#include "main_const.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+#include "thread.h"
+#include "main.h"
 
 #include <string>
 
@@ -163,13 +175,22 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         // Coinbase
         //
         CAmount nUnmatured = 0;
-        BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+		
+        for(const CTxOut& txout : wtx.vout)
+		{
             nUnmatured += wallet->GetCredit(txout, ISMINE_ALL);
-        strHTML += "<b>" + tr("Credit") + ":</b> ";
+        }
+		
+		strHTML += "<b>" + tr("Credit") + ":</b> ";
         if (wtx.IsInMainChain())
+		{
             strHTML += DigitalNoteUnits::formatHtmlWithUnit(unit, nUnmatured)+ " (" + tr("matures in %n more block(s)", "", wtx.GetBlocksToMaturity()) + ")";
-        else
+        }
+		else
+		{
             strHTML += "(" + tr("not accepted") + ")";
+		}
+		
         strHTML += "<br>";
     }
     else if (nNet > 0)
@@ -183,17 +204,25 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     {
 
         isminetype fAllFromMe = ISMINE_SPENDABLE;
-        BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+		for(const CTxIn& txin : wtx.vin)
         {
             isminetype mine = wallet->IsMine(txin);
-            if(fAllFromMe > mine) fAllFromMe = mine;
+			
+            if(fAllFromMe > mine)
+			{
+				fAllFromMe = mine;
+			}
         }
 
         isminetype fAllToMe = ISMINE_SPENDABLE;
-        BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+        for(const CTxOut& txout : wtx.vout)
         {
             isminetype mine = wallet->IsMine(txout);
-            if(fAllToMe > mine) fAllToMe = mine;
+			
+            if(fAllToMe > mine)
+			{
+				fAllToMe = mine;
+			}
         }
 
         if (fAllFromMe)
@@ -203,13 +232,15 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
             //
             // Debit
             //
-            BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+            for(const CTxOut& txout : wtx.vout)
             {
                 // Ignore change
                 isminetype toSelf = wallet->IsMine(txout);
                 if ((toSelf == ISMINE_SPENDABLE) && (fAllFromMe == ISMINE_SPENDABLE))
+				{
                     continue;
-
+				}
+				
                 if (!wtx.mapValue.count("to") || wtx.mapValue["to"].empty())
                 {
                     // Offline transaction
@@ -251,12 +282,21 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
             //
             // Mixed debit transaction
             //
-            BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+            for(const CTxIn& txin : wtx.vin)
+			{
                 if (wallet->IsMine(txin))
+				{
                     strHTML += "<b>" + tr("Debit") + ":</b> " + DigitalNoteUnits::formatHtmlWithUnit(unit, -wallet->GetDebit(txin, ISMINE_ALL)) + "<br>";
-            BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+				}
+            }
+			
+			for(const CTxOut& txout : wtx.vout)
+			{
                 if (wallet->IsMine(txout))
+				{
                     strHTML += "<b>" + tr("Credit") + ":</b> " + DigitalNoteUnits::formatHtmlWithUnit(unit, wallet->GetCredit(txout, ISMINE_ALL)) + "<br>";
+				}
+			}
         }
     }
 
@@ -284,13 +324,23 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     if (fDebug)
     {
         strHTML += "<hr><br>" + tr("Debug information") + "<br><br>";
-        BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+        
+		for(const CTxIn& txin : wtx.vin)
+		{
             if(wallet->IsMine(txin))
+			{
                 strHTML += "<b>" + tr("Debit") + ":</b> " + DigitalNoteUnits::formatHtmlWithUnit(unit, -wallet->GetDebit(txin, ISMINE_ALL)) + "<br>";
-        BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+			}
+        }
+		
+		for(const CTxOut& txout : wtx.vout)
+		{
             if(wallet->IsMine(txout))
+			{
                 strHTML += "<b>" + tr("Credit") + ":</b> " + DigitalNoteUnits::formatHtmlWithUnit(unit, wallet->GetCredit(txout, ISMINE_ALL)) + "<br>";
-
+			}
+		}
+		
         strHTML += "<br><b>" + tr("Transaction") + ":</b><br>";
         strHTML += GUIUtil::HtmlEscape(wtx.ToString(), true);
 
@@ -299,7 +349,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         strHTML += "<br><b>" + tr("Inputs") + ":</b>";
         strHTML += "<ul>";
 
-        BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+        for(const CTxIn& txin : wtx.vin)
         {
             COutPoint prevout = txin.prevout;
 

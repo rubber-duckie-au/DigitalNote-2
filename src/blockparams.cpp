@@ -5,7 +5,12 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "blockparams.h"
+#include "compat.h"
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
+#include "cchainparams.h"
 #include "chainparams.h"
 #include "checkpoints.h"
 #include "db.h"
@@ -14,16 +19,12 @@
 #include "net.h"
 #include "txdb.h"
 #include "velocity.h"
-#include "main.h"
-#include "mnengine.h"
 #include "masternodeman.h"
-#include "masternode-payments.h"
+#include "cblockindex.h"
+#include "main.h"
+#include "main_extern.h"
 
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
-
-using namespace std;
-using namespace boost;
+#include "blockparams.h"
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -104,27 +105,54 @@ void VRXswngdebug()
     LogPrintf("Previously discovered %s block: %u: \n",difType.c_str(),prvTime);
     LogPrintf("Current block-time: %u: \n",cntTime);
     LogPrintf("Time since last %s block: %u: \n",difType.c_str(),difTime);
+	
     // Handle updated versions as well as legacy
-    if(GetTime() > nPaymentUpdate_2) {
+    if(GetTime() > mapEpochUpdateName["PaymentUpdate_2"])
+	{
         debugHourRounds = hourRounds;
         debugTerminalAverage = TerminalAverage;
         debugDifCurve = difCurve;
-        while(difTime > (debugHourRounds * 60 * 60)) {
+		
+        while(difTime > (debugHourRounds * 60 * 60))
+		{
             debugTerminalAverage /= debugDifCurve;
-            LogPrintf("diffTime%s is greater than %u Hours: %u \n",difType.c_str(),debugHourRounds,cntTime);
+            
+			LogPrintf("diffTime%s is greater than %u Hours: %u \n",difType.c_str(),debugHourRounds,cntTime);
             LogPrintf("Difficulty will be multiplied by: %d \n",debugTerminalAverage);
-            // Break loop after 5 hours, otherwise time threshold will auto-break loop
-            if (debugHourRounds > 5){
+            
+			// Break loop after 5 hours, otherwise time threshold will auto-break loop
+            if (debugHourRounds > 5)
+			{
                 break;
             }
+			
             debugDifCurve ++;
             debugHourRounds ++;
         }
-    } else {
-        if(difTime > (hourRounds+0) * 60 * 60) {LogPrintf("diffTime%s is greater than 1 Hours: %u \n",difType.c_str(),cntTime);}
-        if(difTime > (hourRounds+1) * 60 * 60) {LogPrintf("diffTime%s is greater than 2 Hours: %u \n",difType.c_str(),cntTime);}
-        if(difTime > (hourRounds+2) * 60 * 60) {LogPrintf("diffTime%s is greater than 3 Hours: %u \n",difType.c_str(),cntTime);}
-        if(difTime > (hourRounds+3) * 60 * 60) {LogPrintf("diffTime%s is greater than 4 Hours: %u \n",difType.c_str(),cntTime);}
+    }
+	else
+	{
+		int hours = difTime / 3600;
+		
+        if(difTime > (hourRounds+0) * 60 * 60)
+		{
+			LogPrintf("diffTime%s is greater than 1 Hours: %u \n",difType.c_str(),cntTime);
+		}
+		
+        if(difTime > (hourRounds+1) * 60 * 60)
+		{
+			LogPrintf("diffTime%s is greater than 2 Hours: %u \n",difType.c_str(),cntTime);
+		}
+		
+        if(difTime > (hourRounds+2) * 60 * 60)
+		{
+			LogPrintf("diffTime%s is greater than 3 Hours: %u \n",difType.c_str(),cntTime);
+		}
+		
+        if(difTime > (hourRounds+3) * 60 * 60)
+		{
+			LogPrintf("diffTime%s is greater than 4 Hours: %u \n",difType.c_str(),cntTime);
+		}
     }
 
     return;
@@ -148,6 +176,7 @@ void VRXdebug()
     LogPrintf("Terminal-Velocity averaged a final multiplier of: %f: \n",TerminalAverage);
     LogPrintf("Prior Terminal-Velocity: %u\n", oldBN);
     LogPrintf("New Terminal-Velocity:  %u\n", newBN);
+	
     return;
 }
 
@@ -159,6 +188,7 @@ void GNTdebug()
     {
         // debug info for testing
         LogPrintf("GetNextTargetRequired() : Invalid retarget selection, using default \n");
+		
         return;
     }
 
@@ -166,6 +196,7 @@ void GNTdebug()
     // debug info for testing
     LogPrintf("Terminal-Velocity retarget selected \n");
     LogPrintf("Espers retargetted using: Terminal-Velocity difficulty curve \n");
+	
     return;
 }
 
@@ -181,81 +212,154 @@ void GNTdebug()
 // Terminal-Velocity-RateX, v10-Beta-R9, written by Jonathan Dan Zaretsky - cryptocoderz@gmail.com
 void VRX_BaseEngine(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
-       // Set base values
-       VLF1 = 0;
-       VLF2 = 0;
-       VLF3 = 0;
-       VLF4 = 0;
-       VLF5 = 0;
-       VLFtmp = 0;
-       TerminalAverage = 0;
-       TerminalFactor = 10000;
-       VLrate1 = 0;
-       VLrate2 = 0;
-       VLrate3 = 0;
-       VLrate4 = 0;
-       VLrate5 = 0;
-       VLRtemp = 0;
-       difficultyfactor = 0;
-       scanblocks = 1;
-       scantime_1 = 0;
-       scantime_2 = pindexLast->GetBlockTime();
-       prevPoW = 0; // hybrid value
-       prevPoS = 0; // hybrid value
-       // Set prev blocks...
-       pindexPrev = pindexLast;
-       // ...and deduce spacing
-       while(scanblocks < scanheight)
-       {
-           scantime_1 = scantime_2;
-           pindexPrev = pindexPrev->pprev;
-           scantime_2 = pindexPrev->GetBlockTime();
-           // Set standard values
-           if(scanblocks > 0){
-               if     (scanblocks < scanheight-4){ VLrate1 = (scantime_1 - scantime_2); VLRtemp = VLrate1; }
-               else if(scanblocks < scanheight-3){ VLrate2 = (scantime_1 - scantime_2); VLRtemp = VLrate2; }
-               else if(scanblocks < scanheight-2){ VLrate3 = (scantime_1 - scantime_2); VLRtemp = VLrate3; }
-               else if(scanblocks < scanheight-1){ VLrate4 = (scantime_1 - scantime_2); VLRtemp = VLrate4; }
-               else if(scanblocks < scanheight-0){ VLrate5 = (scantime_1 - scantime_2); VLRtemp = VLrate5; }
-           }
-           // Round factoring
-           if(VLRtemp >= DSrateNRM){ VLFtmp = VRFsm1;
-               if(VLRtemp > DSrateMAX){ VLFtmp = VRFdw1;
-                   if(VLRtemp > FRrateCLNG){ VLFtmp = VRFdw2; }
-               }
-           }
-           else if(VLRtemp < DSrateNRM){ VLFtmp = VRFup1;
-               if(VLRtemp < FRrateDWN){ VLFtmp = VRFup2;
-                   if(VLRtemp < FRrateFLR){ VLFtmp = VRFup3; }
-               }
-           }
-           // Record factoring
-           if      (scanblocks < scanheight-4) VLF1 = VLFtmp;
-           else if (scanblocks < scanheight-3) VLF2 = VLFtmp;
-           else if (scanblocks < scanheight-2) VLF3 = VLFtmp;
-           else if (scanblocks < scanheight-1) VLF4 = VLFtmp;
-           else if (scanblocks < scanheight-0) VLF5 = VLFtmp;
-           // Log hybrid block type
-           //
-           // v1.0
-           if(pindexBest->GetBlockTime() < 1520198278) // ON Sunday, March 4, 2018 9:17:58 PM
-           {
-                if     (fProofOfStake) prevPoS ++;
-                else if(!fProofOfStake) prevPoW ++;
-           }
-           // v1.1
-           if(pindexBest->GetBlockTime() > 1520198278) // ON Sunday, March 4, 2018 9:17:58 PM
-           {
-               if(pindexPrev->IsProofOfStake()) { prevPoS ++; }
-               else if(pindexPrev->IsProofOfWork()) { prevPoW ++; }
-           }
+	// Set base values
+	VLF1 = 0;
+	VLF2 = 0;
+	VLF3 = 0;
+	VLF4 = 0;
+	VLF5 = 0;
+	VLFtmp = 0;
+	TerminalAverage = 0;
+	TerminalFactor = 10000;
+	VLrate1 = 0;
+	VLrate2 = 0;
+	VLrate3 = 0;
+	VLrate4 = 0;
+	VLrate5 = 0;
+	VLRtemp = 0;
+	difficultyfactor = 0;
+	scanblocks = 1;
+	scantime_1 = 0;
+	scantime_2 = pindexLast->GetBlockTime();
+	prevPoW = 0; // hybrid value
+	prevPoS = 0; // hybrid value
+	// Set prev blocks...
+	pindexPrev = pindexLast;
 
-           // move up per scan round
-           scanblocks ++;
-       }
-       // Final mathematics
-       TerminalAverage = (VLF1 + VLF2 + VLF3 + VLF4 + VLF5) / AverageDivisor;
-       return;
+	// ...and deduce spacing
+	while(scanblocks < scanheight)
+	{
+		scantime_1 = scantime_2;
+		pindexPrev = pindexPrev->pprev;
+		scantime_2 = pindexPrev->GetBlockTime();
+		
+		// Set standard values
+		if(scanblocks > 0)
+		{
+			if(scanblocks < scanheight-4)
+			{
+				VLrate1 = (scantime_1 - scantime_2);
+				VLRtemp = VLrate1;
+			}
+			else if(scanblocks < scanheight-3)
+			{
+				VLrate2 = (scantime_1 - scantime_2);
+				VLRtemp = VLrate2;
+			}
+			else if(scanblocks < scanheight-2)
+			{
+				VLrate3 = (scantime_1 - scantime_2);
+				VLRtemp = VLrate3;
+			}
+			else if(scanblocks < scanheight-1)
+			{
+				VLrate4 = (scantime_1 - scantime_2);
+				VLRtemp = VLrate4;
+			}
+			else if(scanblocks < scanheight-0)
+			{
+				VLrate5 = (scantime_1 - scantime_2);
+				VLRtemp = VLrate5;
+			}
+		}
+		
+		// Round factoring
+		if(VLRtemp >= DSrateNRM)
+		{
+			VLFtmp = VRFsm1;
+			if(VLRtemp > DSrateMAX)
+			{
+				VLFtmp = VRFdw1;
+				
+				if(VLRtemp > FRrateCLNG)
+				{
+					VLFtmp = VRFdw2;
+				}
+			}
+		}
+		else if(VLRtemp < DSrateNRM)
+		{
+			VLFtmp = VRFup1;
+			if(VLRtemp < FRrateDWN)
+			{
+				VLFtmp = VRFup2;
+				
+				if(VLRtemp < FRrateFLR)
+				{
+					VLFtmp = VRFup3;
+				}
+			}
+		}
+		
+		// Record factoring
+		if(scanblocks < scanheight-4)
+		{
+			VLF1 = VLFtmp;
+		}
+		else if(scanblocks < scanheight-3)
+		{
+			VLF2 = VLFtmp;
+		}
+		else if(scanblocks < scanheight-2)
+		{
+			VLF3 = VLFtmp;
+		}
+		else if(scanblocks < scanheight-1)
+		{
+			VLF4 = VLFtmp;
+		}
+		else if(scanblocks < scanheight-0)
+		{
+			VLF5 = VLFtmp;
+		}
+		
+		// Log hybrid block type
+		//
+		// v1.0
+		if(pindexBest->GetBlockTime() < 1520198278) // ON Sunday, March 4, 2018 9:17:58 PM
+		{
+			if(fProofOfStake)
+			{
+				prevPoS++;
+			}
+			
+			else if(!fProofOfStake)
+			{
+				prevPoW ++;
+			}
+		}
+		
+		// v1.1
+		if(pindexBest->GetBlockTime() > 1520198278) // ON Sunday, March 4, 2018 9:17:58 PM
+		{
+			if(pindexPrev->IsProofOfStake())
+			{
+				prevPoS ++;
+			}
+			else if(pindexPrev->IsProofOfWork())
+			{
+				prevPoW ++;
+			}
+		}
+
+		// move up per scan round
+		scanblocks ++;
+	}
+	
+	// Final mathematics
+	TerminalAverage = (VLF1 + VLF2 + VLF3 + VLF4 + VLF5) / AverageDivisor;
+	
+	return;
 }
 
 void VRX_Simulate_Retarget()
@@ -266,8 +370,10 @@ void VRX_Simulate_Retarget()
     bnOld.SetCompact(BlockVelocityType->nBits);
     bnNew = bnOld / difficultyfactor;
     bnNew *= 10000;
-    // Reset TerminalFactor for actual retarget
+    
+	// Reset TerminalFactor for actual retarget
     TerminalFactor = 10000;
+	
     return;
 }
 
@@ -283,9 +389,29 @@ void VRX_ThreadCurve(const CBlockIndex* pindexLast, bool fProofOfStake)
     // Version 1.0
     //
     int64_t nNow = nBestHeight; int64_t nThen = 1493596800; // Toggle skew system fork - Mon, 01 May 2017 00:00:00 GMT
-    if(nNow > nThen){if(prevPoW < prevPoS && !fProofOfStake){if((prevPoS-prevPoW) > 3) TerminalAverage /= 3;}
-    else if(prevPoW > prevPoS && fProofOfStake){if((prevPoW-prevPoS) > 3) TerminalAverage /= 3;}
-    if(TerminalAverage < 0.5) TerminalAverage = 0.5;} // limit skew to halving
+	
+    if(nNow > nThen)
+	{
+		if(prevPoW < prevPoS && !fProofOfStake)
+		{
+			if((prevPoS-prevPoW) > 3)
+			{
+				TerminalAverage /= 3;
+			}
+		}
+		else if(prevPoW > prevPoS && fProofOfStake)
+		{
+			if((prevPoW-prevPoS) > 3)
+			{
+				TerminalAverage /= 3;
+			}
+		}
+		
+		if(TerminalAverage < 0.5)
+		{
+			TerminalAverage = 0.5;
+		}
+	} // limit skew to halving
 
     // Version 1.1 curve-patch
     //
@@ -301,24 +427,36 @@ void VRX_ThreadCurve(const CBlockIndex* pindexLast, bool fProofOfStake)
         fCRVreset = false;
 
         // Debug print toggle
-        if(fProofOfStake) {
+        if(fProofOfStake)
+		{
             difType = "PoS";
-        } else {
+        }
+		else
+		{
             difType = "PoW";
         }
-        if(fDebug) VRXswngdebug();
-
+		
+        if(fDebug)
+		{
+			VRXswngdebug();
+		}
+		
         // Version 1.2 Extended Curve Run Upgrade
-        if(pindexLast->GetBlockTime() > nPaymentUpdate_2) {// ON Tuesday, Jul 02, 2019 12:00:00 PM PDT
+        if(pindexLast->GetBlockTime() > mapEpochUpdateName["PaymentUpdate_2"])
+		{// ON Tuesday, Jul 02, 2019 12:00:00 PM PDT
             // Set unbiased comparison
             difTime = blkTime - cntTime;
             // Run Curve
-            while(difTime > (hourRounds * 60 * 60)) {
+            while(difTime > (hourRounds * 60 * 60))
+			{
                 // Break loop after 5 hours, otherwise time threshold will auto-break loop
-                if (hourRounds > 5){
+                if (hourRounds > 5)
+				{
                     fCRVreset = true;
-                    break;
+                    
+					break;
                 }
+				
                 // Drop difficulty per round
                 TerminalAverage /= difCurve;
                 // Simulate retarget for sanity
@@ -328,45 +466,69 @@ void VRX_ThreadCurve(const CBlockIndex* pindexLast, bool fProofOfStake)
                 // Move up an hour per round
                 hourRounds ++;
             }
-        } else {// Version 1.1 Standard Curve Run
-            if(difTime > (hourRounds+0) * 60 * 60) { TerminalAverage /= difCurve; }
-            if(difTime > (hourRounds+1) * 60 * 60) { TerminalAverage /= difCurve; }
-            if(difTime > (hourRounds+2) * 60 * 60) { TerminalAverage /= difCurve; }
-            if(difTime > (hourRounds+3) * 60 * 60) { TerminalAverage /= difCurve; }
+        }
+		else
+		{// Version 1.1 Standard Curve Run
+            if(difTime > (hourRounds+0) * 60 * 60)
+			{
+				TerminalAverage /= difCurve;
+			}
+			
+            if(difTime > (hourRounds+1) * 60 * 60)
+			{
+				TerminalAverage /= difCurve;
+			}
+			
+            if(difTime > (hourRounds+2) * 60 * 60)
+			{
+				TerminalAverage /= difCurve;
+			}
+			
+            if(difTime > (hourRounds+3) * 60 * 60)
+			{
+				TerminalAverage /= difCurve;
+			}
         }
     }
+	
     return;
 }
 
 void VRX_Dry_Run(const CBlockIndex* pindexLast)
 {
     // Check for blocks to index | Allowing for initial chain start
-    if (pindexLast->nHeight < scanheight+124) {
+    if (pindexLast->nHeight < scanheight+124)
+	{
         fDryRun = true;
-        return; // can't index prevblock
+        
+		return; // can't index prevblock
     }
 
     // Reset difficulty for payments update
     if(pindexLast->GetBlockTime() > 0)
     {
-        if(pindexLast->GetBlockTime() > nPaymentUpdate_1) // ON Monday, May 20, 2019 12:00:00 AM
+        if(pindexLast->GetBlockTime() > mapEpochUpdateName["PaymentUpdate_2"]) // ON Monday, May 20, 2019 12:00:00 AM
         {
-            if(pindexLast->GetBlockTime() < nPaymentUpdate_1+480) {
+            if(pindexLast->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"]+480) {
                 fDryRun = true;
-                return; // diff reset
+                
+				return; // diff reset
             }
         }
-        if(pindexLast->GetBlockTime() > nPaymentUpdate_2) // ON Tuesday, Jul 02, 2019 12:00:00 PM PDT
+		
+        if(pindexLast->GetBlockTime() > mapEpochUpdateName["PaymentUpdate_2"]) // ON Tuesday, Jul 02, 2019 12:00:00 PM PDT
         {
-            if(pindexLast->GetBlockTime() < nPaymentUpdate_2+480) {
+            if(pindexLast->GetBlockTime() < mapEpochUpdateName["PaymentUpdate_2"]+480) {
                 fDryRun = true;
-                return; // diff reset
+                
+				return; // diff reset
             }
         }
     }
 
     // Test Fork
-    if (nLiveForkToggle != 0) {
+    if (nLiveForkToggle != 0)
+	{
         // Do nothing
     }// TODO setup next testing fork
 
@@ -415,20 +577,13 @@ unsigned int VRX_Retarget(const CBlockIndex* pindexLast, bool fProofOfStake)
 
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
-    // Default with VRX
-    unsigned int retarget = DIFF_VRX;
-
-    // Check selection
-    if (retarget != DIFF_VRX)
-    {
-        // debug info for testing
-        if(fDebug) GNTdebug();
-        return VRX_Retarget(pindexLast, fProofOfStake);
-    }
-
     // Retarget using Terminal-Velocity
     // debug info for testing
-    if(fDebug) GNTdebug();
+    if(fDebug)
+	{
+		GNTdebug();
+	}
+	
     return VRX_Retarget(pindexLast, fProofOfStake);
 }
 
@@ -479,27 +634,64 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 //
 
 //
+// Masternode Select Payout Toggle
+//
+/*
+bool fMNselect(int nHeight)
+{
+    // Try to get frist masternode in our list
+    CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
+	
+    // If initial sync or we can't find a masternode in our list
+    if(IsInitialBlockDownload() || !winningNode)
+	{
+        // Return false (for sanity, we have no masternode to pay)
+        LogPrintf("MasterNode Select Validation : Either still syncing or no masternodes found\n");
+        
+		return false;
+    }
+	
+    // Set TX values
+    CScript payee;
+    CTxIn vin;
+    
+	//spork
+    if(masternodePayments.GetWinningMasternode(nHeight, payee, vin))
+	{
+        LogPrintf("MasterNode Select Validation: SUCCEEDED\n");
+        
+		return true;
+    }
+	
+    return false;
+}
+*/
+
+//
 // PoW coin base reward
 //
 int64_t GetProofOfWorkReward(int nHeight, int64_t nFees)
 {
     int64_t nSubsidy = nBlockStandardReward;
 
-    if(nHeight > nReservePhaseStart) {
-        if(pindexBest->nMoneySupply < (nBlockRewardReserve * 100)) {
+    if(nHeight > nReservePhaseStart)
+	{
+        if(pindexBest->nMoneySupply < (nBlockRewardReserve * 100))
+		{
             nSubsidy = nBlockRewardReserve;
         }
     }
-
     // hardCap v2.1
     else if(pindexBest->nMoneySupply > MAX_SINGLE_TX)
     {
         LogPrint("MINEOUT", "GetProofOfWorkReward(): create=%s nFees=%d\n", FormatMoney(nFees), nFees);
-        return nFees;
+        
+		return nFees;
     }
 
     LogPrint("creation", "GetProofOfWorkReward() : create=%s nSubsidy=%d\n", FormatMoney(nSubsidy), nSubsidy);
-    return nSubsidy + nFees;
+    
+	return nSubsidy + nFees;
 }
 
 //
@@ -509,21 +701,24 @@ int64_t GetProofOfStakeReward(const CBlockIndex* pindexPrev, int64_t nCoinAge, i
 {
     int64_t nSubsidy = nBlockStandardReward;
 
-    if(pindexPrev->nHeight+1 > nReservePhaseStart) {
-        if(pindexBest->nMoneySupply < (nBlockRewardReserve * 100)) {
+    if(pindexPrev->nHeight+1 > nReservePhaseStart)
+	{
+        if(pindexBest->nMoneySupply < (nBlockRewardReserve * 100))
+		{
             nSubsidy = nBlockRewardReserve;
         }
     }
-
     // hardCap v2.1
     else if(pindexBest->nMoneySupply > MAX_SINGLE_TX)
     {
         LogPrint("MINEOUT", "GetProofOfStakeReward(): create=%s nFees=%d\n", FormatMoney(nFees), nFees);
-        return nFees;
+        
+		return nFees;
     }
 
     LogPrint("creation", "GetProofOfStakeReward(): create=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nCoinAge);
-    return nSubsidy + nFees;
+    
+	return nSubsidy + nFees;
 }
 
 //
@@ -549,12 +744,25 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
     // Set bottom of seesaw arc
     seesawBase = seesawMidIncrmt;
     LogPrint("creation", "GetMasternodePayment(): seesawEpoch=%lu\n", seesawEpoch);
-    // Adjust for arc epochs
+    
+	// Adjust for arc epochs
     if(seesawEpoch >= 1)
     {
         seesawRollover = seesawArcend * seesawEpoch;
         LogPrint("creation", "GetMasternodePayment(): seesawRollover=%lu\n", seesawRollover);
-        seesawInterval =- seesawRollover;
+		
+		/*
+			Fix wrong seesawInterval generation.
+		*/
+		if(GetTime() < mapEpochUpdateName["PaymentUpdate_4"])
+		{
+			seesawInterval =- seesawRollover;
+		}
+		else
+		{
+			seesawInterval -= seesawRollover;
+		}
+	
         LogPrint("creation", "GetMasternodePayment(): seesawInterval=%lu\n", seesawInterval);
     }
     else
@@ -562,18 +770,22 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
         LogPrint("creation", "GetMasternodePayment(): seesawRollover=%lu\n", seesawRollover);
         LogPrint("creation", "GetMasternodePayment(): seesawInterval=%lu\n", seesawInterval);
     }
-    // Seesaw downswing (first for logic order)
+    
+	// Seesaw downswing (first for logic order)
     if(seesawInterval > seesawArc)
     {
         if(seesawInterval <= seesawArcend)
         {
             seesawBase = seesawCeiling - ((seesawIncrement * seesawInterval) - 1);
-            LogPrint("creation", "GetMasternodePayment(): seesawBase_1=%lu\n", seesawBase);
-            // Limit seesaw arc
+            
+			LogPrint("creation", "GetMasternodePayment(): seesawBase_1=%lu\n", seesawBase);
+            
+			// Limit seesaw arc
             if(seesawBase < seesawMidIncrmt)
             {
                 seesawBase = seesawMidIncrmt;
-                LogPrint("creation", "GetMasternodePayment(): seesawBase_2=%lu\n", seesawBase);
+                
+				LogPrint("creation", "GetMasternodePayment(): seesawBase_2=%lu\n", seesawBase);
             }
         }
     }
@@ -583,28 +795,33 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
         if(seesawInterval <= seesawArc)
         {
             seesawBase = seesawIncrement * seesawInterval;
+			
             LogPrint("creation", "GetMasternodePayment(): seesawBase_3=%lu\n", seesawBase);
-            // Limit seesaw arc
+            
+			// Limit seesaw arc
             if(seesawBase > seesawCeiling)
             {
                 seesawBase = seesawCeiling;
-                LogPrint("creation", "GetMasternodePayment(): seesawBase_4=%lu\n", seesawBase);
+                
+				LogPrint("creation", "GetMasternodePayment(): seesawBase_4=%lu\n", seesawBase);
             }
         }
     }
+	
     // Set calculated position of seesaw arc
     retDouble = swingSubsidy * seesawBase;
-    // v1.1 payment subsidy patch
+    
+	// v1.1 payment subsidy patch
     if(pindexBest->GetBlockTime() > 0)
     {
-        if(pindexBest->GetBlockTime() > nPaymentUpdate_1) // Monday, May 20, 2019 12:00:00 AM
+        if(pindexBest->GetBlockTime() > mapEpochUpdateName["PaymentUpdate_2"]) // Monday, May 20, 2019 12:00:00 AM
         {
             // set returned value to calculated value
             ret = retDouble;
             LogPrint("creation", "GetMasternodePayment(): Value=%lu\n\n", ret);
-
         }
     }
+	
     // Return our seesaw arc value (reward in current position of arc)
     return ret;
 }
@@ -614,8 +831,5 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
 //
 int64_t GetDevOpsPayment(int nHeight, int64_t blockValue)
 {
-    int64_t ret2 = 0;
-    ret2 = 50 * COIN; // 50 XDN per block
-
-    return ret2;
+    return 50 * COIN; // 50 XDN per block
 }

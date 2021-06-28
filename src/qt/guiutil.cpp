@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include <QApplication>
 
 #include "guiutil.h"
@@ -7,22 +9,11 @@
 #include "walletmodel.h"
 
 #include "init.h"
-#include "protocol.h"
 #include "util.h"
+#include "cscript.h"
+#include "protocol.h"
 
 #ifdef WIN32
-#ifdef _WIN32_WINNT
-#undef _WIN32_WINNT
-#endif
-#define _WIN32_WINNT 0x0501
-#ifdef _WIN32_IE
-#undef _WIN32_IE
-#endif
-#define _WIN32_IE 0x0501
-#define WIN32_LEAN_AND_MEAN 1
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include "shellapi.h"
 #include "shlobj.h"
 #include "shlwapi.h"
@@ -563,13 +554,11 @@ bool SetStartOnSystemStartup(bool fAutoStart)
 
 boost::filesystem::path static GetAutostartDir()
 {
-    namespace fs = boost::filesystem;
-
     char* pszConfigHome = getenv("XDG_CONFIG_HOME");
-    if (pszConfigHome) return fs::path(pszConfigHome) / "autostart";
+    if (pszConfigHome) return boost::filesystem::path(pszConfigHome) / "autostart";
     char* pszHome = getenv("HOME");
-    if (pszHome) return fs::path(pszHome) / ".config" / "autostart";
-    return fs::path();
+    if (pszHome) return boost::filesystem::path(pszHome) / ".config" / "autostart";
+    return boost::filesystem::path();
 }
 
 boost::filesystem::path static GetAutostartFilePath()

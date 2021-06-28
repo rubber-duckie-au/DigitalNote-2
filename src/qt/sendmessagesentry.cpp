@@ -1,3 +1,5 @@
+#include "compat.h"
+
 #include "sendmessagesentry.h"
 #include "ui_sendmessagesentry.h"
 #include "guiutil.h"
@@ -6,8 +8,6 @@
 #include "messagemodel.h"
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
-
-#include "smessage.h"
 
 #include <QApplication>
 #include <QClipboard>

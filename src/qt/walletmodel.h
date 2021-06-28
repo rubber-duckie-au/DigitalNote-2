@@ -5,16 +5,18 @@
 #ifndef WALLETMODEL_H
 #define WALLETMODEL_H
 
-#include "walletmodeltransaction.h"
-
-#include "allocators.h" /* for SecureString */
-#include "instantx.h"
-#include "wallet.h"
+#include "compat.h"
 
 #include <map>
 #include <vector>
 
 #include <QObject>
+
+#include "allocators.h" /* for SecureString */
+#include "instantx.h"
+#include "cwallet.h"
+#include "serialize.h"
+#include "walletmodeltransaction.h"
 
 class AddressTableModel;
 class OptionsModel;
@@ -36,9 +38,15 @@ QT_END_NAMESPACE
 class SendCoinsRecipient
 {
 public:
-    explicit SendCoinsRecipient() : amount(0), nVersion(SendCoinsRecipient::CURRENT_VERSION) { }
-    explicit SendCoinsRecipient(const QString &addr, const QString &label, const CAmount& amount, const QString &message):
-        address(addr), label(label), amount(amount), message(message), nVersion(SendCoinsRecipient::CURRENT_VERSION) {}
+    explicit SendCoinsRecipient() : amount(0), nVersion(SendCoinsRecipient::CURRENT_VERSION)
+	{
+		
+	}
+    explicit SendCoinsRecipient(const QString &addr, const QString &label, const CAmount& amount, const QString &message)
+			: address(addr), label(label), amount(amount), message(message), nVersion(SendCoinsRecipient::CURRENT_VERSION)
+	{
+		
+	}
 
     // If from an insecure payment request, this is used for storing
     // the addresses, e.g. address-A<br />address-B<br />address-C.
@@ -60,8 +68,6 @@ public:
 
     static const int CURRENT_VERSION = 1;
     int nVersion;
-
-    ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {

@@ -1247,7 +1247,7 @@
            </widget>
           </item>
           <item row="8" column="0">
-           <widget class="QLabel" name="label_22">
+           <widget class="QLabel" name="label_221">
             <property name="text">
              <string>Connection Time</string>
             </property>
@@ -1270,7 +1270,7 @@
            </widget>
           </item>
           <item row="9" column="0">
-           <widget class="QLabel" name="label_15">
+           <widget class="QLabel" name="label_151">
             <property name="text">
              <string>Last Send</string>
             </property>
@@ -1440,7 +1440,7 @@
   <customwidget>
    <class>TrafficGraphWidget</class>
    <extends>QWidget</extends>
-   <header>trafficgraphwidget.h</header>
+   <header>qt/trafficgraphwidget.h</header>
    <container>1</container>
    <slots>
     <slot>clear()</slot>

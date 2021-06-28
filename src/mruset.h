@@ -8,7 +8,8 @@
 #include <deque>
 
 /** STL-like set container that only keeps the most recent N elements. */
-template <typename T> class mruset
+template <typename T>
+class mruset
 {
 public:
     typedef T key_type;
@@ -23,43 +24,34 @@ protected:
     size_type nMaxSize;
 
 public:
-    mruset(size_type nMaxSizeIn = 0) { nMaxSize = nMaxSizeIn; }
-    iterator begin() const { return set.begin(); }
-    iterator end() const { return set.end(); }
-    size_type size() const { return set.size(); }
-    bool empty() const { return set.empty(); }
-    iterator find(const key_type& k) const { return set.find(k); }
-    size_type count(const key_type& k) const { return set.count(k); }
-    void clear() { set.clear(); queue.clear(); }
-    bool inline friend operator==(const mruset<T>& a, const mruset<T>& b) { return a.set == b.set; }
-    bool inline friend operator==(const mruset<T>& a, const std::set<T>& b) { return a.set == b; }
-    bool inline friend operator<(const mruset<T>& a, const mruset<T>& b) { return a.set < b.set; }
-    std::pair<iterator, bool> insert(const key_type& x)
-    {
-        std::pair<iterator, bool> ret = set.insert(x);
-        if (ret.second)
-        {
-            if (nMaxSize && queue.size() == nMaxSize)
-            {
-                set.erase(queue.front());
-                queue.pop_front();
-            }
-            queue.push_back(x);
-        }
-        return ret;
-    }
-    size_type max_size() const { return nMaxSize; }
-    size_type max_size(size_type s)
-    {
-        if (s)
-            while (queue.size() > s)
-            {
-                set.erase(queue.front());
-                queue.pop_front();
-            }
-        nMaxSize = s;
-        return nMaxSize;
-    }
+	mruset(size_type nMaxSizeIn = 0);
+
+	iterator begin() const;
+	iterator end() const;
+	size_type size() const;
+	bool empty() const;
+	iterator find(const key_type& k) const;
+	size_type count(const key_type& k) const;
+	void clear();
+	
+	friend inline bool operator==(const mruset<T>& a, const mruset<T>& b)
+	{
+		return a.set == b.set;
+	}
+	
+	friend inline bool operator==(const mruset<T>& a, const std::set<T>& b)
+	{
+		return a.set == b;
+	}
+	
+	friend inline bool operator<(const mruset<T>& a, const mruset<T>& b)
+	{
+		return a.set < b.set;
+	}
+	
+	std::pair<iterator, bool> insert(const key_type& x);
+	size_type max_size() const;
+	size_type max_size(size_type s);
 };
 
 #endif

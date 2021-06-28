@@ -3,8 +3,12 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "ui_interface.h"
+#include "compat.h"
+
 #include "init.h"
+#include "util.h"
+#include "ui_interface.h"
+#include "ui_translate.h"
 
 #include <string>
 
@@ -14,13 +18,13 @@ static int noui_ThreadSafeMessageBox(const std::string& message, const std::stri
     // Check for usage of predefined caption
     switch (style) {
     case CClientUIInterface::MSG_ERROR:
-        strCaption += _("Error");
+        strCaption += ui_translate("Error");
         break;
     case CClientUIInterface::MSG_WARNING:
-        strCaption += _("Warning");
+        strCaption += ui_translate("Warning");
         break;
     case CClientUIInterface::MSG_INFORMATION:
-        strCaption += _("Information");
+        strCaption += ui_translate("Information");
         break;
     default:
         strCaption += caption; // Use supplied caption

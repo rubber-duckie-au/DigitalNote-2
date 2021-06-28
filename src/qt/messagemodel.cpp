@@ -1,14 +1,4 @@
-#include "guiutil.h"
-#include "guiconstants.h"
-#include "bitcoinunits.h"
-#include "optionsmodel.h"
-#include "walletmodel.h"
-#include "messagemodel.h"
-#include "addresstablemodel.h"
-
-#include "ui_interface.h"
-#include "base58.h"
-#include "json_spirit.h"
+#include "compat.h"
 
 #include <QSet>
 #include <QTimer>
@@ -20,6 +10,32 @@
 #include <QFont>
 #include <QColor>
 #include <boost/bind.hpp>
+
+#include "guiutil.h"
+#include "guiconstants.h"
+#include "bitcoinunits.h"
+#include "optionsmodel.h"
+#include "walletmodel.h"
+#include "addresstablemodel.h"
+#include "json/json_spirit.h"
+#include "script.h"
+#include "smsg.h"
+#include "smsg_const.h"
+#include "smsg_extern.h"
+#include "smsg_extern_signal.h"
+#include "smsg/db.h"
+#include "smsg/stored.h"
+#include "smsg/messagedata.h"
+#include "smsg/securemessage.h"
+#include "thread.h"
+#include "cdigitalnoteaddress.h"
+#include "base58.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+
+#include "messagemodel.h"
 
 Q_DECLARE_METATYPE(std::vector<unsigned char>);
 
@@ -56,20 +72,20 @@ public:
         };
 
         {
-            LOCK(cs_smsgDB);
+            LOCK(DigitalNote::SMSG::ext_cs_db);
 
-            SecMsgDB dbSmsg;
+            DigitalNote::SMSG::DB dbSmsg;
 
             if (!dbSmsg.Open("cr+"))
-                //throw runtime_error("Could not open DB.");
+                //throw std::runtime_error("Could not open DB.");
                 return;
 
             unsigned char chKey[18];
             std::vector<unsigned char> vchKey;
             vchKey.resize(18);
 
-            SecMsgStored smsgStored;
-            MessageData msg;
+            DigitalNote::SMSG::Stored smsgStored;
+            DigitalNote::SMSG::Message msg;
             QString label;
             QDateTime sent_datetime;
             QDateTime received_datetime;
@@ -79,7 +95,7 @@ public:
             while (dbSmsg.NextSmesg(it, sPrefix, chKey, smsgStored))
             {
                 uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-                if (SecureMsgDecrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+                if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
                 {
                     label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(msg.sFromAddress));
 
@@ -107,7 +123,7 @@ public:
             while (dbSmsg.NextSmesg(it, sPrefix, chKey, smsgStored))
             {
                 uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-                if (SecureMsgDecrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+                if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
                 {
                     label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(smsgStored.sAddrTo));
 
@@ -132,17 +148,17 @@ public:
         }
     }
 
-    void newMessage(const SecMsgStored& inboxHdr)
+    void newMessage(const DigitalNote::SMSG::Stored& inboxHdr)
     {
         // we have to copy it, because it doesn't like constants going into Decrypt
-        SecMsgStored smsgStored = inboxHdr;
-        MessageData msg;
+        DigitalNote::SMSG::Stored smsgStored = inboxHdr;
+        DigitalNote::SMSG::Message msg;
         QString label;
         QDateTime sent_datetime;
         QDateTime received_datetime;
 
         uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-        if (SecureMsgDecrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+        if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrTo, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
         {
             label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(msg.sFromAddress));
 
@@ -150,7 +166,7 @@ public:
             received_datetime.setTime_t(smsgStored.timeReceived);
 
             std::string sPrefix("im");
-            SecureMessage* psmsg = (SecureMessage*) &smsgStored.vchMessage[0];
+            DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) &smsgStored.vchMessage[0];
             
             std::vector<unsigned char> vchKey;
             vchKey.resize(18);
@@ -170,17 +186,17 @@ public:
         }
     }
 
-    void newOutboxMessage(const SecMsgStored& outboxHdr)
+    void newOutboxMessage(const DigitalNote::SMSG::Stored& outboxHdr)
     {
 
-        SecMsgStored smsgStored = outboxHdr;
-        MessageData msg;
+        DigitalNote::SMSG::Stored smsgStored = outboxHdr;
+        DigitalNote::SMSG::Message msg;
         QString label;
         QDateTime sent_datetime;
         QDateTime received_datetime;
 
         uint32_t nPayload = smsgStored.vchMessage.size() - SMSG_HDR_LEN;
-        if (SecureMsgDecrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
+        if (DigitalNote::SMSG::Decrypt(false, smsgStored.sAddrOutbox, &smsgStored.vchMessage[0], &smsgStored.vchMessage[SMSG_HDR_LEN], nPayload, msg) == 0)
         {
             label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(smsgStored.sAddrTo));
 
@@ -188,7 +204,7 @@ public:
             received_datetime.setTime_t(smsgStored.timeReceived);
 
             std::string sPrefix("sm");
-            SecureMessage* psmsg = (SecureMessage*) &smsgStored.vchMessage[0];
+            DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) &smsgStored.vchMessage[0];
             std::vector<unsigned char> vchKey;
             vchKey.resize(18);
             memcpy(&vchKey[0],  sPrefix.data(),  2);
@@ -294,7 +310,7 @@ private:
             cachedMessageTable.append(message);
         } else
         {
-            int index = qLowerBound(cachedMessageTable.begin(), cachedMessageTable.end(), message.received_datetime, MessageTableEntryLessThan()) - cachedMessageTable.begin();
+            int index = std::lower_bound(cachedMessageTable.begin(), cachedMessageTable.end(), message.received_datetime, MessageTableEntryLessThan()) - cachedMessageTable.begin();
             parent->beginInsertRows(QModelIndex(), index, index);
             cachedMessageTable.insert(
                         index,
@@ -339,8 +355,8 @@ bool MessageModel::getAddressOrPubkey(QString &address, QString &pubkey) const
 
         addressParsed.GetKeyID(destinationAddress);
 
-        if (SecureMsgGetStoredKey(destinationAddress, destinationKey) != 0
-            && SecureMsgGetLocalKey(destinationAddress, destinationKey) != 0) // test if it's a local key
+        if (DigitalNote::SMSG::GetStoredKey(destinationAddress, destinationKey) != 0
+            && DigitalNote::SMSG::GetLocalKey(destinationAddress, destinationKey) != 0) // test if it's a local key
             return false;
 
         address = destinationAddress.ToString().c_str();
@@ -384,11 +400,11 @@ MessageModel::StatusCode MessageModel::sendMessages(const QList<SendMessagesReci
         std::string message = rcp.message.toStdString();
         std::string addFrom = addressFrom.toStdString();
 
-        SecureMsgAddAddress(sendTo, pubkey);
+        DigitalNote::SMSG::AddAddress(sendTo, pubkey);
         setAddress.insert(rcp.address);
         
         std::string sError;
-        if (SecureMsgSend(addFrom, sendTo, message, sError) != 0)
+        if (DigitalNote::SMSG::Send(addFrom, sendTo, message, sError) != 0)
         {
             QMessageBox::warning(NULL, tr("Send Secure Message"),
                 tr("Send failed: %1.").arg(sError.c_str()),
@@ -512,10 +528,12 @@ QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int 
 
 Qt::ItemFlags MessageModel::flags(const QModelIndex & index) const
 {
-    if(index.isValid())
-        return Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+	if(index.isValid())
+	{
+		return Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+	}
 
-    return 0;
+	return Qt::NoItemFlags;
 }
 
 QModelIndex MessageModel::index(int row, int column, const QModelIndex & parent) const
@@ -534,11 +552,11 @@ bool MessageModel::removeRows(int row, int count, const QModelIndex & parent)
         return false;
 
     {
-        LOCK(cs_smsgDB);
-        SecMsgDB dbSmsg;
+        LOCK(DigitalNote::SMSG::ext_cs_db);
+        DigitalNote::SMSG::DB dbSmsg;
 
         if (!dbSmsg.Open("cr+"))
-            //throw runtime_error("Could not open DB.");
+            //throw std::runtime_error("Could not open DB.");
             return false;
 
         dbSmsg.EraseSmesg(&rec->chKey[0]);
@@ -556,13 +574,13 @@ void MessageModel::resetFilter()
     ambiguous.clear();
 }
 
-void MessageModel::newMessage(const SecMsgStored &smsg)
+void MessageModel::newMessage(const DigitalNote::SMSG::Stored &smsg)
 {
     priv->newMessage(smsg);
 }
 
 
-void MessageModel::newOutboxMessage(const SecMsgStored &smsgOutbox)
+void MessageModel::newOutboxMessage(const DigitalNote::SMSG::Stored &smsgOutbox)
 {
     priv->newOutboxMessage(smsgOutbox);
 }
@@ -579,17 +597,17 @@ void MessageModel::setEncryptionStatus(int status)
 }
 
 
-static void NotifySecMsgInbox(MessageModel *messageModel, SecMsgStored inboxHdr)
+static void NotifySecMsgInbox(MessageModel *messageModel, DigitalNote::SMSG::Stored inboxHdr)
 {
-    // Too noisy: OutputDebugStringF("NotifySecMsgInboxChanged %s\n", message);
+    // Too noisy: OutputDebugStringF("DigitalNote::SMSG::ext_signal_NotifyInboxChanged %s\n", message);
     QMetaObject::invokeMethod(messageModel, "newMessage", Qt::QueuedConnection,
-                              Q_ARG(SecMsgStored, inboxHdr));
+                              Q_ARG(DigitalNote::SMSG::Stored, inboxHdr));
 }
 
-static void NotifySecMsgOutbox(MessageModel *messageModel, SecMsgStored outboxHdr)
+static void NotifySecMsgOutbox(MessageModel *messageModel, DigitalNote::SMSG::Stored outboxHdr)
 {
     QMetaObject::invokeMethod(messageModel, "newOutboxMessage", Qt::QueuedConnection,
-                              Q_ARG(SecMsgStored, outboxHdr));
+                              Q_ARG(DigitalNote::SMSG::Stored, outboxHdr));
 }
 
 static void NotifySecMsgWallet(MessageModel *messageModel)
@@ -599,12 +617,12 @@ static void NotifySecMsgWallet(MessageModel *messageModel)
 
 void MessageModel::subscribeToCoreSignals()
 {
-    qRegisterMetaType<SecMsgStored>("SecMsgStored");
+    qRegisterMetaType<DigitalNote::SMSG::Stored>("DigitalNote::SMSG::Stored");
 
     // Connect signals
-    NotifySecMsgInboxChanged.connect(boost::bind(NotifySecMsgInbox, this, _1));
-    NotifySecMsgOutboxChanged.connect(boost::bind(NotifySecMsgOutbox, this, _1));
-    NotifySecMsgWalletUnlocked.connect(boost::bind(NotifySecMsgWallet, this));
+    DigitalNote::SMSG::ext_signal_NotifyInboxChanged.connect(boost::bind(NotifySecMsgInbox, this, _1));
+    DigitalNote::SMSG::ext_signal_NotifyOutboxChanged.connect(boost::bind(NotifySecMsgOutbox, this, _1));
+    DigitalNote::SMSG::ext_signal_NotifyWalletUnlocked.connect(boost::bind(NotifySecMsgWallet, this));
     
     connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
 }
@@ -612,9 +630,9 @@ void MessageModel::subscribeToCoreSignals()
 void MessageModel::unsubscribeFromCoreSignals()
 {
     // Disconnect signals
-    NotifySecMsgInboxChanged.disconnect(boost::bind(NotifySecMsgInbox, this, _1));
-    NotifySecMsgOutboxChanged.disconnect(boost::bind(NotifySecMsgOutbox, this, _1));
-    NotifySecMsgWalletUnlocked.disconnect(boost::bind(NotifySecMsgWallet, this));
+    DigitalNote::SMSG::ext_signal_NotifyInboxChanged.disconnect(boost::bind(NotifySecMsgInbox, this, _1));
+    DigitalNote::SMSG::ext_signal_NotifyOutboxChanged.disconnect(boost::bind(NotifySecMsgOutbox, this, _1));
+    DigitalNote::SMSG::ext_signal_NotifyWalletUnlocked.disconnect(boost::bind(NotifySecMsgWallet, this));
     
     disconnect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
 }

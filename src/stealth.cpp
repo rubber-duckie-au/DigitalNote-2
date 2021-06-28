@@ -2,92 +2,39 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
-#include "stealth.h"
-#include "base58.h"
-
-
 #include <openssl/rand.h>
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
+#include <openssl/sha.h>
 
+#include "uint/uint256.h"
+#include "util.h"
+#include "base58.h"
 
-bool CStealthAddress::SetEncoded(const std::string& encodedAddress)
+#include "stealth.h"
+
+template <typename T, typename Iterator>
+T from_big_endian(Iterator in)
 {
-    data_chunk raw;
-    
-    if (!DecodeBase58(encodedAddress, raw))
-    {
-        if (fDebug)
-            LogPrintf("CStealthAddress::SetEncoded DecodeBase58 falied.\n");
-        return false;
-    };
-    
-    if (!VerifyChecksum(raw))
-    {
-        if (fDebug)
-            LogPrintf("CStealthAddress::SetEncoded verify_checksum falied.\n");
-        return false;
-    };
-    
-    if (raw.size() < 1 + 1 + 33 + 1 + 33 + 1 + 1 + 4)
-    {
-        if (fDebug)
-            LogPrintf("CStealthAddress::SetEncoded() too few bytes provided.\n");
-        return false;
-    };
-    
-    
-    uint8_t* p = &raw[0];
-    uint8_t version = *p++;
-    
-    if (version != stealth_version_byte)
-    {
-        LogPrintf("CStealthAddress::SetEncoded version mismatch 0x%x != 0x%x.\n", version, stealth_version_byte);
-        return false;
-    };
-    
-    options = *p++;
-    
-    scan_pubkey.resize(33);
-    memcpy(&scan_pubkey[0], p, 33);
-    p += 33;
-    //uint8_t spend_pubkeys = *p++;
-    p++;
-    
-    spend_pubkey.resize(33);
-    memcpy(&spend_pubkey[0], p, 33);
-    
-    return true;
-};
+    //VERIFY_UNSIGNED(T);
+    T out = 0;
+    size_t i = sizeof(T);
+    while (0 < i)
+        out |= static_cast<T>(*in++) << (8 * --i);
+    return out;
+}
 
-std::string CStealthAddress::Encoded() const
+template <typename T, typename Iterator>
+T from_little_endian(Iterator in)
 {
-    // https://wiki.unsystem.net/index.php/DarkWallet/Stealth#Address_format
-    // [version] [options] [scan_key] [N] ... [Nsigs] [prefix_length] ...
-    
-    data_chunk raw;
-    raw.push_back(stealth_version_byte);
-    
-    raw.push_back(options);
-    
-    raw.insert(raw.end(), scan_pubkey.begin(), scan_pubkey.end());
-    raw.push_back(1); // number of spend pubkeys
-    raw.insert(raw.end(), spend_pubkey.begin(), spend_pubkey.end());
-    raw.push_back(0); // number of signatures
-    raw.push_back(0); // ?
-    
-    AppendChecksum(raw);
-    
-    return EncodeBase58(raw);
-};
-
-int CStealthAddress::SetScanPubKey(CPubKey pk)
-{
-    scan_pubkey.resize(pk.size());
-    memcpy(&scan_pubkey[0], pk.begin(), pk.size());
-    return 0;
-};
+    //VERIFY_UNSIGNED(T);
+    T out = 0;
+    size_t i = 0;
+    while (i < sizeof(T))
+        out |= static_cast<T>(*in++) << (8 * i++);
+    return out;
+}
 
 uint32_t DigitalNoteChecksum(uint8_t* p, uint32_t nBytes)
 {
@@ -132,7 +79,6 @@ bool VerifyChecksum(const data_chunk& data)
     
     return DigitalNoteChecksum((uint8_t*)&data[0], data.size()-4) == checksum;
 };
-
 
 int GenerateRandomSecret(ec_secret& out)
 {
@@ -215,7 +161,6 @@ int SecretToPublicKey(const ec_secret& secret, ec_point& out)
 
     return rv;
 };
-
 
 int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, ec_secret& sharedSOut, ec_point& pkOut)
 {
@@ -421,7 +366,6 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
     return rv;
 };
 
-
 int StealthSecretSpend(ec_secret& scanSecret, ec_point& ephemPubkey, ec_secret& spendSecret, ec_secret& secretOut)
 {
     /*
@@ -571,7 +515,6 @@ int StealthSecretSpend(ec_secret& scanSecret, ec_point& ephemPubkey, ec_secret& 
     return rv;
 };
 
-
 int StealthSharedToSecretSpend(ec_secret& sharedS, ec_secret& spendSecret, ec_secret& secretOut)
 {
     int rv = 0;
@@ -688,4 +631,5 @@ bool IsStealthAddress(const std::string& encodedAddress)
     };
     
     return true;
-};
+}
+

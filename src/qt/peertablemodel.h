@@ -5,15 +5,16 @@
 #ifndef PEERTABLEMODEL_H
 #define PEERTABLEMODEL_H
 
-#include "main.h"
-#include "net.h"
+#include "compat.h"
 
-#include <QAbstractTableModel>
 #include <QStringList>
+#include <QAbstractTableModel>
+
+#include "cnodestatestats.h"
+#include "net/cnodestats.h"
 
 class PeerTablePriv;
 class ClientModel;
-
 class QTimer;
 
 struct CNodeCombinedStats {

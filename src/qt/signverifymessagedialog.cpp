@@ -1,19 +1,28 @@
-#include "signverifymessagedialog.h"
-#include "ui_signverifymessagedialog.h"
-
-#include "addressbookpage.h"
-#include "base58.h"
-#include "guiutil.h"
-#include "init.h"
-#include "main.h"
-#include "optionsmodel.h"
-#include "walletmodel.h"
-#include "wallet.h"
-
-#include <QClipboard>
+#include "compat.h"
 
 #include <string>
 #include <vector>
+#include <QClipboard>
+
+#include "addressbookpage.h"
+#include "guiutil.h"
+#include "init.h"
+#include "optionsmodel.h"
+#include "walletmodel.h"
+#include "cscript.h"
+#include "main_extern.h"
+#include "ckey.h"
+#include "crypto/bmw/bmw512.h"
+#include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+#include "enums/serialize_type.h"
+#include "cdatastream.h"
+
+#include "signverifymessagedialog.h"
+#include "ui_signverifymessagedialog.h"
 
 SignVerifyMessageDialog::SignVerifyMessageDialog(QWidget *parent) :
     QDialog(parent),

@@ -1,5 +1,7 @@
-#include "addressbookpage.h"
-#include "ui_addressbookpage.h"
+#include <QSortFilterProxyModel>
+#include <QClipboard>
+#include <QMessageBox>
+#include <QMenu>
 
 #include "addresstablemodel.h"
 #include "optionsmodel.h"
@@ -7,16 +9,14 @@
 #include "editaddressdialog.h"
 #include "csvmodelwriter.h"
 #include "guiutil.h"
-#include "smessage.h"
+#include "smsg.h"
 
 #ifdef USE_QRCODE
 #include "qrcodedialog.h"
 #endif
 
-#include <QSortFilterProxyModel>
-#include <QClipboard>
-#include <QMessageBox>
-#include <QMenu>
+#include "addressbookpage.h"
+#include "ui_addressbookpage.h"
 
 AddressBookPage::AddressBookPage(Mode mode, Tabs tab, QWidget *parent) :
     QDialog(parent),
@@ -174,7 +174,7 @@ void AddressBookPage::on_copySmsgInfo_clicked()
     } else {
         std::string address = indexes[0].data().toString().toStdString();
         std::string publicKey;
-        SecureMsgGetLocalPublicKey(address, publicKey);
+        DigitalNote::SMSG::GetLocalPublicKey(address, publicKey);
         GUIUtil::setClipboard(QString::fromStdString(address + ":" + publicKey));
     }
 }

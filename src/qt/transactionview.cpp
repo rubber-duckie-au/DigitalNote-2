@@ -1,19 +1,4 @@
-#include "transactionview.h"
-
-#include "addresstablemodel.h"
-#include "bitcoinunits.h"
-#include "csvmodelwriter.h"
-#include "editaddressdialog.h"
-#include "guiutil.h"
-#include "optionsmodel.h"
-#include "transactiondescdialog.h"
-#include "transactionfilterproxy.h"
-#include "transactionrecord.h"
-#include "transactiontablemodel.h"
-#include "walletmodel.h"
-#include "smessage.h"
-
-#include "ui_interface.h"
+#include "compat.h"
 
 #include <QComboBox>
 #include <QDateTimeEdit>
@@ -31,8 +16,23 @@
 #include <QTableView>
 #include <QUrl>
 #include <QVBoxLayout>
-
 #include <QMessageBox>
+
+#include "addresstablemodel.h"
+#include "bitcoinunits.h"
+#include "csvmodelwriter.h"
+#include "editaddressdialog.h"
+#include "guiutil.h"
+#include "optionsmodel.h"
+#include "transactiondescdialog.h"
+#include "transactionfilterproxy.h"
+#include "transactionrecord.h"
+#include "transactiontablemodel.h"
+#include "walletmodel.h"
+#include "smsg.h"
+#include "cclientuiinterface.h"
+
+#include "transactionview.h"
 
 TransactionView::TransactionView(QWidget *parent) :
     QWidget(parent), model(0), transactionProxyModel(0),
@@ -166,7 +166,7 @@ TransactionView::TransactionView(QWidget *parent) :
     connect(addressWidget, SIGNAL(textChanged(QString)), this, SLOT(changedPrefix(QString)));
     connect(amountWidget, SIGNAL(textChanged(QString)), this, SLOT(changedAmount(QString)));
 
-    connect(view, SIGNAL(doubleClicked(QModelIndex)), this, SIGNAL(doubleClicked(QModelIndex)));
+    connect(view, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(doubleClicked(QModelIndex)));
     connect(view, SIGNAL(clicked(QModelIndex)), this, SLOT(computeSum()));
     connect(view, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextualMenu(QPoint)));
 
@@ -416,7 +416,7 @@ void TransactionView::copySmsgInfo()
     } else {
         std::string address = indexes[0].data().toString().toStdString();
         std::string publicKey;
-        SecureMsgGetLocalPublicKey(address, publicKey);
+        DigitalNote::SMSG::GetLocalPublicKey(address, publicKey);
         GUIUtil::setClipboard(QString::fromStdString(address + ":" + publicKey));
     }
 }

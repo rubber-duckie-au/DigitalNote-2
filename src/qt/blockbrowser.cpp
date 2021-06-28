@@ -1,15 +1,32 @@
-#include "blockbrowser.h"
+#include "compat.h"
+
+#include <sstream>
+#include <string>
+#include <iomanip>
+
 #include "ui_blockbrowser.h"
-#include "main.h"
-#include "wallet.h"
-#include "base58.h"
 #include "clientmodel.h"
 #include "walletmodel.h"
 #include "rpcconsole.h"
 #include "transactionrecord.h"
+#include "cblock.h"
+#include "cblockindex.h"
+#include "script.h"
+#include "main_extern.h"
+#include "main_const.h"
+#include "ctxin.h"
+#include "ctxout.h"
+#include "ctransaction.h"
+#include "cdigitalnoteaddress.h"
+#include "cnodestination.h"
+#include "ckeyid.h"
+#include "cscriptid.h"
+#include "cstealthaddress.h"
+#include "enums/serialize_type.h"
+#include "version.h"
 
-#include <sstream>
-#include <string>
+#include "blockbrowser.h"
+
 double getBlockHardness(int height)
 {
     const CBlockIndex* blockindex = getBlockIndex(height);
@@ -154,7 +171,7 @@ int blocksInPastHours(int hours)
     return 0;
 }
 
-double getTxTotalValue(std::string txid)
+double getTxTotalValue(const std::string &txid)
 {
     uint256 hash;
     hash.SetHex(txid);
@@ -185,7 +202,7 @@ double convertCoins(int64_t amount)
     return (double)amount / (double)COIN;
 }
 
-std::string getOutputs(std::string txid)
+std::string getOutputs(const std::string &txid)
 {
     uint256 hash;
     hash.SetHex(txid);
@@ -220,7 +237,7 @@ std::string getOutputs(std::string txid)
     return str;
 }
 
-std::string getInputs(std::string txid)
+std::string getInputs(const std::string &txid)
 {
     uint256 hash;
     hash.SetHex(txid);
@@ -279,11 +296,10 @@ int64_t getInputValue(CTransaction tx, CScript target)
     return 0;
 }
 
-double getTxFees(std::string txid)
+double getTxFees(const std::string &txid)
 {
     uint256 hash;
     hash.SetHex(txid);
-
 
     CTransaction tx;
     uint256 hashBlock = 0;

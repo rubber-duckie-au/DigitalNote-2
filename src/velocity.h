@@ -6,10 +6,11 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef VELOCITY_H
-#define VELOCITY_H 1
+#define VELOCITY_H
 
-#include "chainparams.h"
-#include "main.h"
+#include "fork.h"
+#include "mining.h"
+#include "main_const.h"
 
 class CBlock;
 class CBlockIndex;
@@ -30,4 +31,4 @@ bool Velocity(CBlockIndex* prevBlock, CBlock* block);
 
 int VelocityI(int nHeight);
 
-#endif
+#endif // VELOCITY_H

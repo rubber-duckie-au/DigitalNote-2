@@ -4,14 +4,11 @@
 // Copyright (c) 2018-2020 The DigitalNote Project
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "main.h"
-#include "rpcvelocity.h"
-#include <boost/assign/list_of.hpp>
 
-using namespace std;
-using namespace boost;
-using namespace boost::assign;
-using namespace json_spirit;
+#include "cscript.h"
+#include "main_extern.h"
+
+#include "rpcvelocity.h"
 
 /* Patches
    - rpcserver.cpp:
@@ -20,9 +17,9 @@ using namespace json_spirit;
        { "getvelocityinfo",        &getvelocityinfo,        true,      false,     false },
 */
 
-/* getvelocityinfo(const Array& params, bool fHelp) : Object
+/* getvelocityinfo(const json_spirit::Array& params, bool fHelp) : Object
    Expose Velocity-Settings via RPC */
-json_spirit::Value getvelocityinfo(const Array& params, bool fHelp) {
+json_spirit::Value getvelocityinfo(const json_spirit::Array& params, bool fHelp) {
 	if (fHelp || params.size() != 0)
 		throw std::runtime_error("getvelocityinfo\nReturns an object containing various velocity info.");
     int i = VelocityI(nBestHeight);
