@@ -623,7 +623,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
         bool fInvalid = false;
         if (tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
         {
-            entry.push_back(Pair("fee", (int64_t)(tx.GetValueIn(mapInputs) - tx.GetValueOut())));
+            entry.push_back(Pair("fee", (int64_t)(tx.GetValueMapIn(mapInputs) - tx.GetValueOut())));
 
             Array deps;
             BOOST_FOREACH (MapPrevTx::value_type& inp, mapInputs)
@@ -673,11 +673,10 @@ Value getblocktemplate(const Array& params, bool fHelp)
             // Set Masternode / DevOps payments
             int64_t masternodePayment = GetMasternodePayment(pindexPrev->nHeight+1, networkPayment);
             int64_t devopsPayment = GetDevOpsPayment(pindexPrev->nHeight+1, networkPayment);
-            std::string devpayee2 = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18";
+            std::string devpayee2 = "dafC1LknpDu7eALTf5DPcnPq2dwq7f9YPE";
 
-            if (pindexBest->GetBlockTime() < nPaymentUpdate_2) {
-                devpayee2 = Params().DevOpsAddress();
-            }
+            if (pindexBest->GetBlockTime() < nPaymentUpdate_2) { devpayee2 = "dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7"; }
+	        else if (pindexBest->nHeight < nHeightReimburse) { devpayee2 = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18"; }
 
             // Include DevOps payments
             CAmount devopsSplit = devopsPayment;

@@ -363,6 +363,10 @@ void VRX_Dry_Run(const CBlockIndex* pindexLast)
                 return; // diff reset
             }
         }
+        if(pindexLast->nHeight == 400670) {
+            fDryRun = true;
+            return; // diff reset
+        }
     }
 
     // Test Fork
@@ -491,6 +495,10 @@ int64_t GetProofOfWorkReward(int nHeight, int64_t nFees)
         }
     }
 
+    if(pindexBest->nHeight == nHeightReimburse) {
+        nSubsidy = nBlockReimburse;
+    }
+
     // hardCap v2.1
     else if(pindexBest->nMoneySupply > MAX_SINGLE_TX)
     {
@@ -513,6 +521,10 @@ int64_t GetProofOfStakeReward(const CBlockIndex* pindexPrev, int64_t nCoinAge, i
         if(pindexBest->nMoneySupply < (nBlockRewardReserve * 100)) {
             nSubsidy = nBlockRewardReserve;
         }
+    }
+
+    if(pindexBest->nHeight == nHeightReimburse) {
+        nSubsidy = nBlockReimburse;
     }
 
     // hardCap v2.1
@@ -605,6 +617,10 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
 
         }
     }
+
+    if(pindexBest->nHeight == nHeightReimburse) {
+        ret = 0;
+    }
     // Return our seesaw arc value (reward in current position of arc)
     return ret;
 }
@@ -616,6 +632,10 @@ int64_t GetDevOpsPayment(int nHeight, int64_t blockValue)
 {
     int64_t ret2 = 0;
     ret2 = 50 * COIN; // 50 XDN per block
+
+    if(pindexBest->nHeight == nHeightReimburse) {
+        ret2 = blockValue;
+    }
 
     return ret2;
 }
