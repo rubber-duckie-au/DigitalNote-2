@@ -1227,12 +1227,20 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
                fprintf(ConfFile, "addnode=138.197.161.183\n");
                fprintf(ConfFile, "addnode=188.166.123.46\n");
                fprintf(ConfFile, "addnode=159.203.14.113\n");
+               fprintf(ConfFile, "addnode=62.171.150.246:18093\n");
+               fprintf(ConfFile, "addnode=62.171.150.246:18060\n");
+               fprintf(ConfFile, "addnode=62.171.150.246:18062\n");
+               fprintf(ConfFile, "addnode=62.171.150.246:18064\n");
+               fprintf(ConfFile, "addnode=62.171.150.246:18066\n");
+               fprintf(ConfFile, "addnode=95.111.225.123:18092\n");
+               fprintf(ConfFile, "addnode=95.111.225.123:18063\n");
+               fprintf(ConfFile, "addnode=95.111.225.123:63637\n");
                fprintf(ConfFile, "addnode=seed1n.digitalnote.biz\n");
                fprintf(ConfFile, "addnode=seed2n.digitalnote.biz\n");
                fprintf(ConfFile, "addnode=seed3n.digitalnote.biz\n");
                fprintf(ConfFile, "addnode=seed4n.digitalnote.biz\n");
 
-               fclose(ConfFile);
+            fclose(ConfFile);
     }
 
     // Wallet will reload config file so it is properly read...
