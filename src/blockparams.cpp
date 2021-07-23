@@ -539,86 +539,16 @@ int64_t GetProofOfStakeReward(const CBlockIndex* pindexPrev, int64_t nCoinAge, i
 //
 int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
 {
-    // Define values
-    int64_t ret = 0;
-    int64_t swingSubsidy = 200 * COIN; // 200 XDN ceiling
-    int64_t seesawHeight = nHeight;
-    int64_t seesawInterval = seesawHeight / 30;
-    int64_t seesawEpoch = seesawInterval / 15;
-    int64_t seesawRollover = 0;
-    int64_t seesawArcstart = 5;
-    int64_t seesawArc = 10;
-    int64_t seesawArcend = 15;
-    double retDouble = 0;
-    double seesawBase = 0;
-    double seesawIncrement = 0.1;
-    double seesawMidIncrmt = 0.5;
-    double seesawCeiling = 1;
-    // Set bottom of seesaw arc
-    seesawBase = seesawMidIncrmt;
-    LogPrint("creation", "GetMasternodePayment(): seesawEpoch=%lu\n", seesawEpoch);
-    // Adjust for arc epochs
-    if(seesawEpoch >= 1)
-    {
-        seesawRollover = seesawArcend * seesawEpoch;
-        LogPrint("creation", "GetMasternodePayment(): seesawRollover=%lu\n", seesawRollover);
-        seesawInterval =- seesawRollover;
-        LogPrint("creation", "GetMasternodePayment(): seesawInterval=%lu\n", seesawInterval);
-    }
-    else
-    {
-        LogPrint("creation", "GetMasternodePayment(): seesawRollover=%lu\n", seesawRollover);
-        LogPrint("creation", "GetMasternodePayment(): seesawInterval=%lu\n", seesawInterval);
-    }
-    // Seesaw downswing (first for logic order)
-    if(seesawInterval > seesawArc)
-    {
-        if(seesawInterval <= seesawArcend)
-        {
-            seesawBase = seesawCeiling - ((seesawIncrement * seesawInterval) - 1);
-            LogPrint("creation", "GetMasternodePayment(): seesawBase_1=%lu\n", seesawBase);
-            // Limit seesaw arc
-            if(seesawBase < seesawMidIncrmt)
-            {
-                seesawBase = seesawMidIncrmt;
-                LogPrint("creation", "GetMasternodePayment(): seesawBase_2=%lu\n", seesawBase);
-            }
-        }
-    }
-    // Seesaw upswing
-    else if(seesawInterval > seesawArcstart)
-    {
-        if(seesawInterval <= seesawArc)
-        {
-            seesawBase = seesawIncrement * seesawInterval;
-            LogPrint("creation", "GetMasternodePayment(): seesawBase_3=%lu\n", seesawBase);
-            // Limit seesaw arc
-            if(seesawBase > seesawCeiling)
-            {
-                seesawBase = seesawCeiling;
-                LogPrint("creation", "GetMasternodePayment(): seesawBase_4=%lu\n", seesawBase);
-            }
-        }
-    }
-    // Set calculated position of seesaw arc
-    retDouble = swingSubsidy * seesawBase;
-    // v1.1 payment subsidy patch
-    if(pindexBest->GetBlockTime() > 0)
-    {
-        if(pindexBest->GetBlockTime() > nPaymentUpdate_1) // Monday, May 20, 2019 12:00:00 AM
-        {
-            // set returned value to calculated value
-            ret = retDouble;
-            LogPrint("creation", "GetMasternodePayment(): Value=%lu\n\n", ret);
-
-        }
-    }
-
+    
     if(pindexBest->nHeight == nHeightReimburse) {
-        ret = 0;
+        return 0;
     }
-    // Return our seesaw arc value (reward in current position of arc)
-    return ret;
+    if(pindexBest->nHeight > nHeightReimburse)
+    {
+        return 150 * COIN;
+    }
+
+    return 100 * COIN;
 }
 
 //
