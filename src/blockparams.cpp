@@ -540,10 +540,7 @@ int64_t GetProofOfStakeReward(const CBlockIndex* pindexPrev, int64_t nCoinAge, i
 int64_t GetMasternodePayment(int nHeight, int64_t blockValue)
 {
     
-    if(pindexBest->nHeight == nHeightReimburse) {
-        return 0;
-    }
-    if(pindexBest->nHeight > nHeightReimburse)
+    if(pindexBest->nHeight >= nHeightReimburse)
     {
         return 150 * COIN;
     }

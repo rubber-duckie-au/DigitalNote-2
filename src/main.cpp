@@ -2722,8 +2722,8 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
         }
         // Devops Address Set and Updates
         strVfyDevopsAddress = Params().DevOpsAddress();
-        if(pindexBest->GetBlockTime() < nPaymentUpdate_2) { strVfyDevopsAddress = "dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7"; }
-        else if(pindexBest->nHeight < nHeightReimburse) { strVfyDevopsAddress = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18"; }
+        //if(pindexBest->GetBlockTime() < nPaymentUpdate_2) { strVfyDevopsAddress = "dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7"; }
+        //else if(pindexBest->nHeight < nHeightReimburse) { strVfyDevopsAddress = "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18"; }
         // Check PoW or PoS payments for current block
         for (unsigned int i=0; i < vtx[isProofOfStake].vout.size(); i++) {
             // Define values
@@ -2762,36 +2762,40 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                 }
                 // Check for PoS devops payment
                 if (i == nProofOfIndexDevops) {
-                   if (addressOut.ToString() == strVfyDevopsAddress) {
-                       LogPrintf("CheckBlock() : PoS Recipient devops address validity succesfully verified\n");
-                   } else {
-                       LogPrintf("CheckBlock() : PoS Recipient devops address validity could not be verified\n");
-                       // Skip check during transition to new DevOps
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_3) {
-                           // Check legacy blocks for valid payment, only skip for Update_2
-                           if (pindexBest->GetBlockTime() < nPaymentUpdate_2) {
-                               fBlockHasPayments = false;
-                           }
-                       } else {
-                           // Re-enable enforcement post transition (Update_3)
-                           fBlockHasPayments = false;
-                       }
-                   }
-                   if (nIndexedDevopsPayment == nDevopsPayment) {
-                       LogPrintf("CheckBlock() : PoS Recipient devops amount validity succesfully verified\n");
-                   } else {
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_2) {
-                           LogPrintf("CheckBlock() : PoS Recipient devops amount validity could not be verified\n");
-                           fBlockHasPayments = false;
-                       } else {
-                           if (nIndexedDevopsPayment >= nDevopsPayment) {
-                               LogPrintf("CheckBlock() : PoS Reciepient devops amount is abnormal due to large fee paid");
-                           } else {
-                               LogPrintf("CheckBlock() : PoS Reciepient devops amount validity could not be verified");
-                               fBlockHasPayments = false;
-                           }
-                       }
-                   }
+                    if (addressOut.ToString() == strVfyDevopsAddress)
+                    {
+                        LogPrintf("CheckBlock() : PoS Recipient devops address validity succesfully verified\n");
+                    }
+                    else
+                    {
+
+                        if (pindexBest->GetBlockTime() < nPaymentUpdate_2)
+                        {
+                            if (addressOut.ToString() == "dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7")
+                            {
+                                LogPrintf("CheckBlock() : PoS Recipient devops address validity succesfully verified\n");
+                            }
+                            else
+                            {
+                                LogPrintf("CheckBlock() : PoS Recipient devops address validity could not be verified\n");
+                                fBlockHasPayments = false;
+                            }
+
+                        }
+                        else if(pindexBest->GetBlockTime() >= nPaymentUpdate_2 && pindexBest->nHeight < nHeightReimburse)
+                        {
+                            if (addressOut.ToString() == "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18")
+                            {
+                                LogPrintf("CheckBlock() : PoS Recipient devops address validity succesfully verified\n");
+                            }
+                            else
+                            {
+                                LogPrintf("CheckBlock() : PoS Recipient devops address validity could not be verified\n");
+                                fBlockHasPayments = false;
+                            }
+                        }
+
+                    }
                 }
             }
             // PoW Checks
@@ -2821,36 +2825,40 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                 }
                 // Check for PoW devops payment
                 if (i == nProofOfIndexDevops) {
-                   if (addressOut.ToString() == strVfyDevopsAddress) {
-                      LogPrintf("CheckBlock() : PoW Recipient devops address validity succesfully verified\n");
-                   } else {
-                       LogPrintf("CheckBlock() : PoW Recipient devops address validity could not be verified\n");
-                       // Skip check during transition to new DevOps
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_3) {
-                           // Check legacy blocks for valid payment, only skip for Update_2
-                           if (pindexBest->GetBlockTime() < nPaymentUpdate_2) {
-                               fBlockHasPayments = false;
-                           }
-                       } else {
-                           // Re-enable enforcement post transition (Update_3)
-                           fBlockHasPayments = false;
-                       }
-                   }
-                   if (nAmount == nDevopsPayment) {
-                      LogPrintf("CheckBlock() : PoW Recipient devops amount validity succesfully verified\n");
-                   } else {
-                       if (pindexBest->GetBlockTime() < nPaymentUpdate_2) {
-                           LogPrintf("CheckBlock() : PoW Recipient devops amount validity could not be verified\n");
-                           fBlockHasPayments = false;
-                       } else {
-                           if (nIndexedDevopsPayment >= nDevopsPayment) {
-                               LogPrintf("CheckBlock() : PoW Reciepient devops amount is abnormal due to large fee paid");
-                           } else {
-                               LogPrintf("CheckBlock() : PoW Reciepient devops amount validity could not be verified");
-                               fBlockHasPayments = false;
-                           }
-                       }
-                   }
+                    if (addressOut.ToString() == strVfyDevopsAddress)
+                    {
+                       LogPrintf("CheckBlock() : PoW Recipient devops address validity succesfully verified\n");
+                    }
+                    else
+                     {
+
+                         if (pindexBest->GetBlockTime() < nPaymentUpdate_2)
+                         {
+                             if (addressOut.ToString() == "dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7")
+                             {
+                                 LogPrintf("CheckBlock() : PoW Recipient devops address validity succesfully verified\n");
+                             }
+                             else
+                             {
+                                 LogPrintf("CheckBlock() : PoW Recipient devops address validity could not be verified\n");
+                                 fBlockHasPayments = false;
+                             }
+
+                         }
+                         else if(pindexBest->GetBlockTime() >= nPaymentUpdate_2 && pindexBest->nHeight < nHeightReimburse)
+                         {
+                             if (addressOut.ToString() == "dHy3LZvqX5B2rAAoLiA7Y7rpvkLXKTkD18")
+                             {
+                                 LogPrintf("CheckBlock() : PoW Recipient devops address validity succesfully verified\n");
+                             }
+                             else
+                             {
+                                 LogPrintf("CheckBlock() : PoW Recipient devops address validity could not be verified\n");
+                                 fBlockHasPayments = false;
+                             }
+                         }
+
+                     }
                 }
             }
         }
