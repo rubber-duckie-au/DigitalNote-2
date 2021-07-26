@@ -91,7 +91,7 @@ cd ~; git clone https://github.com/DigitalNoteXDN/DigitalNote-2 DigitalNote
 
 ### Build DigitalNote daemon
 ```
-cd ~; cd ~/DigitalNote/src; chmod a+x obj; chmod a+x leveldb/build_detect_platform; chmod a+x secp256k1; chmod a+x leveldb; chmod a+x ~/DigitalNote/src; chmod a+x ~/DigitalNote; make -f makefile.unix USE_UPNP=-; cd ~; cp -r ~/DigitalNote/src/DigitalNoted /usr/local/bin/DigitalNoted;
+cd ~; cd ~/DigitalNote/src; chmod a+x obj; chmod a+x leveldb/build_detect_platform; chmod a+x secp256k1; chmod a+x leveldb; chmod a+x ~/DigitalNote/src; chmod a+x ~/DigitalNote; make -f makefile.unix USE_UPNP=-; cd ~; sudo cp -r ~/DigitalNote/src/DigitalNoted /usr/local/bin/DigitalNoted;
 ```
 
 ### (Optional) Build DigitalNote-QT (GUI wallet) on Linux 
