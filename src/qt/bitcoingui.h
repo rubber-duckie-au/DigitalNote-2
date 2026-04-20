@@ -20,6 +20,7 @@ class MasternodeManager;
 class MessagePage;
 class MessageModel;
 class BlockBrowser;
+class SeedPhraseDialog;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -113,6 +114,7 @@ private:
     QAction *lockWalletAction;
 	QAction *checkWalletAction;
 	QAction *repairWalletAction;
+    QAction *seedPhraseAction;
     QAction *aboutQtAction;
     QAction *openRPCConsoleAction;
     QAction *masternodeManagerAction;
@@ -127,6 +129,7 @@ private:
     Notificator *notificator;
     TransactionView *transactionView;
     RPCConsole *rpcConsole;
+    SeedPhraseDialog *seedPhraseDialog;
 
     QMovie *syncIconMovie;
     /** Keep track of previous number of blocks, to detect progress */
@@ -202,6 +205,7 @@ private slots:
     void optionsClicked();
     /** Show about dialog */
     void aboutClicked();
+    
 #ifndef Q_OS_MAC
     /** Handle tray icon clicked */
     void trayIconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -250,6 +254,7 @@ private slots:
     void editConfigExt();
     /** Open the data directory */
     void openDataDir();
+    void showSeedPhrase();
 };
 
 #endif // BITCOINGUI_H

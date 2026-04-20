@@ -1,0 +1,197 @@
+name: CI - Windows x64 + x86
+
+on:
+  push:
+    branches: [ master, main, develop, 2.0.0.7-testing ]
+  pull_request:
+    branches: [ master, main, develop, 2.0.0.7-testing ]
+
+env:
+  BUILDER_REPO: https://github.com/DigitalNoteXDN/DigitalNote-Builder.git
+  JOBS: 4
+
+jobs:
+  build-windows-x64:
+    name: Windows x64 — Build + Test (MSYS2 MinGW64)
+    runs-on: windows-2022
+    timeout-minutes: 180
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout DigitalNote-2
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MSYS2 MinGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: git base-devel mingw-w64-x86_64-toolchain cmake
+
+      - name: Cache compiled libraries
+        uses: actions/cache@v4
+        id: libs-cache
+        with:
+          path: |
+            C:/msys64/home/runneradmin/DigitalNote-Builder/libs
+            C:/msys64/home/runneradmin/DigitalNote-Builder/download
+          key: windows-x64-libs-${{ hashFiles('.gitmodules') }}-v4
+
+      - name: Clone Builder + download
+        run: |
+          cd ~
+          if [ ! -d DigitalNote-Builder ]; then
+            git clone $BUILDER_REPO DigitalNote-Builder
+          else
+            cd DigitalNote-Builder && git pull
+          fi
+          if [ "${{ steps.libs-cache.outputs.cache-hit }}" != 'true' ]; then
+            cd ~/DigitalNote-Builder && bash download.sh
+          fi
+
+      - name: Install MSYS2 packages + compile libs
+        run: |
+          cd ~/DigitalNote-Builder/windows/x64
+          bash update.sh
+          if [ "${{ steps.libs-cache.outputs.cache-hit }}" != 'true' ]; then
+            bash compile_libs.sh "-j $JOBS"
+          fi
+
+      - name: Link source tree
+        run: |
+          WIN_PATH="${{ github.workspace }}"
+          MSYS_PATH=$(cygpath -u "$WIN_PATH")
+          ln -sfn "$MSYS_PATH" ~/DigitalNote-Builder/DigitalNote-2
+
+      - name: Compile daemon + wallet
+        run: |
+          cd ~/DigitalNote-Builder/windows/x64
+          bash compile_deamon.sh "-j $JOBS"
+          bash compile_app.sh    "-j $JOBS"
+
+      - name: Assert version constants in source
+        run: |
+          cd ~/DigitalNote-Builder/DigitalNote-2
+          grep -qE 'CLIENT_VERSION_BUILD[[:space:]]+7' src/clientversion.h || {
+            echo "ERROR: CLIENT_VERSION_BUILD is not 7"; exit 1
+          }
+          grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
+            echo "ERROR: PROTOCOL_VERSION is not 62055"; exit 1
+          }
+          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
+            echo "ERROR: MIN_PEER_PROTO_VERSION is not 62055"; exit 1
+          }
+          echo "OK: clientversion.h BUILD=7, version.h PROTOCOL=62055"
+
+      - name: Assert daemon advertises 2.0.0.7
+        run: |
+          DAEMON=$(find ~/DigitalNote-Builder/DigitalNote-2 \
+                        -name 'digitalnoted.exe' -type f | head -1)
+          if [ -n "$DAEMON" ]; then
+            "$DAEMON" --version 2>&1 | grep -q "2\.0\.0\.7" || {
+              echo "ERROR: daemon.exe does not report version 2.0.0.7"; exit 1
+            }
+            echo "OK: daemon.exe reports 2.0.0.7"
+          else
+            echo "WARNING: digitalnoted.exe not found — skipping runtime version check"
+          fi
+
+      - name: Build BIP39 unit tests
+        run: |
+          cd ~/DigitalNote-Builder/DigitalNote-2
+          cmake -S test -B build-test \
+                -G "MinGW Makefiles" \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DDIGITALNOTE_SRC_DIR=src \
+                -DBIP39_INCLUDE_DIR=src/bip39/include \
+                -DBIP39_SRC_DIR=src/bip39/src \
+                -DOPENSSL_ROOT_DIR=~/DigitalNote-Builder/libs/openssl
+          cmake --build build-test --parallel $JOBS
+
+      - name: Run BIP39 + version tests
+        run: |
+          cd ~/DigitalNote-Builder/DigitalNote-2/build-test
+          ctest --output-on-failure
+
+      - name: Collect Windows executables
+        shell: pwsh
+        run: |
+          $src = "C:\msys64\home\runneradmin\DigitalNote-Builder\DigitalNote-2"
+          $dst = "${{ github.workspace }}\artifacts"
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          Get-ChildItem -Path $src -Recurse -Include "*.exe" |
+            Copy-Item -Destination $dst
+
+      - name: Upload Windows x64 binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: digitalnote-windows-x64
+          path: ${{ github.workspace }}\artifacts\*.exe
+          retention-days: 14
+
+  build-windows-x86:
+    name: Windows x86 — Build (MSYS2 MinGW32)
+    runs-on: windows-2022
+    timeout-minutes: 180
+    if: github.event_name == 'push'
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: git base-devel mingw-w64-i686-toolchain cmake
+
+      - name: Cache libs (x86)
+        uses: actions/cache@v4
+        id: libs-cache
+        with:
+          path: C:/msys64/home/runneradmin/DigitalNote-Builder-x86/libs
+          key: windows-x86-libs-${{ hashFiles('.gitmodules') }}-v4
+
+      - name: Clone + build (x86)
+        run: |
+          cd ~
+          git clone $BUILDER_REPO DigitalNote-Builder-x86 2>/dev/null || \
+            (cd DigitalNote-Builder-x86 && git pull)
+          cd DigitalNote-Builder-x86
+          if [ "${{ steps.libs-cache.outputs.cache-hit }}" != 'true' ]; then
+            bash download.sh
+          fi
+          cd windows/x86
+          bash update.sh
+          if [ "${{ steps.libs-cache.outputs.cache-hit }}" != 'true' ]; then
+            bash compile_libs.sh "-j $JOBS"
+          fi
+          WIN_PATH="${{ github.workspace }}"
+          ln -sfn "$(cygpath -u "$WIN_PATH")" ~/DigitalNote-Builder-x86/DigitalNote-2
+          bash compile_deamon.sh "-j $JOBS"
+          bash compile_app.sh    "-j $JOBS"
+
+      - name: Assert version constants (x86)
+        run: |
+          grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' \
+            ~/DigitalNote-Builder-x86/DigitalNote-2/src/version.h || {
+            echo "ERROR: PROTOCOL_VERSION not 62055 in x86 build"; exit 1
+          }
+          echo "OK: PROTOCOL_VERSION = 62055 in x86 build"
+
+      - name: Upload Windows x86 binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: digitalnote-windows-x86
+          path: C:\msys64\home\runneradmin\DigitalNote-Builder-x86\DigitalNote-2\**\*.exe
+          retention-days: 14

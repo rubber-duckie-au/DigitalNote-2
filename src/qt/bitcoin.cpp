@@ -93,13 +93,7 @@ static void InitMessage(const std::string &message)
 {
     if(splashref)
     {
-        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(255,255,255));
-
-        if(!fUseDarkTheme)
-        {
-            splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(97,78,176));
-        }
-
+        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(97,78,176));
         QApplication::instance()->processEvents();
     }
     LogPrintf("init message: %s\n", message);
@@ -151,7 +145,16 @@ int main(int argc, char *argv[])
 #endif
 
     Q_INIT_RESOURCE(bitcoin);
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+    QApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+#endif
     QApplication app(argc, argv);
+    GUIUtil::applyDefaultFont(&app);
 
     // Do this early as we don't want to bother initializing if we are just calling IPC
     // ... but do it after creating app, so QCoreApplication::arguments is initialized:
@@ -240,18 +243,11 @@ int main(int argc, char *argv[])
     // on mac, also change the icon now because it would look strange to have a testnet splash (green) and a std app icon (orange)
     if(GetBoolArg("-testnet", false))
     {
-        MacDockIconHandler::instance()->setIcon(QIcon(fUseDarkTheme ? ":icons/dark/bitcoin_testnet" : ":icons/bitcoin_testnet"));
+        MacDockIconHandler::instance()->setIcon(QIcon(":icons/bitcoin_testnet"));
     }
 #endif
 
-    QString splashSelect = ":/images/splash-dark";
-
-    if (!fUseDarkTheme)
-    {
-        splashSelect = ":/images/splash";
-    }
-
-    QSplashScreen splash(QPixmap(splashSelect), Qt::Widget);
+    QSplashScreen splash(QPixmap(":/images/splash"), Qt::Widget);
 
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min", false))
     {
@@ -265,9 +261,6 @@ int main(int argc, char *argv[])
 
     try
     {
-        if (fUseDarkTheme)
-            GUIUtil::SetDarkThemeQSS(app);
-
         // Regenerate startup link, to fix links to old versions
         if (GUIUtil::GetStartOnSystemStartup())
             GUIUtil::SetStartOnSystemStartup(true);

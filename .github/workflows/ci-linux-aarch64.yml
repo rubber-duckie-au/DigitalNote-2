@@ -1,0 +1,113 @@
+name: CI - Linux aarch64
+
+on:
+  push:
+    branches: [ master, main, develop, 2.0.0.7-testing ]
+  pull_request:
+    branches: [ master, main, develop, 2.0.0.7-testing ]
+
+env:
+  BUILDER_REPO: https://github.com/DigitalNoteXDN/DigitalNote-Builder.git
+  JOBS: 4
+
+jobs:
+  build-linux-aarch64:
+    name: Linux aarch64 — Build + Version Check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up QEMU for arm64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Cache compiled libraries
+        uses: actions/cache@v4
+        id: libs-cache
+        with:
+          path: |
+            ${{ github.workspace }}/../DigitalNote-Builder/libs
+            ${{ github.workspace }}/../DigitalNote-Builder/download
+          key: linux-aarch64-libs-${{ hashFiles('.gitmodules') }}-v4
+
+      - name: Clone DigitalNote-Builder
+        working-directory: ${{ github.workspace }}/..
+        run: |
+          git clone $BUILDER_REPO DigitalNote-Builder 2>/dev/null || \
+            (cd DigitalNote-Builder && git pull)
+
+      - name: Download library archives
+        if: steps.libs-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder
+        run: bash download.sh
+
+      - name: Install cross-compile toolchain + aarch64 packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            crossbuild-essential-arm64 \
+            qemu-user-static \
+            libboost-test-dev
+          sudo bash ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64/update.sh \
+            2>/dev/null || true
+
+      - name: Compile static libraries (aarch64)
+        if: steps.libs-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
+        run: bash compile_libs.sh "-j $JOBS"
+
+      - name: Link source tree
+        run: |
+          ln -sfn ${{ github.workspace }} \
+            ${{ github.workspace }}/../DigitalNote-Builder/DigitalNote-2
+
+      - name: Compile daemon (aarch64)
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
+        run: bash compile_deamon.sh "-j $JOBS"
+
+      - name: Compile Qt wallet (aarch64)
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
+        run: bash compile_app.sh "-j $JOBS"
+
+      # Version assertions on source (binary is aarch64 and cannot run on x86 host)
+      - name: Assert version constants in source
+        run: |
+          grep -qE 'CLIENT_VERSION_BUILD[[:space:]]+7' src/clientversion.h || {
+            echo "ERROR: CLIENT_VERSION_BUILD is not 7"; exit 1
+          }
+          grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
+            echo "ERROR: PROTOCOL_VERSION is not 62055"; exit 1
+          }
+          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
+            echo "ERROR: MIN_PEER_PROTO_VERSION is not 62055"; exit 1
+          }
+          echo "OK: clientversion.h BUILD=7, version.h PROTOCOL=62055"
+
+      # Run BIP39 unit tests natively on the x86 host (validates logic independent of arch)
+      - name: Build + run BIP39 and version unit tests (x86 host, same logic)
+        run: |
+          sudo apt-get install -y libboost-all-dev cmake
+          cmake -S test -B build-test \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DDIGITALNOTE_SRC_DIR=${{ github.workspace }}/src \
+                -DBIP39_INCLUDE_DIR=${{ github.workspace }}/src/bip39/include \
+                -DBIP39_SRC_DIR=${{ github.workspace }}/src/bip39/src
+          cmake --build build-test --parallel $JOBS
+          cd build-test && ctest --output-on-failure
+
+      - name: Upload aarch64 binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: digitalnote-linux-aarch64
+          path: |
+            **/digitalnoted
+            **/digitalnote-qt
+            **/bitcoin-qt
+          retention-days: 14

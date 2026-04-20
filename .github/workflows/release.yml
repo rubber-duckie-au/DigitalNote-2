@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'    # triggers on tags like v2.1.0, v2.1.0-rc1
+
+permissions:
+  contents: write   # required to create GitHub Releases
+
+jobs:
+  # ── Trigger all platform builds ────────────────────────────────────────────
+  # We reuse artefacts from the CI jobs by calling them as reusable workflows.
+  # Since they're not yet extracted to reusable workflow files, we duplicate
+  # the trigger here via workflow_run or simply re-run inline.
+  # Simplest approach: wait for all CI artefacts then publish the release.
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-22.04
+    needs: []   # filled in once CI workflows are converted to reusable
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for changelog generation
+
+      # Download all CI artefacts (must have been built by prior CI runs on this tag)
+      - name: Download Linux x64 artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: digitalnote-linux-x64
+          path: dist/linux-x64
+        continue-on-error: true
+
+      - name: Download macOS x64 artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: digitalnote-macos-x64
+          path: dist/macos-x64
+        continue-on-error: true
+
+      - name: Download macOS arm64 artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: digitalnote-macos-arm64
+          path: dist/macos-arm64
+        continue-on-error: true
+
+      - name: Download Windows x64 artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: digitalnote-windows-x64
+          path: dist/windows-x64
+        continue-on-error: true
+
+      - name: Download Windows x86 artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: digitalnote-windows-x86
+          path: dist/windows-x86
+        continue-on-error: true
+
+      # Package each platform into a zip
+      - name: Package artefacts
+        run: |
+          TAG="${{ github.ref_name }}"
+          cd dist
+          for platform in linux-x64 macos-x64 macos-arm64 windows-x64 windows-x86; do
+            if [ -d "$platform" ]; then
+              zip -r "../digitalnote-${TAG}-${platform}.zip" "$platform"
+              echo "Packaged: digitalnote-${TAG}-${platform}.zip"
+            fi
+          done
+          ls -lh ../*.zip 2>/dev/null || echo "No zip files created"
+
+      # Auto-generate changelog from git log since last tag
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGES=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges -30)
+          fi
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGES"       >> $GITHUB_OUTPUT
+          echo "EOF"            >> $GITHUB_OUTPUT
+
+      # Create the GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "DigitalNote XDN ${{ github.ref_name }}"
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') }}
+          body: |
+            ## DigitalNote XDN ${{ github.ref_name }}
+
+            ### Changes since last release
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            ### What's new in this build
+            - BIP39 seed phrase tab in the Qt wallet (24-word recovery phrase)
+            - Async coin control and send — no more GUI freezes on large wallets
+            - HiDPI / 4K text scaling — readable on all display densities
+            - Light theme only — dark-theme conditional code removed
+
+            ### Platform packages
+            | Platform | File |
+            |---|---|
+            | Linux x64 | `digitalnote-${{ github.ref_name }}-linux-x64.zip` |
+            | macOS x64 (Intel) | `digitalnote-${{ github.ref_name }}-macos-x64.zip` |
+            | macOS arm64 (Apple Silicon) | `digitalnote-${{ github.ref_name }}-macos-arm64.zip` |
+            | Windows x64 | `digitalnote-${{ github.ref_name }}-windows-x64.zip` |
+            | Windows x86 | `digitalnote-${{ github.ref_name }}-windows-x86.zip` |
+
+            ### Verification
+            SHA256 checksums are listed below each asset on this page.
+
+            ### Prerequisites
+            - Qt 5.15.14 LTS (bundled in the app on macOS/Windows)
+            - BerkeleyDB 6.2.32 (statically linked)
+            - OpenSSL 3.3.x (statically linked)
+
+          files: |
+            *.zip
+          token: ${{ secrets.GITHUB_TOKEN }}

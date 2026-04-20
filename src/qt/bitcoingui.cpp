@@ -2,7 +2,7 @@
  * Qt5 bitcoin GUI.
  *
  * W.J. van der Laan 2011-2012
- * The DigitalNote Developers 2018-2020
+ * The DigitalNote Developers 2018-2026
  */
 
 #include "compat.h"
@@ -77,6 +77,7 @@
 #include "chainparams.h"
 #include "cclientuiinterface.h"
 #include "bitcoinunits.h"
+#include "seedphrasedialog.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
@@ -107,7 +108,8 @@ DigitalNoteGUI::DigitalNoteGUI(QWidget *parent):
     notificator(0),
     rpcConsole(0),
     prevBlocks(0),
-    nWeight(0)
+    nWeight(0),
+    seedPhraseDialog(0)
 {
     resize(900, 520);
     setWindowTitle(tr("DigitalNote") + " - " + tr("Wallet"));
@@ -419,6 +421,10 @@ void DigitalNoteGUI::createActions()
     connect(editConfigAction, SIGNAL(triggered()), this, SLOT(editConfig()));
     connect(editConfigExtAction, SIGNAL(triggered()), this, SLOT(editConfigExt()));
     connect(openDataDirAction, SIGNAL(triggered()), this, SLOT(openDataDir()));
+
+    seedPhraseAction = new QAction(QIcon(":/icons/key"), tr("&Seed Phrase / Recovery Words..."), this);
+    seedPhraseAction->setToolTip(tr("View your BIP39 wallet recovery seed phrase"));
+    connect(seedPhraseAction, SIGNAL(triggered()), this, SLOT(showSeedPhrase()));
 }
 
 void DigitalNoteGUI::createMenuBar()
@@ -449,6 +455,8 @@ void DigitalNoteGUI::createMenuBar()
     settings->addAction(showBackupsAction);
 	settings->addAction(checkWalletAction);
     settings->addAction(repairWalletAction);
+    settings->addSeparator();
+    settings->addAction(seedPhraseAction);
 		
     QMenu *help = appMenuBar->addMenu(tr("&Help"));
     help->addAction(openRPCConsoleAction);
@@ -1470,4 +1478,16 @@ void DigitalNoteGUI::openDataDir()
     boost::filesystem::path path = GetDataDir();
     QString pathString = QString::fromStdString(path.string());
     QDesktopServices::openUrl(QUrl::fromLocalFile(pathString));
+}
+
+void DigitalNoteGUI::showSeedPhrase()
+{
+    if (!walletModel)
+        return;
+
+    if (!seedPhraseDialog)
+        seedPhraseDialog = new SeedPhraseDialog(walletModel, this);
+
+    seedPhraseDialog->clearMnemonic();
+    seedPhraseDialog->exec();
 }
