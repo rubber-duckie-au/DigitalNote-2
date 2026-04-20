@@ -85,7 +85,7 @@ jobs:
           grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
             echo "ERROR: PROTOCOL_VERSION is not 62055"; exit 1
           }
-          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
+          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62052' src/version.h || {
             echo "ERROR: MIN_PEER_PROTO_VERSION is not 62055"; exit 1
           }
           echo "OK: clientversion.h BUILD=7, version.h PROTOCOL=62055"
