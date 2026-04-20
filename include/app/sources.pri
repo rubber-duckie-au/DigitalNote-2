@@ -274,6 +274,9 @@ SOURCES += src/qt/blockbrowser.cpp
 SOURCES += src/qt/qvalidatedtextedit.cpp
 SOURCES += src/qt/plugins/mrichtexteditor/mrichtextedit.cpp
 SOURCES += src/qt/flowlayout.cpp
+SOURCES += src/qt/seedphrasedialog.cpp
+SOURCES += src/qt/coincontrolworker.cpp
+SOURCES += src/qt/sendcoinsworker.cpp
 
 macx {
 	OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
