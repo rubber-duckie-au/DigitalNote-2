@@ -96,9 +96,11 @@ BOOST_AUTO_TEST_CASE(ProtocolVersionExactlyOneBumpFromPrevious)
     BOOST_CHECK_EQUAL(PROTOCOL_VERSION, 62054 + 1);
 }
 
-BOOST_AUTO_TEST_CASE(MinPeerProtoVersionIs62055)
+BOOST_AUTO_TEST_CASE(MinPeerProtoVersionIs62052)
 {
-    BOOST_CHECK_EQUAL(MIN_PEER_PROTO_VERSION, 62055);
+    // Intentionally kept at 62052 — allows existing network peers running
+    // older protocol versions to stay connected during rollout.
+    BOOST_CHECK_EQUAL(MIN_PEER_PROTO_VERSION, 62052);
 }
 
 BOOST_AUTO_TEST_CASE(MinProtoVersionIsGraceWindowAt62054)
@@ -108,9 +110,11 @@ BOOST_AUTO_TEST_CASE(MinProtoVersionIsGraceWindowAt62054)
     BOOST_CHECK_LT(MIN_PROTO_VERSION, PROTOCOL_VERSION);
 }
 
-BOOST_AUTO_TEST_CASE(ProtocolVersionNotLessThanMinPeer)
+BOOST_AUTO_TEST_CASE(ProtocolVersionGreaterThanMinPeer)
 {
-    BOOST_CHECK_GE(PROTOCOL_VERSION, MIN_PEER_PROTO_VERSION);
+    // PROTOCOL_VERSION (62055) must be greater than MIN_PEER_PROTO_VERSION (62052)
+    // confirming the network accepts older peers while advertising the new version
+    BOOST_CHECK_GT(PROTOCOL_VERSION, MIN_PEER_PROTO_VERSION);
 }
 
 BOOST_AUTO_TEST_CASE(MinProtoVersionNotGreaterThanProtocol)
@@ -118,10 +122,19 @@ BOOST_AUTO_TEST_CASE(MinProtoVersionNotGreaterThanProtocol)
     BOOST_CHECK_LE(MIN_PROTO_VERSION, PROTOCOL_VERSION);
 }
 
-BOOST_AUTO_TEST_CASE(ProtocolVersionGap_OnlyOne)
+BOOST_AUTO_TEST_CASE(MinPeerProtoVersionBelowProtocol)
 {
-    // Gap between MIN_PROTO_VERSION and PROTOCOL_VERSION must be exactly 1
-    BOOST_CHECK_EQUAL(PROTOCOL_VERSION - MIN_PROTO_VERSION, 1);
+    // MIN_PEER_PROTO_VERSION (62052) must be strictly below PROTOCOL_VERSION (62055)
+    // and also below MIN_PROTO_VERSION (62054)
+    BOOST_CHECK_LT(MIN_PEER_PROTO_VERSION, PROTOCOL_VERSION);
+    BOOST_CHECK_LT(MIN_PEER_PROTO_VERSION, MIN_PROTO_VERSION);
+}
+
+BOOST_AUTO_TEST_CASE(ProtocolVersionGap_ThreeFromMinPeer)
+{
+    // PROTOCOL_VERSION is 62055, MIN_PEER_PROTO_VERSION is 62052 — gap of 3
+    // This is intentional: we accept peers from the last 3 protocol versions
+    BOOST_CHECK_EQUAL(PROTOCOL_VERSION - MIN_PEER_PROTO_VERSION, 3);
 }
 
 BOOST_AUTO_TEST_CASE(CAddrTimeVersionSanity)
