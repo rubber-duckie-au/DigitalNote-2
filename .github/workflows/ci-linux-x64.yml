@@ -296,13 +296,13 @@ jobs:
           }
           echo "✓ PROTOCOL_VERSION = 62055 confirmed"
 
-      - name: Check version.h MIN_PEER_PROTO_VERSION is 62055
+      - name: Check version.h MIN_PEER_PROTO_VERSION is 62052
         run: |
-          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
-            echo "ERROR: MIN_PEER_PROTO_VERSION is not 62055"
+          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62052' src/version.h || {
+            echo "ERROR: MIN_PEER_PROTO_VERSION is not 62052"
             exit 1
           }
-          echo "✓ MIN_PEER_PROTO_VERSION = 62055 confirmed"
+          echo "✓ MIN_PEER_PROTO_VERSION = 62052 confirmed"
 
       - name: Check no dark theme references remain
         run: |
