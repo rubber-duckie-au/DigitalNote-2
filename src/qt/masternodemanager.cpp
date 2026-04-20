@@ -254,8 +254,9 @@ void MasternodeManager::on_startButton_clicked()
 
 	// start the node
 	QItemSelectionModel* selectionModel = ui->tableWidget_2->selectionModel();
-	QModelIndexList selected = selectionModel->selectedRows();
-	if(selected.count() == 0)
+	QModelIndexList selectedRows = selectionModel->selectedRows();
+	
+	if(selectedRows.count() == 0)
 	{
 		statusObj += "<br>Select a Masternode alias to start" ;
 		
@@ -266,56 +267,59 @@ void MasternodeManager::on_startButton_clicked()
 		
 		return;
 	}
+	
+	for (int i = 0; i < selectedRows.count(); i++)
+    {
+		QModelIndex index = selectedRows.at(i);
+		int r = index.row();
+		std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
 
-	QModelIndex index = selected.at(0);
-	int r = index.row();
-	std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
+		if(pwalletMain->IsLocked()) {
+			statusObj += "<br>Please unlock your wallet to start Masternode" ;
+			
+			QMessageBox msg;
+			
+			msg.setText(QString::fromStdString(statusObj));
+			msg.exec();
+			
+			return;
+		}
 
-	if(pwalletMain->IsLocked()) {
-		statusObj += "<br>Please unlock your wallet to start Masternode" ;
+		statusObj += "<center>Alias: " + sAlias;
+
+		for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
+		{
+			if(mne.getAlias() == sAlias)
+			{
+				std::string errorMessage;
+				std::string strDonateAddress = "";
+				std::string strDonationPercentage = "";
+
+				bool result = activeMasternode.Register(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strDonateAddress, strDonationPercentage, errorMessage);
+
+				if(result)
+				{
+					statusObj += "<br>Successfully started masternode." ;
+				}
+				else
+				{
+					statusObj += "<br>Failed to start masternode.<br>Error: " + errorMessage;
+				}
+				
+				break;
+			}
+		}
+
+		pwalletMain->Lock();
+		
+		statusObj += "</center>";
 		
 		QMessageBox msg;
 		
 		msg.setText(QString::fromStdString(statusObj));
 		msg.exec();
-		
-		return;
 	}
-
-	statusObj += "<center>Alias: " + sAlias;
-
-	for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
-	{
-		if(mne.getAlias() == sAlias)
-		{
-			std::string errorMessage;
-			std::string strDonateAddress = "";
-			std::string strDonationPercentage = "";
-
-			bool result = activeMasternode.Register(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strDonateAddress, strDonationPercentage, errorMessage);
-
-			if(result)
-			{
-				statusObj += "<br>Successfully started masternode." ;
-			}
-			else
-			{
-				statusObj += "<br>Failed to start masternode.<br>Error: " + errorMessage;
-			}
-			
-			break;
-		}
-	}
-
-	pwalletMain->Lock();
 	
-	statusObj += "</center>";
-	
-	QMessageBox msg;
-	
-	msg.setText(QString::fromStdString(statusObj));
-	msg.exec();
-
 	MasternodeManager::on_UpdateButton_clicked();
 }
 
@@ -387,9 +391,9 @@ void MasternodeManager::on_stopButton_clicked()
 
 	// stop the node
 	QItemSelectionModel* selectionModel = ui->tableWidget_2->selectionModel();
-	QModelIndexList selected = selectionModel->selectedRows();
+	QModelIndexList selectedRows = selectionModel->selectedRows();
 
-	if(selected.count() == 0)
+	if(selectedRows.count() == 0)
 	{
 		statusObj += "<br>Select a Masternode alias to stop" ;
 		
@@ -401,53 +405,58 @@ void MasternodeManager::on_stopButton_clicked()
 		return;
 	}
 
-	QModelIndex index = selected.at(0);
-	int r = index.row();
-	std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
-
-	if(pwalletMain->IsLocked()) {
-
-		statusObj += "<br>Please unlock your wallet to stop Masternode" ;
+	for (int i = 0; i < selectedRows.count(); i++)
+    {
+		QModelIndex index = selectedRows.at(i);
+		int r = index.row();
+		std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
 		
+		statusObj = "";
+		
+		if(pwalletMain->IsLocked()) {
+
+			statusObj += "<br>Please unlock your wallet to stop Masternode" ;
+			
+			QMessageBox msg;
+			
+			msg.setText(QString::fromStdString(statusObj));
+			msg.exec();
+			
+			return;
+		}
+
+		statusObj += "<center>Alias: " + sAlias;
+
+		for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
+		{
+			if(mne.getAlias() == sAlias)
+			{
+				std::string errorMessage;
+				bool result = activeMasternode.StopMasterNode(mne.getIp(), mne.getPrivKey(), errorMessage);
+
+				if(result)
+				{
+					statusObj += "<br>Successfully stopped masternode." ;
+				}
+				else
+				{
+					statusObj += "<br>Failed to stop masternode.<br>Error: " + errorMessage;
+				}
+				
+				break;
+			}
+		}
+
+		pwalletMain->Lock();
+
+		statusObj += "</center>";
+
 		QMessageBox msg;
-		
+
 		msg.setText(QString::fromStdString(statusObj));
 		msg.exec();
-		
-		return;
 	}
-
-	statusObj += "<center>Alias: " + sAlias;
-
-	for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
-	{
-		if(mne.getAlias() == sAlias)
-		{
-			std::string errorMessage;
-			bool result = activeMasternode.StopMasterNode(mne.getIp(), mne.getPrivKey(), errorMessage);
-
-			if(result)
-			{
-				statusObj += "<br>Successfully stopped masternode." ;
-			}
-			else
-			{
-				statusObj += "<br>Failed to stop masternode.<br>Error: " + errorMessage;
-			}
-			
-			break;
-		}
-	}
-
-	pwalletMain->Lock();
-
-	statusObj += "</center>";
-
-	QMessageBox msg;
-
-	msg.setText(QString::fromStdString(statusObj));
-	msg.exec();
-
+	
 	MasternodeManager::on_UpdateButton_clicked();
 }
 
