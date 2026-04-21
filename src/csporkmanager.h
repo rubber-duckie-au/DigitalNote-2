@@ -1,6 +1,7 @@
 #ifndef CSPORKMANAGER_H
 #define CSPORKMANAGER_H
 
+#include <cstdint>
 #include <vector>
 #include <string>
 

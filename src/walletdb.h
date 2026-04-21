@@ -1,6 +1,7 @@
 #ifndef WALLETDB_H
 #define WALLETDB_H
 
+#include <cstdint>
 #include <list>
 #include <string>
 #include <vector>

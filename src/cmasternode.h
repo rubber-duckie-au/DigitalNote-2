@@ -1,6 +1,7 @@
 #ifndef CMASTERNODE_H
 #define CMASTERNODE_H
 
+#include <cstdint>
 #include <vector>
 
 #include "ctxin.h"

@@ -1,6 +1,7 @@
 #ifndef WALLETMODEL_H
 #define WALLETMODEL_H
 
+#include <cstdint>
 #include "compat.h"
 
 #include <map>

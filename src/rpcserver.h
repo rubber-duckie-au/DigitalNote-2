@@ -1,6 +1,7 @@
 #ifndef RPCSERVER_H
 #define RPCSERVER_H
 
+#include <cstdint>
 #include <list>
 #include <map>
 #include <boost/function.hpp>

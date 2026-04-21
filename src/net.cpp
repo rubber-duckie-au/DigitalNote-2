@@ -1314,7 +1314,12 @@ void ThreadMapPort()
 	struct IGDdatas data;
 	int r;
 
+	char wanaddr[64];
+#if MINIUPNPC_API_VERSION >= 18
+	r = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr), wanaddr, sizeof(wanaddr));
+#else
 	r = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
+#endif
 
 	if (r == 1)
 	{
@@ -2406,4 +2411,3 @@ void DumpBanlist()
 		GetTimeMillis() - nStart
 	);
 }
-

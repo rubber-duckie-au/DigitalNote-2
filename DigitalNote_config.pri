@@ -4,6 +4,9 @@ DIGITALNOTE_VERSION_MINOR = 0
 DIGITALNOTE_VERSION_REVISION = 0
 DIGITALNOTE_VERSION_BUILD = 7
 
+## MSYS2 Install Path
+MINGW64_PREFIX 						  = $$system(cygpath -m /mingw64)
+
 ## Leveldb library
 DIGITALNOTE_LEVELDB_PATH              = $${DIGITALNOTE_PATH}/src/leveldb
 DIGITALNOTE_LEVELDB_INCLUDE_PATH      = $${DIGITALNOTE_PATH}/src/leveldb/include
@@ -19,7 +22,7 @@ win32 {
 	## Boost
 	DIGITALNOTE_BOOST_INCLUDE_PATH    = $${DIGITALNOTE_PATH}/../libs/boost_1_80_0/include/boost-1_80
 	DIGITALNOTE_BOOST_LIB_PATH        = $${DIGITALNOTE_PATH}/../libs/boost_1_80_0/lib
-	DIGITALNOTE_BOOST_SUFFIX          = -mgw12-mt-s-x64-1_80
+	DIGITALNOTE_BOOST_SUFFIX          = -mgw15-mt-s-x64-1_80
 	
 	## OpenSSL library
 	DIGITALNOTE_OPENSSL_INCLUDE_PATH  = $${DIGITALNOTE_PATH}/../libs/openssl-1.1.1w/include
@@ -34,8 +37,8 @@ win32 {
 	DIGITALNOTE_EVENT_LIB_PATH        = $${DIGITALNOTE_PATH}/../libs/libevent-2.1.12-stable/lib
 	
 	## GMP library
-	DIGITALNOTE_GMP_INCLUDE_PATH      = $${DIGITALNOTE_PATH}/../libs/gmp-6.3.0/include
-	DIGITALNOTE_GMP_LIB_PATH          = $${DIGITALNOTE_PATH}/../libs/gmp-6.3.0/lib
+	DIGITALNOTE_GMP_INCLUDE_PATH      = $${MINGW64_PREFIX}/include
+	DIGITALNOTE_GMP_LIB_PATH          = $${MINGW64_PREFIX}/lib
 	
 	## Miniupnp library
 	DIGITALNOTE_MINIUPNP_INCLUDE_PATH = $${DIGITALNOTE_PATH}/../libs/miniupnpc-2.2.8/include

@@ -1,6 +1,7 @@
 #ifndef SPORK_H
 #define SPORK_H
 
+#include <cstdint>
 #include <map>
 #include <string>
 

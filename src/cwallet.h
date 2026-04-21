@@ -1,6 +1,7 @@
 #ifndef CWALLET_H
 #define CWALLET_H
 
+#include <cstdint>
 #include <set>
 #include <map>
 

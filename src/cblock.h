@@ -1,6 +1,7 @@
 #ifndef CBLOCK_H
 #define CBLOCK_H
 
+#include <cstdint>
 #include <vector>
 #include <memory>
 

@@ -1,6 +1,7 @@
 #ifndef CMASTERNODEMAN_H
 #define CMASTERNODEMAN_H
 
+#include <cstdint>
 #include <vector>
 #include <map>
 
