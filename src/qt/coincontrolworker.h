@@ -11,7 +11,7 @@
 #include <QString>
 
 #include "wallet.h"       // COutput
-#include "coincontrol.h"  // CCoinControl
+#include "ccoincontrol.h"  // CCoinControl
 
 class CWallet;
 

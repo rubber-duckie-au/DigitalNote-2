@@ -4,7 +4,7 @@
 
 #include "sendcoinsworker.h"
 #include "walletmodel.h"
-#include "coincontrol.h"
+#include "ccoincontrol.h"
 
 SendCoinsWorker::SendCoinsWorker(WalletModel *model,
                                  QList<SendCoinsRecipient> recipients,
