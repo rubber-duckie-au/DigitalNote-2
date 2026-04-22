@@ -34,7 +34,7 @@ jobs:
           path: |
             ${{ github.workspace }}/../DigitalNote-Builder/libs
             ${{ github.workspace }}/../DigitalNote-Builder/download
-          key: linux-aarch64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('../DigitalNote-Builder/compile/*.sh') }}-v5
+          key: linux-aarch64-libs-${{ hashFiles('.gitmodules') }}-v5
 
       - name: Clone DigitalNote-Builder
         working-directory: ${{ github.workspace }}/..

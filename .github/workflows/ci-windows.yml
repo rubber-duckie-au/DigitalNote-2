@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/DigitalNote-Builder/windows/x64/libs/qt-5.15.7
-          key: qt-5.15.7-static-mingw64-${{ hashFiles('**/compile/qt.sh') }}
+          key: qt-5.15.7-static-mingw64-v1
 
       - name: Download pre-built Qt 5.15.7 from GitHub Release
         if: steps.cache-qt.outputs.cache-hit != 'true'
@@ -103,7 +103,7 @@ jobs:
             ~/DigitalNote-Builder/windows/x64/libs/miniupnpc-2.2.8
             ~/DigitalNote-Builder/windows/x64/libs/qrencode-4.1.1
             ~/DigitalNote-Builder/windows/x64/libs/mnemonic
-          key: windows-x64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('**/compile/*.sh') }}-v5
+          key: windows-x64-libs-${{ hashFiles('.gitmodules') }}-v5
 
       # ── 6. Download source archives ────────────────────────────────────────
       # Qt tarball NOT downloaded — we use the pre-built Release artifact.
@@ -311,14 +311,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/DigitalNote-Builder-x86/windows/x86/libs/qt-5.15.7
-          key: qt-5.15.7-static-mingw32-${{ hashFiles('**/compile/qt.sh') }}
+          key: qt-5.15.7-static-mingw32-v1
 
       - name: Cache libs (x86)
         uses: actions/cache@v4
         id: libs-cache
         with:
           path: ~/DigitalNote-Builder-x86/windows/x86/libs
-          key: windows-x86-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('**/compile/*.sh') }}-v5
+          key: windows-x86-libs-${{ hashFiles('.gitmodules') }}-v5
 
       - name: Clone Builder + download (x86)
         run: |

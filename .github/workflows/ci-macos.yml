@@ -30,7 +30,7 @@ jobs:
           path: |
             ${{ github.workspace }}/../DigitalNote-Builder/libs
             ${{ github.workspace }}/../DigitalNote-Builder/download
-          key: macos-x64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('../DigitalNote-Builder/compile/*.sh') }}-v5
+          key: macos-x64-libs-${{ hashFiles('.gitmodules') }}-v5
           restore-keys: macos-x64-libs-
 
       - name: Clone DigitalNote-Builder
@@ -173,7 +173,7 @@ jobs:
           path: |
             ${{ github.workspace }}/../DigitalNote-Builder/libs
             ${{ github.workspace }}/../DigitalNote-Builder/download
-          key: macos-arm64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('../DigitalNote-Builder/compile/*.sh') }}-v5
+          key: macos-arm64-libs-${{ hashFiles('.gitmodules') }}-v5
 
       - name: Clone Builder + install packages
         run: |
