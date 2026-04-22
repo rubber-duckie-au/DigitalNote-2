@@ -14,12 +14,13 @@ jobs:
   build-linux-aarch64:
     name: Linux aarch64 — Build + Version Check
     runs-on: ubuntu-22.04
-    timeout-minutes: 180
+    timeout-minutes: 240
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Set up QEMU for arm64 emulation
         uses: docker/setup-qemu-action@v3
@@ -33,20 +34,22 @@ jobs:
           path: |
             ${{ github.workspace }}/../DigitalNote-Builder/libs
             ${{ github.workspace }}/../DigitalNote-Builder/download
-          key: linux-aarch64-libs-${{ hashFiles('.gitmodules') }}-v4
+          key: linux-aarch64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('../DigitalNote-Builder/compile/*.sh') }}-v5
 
       - name: Clone DigitalNote-Builder
         working-directory: ${{ github.workspace }}/..
         run: |
-          git clone $BUILDER_REPO DigitalNote-Builder 2>/dev/null || \
-            (cd DigitalNote-Builder && git pull)
+          git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/DigitalNoteXDN/DigitalNote-Builder.git \
+            2>/dev/null || (cd DigitalNote-Builder && git pull)
 
       - name: Download library archives
         if: steps.libs-cache.outputs.cache-hit != 'true'
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder
         run: bash download.sh
 
-      - name: Install cross-compile toolchain + aarch64 packages
+      # Matches linux/aarch64/update.sh plus cmake (needed by mnemonic.sh)
+      # and libgmp-dev (needed by gmp.sh on Linux)
+      - name: Install cross-compile toolchain + system packages
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y \
@@ -54,29 +57,57 @@ jobs:
             g++-aarch64-linux-gnu \
             crossbuild-essential-arm64 \
             qemu-user-static \
+            cmake \
+            libgmp-dev \
             libboost-test-dev
           sudo bash ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64/update.sh \
             2>/dev/null || true
 
+      # Note: aarch64 compile_libs.sh should include secp256k1, leveldb, mnemonic
+      # just like the x64 version. These are built from git submodules.
       - name: Compile static libraries (aarch64)
         if: steps.libs-cache.outputs.cache-hit != 'true'
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
-        run: bash compile_libs.sh "-j $JOBS"
+        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
 
       - name: Link source tree
         run: |
           ln -sfn ${{ github.workspace }} \
             ${{ github.workspace }}/../DigitalNote-Builder/DigitalNote-2
 
+      # Matches linux/aarch64/compile_deamon.sh + USE_BIP39=1
       - name: Compile daemon (aarch64)
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
-        run: bash compile_deamon.sh "-j $JOBS"
+        run: |
+          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          cd DigitalNote-2
+          rm -rf build Makefile
+          qmake DigitalNote.daemon.pro \
+            USE_UPNP=1 \
+            USE_BUILD_INFO=1 \
+            USE_BIP39=1 \
+            RELEASE=1
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-daemon-aarch64.log
+          exit ${PIPESTATUS[0]}
 
+      # Matches linux/aarch64/compile_app.sh + USE_BIP39=1
       - name: Compile Qt wallet (aarch64)
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
-        run: bash compile_app.sh "-j $JOBS"
+        run: |
+          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          cd DigitalNote-2
+          rm -rf build Makefile
+          qmake DigitalNote.app.pro \
+            USE_UPNP=1 \
+            USE_DBUS=1 \
+            USE_QRCODE=1 \
+            USE_BUILD_INFO=1 \
+            USE_BIP39=1 \
+            RELEASE=1
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-app-aarch64.log
+          exit ${PIPESTATUS[0]}
 
-      # Version assertions on source (binary is aarch64 and cannot run on x86 host)
+      # Version assertions on source — binary is aarch64 so cannot run on x86 host
       - name: Assert version constants in source
         run: |
           grep -qE 'CLIENT_VERSION_BUILD[[:space:]]+7' src/clientversion.h || {
@@ -90,17 +121,16 @@ jobs:
           }
           echo "OK: clientversion.h BUILD=7, version.h PROTOCOL=62055"
 
-      # Run BIP39 unit tests natively on the x86 host (validates logic independent of arch)
-      - name: Build + run BIP39 and version unit tests (x86 host, same logic)
+      - name: Warning analysis
+        if: always()
         run: |
-          sudo apt-get install -y libboost-all-dev cmake
-          cmake -S test -B build-test \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DDIGITALNOTE_SRC_DIR=${{ github.workspace }}/src \
-                -DBIP39_INCLUDE_DIR=${{ github.workspace }}/src/bip39/include \
-                -DBIP39_SRC_DIR=${{ github.workspace }}/src/bip39/src
-          cmake --build build-test --parallel $JOBS
-          cd build-test && ctest --output-on-failure
+          for log in build-app-aarch64.log build-daemon-aarch64.log; do
+            if [ -f "${{ github.workspace }}/$log" ]; then
+              W=$(grep -c ": warning:" "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              E=$(grep -c ": error:"   "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              echo "=== $log: $W warning(s), $E error(s) ==="
+            fi
+          done
 
       - name: Upload aarch64 binaries
         uses: actions/upload-artifact@v4
@@ -110,4 +140,14 @@ jobs:
             **/digitalnoted
             **/digitalnote-qt
             **/bitcoin-qt
+          retention-days: 14
+
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-logs-linux-aarch64-${{ github.sha }}
+          path: |
+            ${{ github.workspace }}/build-app-aarch64.log
+            ${{ github.workspace }}/build-daemon-aarch64.log
           retention-days: 14

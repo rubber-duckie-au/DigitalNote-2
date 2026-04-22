@@ -1,3 +1,4 @@
+#include <QString>
 #ifndef WALLETMODEL_H
 #define WALLETMODEL_H
 
@@ -11,6 +12,7 @@
 #include "allocators.h" /* for SecureString */
 #include "instantx.h"
 #include "cwallet.h"
+#include "bip39/bip39_wallet.h"
 #include "serialize.h"
 #include "walletmodeltransaction.h"
 
@@ -95,8 +97,6 @@ class WalletModel : public QObject
 
 public:
     explicit WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent = 0);
-
-    CWallet* getWallet() const { return wallet; }
     ~WalletModel();
 
     enum StatusCode // Returned by sendCoins
@@ -161,6 +161,10 @@ public:
     bool changePassphrase(const SecureString &oldPass, const SecureString &newPass);
     // Wallet backup
     bool backupWallet(const QString &filename);
+
+    // BIP39 seed phrase generation
+    // Wallet must be encrypted and unlocked. Returns false on failure.
+    bool generateMnemonic(BIP39Wallet::WordCount wordCount, SecureString &mnemonic) const;
 	// Wallet Repair
 	void checkWallet(int& nMismatchSpent, int64_t& nBalanceInQuestion);
 	void repairWallet(int& nMismatchSpent, int64_t& nBalanceInQuestio);
@@ -186,6 +190,7 @@ public:
     };
 
     UnlockContext requestUnlock();
+    UnlockContext requestUnlockWithMnemonic(const QString &mnemonic);
 
     bool getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);

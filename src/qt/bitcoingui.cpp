@@ -114,8 +114,8 @@ DigitalNoteGUI::DigitalNoteGUI(QWidget *parent):
     resize(900, 520);
     setWindowTitle(tr("DigitalNote") + " - " + tr("Wallet"));
 #ifndef Q_OS_MAC
-    qApp->setWindowIcon(QIcon(fUseDarkTheme ? ":/icons/dark/bitcoin-dark" : ":/icons/bitcoin"));
-    setWindowIcon(QIcon(fUseDarkTheme ? ":/icons/dark/bitcoin-dark" : ":/icons/bitcoin"));
+    qApp->setWindowIcon(QIcon(":/icons/bitcoin"));
+    setWindowIcon(QIcon(":/icons/bitcoin"));
 #else
     //setUnifiedTitleAndToolBarOnMac(true);
     QApplication::setAttribute(Qt::AA_DontShowIconsInMenus);
@@ -240,8 +240,12 @@ DigitalNoteGUI::DigitalNoteGUI(QWidget *parent):
         }
     }
 
-    statusBar()->addWidget(progressBarLabel);
-    statusBar()->addWidget(progressBar);
+    // Layout: [label fixed] [bar expanding] [icons fixed]
+    // label: stretch=0 (natural width)
+    // bar:   stretch=1 (takes all remaining space)
+    // frameBlocks: permanentWidget (natural width, right-anchored)
+    statusBar()->addWidget(progressBarLabel, 0);
+    statusBar()->addWidget(progressBar, 1);
     statusBar()->addPermanentWidget(frameBlocks);
     statusBar()->setObjectName("statusBar");
     statusBar()->setStyleSheet("#statusBar { color: #3098c6; background-color: #1d1f22; }");
@@ -251,7 +255,7 @@ DigitalNoteGUI::DigitalNoteGUI(QWidget *parent):
         statusBar()->setStyleSheet("#statusBar { color: #ffffff; background-color: #614eb0; }");
     }
 
-    syncIconMovie = new QMovie(fUseDarkTheme ? ":/movies/update_spinner_black" : ":/movies/update_spinner", "mng", this);
+    syncIconMovie = new QMovie(":/movies/update_spinner", "mng", this);
 
     // Clicking on a transaction on the overview page simply sends you to transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), this, SLOT(gotoHistoryPage()));
@@ -362,7 +366,7 @@ void DigitalNoteGUI::createActions()
     quitAction->setToolTip(tr("Quit application"));
     quitAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q));
     quitAction->setMenuRole(QAction::QuitRole);
-    aboutAction = new QAction(QIcon(fUseDarkTheme ? ":/icons/dark/bitcoin-dark" : ":/icons/bitcoin"), tr("&About DigitalNote"), this);
+    aboutAction = new QAction(QIcon(":/icons/bitcoin"), tr("&About DigitalNote"), this);
     aboutAction->setToolTip(tr("Show information about DigitalNote"));
     aboutAction->setMenuRole(QAction::AboutRole);
     aboutQtAction = new QAction(QIcon(":/qt-project.org/qmessagebox/images/qtlogo-64.png"), tr("About &Qt"), this);
@@ -371,7 +375,7 @@ void DigitalNoteGUI::createActions()
     optionsAction = new QAction(QIcon(":/icons/options"), tr("&Options..."), this);
     optionsAction->setToolTip(tr("Modify configuration options for DigitalNote"));
     optionsAction->setMenuRole(QAction::PreferencesRole);
-    toggleHideAction = new QAction(QIcon(fUseDarkTheme ? ":/icons/dark/bitcoin-dark" : ":/icons/bitcoin"), tr("&Show / Hide"), this);
+    toggleHideAction = new QAction(QIcon(":/icons/bitcoin"), tr("&Show / Hide"), this);
     encryptWalletAction = new QAction(QIcon(":/icons/lock_closed_toolbar"), tr("&Encrypt Wallet..."), this);
     encryptWalletAction->setToolTip(tr("Encrypt or decrypt wallet"));
     backupWalletAction = new QAction(QIcon(":/icons/filesave"), tr("&Backup Wallet..."), this);
@@ -450,13 +454,12 @@ void DigitalNoteGUI::createMenuBar()
     settings->addAction(changePassphraseAction);
     settings->addAction(unlockWalletAction);
     settings->addAction(lockWalletAction);
+    settings->addAction(seedPhraseAction);
     settings->addSeparator();
     settings->addAction(optionsAction);
     settings->addAction(showBackupsAction);
 	settings->addAction(checkWalletAction);
     settings->addAction(repairWalletAction);
-    settings->addSeparator();
-    settings->addAction(seedPhraseAction);
 		
     QMenu *help = appMenuBar->addMenu(tr("&Help"));
     help->addAction(openRPCConsoleAction);
@@ -488,7 +491,7 @@ void DigitalNoteGUI::createToolBars()
     toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     toolbar->setContextMenuPolicy(Qt::PreventContextMenu);
     toolbar->setObjectName("tabs");
-    toolbar->setStyleSheet("QToolBar { spacing: 0px; } QWidget { background:#121418; } QToolButton { color: #ffffff; font-weight:bold; background-color: #121418;} QToolButton:hover { background-color: #2f1d4b; } QToolButton:checked { background-color: #2f1d4b } QToolButton:pressed { background-color: #2f1d4b; } #tabs { color: #ffffff; background-color: #121418; }");
+    toolbar->setStyleSheet("QToolBar { spacing: 0px; } QWidget { background:#121418; } QToolButton { color: #d4d4d4; font-weight:bold; background-color: #121418;} QToolButton:hover { background-color: #2f1d4b; } QToolButton:checked { background-color: #2f1d4b } QToolButton:pressed { background-color: #2f1d4b; } #tabs { color: #d4d4d4; background-color: #121418; }");
     toolbar->setIconSize(QSize(24,24));
 
     if(!fUseDarkTheme)
@@ -499,7 +502,7 @@ void DigitalNoteGUI::createToolBars()
     QLabel* header = new QLabel();
     header->setMinimumSize(142, 142);
     header->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    header->setPixmap(QPixmap(fUseDarkTheme ? ":/images/header-dark" : ":/images/header"));
+    header->setPixmap(QPixmap(":/images/header"));
     header->setMaximumSize(142,142);
     header->setScaledContents(true);
     toolbar->addWidget(header);
@@ -533,7 +536,10 @@ void DigitalNoteGUI::createToolBars()
 void DigitalNoteGUI::setClientModel(ClientModel *clientModel)
 {
     if(!fOnlyTor)
-    netLabel->setText("CLEARNET");
+    {
+        netLabel->setText("MAINNET");
+        netLabel->setToolTip(tr("Connected to the XDN Mainnet"));
+    }
     else
     {
     if(!IsLimited(NET_TOR))
@@ -558,8 +564,8 @@ void DigitalNoteGUI::setClientModel(ClientModel *clientModel)
             if(trayIcon)
             {
                 trayIcon->setToolTip(tr("DigitalNote client") + QString(" ") + tr("[testnet]"));
-                trayIcon->setIcon(QIcon(fUseDarkTheme ? ":/icons/dark/toolbar-dark_testnet" : ":/icons/toolbar_testnet"));
-                toggleHideAction->setIcon(QIcon(fUseDarkTheme ? ":/icons/dark/toolbar-dark_testnet" : ":/icons/toolbar_testnet"));
+                trayIcon->setIcon(QIcon(":/icons/toolbar_testnet"));
+                toggleHideAction->setIcon(QIcon(":/icons/toolbar_testnet"));
             }
         }
 
@@ -639,7 +645,7 @@ void DigitalNoteGUI::createTrayIcon()
     trayIconMenu = new QMenu(this);
     trayIcon->setContextMenu(trayIconMenu);
     trayIcon->setToolTip(tr("DigitalNote client"));
-    trayIcon->setIcon(QIcon(fUseDarkTheme ? ":/icons/dark/toolbar-dark" : ":/icons/toolbar"));
+    trayIcon->setIcon(QIcon(":/icons/toolbar"));
     connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this, SLOT(trayIconActivated(QSystemTrayIcon::ActivationReason)));
     trayIcon->show();
@@ -702,11 +708,11 @@ void DigitalNoteGUI::setNumConnections(int count)
     QString icon;
     switch(count)
     {
-    case 0: icon = fUseDarkTheme ? ":/icons/dark/connect_0" : ":/icons/connect_0"; break;
-    case 1: case 2: case 3: icon = fUseDarkTheme ? ":/icons/dark/connect_1" : ":/icons/connect_1"; break;
-    case 4: case 5: case 6: icon = fUseDarkTheme ? ":/icons/dark/connect_2" : ":/icons/connect_2"; break;
-    case 7: case 8: case 9: icon = fUseDarkTheme ? ":/icons/dark/connect_3" : ":/icons/connect_3"; break;
-    default: icon = fUseDarkTheme ? ":/icons/dark/connect_4" : ":/icons/connect_4"; break;
+    case 0: icon = ":/icons/connect_0"; break;
+    case 1: case 2: case 3: icon = ":/icons/connect_1"; break;
+    case 4: case 5: case 6: icon = ":/icons/connect_2"; break;
+    case 7: case 8: case 9: icon = ":/icons/connect_3"; break;
+    default: icon = ":/icons/connect_4"; break;
     }
     labelConnectionsIcon->setPixmap(QIcon(icon).pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
     labelConnectionsIcon->setToolTip(tr("%n active connection(s) to DigitalNote network", "", count));
@@ -727,12 +733,17 @@ void DigitalNoteGUI::setNumBlocks(int count)
     if(secs < 90*60)
     {
         tooltip = tr("Up to date") + QString(".<br>") + tooltip;
-        labelBlocksIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/synced" : ":/icons/synced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
+        labelBlocksIcon->setPixmap(QIcon(":/icons/synced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
 
         overviewPage->showOutOfSyncWarning(false);
 
         progressBarLabel->setVisible(false);
         progressBar->setVisible(false);
+
+        // Update MAINNET label tooltip with current block height
+        if (netLabel)
+            netLabel->setToolTip(tr("Synced to the XDN Mainnet (Block Height: %1)")
+                .arg(count));
     }
     else
     {
@@ -768,6 +779,14 @@ void DigitalNoteGUI::setNumBlocks(int count)
         progressBar->setMaximum(totalSecs);
         progressBar->setValue(totalSecs - secs);
         progressBar->setVisible(true);
+
+        // Update MAINNET label tooltip with real peer chain height
+        if (netLabel) {
+            int peerHeight = clientModel->getNumBlocksOfPeers();
+            netLabel->setToolTip(tr("Syncing block %1 of %2")
+                .arg(count)
+                .arg(peerHeight));
+        }
 
         tooltip = tr("Catching up...") + QString("<br>") + tooltip;
         labelBlocksIcon->setMovie(syncIconMovie);
@@ -1154,7 +1173,7 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
 {
     if(fWalletUnlockStakingOnly)
     {
-    labelEncryptionIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/lock_open" : ":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
+    labelEncryptionIcon->setPixmap(QIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>unlocked for staking only</b>"));
         changePassphraseAction->setEnabled(false);
         unlockWalletAction->setVisible(true);
@@ -1168,7 +1187,7 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
     switch(status)
     {
     case WalletModel::Unencrypted:
-        labelEncryptionIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/lock_open" : ":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
+        labelEncryptionIcon->setPixmap(QIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelEncryptionIcon->setToolTip(tr("Wallet is <b>not encrypted</b>"));
         changePassphraseAction->setEnabled(false);
         unlockWalletAction->setVisible(false);
@@ -1177,7 +1196,7 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
         fGUIunlock = true;
         break;
     case WalletModel::Unlocked:
-        labelEncryptionIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/lock_open" : ":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
+        labelEncryptionIcon->setPixmap(QIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
         changePassphraseAction->setEnabled(true);
         unlockWalletAction->setVisible(false);
@@ -1186,7 +1205,7 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
         fGUIunlock = true;
         break;
     case WalletModel::Locked:
-        labelEncryptionIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/lock_closed" : ":/icons/lock_closed").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
+        labelEncryptionIcon->setPixmap(QIcon(":/icons/lock_closed").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>locked</b>"));
         changePassphraseAction->setEnabled(true);
         unlockWalletAction->setVisible(true);
@@ -1411,12 +1430,12 @@ void DigitalNoteGUI::updateStakingIcon()
         nWeight /= COIN;
         nNetworkWeight /= COIN;
 
-        labelStakingIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/staking_on" : ":/icons/staking_on").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
+        labelStakingIcon->setPixmap(QIcon(":/icons/staking_on").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelStakingIcon->setToolTip(tr("Staking.<br>Your weight is %1<br>Network weight is %2<br>Expected time to earn reward is %3").arg(nWeight).arg(nNetworkWeight).arg(text));
     }
     else
     {
-        labelStakingIcon->setPixmap(QIcon(fUseDarkTheme ? ":/icons/dark/staking_off" : ":/icons/staking_off").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
+        labelStakingIcon->setPixmap(QIcon(":/icons/staking_off").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         if (pwalletMain && pwalletMain->IsLocked())
             labelStakingIcon->setToolTip(tr("Not staking because wallet is locked"));
         else if (vNodes.empty())

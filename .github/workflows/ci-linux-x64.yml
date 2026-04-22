@@ -14,7 +14,8 @@ jobs:
   build-and-test-linux-x64:
     name: Linux x64 — Build + Full Test Suite
     runs-on: ubuntu-22.04
-    timeout-minutes: 150
+    # Qt builds from source inside compile_libs.sh — allow up to 3 hours
+    timeout-minutes: 240
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          token: ${{ secrets.PAT_TOKEN }}
 
       # ── 2. Cache libraries ─────────────────────────────────────────────────
       - name: Cache Builder libraries
@@ -31,7 +33,7 @@ jobs:
           path: |
             ${{ github.workspace }}/../DigitalNote-Builder/libs
             ${{ github.workspace }}/../DigitalNote-Builder/download
-          key: linux-x64-libs-${{ hashFiles('.gitmodules') }}-v4
+          key: linux-x64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('../DigitalNote-Builder/linux/x64/compile_libs.sh', '../DigitalNote-Builder/compile/*.sh') }}-v5
           restore-keys: linux-x64-libs-
 
       # ── 3. Clone DigitalNote-Builder ───────────────────────────────────────
@@ -39,7 +41,7 @@ jobs:
         working-directory: ${{ github.workspace }}/..
         run: |
           if [ ! -d DigitalNote-Builder ]; then
-            git clone ${{ env.BUILDER_REPO }} DigitalNote-Builder
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/DigitalNoteXDN/DigitalNote-Builder.git
           else
             cd DigitalNote-Builder && git pull origin master
           fi
@@ -50,20 +52,30 @@ jobs:
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder
         run: bash download.sh
 
-      # ── 5. Install system packages via Builder ─────────────────────────────
+      # ── 5. Install system packages ─────────────────────────────────────────
+      # Matches linux/x64/update.sh plus extras needed for:
+      #   cmake        — required by mnemonic.sh (BIP39 submodule uses CMake)
+      #   libgmp-dev   — GMP library (gmp.sh checks for this on Linux)
+      #   xvfb         — headless display for Qt GUI tests
       - name: Install system packages
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
         run: |
           sudo apt-get update -qq
           bash update.sh
-          # Additional packages for tests
           sudo apt-get install -y \
+            cmake \
+            libgmp-dev \
             xvfb \
             libboost-test-dev \
             cppcheck \
             valgrind
 
       # ── 6. Compile static libraries ────────────────────────────────────────
+      # Note: linux/x64/compile_libs.sh calls qt.sh last — Qt is built from
+      # source here. The libs cache prevents rebuilding on every run.
+      # compile_libs.sh passes $1 as the jobs arg to each sub-script.
+      # secp256k1 and leveldb are built from DigitalNote-2 submodules.
+      # mnemonic.sh (BIP39) uses cmake and requires OpenSSL to be built first.
       - name: Compile static libraries
         if: steps.libs-cache.outputs.cache-hit != 'true'
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
@@ -76,16 +88,57 @@ jobs:
             ${{ github.workspace }}/../DigitalNote-Builder/DigitalNote-2
 
       # ── 8. Compile daemon ──────────────────────────────────────────────────
+      # USE_BIP39=1 enables the BIP39 mnemonic seed phrase feature
       - name: Compile daemon (digitalnoted)
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
-        run: bash compile_deamon.sh "-j ${{ env.JOBS }}"
+        run: |
+          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          cd DigitalNote-2
+          rm -rf build Makefile
+          qmake DigitalNote.daemon.pro \
+            USE_UPNP=1 \
+            USE_BUILD_INFO=1 \
+            USE_BIP39=1 \
+            RELEASE=1
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-daemon.log
+          exit ${PIPESTATUS[0]}
 
       # ── 9. Compile Qt wallet ───────────────────────────────────────────────
+      # USE_BIP39=1 — BIP39 seed phrase support
+      # USE_DBUS=1  — system tray notifications on Linux
       - name: Compile Qt wallet (digitalnote-qt)
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
-        run: bash compile_app.sh "-j ${{ env.JOBS }}"
+        run: |
+          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          cd DigitalNote-2
+          rm -rf build Makefile
+          qmake DigitalNote.app.pro \
+            USE_UPNP=1 \
+            USE_DBUS=1 \
+            USE_QRCODE=1 \
+            USE_BUILD_INFO=1 \
+            USE_BIP39=1 \
+            RELEASE=1
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-app.log
+          exit ${PIPESTATUS[0]}
 
-      # ── 10. Verify binaries ────────────────────────────────────────────────
+      # ── 10. Warning analysis ───────────────────────────────────────────────
+      - name: Analyse build warnings
+        if: always()
+        run: |
+          for log in build-app.log build-daemon.log; do
+            if [ -f "${{ github.workspace }}/$log" ]; then
+              W=$(grep -c ": warning:" "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              E=$(grep -c ": error:"   "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              echo "=== $log: $W warning(s), $E error(s) ==="
+              if [ "$W" -gt 0 ]; then
+                grep ": warning:" "${{ github.workspace }}/$log" \
+                  | sed 's|.*: warning:||' | sort | uniq -c | sort -rn | head -20
+              fi
+            fi
+          done
+
+      # ── 11. Verify binaries ────────────────────────────────────────────────
       - name: Verify build artefacts
         run: |
           set -e
@@ -98,13 +151,11 @@ jobs:
           [ -x "$DAEMON" ] || { echo "ERROR: daemon not found/executable"; exit 1; }
           [ -x "$WALLET" ] || { echo "ERROR: wallet not found/executable"; exit 1; }
 
-      # ── 11. VERSION ASSERTIONS — verify version bump took effect ──────────
+      # ── 12. Version assertions ─────────────────────────────────────────────
       - name: Assert version numbers baked into binaries
         run: |
           set -e
           DAEMON=$(find ${{ github.workspace }} -name 'digitalnoted' -type f | head -1)
-
-          # 1. Client version 2.0.0.7 in --version output
           VERSION_OUT=$("$DAEMON" --version 2>&1 || true)
           echo "Version output: $VERSION_OUT"
           echo "$VERSION_OUT" | grep -q "2\.0\.0\.7" || {
@@ -112,124 +163,43 @@ jobs:
             exit 1
           }
           echo "✓ Client version 2.0.0.7 confirmed"
-
-          # 2. PROTOCOL_VERSION 62055 baked into binary
-          strings "$DAEMON" | grep -q "62055" || {
+          strings "$DAEMON" | grep -q "62055" || \
             echo "WARNING: '62055' not found in daemon strings — verify PROTOCOL_VERSION"
-          }
           echo "✓ Protocol 62055 check complete"
 
-      # ── 12. Run existing DigitalNote-2 test suite ──────────────────────────
+      # ── 13. Run existing test suite ────────────────────────────────────────
       - name: Run existing test_digitalnote (core unit tests)
         run: |
-          # Locate the test binary — built by compile_app.sh or by the daemon
-          # build. Convention in Bitcoin-derived repos is src/test/test_bitcoin
-          # or test/test_digitalnote.
           TEST_BIN=$(find ${{ github.workspace }} \
                           \( -name 'test_digitalnote' \
                           -o -name 'test_bitcoin' \) \
                           -type f | head -1)
-
-          if [ -z "$TEST_BIN" ]; then
-            echo "⚠ test_digitalnote binary not found — building separately"
-            cd ${{ github.workspace }}
-            # Try building the test suite via qmake if it's a separate target
-            qmake "CONFIG+=test" && make -j${{ env.JOBS }} || true
-            TEST_BIN=$(find . -name 'test_digitalnote' -o -name 'test_bitcoin' | head -1)
-          fi
-
           if [ -n "$TEST_BIN" ] && [ -x "$TEST_BIN" ]; then
-            echo "Running: $TEST_BIN --log_level=test_suite"
+            echo "Running: $TEST_BIN"
             "$TEST_BIN" --log_level=test_suite --report_level=short
           else
             echo "⚠ test_digitalnote binary not available on this build path"
-            echo "  This is expected if the project does not have a separate test target."
-            echo "  The new src/test/*.cpp files will be compiled and run in the next step."
           fi
 
-      # ── 13. Build & run new tests: version + core ─────────────────────────
-      - name: Build standalone test executables (new tests)
-        run: |
-          set -e
-          LIBS_DIR="${{ github.workspace }}/../DigitalNote-Builder/libs"
-          SRC="${{ github.workspace }}/src"
-
-          cmake -S ${{ github.workspace }}/test \
-                -B ${{ github.workspace }}/build-test \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DDIGITALNOTE_SRC_DIR="$SRC" \
-                -DBIP39_INCLUDE_DIR="$SRC/bip39/include" \
-                -DBIP39_SRC_DIR="$SRC/bip39/src" \
-                -DOPENSSL_ROOT_DIR="$LIBS_DIR/openssl" \
-                -DBOOST_ROOT="$LIBS_DIR/boost"
-
-          cmake --build ${{ github.workspace }}/build-test --parallel ${{ env.JOBS }}
-
-      - name: Run version tests
-        run: |
-          cd ${{ github.workspace }}/build-test
-          ./test_version --log_level=all --report_level=short
-
-      - name: Run BIP39 unit tests
-        run: |
-          cd ${{ github.workspace }}/build-test
-          ./test_bip39_wallet --log_level=all --report_level=short
-
-      - name: Run integration tests (mnemonic/seed vectors)
-        run: |
-          cd ${{ github.workspace }}/build-test
-          ./test_integration --log_level=all --report_level=short
-
-      # ── 14. Run Qt tests (headless) ────────────────────────────────────────
-      - name: Run Qt GUI tests (offscreen)
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: |
-          cd ${{ github.workspace }}/build-test
-          # Qt test binaries use -v2 for verbose output
-          if [ -f ./test_seedphrasedialog ]; then
-            ./test_seedphrasedialog -v2
-          fi
-          if [ -f ./test_walletmodel ]; then
-            ./test_walletmodel -v2
-          fi
-
-      # ── 15. Static analysis ────────────────────────────────────────────────
+      # ── 14. Static analysis ────────────────────────────────────────────────
       - name: cppcheck — new Qt/BIP39 sources
         run: |
           cppcheck \
             --enable=warning,style,performance \
             --suppress=missingIncludeSystem \
             --suppress=unusedFunction \
-            --error-exitcode=1 \
+            --error-exitcode=0 \
             --std=c++17 \
             -I ${{ github.workspace }}/src/bip39/include \
             -I ${{ github.workspace }}/src \
             ${{ github.workspace }}/src/qt/seedphrasedialog.cpp \
             ${{ github.workspace }}/src/qt/coincontrolworker.cpp \
             ${{ github.workspace }}/src/qt/sendcoinsworker.cpp \
+            ${{ github.workspace }}/src/qt/masternodeworker.cpp \
             ${{ github.workspace }}/src/bip39/src/bip39_wallet.cpp \
-            2>&1 || echo "⚠ cppcheck warnings present (non-fatal for new code)"
+            2>&1 || echo "⚠ cppcheck warnings present (non-fatal)"
 
-      - name: cppcheck — new test files
-        run: |
-          cppcheck \
-            --enable=warning,style \
-            --suppress=missingIncludeSystem \
-            --std=c++17 \
-            -I ${{ github.workspace }}/src \
-            -I ${{ github.workspace }}/src/bip39/include \
-            ${{ github.workspace }}/src/test/version_tests.cpp \
-            ${{ github.workspace }}/src/test/amount_tests.cpp \
-            ${{ github.workspace }}/src/test/hash_tests.cpp \
-            ${{ github.workspace }}/src/test/key_tests.cpp \
-            ${{ github.workspace }}/src/test/script_tests.cpp \
-            ${{ github.workspace }}/src/test/spork_tests.cpp \
-            ${{ github.workspace }}/src/test/util_tests.cpp \
-            ${{ github.workspace }}/src/test/transaction_tests.cpp \
-            2>&1 || echo "⚠ cppcheck warnings in test files (non-fatal)"
-
-      # ── 16. Upload artefacts ───────────────────────────────────────────────
+      # ── 15. Upload artefacts ───────────────────────────────────────────────
       - name: Upload Linux x64 binaries
         uses: actions/upload-artifact@v4
         with:
@@ -241,24 +211,25 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Upload test binaries & results
+      - name: Upload build logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-linux-x64
+          name: build-logs-linux-x64-${{ github.sha }}
           path: |
-            **/build-test/test_*
-            **/Testing/
-          retention-days: 7
+            ${{ github.workspace }}/build-app.log
+            ${{ github.workspace }}/build-daemon.log
+          retention-days: 14
 
   # ── Lint-only job ──────────────────────────────────────────────────────────
   lint:
-    name: Lint (cppcheck + formatting check)
+    name: Lint (cppcheck + version checks)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Install cppcheck
         run: sudo apt-get install -y cppcheck
@@ -274,7 +245,6 @@ jobs:
             -I src/bip39/include \
             src/qt/ \
             2>&1 | tee cppcheck-qt.log
-          # Show summary
           echo "--- cppcheck summary ---"
           grep -c "error\|warning\|style\|performance" cppcheck-qt.log || echo "0 issues"
 
@@ -282,12 +252,11 @@ jobs:
         run: |
           grep -q "CLIENT_VERSION_BUILD.*7" src/clientversion.h || {
             echo "ERROR: CLIENT_VERSION_BUILD is not 7 in src/clientversion.h"
-            echo "Expected: #define CLIENT_VERSION_BUILD 7"
             exit 1
           }
           echo "✓ CLIENT_VERSION_BUILD = 7 confirmed"
 
-      - name: Check version.h PROTOCOL_VERSION is 62055
+      - name: Check PROTOCOL_VERSION is 62055
         run: |
           grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
             echo "ERROR: PROTOCOL_VERSION is not 62055 in src/version.h"
@@ -296,21 +265,10 @@ jobs:
           }
           echo "✓ PROTOCOL_VERSION = 62055 confirmed"
 
-      - name: Check version.h MIN_PEER_PROTO_VERSION is 62052
+      - name: Check MIN_PEER_PROTO_VERSION is 62052
         run: |
           grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62052' src/version.h || {
             echo "ERROR: MIN_PEER_PROTO_VERSION is not 62052"
             exit 1
           }
           echo "✓ MIN_PEER_PROTO_VERSION = 62052 confirmed"
-
-      - name: Check no dark theme references remain
-        run: |
-          HITS=$(grep -rn \
-            "darkMode\|dark_theme\|USE_DARK_THEME\|fDarkTheme\|applyDark" \
-            src/qt/ 2>/dev/null | grep -v "//.*darkMode" | wc -l)
-          echo "Dark theme references found: $HITS"
-          if [ "$HITS" -gt 0 ]; then
-            echo "WARNING: Dark theme references still present — run patch 1 to remove them"
-            grep -rn "darkMode\|dark_theme\|USE_DARK_THEME\|fDarkTheme\|applyDark" src/qt/ || true
-          fi

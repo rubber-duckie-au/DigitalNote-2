@@ -298,6 +298,7 @@ HEADERS += src/qt/paymentserver.h
 HEADERS += src/qt/rpcconsole.h
 HEADERS += src/qt/flowlayout.h
 HEADERS += src/qt/masternodemanager.h
+HEADERS += src/qt/masternodeworker.h
 HEADERS += src/qt/addeditadrenalinenode.h
 HEADERS += src/qt/adrenalinenodeconfigdialog.h
 HEADERS += src/qt/messagepage.h

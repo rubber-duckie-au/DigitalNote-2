@@ -6,7 +6,7 @@
 #include "walletmodel.h"
 #include "guiutil.h"
 #include "bip39/bip39_wallet.h"
-#include <openssl/crypto.h>   // OPENSSL_cleanse
+#include <openssl/crypto.h>
 
 #include <QCloseEvent>
 #include <QClipboard>
@@ -225,15 +225,14 @@ void SeedPhraseDialog::onCountdownTick()
     m_countdownTimer.stop();
     if (label) label->hide();
 
-    // Generate the mnemonic
+    // Generate the mnemonic via WalletModel (keeps wallet pointer private)
     SecureString mnemonic;
-    BIP39Wallet::Result res =
-        BIP39Wallet::generateMnemonic(*m_model->getWallet(), m_wordCount, mnemonic);
+    bool ok = m_model->generateMnemonic(m_wordCount, mnemonic);
 
-    if (res != BIP39Wallet::Result::OK) {
+    if (!ok) {
         QMessageBox::critical(this, tr("Seed Phrase Error"),
-            tr("Could not generate seed phrase:\n%1")
-            .arg(QLatin1String(BIP39Wallet::resultToString(res))));
+            tr("Could not generate seed phrase. "
+               "Ensure your wallet is encrypted and unlocked."));
 
         auto *revealBtn = findChild<QPushButton*>("revealBtn");
         if (revealBtn) revealBtn->setEnabled(true);

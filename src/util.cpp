@@ -179,8 +179,8 @@ public:
 		CRYPTO_set_locking_callback(locking_callback);
 
 #ifdef WIN32
-		// Seed OpenSSL PRNG with current contents of the screen
-		RAND_screen();
+		// Seed OpenSSL PRNG (RAND_screen deprecated in OpenSSL 1.1, use RAND_poll)
+		RAND_poll();
 #endif
 
 		// Seed OpenSSL PRNG with performance counter
@@ -1690,7 +1690,7 @@ void ShrinkDebugFile()
 		// Restart the file with some of the end
 		char pch[200000];
 		
-		fseek(file, -sizeof(pch), SEEK_END);
+		fseek(file, -(long)sizeof(pch), SEEK_END);
 		
 		int nBytes = fread(pch, 1, sizeof(pch), file);
 		

@@ -10,6 +10,9 @@
 
 #include "util.h"
 #include "types/ccriticalsection.h"
+#include "masternodeworker.h"
+#include <QThread>
+#include <QProgressDialog>
 
 namespace Ui {
     class MasternodeManager;
@@ -41,6 +44,9 @@ private:
     
 public slots:
     void updateNodeList();
+    void setButtonsEnabled(bool enabled);
+    void onWorkerFinished(QString result);
+    void onWorkerError(QString message);
     void updateAdrenalineNode(QString alias, QString addr, QString privkey, QString txHash, QString txIndex, QString status);
     void on_UpdateButton_clicked();
     void copyAddress();
@@ -65,5 +71,6 @@ private slots:
     void on_tableWidget_2_itemSelectionChanged();
     void on_tabWidget_currentChanged(int index);
     void on_editButton_clicked();
+
 };
 #endif // MASTERNODEMANAGER_H

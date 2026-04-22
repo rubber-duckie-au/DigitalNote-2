@@ -264,6 +264,7 @@ SOURCES += src/qt/notificator.cpp
 SOURCES += src/qt/paymentserver.cpp
 SOURCES += src/qt/rpcconsole.cpp
 SOURCES += src/qt/masternodemanager.cpp
+SOURCES += src/qt/masternodeworker.cpp
 SOURCES += src/qt/addeditadrenalinenode.cpp
 SOURCES += src/qt/adrenalinenodeconfigdialog.cpp
 SOURCES += src/qt/messagepage.cpp

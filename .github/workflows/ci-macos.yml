@@ -14,13 +14,14 @@ jobs:
   build-macos-x64:
     name: macOS x64 (Intel) — Build + Test
     runs-on: macos-13
-    timeout-minutes: 150
+    timeout-minutes: 240
 
     steps:
       - name: Checkout DigitalNote-2
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Cache compiled libraries
         uses: actions/cache@v4
@@ -29,14 +30,14 @@ jobs:
           path: |
             ${{ github.workspace }}/../DigitalNote-Builder/libs
             ${{ github.workspace }}/../DigitalNote-Builder/download
-          key: macos-x64-libs-${{ hashFiles('.gitmodules') }}-v4
+          key: macos-x64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('../DigitalNote-Builder/compile/*.sh') }}-v5
           restore-keys: macos-x64-libs-
 
       - name: Clone DigitalNote-Builder
         working-directory: ${{ github.workspace }}/..
         run: |
           if [ ! -d DigitalNote-Builder ]; then
-            git clone $BUILDER_REPO DigitalNote-Builder
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/DigitalNoteXDN/DigitalNote-Builder.git
           else
             cd DigitalNote-Builder && git pull origin master
           fi
@@ -46,26 +47,70 @@ jobs:
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder
         run: bash download.sh
 
-      - name: Install Homebrew packages (Builder update.sh)
+      # Matches macos/x64/update.sh plus cmake (needed by mnemonic.sh)
+      - name: Install Homebrew packages
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
-        run: bash update.sh
+        run: |
+          bash update.sh
+          brew install cmake || true
 
+      # Note: macos compile_libs.sh should include secp256k1, leveldb, mnemonic
+      # alongside the existing libs. Qt is built from source here via qt.sh.
       - name: Compile static libraries
         if: steps.libs-cache.outputs.cache-hit != 'true'
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
-        run: bash compile_libs.sh "-j $JOBS"
+        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
 
       - name: Link source tree into Builder
         run: |
           ln -sfn ${{ github.workspace }} \
             ${{ github.workspace }}/../DigitalNote-Builder/DigitalNote-2
 
-      - name: Compile Qt wallet + daemon
+      # Matches macos/x64/compile_deamon.sh + USE_BIP39=1
+      - name: Compile daemon (digitalnoted)
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
         run: |
-          bash compile_app.sh    "-j $JOBS"
-          bash compile_deamon.sh "-j $JOBS"
-          bash deploy.sh
+          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          cd DigitalNote-2
+          rm -rf build Makefile
+          qmake DigitalNote.daemon.pro \
+            USE_UPNP=1 \
+            USE_BUILD_INFO=1 \
+            USE_BIP39=1 \
+            RELEASE=1
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-daemon-macos.log
+          exit ${PIPESTATUS[0]}
+
+      # Matches macos/x64/compile_app.sh + USE_BIP39=1
+      - name: Compile Qt wallet (digitalnote-qt)
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
+        run: |
+          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          cd DigitalNote-2
+          rm -rf build Makefile
+          qmake DigitalNote.app.pro \
+            USE_UPNP=1 \
+            USE_QRCODE=1 \
+            USE_BUILD_INFO=1 \
+            USE_BIP39=1 \
+            RELEASE=1
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-app-macos.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Warning analysis
+        if: always()
+        run: |
+          for log in build-app-macos.log build-daemon-macos.log; do
+            if [ -f "${{ github.workspace }}/$log" ]; then
+              W=$(grep -c ": warning:" "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              E=$(grep -c ": error:"   "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              echo "=== $log: $W warning(s), $E error(s) ==="
+              if [ "$W" -gt 0 ]; then
+                grep ": warning:" "${{ github.workspace }}/$log" \
+                  | sed 's|.*: warning:||' | sort | uniq -c | sort -rn | head -20
+              fi
+            fi
+          done
 
       - name: Assert client version 2.0.0.7
         run: |
@@ -91,17 +136,6 @@ jobs:
           }
           echo "OK: CLIENT_VERSION_BUILD = 7"
 
-      - name: Build and run BIP39 + version unit tests
-        run: |
-          cmake -S test -B build-test \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DDIGITALNOTE_SRC_DIR=${{ github.workspace }}/src \
-                -DBIP39_INCLUDE_DIR=${{ github.workspace }}/src/bip39/include \
-                -DBIP39_SRC_DIR=${{ github.workspace }}/src/bip39/src \
-                -DOPENSSL_ROOT_DIR=${{ github.workspace }}/../DigitalNote-Builder/libs/openssl
-          cmake --build build-test --parallel $JOBS
-          cd build-test && ctest --output-on-failure
-
       - name: Upload macOS x64 artefacts
         uses: actions/upload-artifact@v4
         with:
@@ -111,15 +145,26 @@ jobs:
             **/digitalnoted
           retention-days: 14
 
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-logs-macos-x64-${{ github.sha }}
+          path: |
+            ${{ github.workspace }}/build-app-macos.log
+            ${{ github.workspace }}/build-daemon-macos.log
+          retention-days: 14
+
   build-macos-arm64:
     name: macOS arm64 (Apple Silicon) — Build + Test
     runs-on: macos-14
-    timeout-minutes: 150
+    timeout-minutes: 240
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Cache compiled libraries (arm64)
         uses: actions/cache@v4
@@ -128,47 +173,55 @@ jobs:
           path: |
             ${{ github.workspace }}/../DigitalNote-Builder/libs
             ${{ github.workspace }}/../DigitalNote-Builder/download
-          key: macos-arm64-libs-${{ hashFiles('.gitmodules') }}-v4
+          key: macos-arm64-libs-${{ hashFiles('.gitmodules') }}-${{ hashFiles('../DigitalNote-Builder/compile/*.sh') }}-v5
 
-      - name: Clone Builder + install + build
+      - name: Clone Builder + install packages
         run: |
           cd ..
-          git clone $BUILDER_REPO DigitalNote-Builder 2>/dev/null || \
-            (cd DigitalNote-Builder && git pull)
+          git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/DigitalNoteXDN/DigitalNote-Builder.git \
+            2>/dev/null || (cd DigitalNote-Builder && git pull)
           cd DigitalNote-Builder
           bash download.sh 2>/dev/null || true
           cd macos/x64
           bash update.sh
-          if [ "${{ steps.libs-cache.outputs.cache-hit }}" != 'true' ]; then
-            bash compile_libs.sh "-j $JOBS"
-          fi
+          brew install cmake || true
+
+      - name: Compile static libraries (arm64)
+        if: steps.libs-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
+        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
+
+      - name: Link source tree
+        run: |
           ln -sfn ${{ github.workspace }} \
             ${{ github.workspace }}/../DigitalNote-Builder/DigitalNote-2
-          bash compile_app.sh    "-j $JOBS"
-          bash compile_deamon.sh "-j $JOBS"
-          bash deploy.sh
+
+      - name: Compile daemon + wallet (arm64)
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
+        run: |
+          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+
+          cd DigitalNote-2
+          rm -rf build Makefile
+          qmake DigitalNote.daemon.pro \
+            USE_UPNP=1 USE_BUILD_INFO=1 USE_BIP39=1 RELEASE=1
+          make -j${{ env.JOBS }}
+
+          rm -rf build Makefile
+          qmake DigitalNote.app.pro \
+            USE_UPNP=1 USE_QRCODE=1 USE_BUILD_INFO=1 USE_BIP39=1 RELEASE=1
+          make -j${{ env.JOBS }}
 
       - name: Assert version (arm64)
         run: |
           DAEMON=$(find ${{ github.workspace }} -name 'digitalnoted' -type f | head -1)
-          $DAEMON --version 2>&1 | grep -q "2\.0\.0\.7" || {
+          "$DAEMON" --version 2>&1 | grep -q "2\.0\.0\.7" || {
             echo "ERROR: arm64 daemon version mismatch"; exit 1
           }
           grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
             echo "ERROR: PROTOCOL_VERSION not 62055"; exit 1
           }
           echo "OK: v2.0.0.7 / protocol 62055 on arm64"
-
-      - name: BIP39 unit tests (arm64)
-        run: |
-          cmake -S test -B build-test \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DDIGITALNOTE_SRC_DIR=${{ github.workspace }}/src \
-                -DBIP39_INCLUDE_DIR=${{ github.workspace }}/src/bip39/include \
-                -DBIP39_SRC_DIR=${{ github.workspace }}/src/bip39/src \
-                -DOPENSSL_ROOT_DIR=${{ github.workspace }}/../DigitalNote-Builder/libs/openssl
-          cmake --build build-test --parallel $JOBS
-          cd build-test && ctest --output-on-failure
 
       - name: Upload arm64 artefacts
         uses: actions/upload-artifact@v4

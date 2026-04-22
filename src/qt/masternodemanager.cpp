@@ -44,6 +44,7 @@
 #include "cscriptid.h"
 #include "cstealthaddress.h"
 #include "thread.h"
+#include "masternodeworker.h"
 
 #include "masternodemanager.h"
 #include "ui_masternodemanager.h"
@@ -248,267 +249,129 @@ void MasternodeManager::on_createButton_clicked()
     aenode->exec();
 }
 
+
+static void spawnMasternodeWorker(MasternodeManager* mgr,
+                                   MasternodeWorker::Operation op,
+                                   std::vector<CMasternodeConfigEntry> entries)
+{
+    mgr->setButtonsEnabled(false);
+    QThread *t = new QThread(mgr);
+    MasternodeWorker *w = new MasternodeWorker(op, std::move(entries));
+    w->moveToThread(t);
+    QObject::connect(t,    &QThread::started,              w,   &MasternodeWorker::run);
+    QObject::connect(w,    &MasternodeWorker::finished,    mgr, &MasternodeManager::onWorkerFinished);
+    QObject::connect(w,    &MasternodeWorker::error,       mgr, &MasternodeManager::onWorkerError);
+    QObject::connect(w,    &MasternodeWorker::finished,    t,   &QThread::quit);
+    QObject::connect(w,    &MasternodeWorker::error,       t,   &QThread::quit);
+    QObject::connect(t,    &QThread::finished,             t,   &QObject::deleteLater);
+    QObject::connect(t,    &QThread::finished,             w,   &QObject::deleteLater);
+    t->start();
+}
+
+void MasternodeManager::setButtonsEnabled(bool enabled)
+{
+    ui->startButton->setEnabled(enabled);
+    ui->startAllButton->setEnabled(enabled);
+    ui->stopButton->setEnabled(enabled);
+    ui->stopAllButton->setEnabled(enabled);
+    ui->UpdateButton->setEnabled(enabled);
+}
+
+void MasternodeManager::onWorkerFinished(QString result)
+{
+    setButtonsEnabled(true);
+    if (!result.isEmpty()) {
+        QMessageBox msg;
+        msg.setText(result);
+        msg.exec();
+    }
+    on_UpdateButton_clicked();
+}
+
+void MasternodeManager::onWorkerError(QString message)
+{
+    setButtonsEnabled(true);
+    QMessageBox::critical(this, tr("Masternode Error"), message);
+}
+
 void MasternodeManager::on_startButton_clicked()
 {
-	std::string statusObj;
+    QItemSelectionModel* selectionModel = ui->tableWidget_2->selectionModel();
+    QModelIndexList selectedRows = selectionModel->selectedRows();
 
-	// start the node
-	QItemSelectionModel* selectionModel = ui->tableWidget_2->selectionModel();
-	QModelIndexList selectedRows = selectionModel->selectedRows();
-	
-	if(selectedRows.count() == 0)
-	{
-		statusObj += "<br>Select a Masternode alias to start" ;
-		
-		QMessageBox msg;
-		
-		msg.setText(QString::fromStdString(statusObj));
-		msg.exec();
-		
-		return;
-	}
-	
-	for (int i = 0; i < selectedRows.count(); i++)
-    {
-		QModelIndex index = selectedRows.at(i);
-		int r = index.row();
-		std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
+    if (selectedRows.count() == 0) {
+        QMessageBox::warning(this, tr("No Selection"), tr("Select a Masternode alias to start."));
+        return;
+    }
 
-		if(pwalletMain->IsLocked()) {
-			statusObj += "<br>Please unlock your wallet to start Masternode" ;
-			
-			QMessageBox msg;
-			
-			msg.setText(QString::fromStdString(statusObj));
-			msg.exec();
-			
-			return;
-		}
+    if (pwalletMain->IsLocked()) {
+        QMessageBox::warning(this, tr("Wallet Locked"), tr("Please unlock your wallet to start a Masternode."));
+        return;
+    }
 
-		statusObj += "<center>Alias: " + sAlias;
+    std::vector<CMasternodeConfigEntry> entries;
+    for (int i = 0; i < selectedRows.count(); i++) {
+        int r = selectedRows.at(i).row();
+        std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
+        for (const CMasternodeConfigEntry& mne : masternodeConfig.getEntries()) {
+            if (mne.getAlias() == sAlias) {
+                entries.push_back(mne);
+                break;
+            }
+        }
+    }
 
-		for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
-		{
-			if(mne.getAlias() == sAlias)
-			{
-				std::string errorMessage;
-				std::string strDonateAddress = "";
-				std::string strDonationPercentage = "";
-
-				bool result = activeMasternode.Register(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strDonateAddress, strDonationPercentage, errorMessage);
-
-				if(result)
-				{
-					statusObj += "<br>Successfully started masternode." ;
-				}
-				else
-				{
-					statusObj += "<br>Failed to start masternode.<br>Error: " + errorMessage;
-				}
-				
-				break;
-			}
-		}
-
-		pwalletMain->Lock();
-		
-		statusObj += "</center>";
-		
-		QMessageBox msg;
-		
-		msg.setText(QString::fromStdString(statusObj));
-		msg.exec();
-	}
-	
-	MasternodeManager::on_UpdateButton_clicked();
+    spawnMasternodeWorker(this, MasternodeWorker::StartSelected, std::move(entries));
 }
 
 void MasternodeManager::on_startAllButton_clicked()
 {
-    std::vector<CMasternodeConfigEntry> mnEntries;
-
-    int total = 0;
-    int successful = 0;
-    int fail = 0;
-    std::string statusObj;
-
-    if(pwalletMain->IsLocked())
-	{
-        statusObj += "<br>Please unlock your wallet to start Masternodes" ;
-        
-		QMessageBox msg;
-        
-		msg.setText(QString::fromStdString(statusObj));
-        msg.exec();
-        
-		return;
+    if (pwalletMain->IsLocked()) {
+        QMessageBox::warning(this, tr("Wallet Locked"), tr("Please unlock your wallet to start Masternodes."));
+        return;
     }
-
-    for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
-	{
-        total++;
-
-        std::string errorMessage;
-        std::string strDonateAddress = "";
-        std::string strDonationPercentage = "";
-
-        bool result = activeMasternode.Register(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strDonateAddress, strDonationPercentage, errorMessage);
-
-        if(result)
-		{
-            successful++;
-        }
-		else
-		{
-            fail++;
-            statusObj += "\nFailed to start " + mne.getAlias() + ". Error: " + errorMessage;
-        }
-    }
-	
-    pwalletMain->Lock();
-
-    std::string returnObj;
-	
-    returnObj = "Successfully started " + boost::lexical_cast<std::string>(successful) + " masternodes, failed to start " +
-            boost::lexical_cast<std::string>(fail) + ", total " + boost::lexical_cast<std::string>(total);
-    
-	if (fail > 0)
-	{
-        returnObj += statusObj;
-	}
-
-    QMessageBox msg;
-    
-	msg.setText(QString::fromStdString(returnObj));
-    msg.exec();
-    
-	MasternodeManager::on_UpdateButton_clicked();
+    std::vector<CMasternodeConfigEntry> entries = masternodeConfig.getEntries();
+    spawnMasternodeWorker(this, MasternodeWorker::StartAll, std::move(entries));
 }
 
 void MasternodeManager::on_stopButton_clicked()
 {
-	std::string statusObj;
+    QItemSelectionModel* selectionModel = ui->tableWidget_2->selectionModel();
+    QModelIndexList selectedRows = selectionModel->selectedRows();
 
-	// stop the node
-	QItemSelectionModel* selectionModel = ui->tableWidget_2->selectionModel();
-	QModelIndexList selectedRows = selectionModel->selectedRows();
+    if (selectedRows.count() == 0) {
+        QMessageBox::warning(this, tr("No Selection"), tr("Select a Masternode alias to stop."));
+        return;
+    }
 
-	if(selectedRows.count() == 0)
-	{
-		statusObj += "<br>Select a Masternode alias to stop" ;
-		
-		QMessageBox msg;
-		
-		msg.setText(QString::fromStdString(statusObj));
-		msg.exec();
-		
-		return;
-	}
+    if (pwalletMain->IsLocked()) {
+        QMessageBox::warning(this, tr("Wallet Locked"), tr("Please unlock your wallet to stop a Masternode."));
+        return;
+    }
 
-	for (int i = 0; i < selectedRows.count(); i++)
-    {
-		QModelIndex index = selectedRows.at(i);
-		int r = index.row();
-		std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
-		
-		statusObj = "";
-		
-		if(pwalletMain->IsLocked()) {
+    std::vector<CMasternodeConfigEntry> entries;
+    for (int i = 0; i < selectedRows.count(); i++) {
+        int r = selectedRows.at(i).row();
+        std::string sAlias = ui->tableWidget_2->item(r, 0)->text().toStdString();
+        for (const CMasternodeConfigEntry& mne : masternodeConfig.getEntries()) {
+            if (mne.getAlias() == sAlias) {
+                entries.push_back(mne);
+                break;
+            }
+        }
+    }
 
-			statusObj += "<br>Please unlock your wallet to stop Masternode" ;
-			
-			QMessageBox msg;
-			
-			msg.setText(QString::fromStdString(statusObj));
-			msg.exec();
-			
-			return;
-		}
-
-		statusObj += "<center>Alias: " + sAlias;
-
-		for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
-		{
-			if(mne.getAlias() == sAlias)
-			{
-				std::string errorMessage;
-				bool result = activeMasternode.StopMasterNode(mne.getIp(), mne.getPrivKey(), errorMessage);
-
-				if(result)
-				{
-					statusObj += "<br>Successfully stopped masternode." ;
-				}
-				else
-				{
-					statusObj += "<br>Failed to stop masternode.<br>Error: " + errorMessage;
-				}
-				
-				break;
-			}
-		}
-
-		pwalletMain->Lock();
-
-		statusObj += "</center>";
-
-		QMessageBox msg;
-
-		msg.setText(QString::fromStdString(statusObj));
-		msg.exec();
-	}
-	
-	MasternodeManager::on_UpdateButton_clicked();
+    spawnMasternodeWorker(this, MasternodeWorker::StopSelected, std::move(entries));
 }
 
 void MasternodeManager::on_stopAllButton_clicked()
 {
-    if(pwalletMain->IsLocked()) {
-		// ????
+    if (pwalletMain->IsLocked()) {
+        QMessageBox::warning(this, tr("Wallet Locked"), tr("Please unlock your wallet to stop Masternodes."));
+        return;
     }
-
-    std::vector<CMasternodeConfigEntry> mnEntries;
-
-    int total = 0;
-    int successful = 0;
-    int fail = 0;
-    std::string statusObj;
-
-    for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
-	{
-        total++;
-
-        std::string errorMessage;
-
-        bool result = activeMasternode.StopMasterNode(mne.getIp(), mne.getPrivKey(), errorMessage);
-
-        if(result)
-		{
-            successful++;
-        }
-		else
-		{
-            fail++;
-            statusObj += "\nFailed to stop " + mne.getAlias() + ". Error: " + errorMessage;
-        }
-    }
-    pwalletMain->Lock();
-
-    std::string returnObj;
-	
-    returnObj = "Successfully stopped " + boost::lexical_cast<std::string>(successful) + " masternodes, failed to stop " +
-            boost::lexical_cast<std::string>(fail) + ", total " + boost::lexical_cast<std::string>(total);
-    
-	if (fail > 0)
-	{
-        returnObj += statusObj;
-	}
-	
-    QMessageBox msg;
-    
-	msg.setText(QString::fromStdString(returnObj));
-    msg.exec();
-    
-	MasternodeManager::on_UpdateButton_clicked();
+    std::vector<CMasternodeConfigEntry> entries = masternodeConfig.getEntries();
+    spawnMasternodeWorker(this, MasternodeWorker::StopAll, std::move(entries));
 }
 
 void MasternodeManager::on_UpdateButton_clicked()

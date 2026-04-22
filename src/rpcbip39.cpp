@@ -24,8 +24,28 @@ json_spirit::Value bip39_new_mnemonic(const json_spirit::Array& params, bool fHe
 	if (fHelp || params.size() > 1)
 	{
 		throw std::runtime_error(
-			"bip39_new_mnemonic [lang_code=EN]\n"
-			"Generates a new BIP39 mnemonic."
+			"bip39_new_mnemonic ( \"lang_code\" )\n"
+			"\n"
+			"Generate a new BIP39 recovery seed phrase (mnemonic word list).\n"
+			"\n"
+			"Arguments:\n"
+			"  lang_code  (optional) Language code for the word list.\n"
+			"             Default: \"EN\" (English)\n"
+			"             Other options: CN, FR, IT, JP, KR, ES\n"
+			"\n"
+			"Result:\n"
+			"  {\n"
+			"    \"mnemonic\"       : \"word1 word2 ... word24\",  (string) The recovery seed phrase\n"
+			"    \"mnemonic_base64\": \"...\"                       (string) Base64 encoded version\n"
+			"    \"seed\"           : \"...\"                       (string) Hex seed derived from mnemonic\n"
+			"    \"entropy\"        : \"...\"                       (string) Raw entropy used\n"
+			"    \"checksum\"       : \"...\"                       (string) Checksum\n"
+			"    \"private_key\"    : \"...\"                       (string) Private key derived from seed\n"
+			"  }\n"
+			"\n"
+			"Examples:\n"
+			"  bip39_new_mnemonic                Generate a new 24-word English seed phrase\n"
+			"  bip39_new_mnemonic \"FR\"          Generate a new French seed phrase\n"
 		);
 	}
 	
@@ -95,8 +115,28 @@ json_spirit::Value bip39_get_privkey(const json_spirit::Array& params, bool fHel
 	if (fHelp || params.size() < 1 || params.size() > 2)
 	{
 		throw std::runtime_error(
-			"bip39_get_privkey [mnemonic] [lang_code=EN]\n"
-			"Generates private key with mnemonic words."
+			"bip39_get_privkey \"mnemonic words\" ( \"lang_code\" )\n"
+			"\n"
+			"Derive a private key and seed from an existing BIP39 seed phrase.\n"
+			"Useful for verifying a seed phrase or recovering key material.\n"
+			"\n"
+			"Arguments:\n"
+			"  mnemonic   (required) Your seed phrase words as a single quoted string\n"
+			"             Example: \"word1 word2 word3 ... word24\"\n"
+			"  lang_code  (optional) Language code. Default: \"EN\" (English)\n"
+			"\n"
+			"Result:\n"
+			"  {\n"
+			"    \"mnemonic\"       : \"word1 word2 ... word24\",  (string) The seed phrase (echoed back)\n"
+			"    \"seed\"           : \"...\"                       (string) 64-byte hex seed\n"
+			"    \"private_key\"    : \"...\"                       (string) Private key derived from seed\n"
+			"    \"entropy\"        : \"...\"                       (string) Entropy from the mnemonic\n"
+			"    \"checksum\"       : \"...\"                       (string) Mnemonic checksum\n"
+			"  }\n"
+			"\n"
+			"Examples:\n"
+			"  bip39_get_privkey \"abandon abandon abandon ... art\"\n"
+			"  bip39_get_privkey \"word1 word2 ... word24\" \"EN\"\n"
 		);
 	}
 	

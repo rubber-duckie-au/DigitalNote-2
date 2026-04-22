@@ -34,6 +34,7 @@
 #include "ui_interface.h"
 
 #include "walletmodel.h"
+#include "bip39/bip39_wallet.h"
 
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet),
@@ -379,9 +380,9 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
 
                     if (fDebug)
                     {
-                        printf("Stealth send to generated pubkey %" PRIszu": %s\n", pkSendTo.size(), HexStr(pkSendTo).c_str());
+                        printf("Stealth send to generated pubkey %llu: %s\n", (unsigned long long)pkSendTo.size(), HexStr(pkSendTo).c_str());
                         printf("hash %s\n", addrTo.ToString().c_str());
-                        printf("ephem_pubkey %" PRIszu": %s\n", ephem_pubkey.size(), HexStr(ephem_pubkey).c_str());
+                        printf("ephem_pubkey %llu: %s\n", (unsigned long long)ephem_pubkey.size(), HexStr(ephem_pubkey).c_str());
                     };
 
                     CScript scriptPubKey;
@@ -749,6 +750,15 @@ void WalletModel::unsubscribeFromCoreSignals()
 }
 
 // WalletModel::UnlockContext implementation
+
+bool WalletModel::generateMnemonic(BIP39Wallet::WordCount wordCount,
+                                   SecureString &mnemonic) const
+{
+    // wallet is private here — no external exposure needed
+    BIP39Wallet::Result res = BIP39Wallet::generateMnemonic(
+        *wallet, wordCount, mnemonic);
+    return res == BIP39Wallet::Result::OK;
+}
 WalletModel::UnlockContext WalletModel::requestUnlock()
 {
     bool was_locked = getEncryptionStatus() == Locked;
@@ -770,6 +780,22 @@ WalletModel::UnlockContext WalletModel::requestUnlock()
     return UnlockContext(this, valid, was_locked && !fWalletUnlockStakingOnly);
 }
 
+
+WalletModel::UnlockContext WalletModel::requestUnlockWithMnemonic(const QString &mnemonic)
+{
+    bool was_locked = wallet->IsLocked();
+
+    // Attempt unlock via mnemonic-derived key (Option 2 recovery path).
+    // The wallet must have had its vMasterKey linked to the mnemonic
+    // via SeedPhraseDialog after encryption.
+    SecureString mnemonicPass;
+    std::string mnStr = mnemonic.simplified().trimmed().toStdString();
+    mnemonicPass.assign(mnStr.c_str());
+
+    bool valid = !was_locked || wallet->Unlock(mnemonicPass);
+
+    return UnlockContext(this, valid, was_locked && valid);
+}
 WalletModel::UnlockContext::UnlockContext(WalletModel *wallet, bool valid, bool relock):
         wallet(wallet),
         valid(valid),

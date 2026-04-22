@@ -212,6 +212,14 @@ void OverviewPage::showOutOfSyncWarning(bool fShow)
 {
     ui->labelWalletStatus->setVisible(fShow);
     ui->labelTransactionsStatus->setVisible(fShow);
+    if (fShow) {
+        // Light pink on dark theme, default orange-red on light theme
+        const char* syncQSS = fUseDarkTheme
+            ? "QLabel { color: #ffb3ba; font-weight: bold; }"
+            : "QLabel { color: #c0392b; font-weight: bold; }";
+        ui->labelWalletStatus->setStyleSheet(syncQSS);
+        ui->labelTransactionsStatus->setStyleSheet(syncQSS);
+    }
 }
 
 

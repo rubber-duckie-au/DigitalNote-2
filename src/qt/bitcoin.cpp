@@ -197,6 +197,60 @@ int main(int argc, char *argv[])
     // ... then GUI settings:
     OptionsModel optionsModel;
 
+    // Apply dark theme stylesheet if enabled
+    if (fUseDarkTheme) {
+        qApp->setStyleSheet(
+            "QMainWindow, QDialog, QWidget { background-color: #1e1e1e; color: #d4d4d4; }"
+            "QMenuBar { background-color: #2b2b2b; color: #d4d4d4; }"
+            "QMenuBar::item:selected { background-color: #3d3d3d; }"
+            "QMenu { background-color: #2b2b2b; color: #d4d4d4; border: 1px solid #444; }"
+            "QMenu::item:selected { background-color: #3d6099; }"
+            "QToolBar { background-color: #2b2b2b; border: none; }"
+            "QTabWidget::pane { background-color: #1e1e1e; border: 1px solid #444; }"
+            "QTabBar::tab { background-color: #2b2b2b; color: #d4d4d4; padding: 6px 12px; border: 1px solid #444; }"
+            "QTabBar::tab:selected { background-color: #3d6099; color: #ffffff; }"
+            "QTabBar::tab:hover { background-color: #3d3d3d; }"
+            "QTableWidget, QTreeWidget, QListWidget { background-color: #252526; color: #d4d4d4; "
+            "  gridline-color: #3d3d3d; border: 1px solid #444; alternate-background-color: #2d2d2d; }"
+            "QTableWidget::item:selected, QTreeWidget::item:selected { background-color: #3d6099; color: #ffffff; }"
+            "QHeaderView::section { background-color: #2b2b2b; color: #d4d4d4; border: 1px solid #444; padding: 4px; }"
+            "QLineEdit, QTextEdit, QPlainTextEdit { background-color: #252526; color: #d4d4d4; "
+            "  border: 1px solid #555; border-radius: 3px; padding: 2px; }"
+            "QLineEdit:focus, QTextEdit:focus { border: 1px solid #3d6099; }"
+            "QPushButton { background-color: #3d3d3d; color: #d4d4d4; border: 1px solid #555; "
+            "  border-radius: 4px; padding: 4px 12px; }"
+            "QPushButton:hover { background-color: #4a4a4a; }"
+            "QPushButton:pressed { background-color: #3d6099; }"
+            "QPushButton:disabled { background-color: #2b2b2b; color: #666; }"
+            "QComboBox { background-color: #252526; color: #d4d4d4; border: 1px solid #555; "
+            "  border-radius: 3px; padding: 2px 6px; }"
+            "QComboBox::drop-down { border: none; }"
+            "QComboBox QAbstractItemView { background-color: #2b2b2b; color: #d4d4d4; "
+            "  selection-background-color: #3d6099; }"
+            "QScrollBar:vertical { background-color: #2b2b2b; width: 12px; }"
+            "QScrollBar::handle:vertical { background-color: #555; border-radius: 6px; min-height: 20px; }"
+            "QScrollBar::handle:vertical:hover { background-color: #777; }"
+            "QScrollBar:horizontal { background-color: #2b2b2b; height: 12px; }"
+            "QScrollBar::handle:horizontal { background-color: #555; border-radius: 6px; min-width: 20px; }"
+            "QCheckBox { color: #d4d4d4; }"
+            "QCheckBox::indicator { border: 1px solid #555; background-color: #252526; }"
+            "QCheckBox::indicator:checked { background-color: #3d6099; }"
+            "QLabel { color: #d4d4d4; }"
+            "QGroupBox { color: #d4d4d4; border: 1px solid #555; border-radius: 4px; margin-top: 8px; }"
+            "QGroupBox::title { color: #a0c4ff; }"
+            "QSplitter::handle { background-color: #3d3d3d; }"
+            "QToolTip { background-color: #2b2b2b; color: #d4d4d4; border: 1px solid #555; }"
+            "QStatusBar { background-color: #1d1f22; color: #3098c6; }"
+            "QProgressBar { background-color: #2b2b2b; border: 1px solid #555; border-radius: 4px; }"
+            "QProgressBar::chunk { background-color: #3d6099; border-radius: 4px; }"
+            "QFrame { color: #d4d4d4; }"
+            "QSpinBox { background-color: #252526; color: #e0e0e0; border: 1px solid #555; }"
+            "QDoubleSpinBox { background-color: #252526; color: #e0e0e0; border: 1px solid #555; }"
+            "QSlider::groove { background-color: #3d3d3d; }"
+            "QSlider::handle { background-color: #3d6099; border-radius: 6px; }"
+        );
+    }
+
     // Get desired locale (e.g. "de_DE") from command line or use system locale
     QString lang_territory = QString::fromStdString(GetArg("-lang", QLocale::system().name().toStdString()));
     QString lang = lang_territory;

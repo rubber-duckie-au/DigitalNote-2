@@ -220,7 +220,7 @@ uint64_t CMasternode::SliceHash(uint256& hash, int slice)
 {
 	uint64_t n = 0;
 	
-	memcpy(&n, &hash+slice*64, 64);
+	memcpy(&n, (uint8_t*)&hash + slice*8, 8);
 	
 	return n;
 }
