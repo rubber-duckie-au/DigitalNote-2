@@ -4,7 +4,9 @@
 
 #include "sendcoinsworker.h"
 #include "walletmodel.h"
+#include "walletmodeltransaction.h"
 #include "ccoincontrol.h"
+#include "cwallettx.h"         // CWalletTx
 
 SendCoinsWorker::SendCoinsWorker(WalletModel *model,
                                  QList<SendCoinsRecipient> recipients,
@@ -20,27 +22,34 @@ SendCoinsWorker::SendCoinsWorker(WalletModel *model,
 void SendCoinsWorker::run()
 {
     try {
-        // requestUnlock() must NOT be called from a worker thread on some
-        // platforms (it may spawn a QDialog).  The send button handler must
-        // request unlock BEFORE starting this thread, and pass the already-
-        // unlocked wallet context here.
-        //
-        // If the wallet is already unlocked (no passphrase), this is a no-op.
         WalletModel::UnlockContext ctx(m_model->requestUnlock());
         if (!ctx.isValid()) {
             emit error(tr("Wallet could not be unlocked."));
             return;
         }
 
-        CWalletTx wtx;
-        WalletModel::SendCoinsReturn ret =
-            m_model->sendCoins(m_recipients, m_coinControl, wtx);
+        // Step 1: prepare (select inputs, compute fee)
+        WalletModelTransaction currentTransaction(m_recipients);
+        WalletModel::SendCoinsReturn prepareStatus =
+            m_model->prepareTransaction(currentTransaction, m_coinControl);
+
+        if (prepareStatus.status != WalletModel::OK) {
+            emit finished(prepareStatus, QString());
+            return;
+        }
+
+        // Step 2: broadcast
+        WalletModel::SendCoinsReturn sendStatus =
+            m_model->sendCoins(currentTransaction, m_coinControl);
 
         QString txid;
-        if (ret.status == WalletModel::OK)
-            txid = QString::fromStdString(wtx.GetHash().GetHex());
+        if (sendStatus.status == WalletModel::OK) {
+            CWalletTx *wtx = currentTransaction.getTransaction();
+            if (wtx)
+                txid = QString::fromStdString(wtx->GetHash().GetHex());
+        }
 
-        emit finished(ret, txid);
+        emit finished(sendStatus, txid);
 
     } catch (const std::exception &e) {
         emit error(QString::fromStdString(e.what()));

@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 #include "coincontrolworker.h"
-#include "sync.h"    // LOCK2, cs_main
-#include "wallet.h"
+#include "thread.h"       // LOCK2
+#include "main_extern.h"  // cs_main
+#include "cwallet.h"      // CWallet::AvailableCoins, cs_wallet
+#include "coutput.h"      // COutput
 
 CoinControlWorker::CoinControlWorker(CWallet *wallet,
                                      CCoinControl *coinControl,
@@ -20,9 +22,8 @@ void CoinControlWorker::run()
     try {
         std::vector<COutput> vCoins;
         {
-            // Hold both locks for the minimum time needed.
             LOCK2(cs_main, m_wallet->cs_wallet);
-            m_wallet->AvailableCoins(vCoins, /*fOnlyConfirmed=*/true, m_coinControl);
+            m_wallet->AvailableCoins(vCoins, true, m_coinControl);
         }
 
         QList<COutput> result;

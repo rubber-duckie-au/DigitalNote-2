@@ -64,6 +64,14 @@ typedef std::map<uint256, int> mapRequestCount_t;
 typedef std::map<CTxDestination, std::string> mapAddressBook_t;
 typedef std::pair<CTxDestination, std::string> pairAddressBook_t;
 
+// Forward declarations for BIP39 friend access
+#include "allocators/securestring.h"  // SecureString (global typedef)
+namespace BIP39Wallet {
+	enum class WordCount : int;
+	enum class Result;
+	Result generateMnemonic(const class CWallet&, WordCount, ::SecureString&);
+}
+
 /** A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
  * and provides the ability to create new transactions.
  */
@@ -181,6 +189,9 @@ public:
 
 	bool IsSpent(const uint256& hash, unsigned int n) const;
 	bool IsLockedCoin(uint256 hash, unsigned int n) const;
+
+	// BIP39: friend access for mnemonic generation only
+	friend BIP39Wallet::Result BIP39Wallet::generateMnemonic(const CWallet&, BIP39Wallet::WordCount, ::SecureString&);
 	void LockCoin(COutPoint& output);
 	void UnlockCoin(COutPoint& output);
 	void UnlockAllCoins();

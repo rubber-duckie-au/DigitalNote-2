@@ -2,7 +2,7 @@
 // Distributed under the MIT software license.
 // SPDX-License-Identifier: MIT
 //
-// sendcoinsworker.h — off-thread transaction building and broadcast
+// sendcoinsworker.h -- off-thread transaction building and broadcast
 
 #pragma once
 
@@ -10,19 +10,12 @@
 #include <QObject>
 #include <QString>
 
-#include "walletmodel.h"  // WalletModel::SendCoinsReturn, SendCoinsRecipient
+#include "walletmodel.h"             // WalletModel::SendCoinsReturn
+#include "walletmodeltransaction.h"  // WalletModelTransaction
 
 class CCoinControl;
 class WalletModel;
 
-/**
- * @brief Builds and broadcasts a transaction off the GUI thread.
- *
- * The GUI thread should:
- *  1. Disable the Send button.
- *  2. Start this worker.
- *  3. Re-enable the Send button in onSendFinished() / onSendError().
- */
 class SendCoinsWorker : public QObject
 {
     Q_OBJECT
@@ -37,7 +30,6 @@ public slots:
     void run();
 
 signals:
-    /** result == WalletModel::OK on success; txid is the hex transaction id. */
     void finished(WalletModel::SendCoinsReturn result, QString txid);
     void error(QString message);
 

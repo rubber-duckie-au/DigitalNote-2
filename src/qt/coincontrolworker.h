@@ -2,7 +2,7 @@
 // Distributed under the MIT software license.
 // SPDX-License-Identifier: MIT
 //
-// coincontrolworker.h — off-thread UTXO enumeration for CoinControlDialog
+// coincontrolworker.h -- off-thread UTXO enumeration for CoinControlDialog
 
 #pragma once
 
@@ -10,29 +10,11 @@
 #include <QObject>
 #include <QString>
 
-#include "wallet.h"       // COutput
-#include "ccoincontrol.h"  // CCoinControl
+#include "coutput.h"      // COutput
+#include "ccoincontrol.h" // CCoinControl
 
 class CWallet;
 
-/**
- * @brief Enumerates available UTXOs off the GUI thread.
- *
- * Usage:
- * @code
- *   QThread *t       = new QThread(this);
- *   CoinControlWorker *w = new CoinControlWorker(wallet, coinCtrl);
- *   w->moveToThread(t);
- *   connect(t, &QThread::started,         w,    &CoinControlWorker::run);
- *   connect(w, &CoinControlWorker::finished, this, &MyDialog::onUtxosReady);
- *   connect(w, &CoinControlWorker::error,    this, &MyDialog::onWorkerError);
- *   connect(w, &CoinControlWorker::finished, t,    &QThread::quit);
- *   connect(w, &CoinControlWorker::error,    t,    &QThread::quit);
- *   connect(t, &QThread::finished,           t,    &QObject::deleteLater);
- *   connect(t, &QThread::finished,           w,    &QObject::deleteLater);
- *   t->start();
- * @endcode
- */
 class CoinControlWorker : public QObject
 {
     Q_OBJECT

@@ -6,6 +6,7 @@
 #include "walletmodel.h"
 #include "guiutil.h"
 #include "bip39/bip39_wallet.h"
+#include <openssl/crypto.h>   // OPENSSL_cleanse
 
 #include <QCloseEvent>
 #include <QClipboard>
@@ -24,6 +25,7 @@
 #include <QScrollArea>
 #include <QGridLayout>
 #include <QSizePolicy>
+#include <QInputDialog>
 
 // ── Constructor / Destructor ────────────────────────────────────────────────
 

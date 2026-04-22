@@ -1,7 +1,6 @@
 #ifndef WALLETMODEL_H
 #define WALLETMODEL_H
 
-#include <cstdint>
 #include "compat.h"
 
 #include <map>
@@ -96,6 +95,8 @@ class WalletModel : public QObject
 
 public:
     explicit WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent = 0);
+
+    CWallet* getWallet() const { return wallet; }
     ~WalletModel();
 
     enum StatusCode // Returned by sendCoins
