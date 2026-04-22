@@ -79,11 +79,16 @@ jobs:
 
       - name: Download pre-built Qt 5.15.7 from GitHub Release
         if: steps.cache-qt.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          echo "Downloading pre-built Qt 5.15.7 static..."
-          curl -L -o /tmp/qt-prebuilt.tar.gz \
-            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-            "$QT_RELEASE_URL_X64"
+          echo "Downloading pre-built Qt 5.15.7 static via GitHub CLI..."
+          # Use gh release download — handles private repo auth and S3 redirects correctly
+          gh release download qt-static-5.15.7-mingw64 \
+            --repo DigitalNoteXDN/DigitalNote-Builder \
+            --pattern "qt-5.15.7-static-mingw64.tar.gz" \
+            --output /tmp/qt-prebuilt.tar.gz
+          echo "Extracting..."
           tar -xzf /tmp/qt-prebuilt.tar.gz \
               -C ~/DigitalNote-Builder/windows/x64/
           rm /tmp/qt-prebuilt.tar.gz
@@ -334,10 +339,13 @@ jobs:
 
       - name: Download pre-built Qt 5.15.7 (x86)
         if: steps.cache-qt-x86.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          curl -L -o /tmp/qt-x86.tar.gz \
-            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-            "$QT_RELEASE_URL_X86"
+          gh release download qt-static-5.15.7-mingw32 \
+            --repo DigitalNoteXDN/DigitalNote-Builder \
+            --pattern "qt-5.15.7-static-mingw32.tar.gz" \
+            --output /tmp/qt-x86.tar.gz
           tar -xzf /tmp/qt-x86.tar.gz \
               -C ~/DigitalNote-Builder-x86/windows/x86/
           rm /tmp/qt-x86.tar.gz
