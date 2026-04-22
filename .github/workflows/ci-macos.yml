@@ -7,7 +7,7 @@ on:
     branches: [ master, main, develop, 2.0.0.7-testing ]
 
 env:
-  BUILDER_REPO: https://github.com/DigitalNoteXDN/DigitalNote-Builder.git
+  BUILDER_REPO: https://github.com/rubber-duckie-au/DigitalNote-Builder.git
   JOBS: 4
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
         working-directory: ${{ github.workspace }}/..
         run: |
           if [ ! -d DigitalNote-Builder ]; then
-            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/DigitalNoteXDN/DigitalNote-Builder.git
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/rubber-duckie-au/DigitalNote-Builder.git
           else
             cd DigitalNote-Builder && git pull origin master
           fi
@@ -178,7 +178,7 @@ jobs:
       - name: Clone Builder + install packages
         run: |
           cd ..
-          git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/DigitalNoteXDN/DigitalNote-Builder.git \
+          git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/rubber-duckie-au/DigitalNote-Builder.git \
             2>/dev/null || (cd DigitalNote-Builder && git pull)
           cd DigitalNote-Builder
           bash download.sh 2>/dev/null || true
