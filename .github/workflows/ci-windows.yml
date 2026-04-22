@@ -77,21 +77,28 @@ jobs:
           path: ~/DigitalNote-Builder/windows/x64/libs/qt-5.15.7
           key: qt-5.15.7-static-mingw64-v1
 
-      - name: Download pre-built Qt 5.15.7 from GitHub Release
+      # Download Qt using PowerShell (gh CLI is not available inside MSYS2)
+      # PowerShell step runs before MSYS2 shell steps
+      - name: Download pre-built Qt 5.15.7 (PowerShell)
         if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          echo "Downloading pre-built Qt 5.15.7 static via GitHub CLI..."
-          # Use gh release download — handles private repo auth and S3 redirects correctly
-          gh release download qt-static-5.15.7-mingw64 \
-            --repo DigitalNoteXDN/DigitalNote-Builder \
-            --pattern "qt-5.15.7-static-mingw64.tar.gz" \
-            --output /tmp/qt-prebuilt.tar.gz
-          echo "Extracting..."
-          tar -xzf /tmp/qt-prebuilt.tar.gz \
+          Write-Host "Downloading pre-built Qt 5.15.7 via gh CLI..."
+          gh release download qt-static-5.15.7-mingw64 `
+            --repo DigitalNoteXDN/DigitalNote-Builder `
+            --pattern "qt-5.15.7-static-mingw64.tar.gz" `
+            --output "C:\\qt-prebuilt.tar.gz"
+          Write-Host "Download complete: $((Get-Item C:\\qt-prebuilt.tar.gz).Length) bytes"
+
+      - name: Extract Qt 5.15.7
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/DigitalNote-Builder/windows/x64/libs
+          tar -xzf /c/qt-prebuilt.tar.gz \
               -C ~/DigitalNote-Builder/windows/x64/
-          rm /tmp/qt-prebuilt.tar.gz
+          rm /c/qt-prebuilt.tar.gz
           echo "Qt ready:"
           ls ~/DigitalNote-Builder/windows/x64/libs/qt-5.15.7/bin/
 
@@ -337,18 +344,25 @@ jobs:
             cd ~/DigitalNote-Builder-x86 && bash download.sh 2>/dev/null || true
           fi
 
-      - name: Download pre-built Qt 5.15.7 (x86)
+      - name: Download pre-built Qt 5.15.7 (x86, PowerShell)
         if: steps.cache-qt-x86.outputs.cache-hit != 'true'
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          gh release download qt-static-5.15.7-mingw32 \
-            --repo DigitalNoteXDN/DigitalNote-Builder \
-            --pattern "qt-5.15.7-static-mingw32.tar.gz" \
-            --output /tmp/qt-x86.tar.gz
-          tar -xzf /tmp/qt-x86.tar.gz \
+          gh release download qt-static-5.15.7-mingw32 `
+            --repo DigitalNoteXDN/DigitalNote-Builder `
+            --pattern "qt-5.15.7-static-mingw32.tar.gz" `
+            --output "C:\\qt-x86.tar.gz"
+          Write-Host "Download complete: $((Get-Item C:\\qt-x86.tar.gz).Length) bytes"
+
+      - name: Extract Qt 5.15.7 (x86)
+        if: steps.cache-qt-x86.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/DigitalNote-Builder-x86/windows/x86/libs
+          tar -xzf /c/qt-x86.tar.gz \
               -C ~/DigitalNote-Builder-x86/windows/x86/
-          rm /tmp/qt-x86.tar.gz
+          rm /c/qt-x86.tar.gz
 
       - name: Compile libs + app (x86)
         run: |
