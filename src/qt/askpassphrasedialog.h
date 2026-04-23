@@ -20,7 +20,7 @@ public:
         Encrypt,            /**< Ask passphrase twice and encrypt */
         UnlockStaking,      /**< Ask passphrase and unlock for staking */
         Unlock,             /**< Ask passphrase and unlock */
-        UnlockWithSeed,     /**< Ask seed phrase and unlock (recovery path) */
+        UnlockWithSeed,     /**< Ask recovery phrase and unlock */
         ChangePass,         /**< Ask old passphrase + new passphrase twice */
         Decrypt             /**< Ask passphrase and decrypt wallet */
     };
@@ -39,13 +39,13 @@ private:
     bool fCapsLock;
 
     void setupEncryptMode();
-    void tryUnlockWithSeed(const QString& seedPhrase);
 
 private slots:
     void textChanged();
     void onGeneratePassword();
-    void onSwitchToSeed();
     void onSwitchToPassword();
+    void onSwitchToSeed();
+    void tryUnlockWithSeed(const QString& seedPhrase);
 
 protected:
     bool event(QEvent *event);

@@ -155,9 +155,17 @@ jobs:
       - name: Compile static libraries
         if: steps.libs-cache.outputs.cache-hit != 'true'
         run: |
-          # Symlink so scripts can find download/ via ../../../download from temp/
-          ln -sf ~/DigitalNote-Builder/download ~/DigitalNote-Builder/download
-          ln -sfn ${{ github.workspace }} ~/DigitalNote-Builder/DigitalNote-2
+          # Convert Windows workspace path to MSYS2 POSIX path for symlinks
+          MSYS_WORKSPACE=$(cygpath -u '${{ github.workspace }}')
+
+          # download/ lives at Builder root — scripts look for ../../../download
+          # from windows/x64/temp/, which resolves to Builder root/download/
+          # No symlink needed — download.sh already puts files in the right place
+          # Just make sure the download dir exists
+          mkdir -p ~/DigitalNote-Builder/download
+
+          # Link DigitalNote-2 source using POSIX path
+          ln -sfn "$MSYS_WORKSPACE" ~/DigitalNote-Builder/DigitalNote-2
 
           cd ~/DigitalNote-Builder/windows/x64
           export TARGET_OS=NATIVE_WINDOWS
@@ -178,7 +186,8 @@ jobs:
       # ── 8. Link source tree ────────────────────────────────────────────────
       - name: Link source tree into Builder
         run: |
-          ln -sfn ${{ github.workspace }} ~/DigitalNote-Builder/DigitalNote-2
+          MSYS_WORKSPACE=$(cygpath -u '${{ github.workspace }}')
+          ln -sfn "$MSYS_WORKSPACE" ~/DigitalNote-Builder/DigitalNote-2
 
       # ── 9. Compile daemon ──────────────────────────────────────────────────
       # Matches windows/x64/compile_deamon.sh exactly + USE_BIP39=1
@@ -291,7 +300,7 @@ jobs:
     name: Windows x86 — Build (MSYS2 MinGW32)
     runs-on: windows-2022
     timeout-minutes: 180
-    if: github.event_name == 'push'
+    if: false  # disabled until x86 Qt pre-built release is published
 
     defaults:
       run:

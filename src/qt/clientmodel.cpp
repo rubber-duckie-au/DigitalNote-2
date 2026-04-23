@@ -385,3 +385,4 @@ void ClientModel::unsubscribeFromCoreSignals()
 		)
 	);
 }
+

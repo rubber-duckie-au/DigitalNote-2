@@ -162,9 +162,13 @@ public:
     // Wallet backup
     bool backupWallet(const QString &filename);
 
-    // BIP39 seed phrase generation
-    // Wallet must be encrypted and unlocked. Returns false on failure.
-    bool generateMnemonic(BIP39Wallet::WordCount wordCount, SecureString &mnemonic) const;
+    // BIP39 recovery phrase — derives a 24-word mnemonic from the wallet passphrase.
+    // Call after encryption to show the user their recovery phrase.
+    // passphrase is the raw encryption passphrase just typed by the user.
+    bool generateRecoveryMnemonic(const SecureString &passphrase, SecureString &mnemonic) const;
+
+    // Re-enable unlock via mnemonic: derives passphrase from mnemonic and unlocks.
+    UnlockContext requestUnlockWithMnemonic(const QString &mnemonic);
 	// Wallet Repair
 	void checkWallet(int& nMismatchSpent, int64_t& nBalanceInQuestion);
 	void repairWallet(int& nMismatchSpent, int64_t& nBalanceInQuestio);
@@ -190,7 +194,6 @@ public:
     };
 
     UnlockContext requestUnlock();
-    UnlockContext requestUnlockWithMnemonic(const QString &mnemonic);
 
     bool getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);

@@ -426,8 +426,11 @@ void DigitalNoteGUI::createActions()
     connect(editConfigExtAction, SIGNAL(triggered()), this, SLOT(editConfigExt()));
     connect(openDataDirAction, SIGNAL(triggered()), this, SLOT(openDataDir()));
 
-    seedPhraseAction = new QAction(QIcon(":/icons/key"), tr("&Seed Phrase / Recovery Words..."), this);
-    seedPhraseAction->setToolTip(tr("View your BIP39 wallet recovery seed phrase"));
+    seedPhraseAction = new QAction(QIcon(":/icons/key"), tr("&Recovery Phrase..."), this);
+    seedPhraseAction->setToolTip(
+        tr("View your 24-word wallet recovery phrase.\n\n"
+           "Note: Only available for wallets encrypted in DigitalNote v2.0.0.7+.\n"
+           "To enable for older wallets: Settings \u2192 Decrypt Wallet, then re-encrypt."));
     connect(seedPhraseAction, SIGNAL(triggered()), this, SLOT(showSeedPhrase()));
 }
 

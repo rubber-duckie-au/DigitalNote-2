@@ -19,13 +19,13 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QMessageBox>
+#include <QInputDialog>
 #include <QCheckBox>
 #include <QFrame>
 #include <QFont>
 #include <QScrollArea>
 #include <QGridLayout>
 #include <QSizePolicy>
-#include <QInputDialog>
 
 // ── Constructor / Destructor ────────────────────────────────────────────────
 
@@ -109,7 +109,9 @@ void SeedPhraseDialog::setupUi()
     seedLayout->addWidget(wordGrid);
 
     // Placeholder shown before reveal
-    auto *placeholderLabel = new QLabel(tr("Click \"Reveal Seed Phrase\" to display your mnemonic."));
+    auto *placeholderLabel = new QLabel(tr("Your recovery phrase is a 24-word backup of your wallet password.\n\n"
+           "If you forget your password, enter these words in Settings \u2192 Unlock Wallet \u2192 Forgot password?\n\n"
+           "Note: This backs up your password only, not your keys. Keep your wallet.dat file backed up separately."));
     placeholderLabel->setObjectName("placeholderLabel");
     placeholderLabel->setAlignment(Qt::AlignCenter);
     placeholderLabel->setStyleSheet("color:#888; font-size:10pt;");
@@ -225,15 +227,54 @@ void SeedPhraseDialog::onCountdownTick()
     m_countdownTimer.stop();
     if (label) label->hide();
 
-    // Generate the mnemonic via WalletModel (keeps wallet pointer private)
+    // Derive the recovery mnemonic from the wallet passphrase.
+    // We ask the user to enter their passphrase here so we can derive
+    // the deterministic recovery phrase from it.
+    // The wallet must be encrypted — unencrypted wallets have no passphrase
+    // and therefore no recovery phrase.
+    if (m_model->getEncryptionStatus() == WalletModel::Unencrypted) {
+        QMessageBox::information(this, tr("Recovery Phrase Unavailable"),
+            tr("Your wallet is not encrypted.<br><br>"
+               "A recovery phrase is only available for encrypted wallets.<br><br>"
+               "Go to <b>Settings \u2192 Encrypt Wallet</b> to encrypt your wallet "
+               "and receive a 24-word recovery phrase."));
+        auto *revealBtn = findChild<QPushButton*>("revealBtn");
+        if (revealBtn) revealBtn->setEnabled(true);
+        return;
+    }
+
+    // Ask for passphrase to derive the recovery mnemonic
+    bool ok2 = false;
+    QString passQStr = QInputDialog::getText(
+        this,
+        tr("Enter your wallet password"),
+        tr("Enter your wallet password to display your recovery phrase:"),
+        QLineEdit::Password,
+        QString(),
+        &ok2);
+
+    if (!ok2 || passQStr.isEmpty()) {
+        auto *revealBtn = findChild<QPushButton*>("revealBtn");
+        if (revealBtn) revealBtn->setEnabled(true);
+        return;
+    }
+
+    SecureString passphrase;
+    std::string passStr = passQStr.toStdString();
+    passphrase.assign(passStr.c_str(), passStr.size());
+    OPENSSL_cleanse(const_cast<char*>(passStr.data()), passStr.size());
+
     SecureString mnemonic;
-    bool ok = m_model->generateMnemonic(m_wordCount, mnemonic);
+    bool ok = m_model->generateRecoveryMnemonic(passphrase, mnemonic);
+    OPENSSL_cleanse(const_cast<char*>(passphrase.data()), passphrase.size());
 
     if (!ok) {
-        QMessageBox::critical(this, tr("Seed Phrase Error"),
-            tr("Could not generate seed phrase. "
-               "Ensure your wallet is encrypted and unlocked."));
-
+        QMessageBox::critical(this, tr("Recovery Phrase Error"),
+            tr("Could not generate the recovery phrase.<br><br>"
+               "This may mean your wallet was encrypted with an older version of "
+               "DigitalNote. To enable recovery phrase support, go to "
+               "<b>Settings \u2192 Decrypt Wallet</b>, then "
+               "<b>Settings \u2192 Encrypt Wallet</b> to re-encrypt."));
         auto *revealBtn = findChild<QPushButton*>("revealBtn");
         if (revealBtn) revealBtn->setEnabled(true);
         return;
@@ -363,7 +404,7 @@ void SeedPhraseDialog::onVerifyClicked()
                    "(checksum failed or unknown words)."));
         } else {
             QMessageBox::warning(this, tr("Mismatch"),
-                tr("The phrase you entered does not match the wallet's seed phrase. "
+                tr("The phrase you entered does not match your wallet's recovery phrase. "
                    "Please check your written copy."));
         }
     }

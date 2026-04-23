@@ -79,27 +79,28 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
             ui->passEdit3->hide();
             setWindowTitle(tr("Unlock wallet"));
 
-            // Add "Unlock with Seed Phrase" link
-            QPushButton *seedBtn = new QPushButton(tr("Forgot password? Unlock with seed phrase..."), this);
-            seedBtn->setFlat(true);
-            seedBtn->setStyleSheet("QPushButton { color: #3098c6; text-decoration: underline; "
-                                   "border: none; background: transparent; }");
-            // Insert below the password fields
-            QVBoxLayout *vl = qobject_cast<QVBoxLayout*>(ui->verticalLayout);
-            if (vl) {
-                int idx = vl->indexOf(ui->capsLabel);
-                if (idx >= 0)
-                    vl->insertWidget(idx + 1, seedBtn);
-                else
-                    vl->addWidget(seedBtn);
-            }
-            connect(seedBtn, &QPushButton::clicked, this, &AskPassphraseDialog::onSwitchToSeed);
-            break;
+             // "Forgot password?" recovery link
+             QPushButton *seedBtn = new QPushButton(
+                 tr("Forgot password? Unlock with recovery phrase..."), this);
+             seedBtn->setFlat(true);
+             seedBtn->setStyleSheet(
+                 "QPushButton { color: #3098c6; text-decoration: underline; "
+                 "border: none; background: transparent; }");
+             QVBoxLayout *vl = qobject_cast<QVBoxLayout*>(ui->verticalLayout);
+             if (vl) {
+                 int vidx = vl->indexOf(ui->capsLabel);
+                 if (vidx >= 0)
+                     vl->insertWidget(vidx + 1, seedBtn);
+                 else
+                     vl->addWidget(seedBtn);
+             }
+             connect(seedBtn, &QPushButton::clicked,
+                     this, &AskPassphraseDialog::onSwitchToSeed);
+             break;
         }
 
         case UnlockWithSeed:
         {
-            // Hide all password fields, show a note
             ui->passLabel1->hide();
             ui->passEdit1->hide();
             ui->passLabel2->hide();
@@ -107,36 +108,32 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
             ui->passLabel3->hide();
             ui->passEdit3->hide();
             ui->warningLabel->setText(
-                tr("<b>Recover wallet access using your seed phrase.</b><br><br>"
-                   "Enter your 12 or 24 word seed phrase below to unlock access to your "
-                   "<b>wallet.dat</b> file. Your wallet.dat file must be present — "
-                   "the seed phrase alone is not sufficient without it.<br><br>"
-                   "<i>This only works for wallets that had their seed phrase linked "
-                   "after encryption.</i>"));
-            setWindowTitle(tr("Unlock wallet with seed phrase"));
-
-            // Add seed phrase input
+                tr("<b>Unlock wallet using your 24-word recovery phrase.</b><br><br>"
+                   "Enter your recovery phrase below. Your <b>wallet.dat</b> must be present."
+                   "<br><br><i>This only works for wallets encrypted in DigitalNote v2.0.0.7+.</i>"));
+            setWindowTitle(tr("Unlock with recovery phrase"));
             QTextEdit *seedEdit = new QTextEdit(this);
             seedEdit->setObjectName("seedEdit");
-            seedEdit->setPlaceholderText(tr("Enter your seed phrase words here, separated by spaces..."));
+            seedEdit->setPlaceholderText(
+                tr("Enter your 24 recovery words separated by spaces..."));
             seedEdit->setMaximumHeight(80);
             QVBoxLayout *vl = qobject_cast<QVBoxLayout*>(ui->verticalLayout);
             if (vl) {
-                int idx = vl->indexOf(ui->capsLabel);
-                if (idx >= 0)
-                    vl->insertWidget(idx + 1, seedEdit);
+                int vidx = vl->indexOf(ui->capsLabel);
+                if (vidx >= 0)
+                    vl->insertWidget(vidx + 1, seedEdit);
                 else
                     vl->addWidget(seedEdit);
             }
-
-            // Back to password link
             QPushButton *passBtn = new QPushButton(tr("Use password instead"), this);
             passBtn->setFlat(true);
-            passBtn->setStyleSheet("QPushButton { color: #3098c6; text-decoration: underline; "
-                                   "border: none; background: transparent; }");
+            passBtn->setStyleSheet(
+                "QPushButton { color: #3098c6; text-decoration: underline; "
+                "border: none; background: transparent; }");
             if (QVBoxLayout *vl2 = qobject_cast<QVBoxLayout*>(ui->verticalLayout))
                 vl2->addWidget(passBtn);
-            connect(passBtn, &QPushButton::clicked, this, &AskPassphraseDialog::onSwitchToPassword);
+            connect(passBtn, &QPushButton::clicked,
+                    this, &AskPassphraseDialog::onSwitchToPassword);
             break;
         }
 
@@ -171,8 +168,8 @@ void AskPassphraseDialog::setupEncryptMode()
         tr("Choose a passphrase to encrypt your wallet.<br/>"
            "Please use a passphrase of <b>ten or more random characters</b>, "
            "or <b>eight or more words</b>.<br/><br/>"
-           "<b>After encrypting, visit Settings → Seed Phrase / Recovery Words</b> "
-           "to link your recovery seed phrase so you can recover access if you forget your password."));
+           "After encrypting, you will be shown a <b>24-word recovery phrase</b>. "
+           "Write it down safely \u2014 it can unlock your wallet if you forget your password."));;
     setWindowTitle(tr("Encrypt wallet"));
 
     // Generate password button
@@ -229,12 +226,33 @@ void AskPassphraseDialog::onGeneratePassword()
 
 void AskPassphraseDialog::onSwitchToSeed()
 {
-    // Re-open this dialog in UnlockWithSeed mode
     reject();
-    AskPassphraseDialog *seedDlg = new AskPassphraseDialog(UnlockWithSeed, parentWidget());
-    seedDlg->setModel(model);
-    seedDlg->exec();
-    seedDlg->deleteLater();
+    AskPassphraseDialog *d = new AskPassphraseDialog(UnlockWithSeed, parentWidget());
+    d->setModel(model);
+    d->exec();
+    d->deleteLater();
+}
+
+void AskPassphraseDialog::tryUnlockWithSeed(const QString& phrase)
+{
+    if (!model) return;
+    QString trimmed = phrase.simplified().trimmed();
+    if (trimmed.isEmpty()) {
+        QMessageBox::warning(this, tr("Empty recovery phrase"),
+            tr("Please enter your 24-word recovery phrase."));
+        return;
+    }
+    WalletModel::UnlockContext ctx = model->requestUnlockWithMnemonic(trimmed);
+    if (!ctx.isValid()) {
+        QMessageBox::critical(this, tr("Unlock failed"),
+            tr("Could not unlock the wallet.<br><br>"
+               "Make sure all 24 words are correct and this wallet "
+               "was encrypted in DigitalNote v2.0.0.7 or later."));
+        return;
+    }
+    QMessageBox::information(this, tr("Wallet unlocked"),
+        tr("Wallet successfully unlocked using your recovery phrase."));
+    QDialog::accept();
 }
 
 void AskPassphraseDialog::onSwitchToPassword()
@@ -244,34 +262,6 @@ void AskPassphraseDialog::onSwitchToPassword()
     passDlg->setModel(model);
     passDlg->exec();
     passDlg->deleteLater();
-}
-
-void AskPassphraseDialog::tryUnlockWithSeed(const QString& seedPhrase)
-{
-    if (!model) return;
-
-    QString trimmed = seedPhrase.simplified().trimmed();
-    if (trimmed.isEmpty()) {
-        QMessageBox::warning(this, tr("Empty seed phrase"),
-                             tr("Please enter your seed phrase words."));
-        return;
-    }
-
-    // Attempt recovery via WalletModel
-    WalletModel::UnlockContext ctx = model->requestUnlockWithMnemonic(trimmed);
-    if (!ctx.isValid()) {
-        QMessageBox::critical(this, tr("Unlock failed"),
-                              tr("Could not unlock the wallet with the provided seed phrase.<br><br>"
-                                 "Make sure:<br>"
-                                 "• You have entered all words correctly<br>"
-                                 "• This wallet had its seed phrase linked after encryption<br>"
-                                 "• You are using the correct wallet.dat file"));
-        return;
-    }
-
-    QMessageBox::information(this, tr("Wallet unlocked"),
-                             tr("Wallet successfully unlocked using your seed phrase."));
-    QDialog::accept();
 }
 
 // ── accept() ─────────────────────────────────────────────────────────────────
@@ -308,6 +298,31 @@ void AskPassphraseDialog::accept()
         if(retval == QMessageBox::Yes) {
             if(newpass1 == newpass2) {
                 if(model->setWalletEncrypted(true, newpass1)) {
+                    // Derive and show the recovery mnemonic
+                    SecureString recoveryMnemonic;
+                    bool mnOk = model->generateRecoveryMnemonic(newpass1, recoveryMnemonic);
+                    if (mnOk && !recoveryMnemonic.empty()) {
+                        QString mnWords = QString::fromStdString(
+                            std::string(recoveryMnemonic.begin(), recoveryMnemonic.end()));
+                        OPENSSL_cleanse(const_cast<char*>(recoveryMnemonic.data()),
+                                        recoveryMnemonic.size());
+                        QMessageBox mb(this);
+                        mb.setWindowTitle(tr("Your 24-Word Recovery Phrase"));
+                        mb.setIcon(QMessageBox::Warning);
+                        mb.setText(
+                            tr("<b>Write down these 24 words in order and store them safely.</b>"
+                               "<br><br><tt>%1</tt><br><br>"
+                               "These words can recover access to your encrypted wallet if you forget "
+                               "your password. <b>Anyone with these words can unlock your wallet.</b>"
+                               "<br><br><i>This phrase will not be shown again.</i>").arg(mnWords));
+                        QPushButton *copyBtn = mb.addButton(
+                            tr("Copy to clipboard"), QMessageBox::ActionRole);
+                        mb.addButton(tr("I have written it down"), QMessageBox::AcceptRole);
+                        mb.exec();
+                        if (mb.clickedButton() == copyBtn)
+                            QApplication::clipboard()->setText(mnWords);
+                    }
+
                     QMessageBox::warning(this, tr("Wallet encrypted"),
                         "<qt>" +
                         tr("DigitalNote will close now to finish the encryption process. "
@@ -319,8 +334,6 @@ void AskPassphraseDialog::accept()
                            "For security reasons, previous backups of the unencrypted wallet file "
                            "will become useless as soon as you start using the new, encrypted wallet.") +
                         "</b><br><br>" +
-                        tr("After restarting, visit <b>Settings → Seed Phrase / Recovery Words</b> "
-                           "to link your seed phrase for password-free recovery.") +
                         "</qt>");
                     QApplication::quit();
                 } else {
@@ -338,11 +351,8 @@ void AskPassphraseDialog::accept()
         } break;
 
     case UnlockWithSeed: {
-        // Find the seed text edit we added dynamically
         QTextEdit *seedEdit = findChild<QTextEdit*>("seedEdit");
-        if (seedEdit) {
-            tryUnlockWithSeed(seedEdit->toPlainText());
-        }
+        if (seedEdit) tryUnlockWithSeed(seedEdit->toPlainText());
         } break;
 
     case UnlockStaking:
@@ -398,13 +408,13 @@ void AskPassphraseDialog::textChanged()
     case Encrypt:
         acceptable = !ui->passEdit2->text().isEmpty() && !ui->passEdit3->text().isEmpty();
         break;
+    case UnlockWithSeed:
+        acceptable = true;
+        break;
     case UnlockStaking:
     case Unlock:
     case Decrypt:
         acceptable = !ui->passEdit1->text().isEmpty();
-        break;
-    case UnlockWithSeed:
-        acceptable = true; // validated on accept
         break;
     case ChangePass:
         acceptable = !ui->passEdit1->text().isEmpty() &&

@@ -754,11 +754,43 @@ void WalletModel::unsubscribeFromCoreSignals()
 bool WalletModel::generateMnemonic(BIP39Wallet::WordCount wordCount,
                                    SecureString &mnemonic) const
 {
-    // wallet is private here — no external exposure needed
     BIP39Wallet::Result res = BIP39Wallet::generateMnemonic(
         *wallet, wordCount, mnemonic);
     return res == BIP39Wallet::Result::OK;
 }
+
+bool WalletModel::generateRecoveryMnemonic(const SecureString &passphrase,
+                                            SecureString &mnemonic) const
+{
+    // Derive a 24-word BIP39 recovery mnemonic from the user's passphrase.
+    // The same passphrase always produces the same mnemonic — deterministic.
+    // This does NOT touch wallet key material.
+    BIP39Wallet::Result res = BIP39Wallet::mnemonicFromPassphrase(passphrase, mnemonic);
+    return res == BIP39Wallet::Result::OK;
+}
+
+WalletModel::UnlockContext WalletModel::requestUnlockWithMnemonic(const QString &mnemonic)
+{
+    bool was_locked = wallet->IsLocked();
+
+    // Validate then derive the passphrase from the mnemonic entropy
+    SecureString mnemonicSS;
+    std::string mnStr = mnemonic.simplified().trimmed().toStdString();
+    mnemonicSS.assign(mnStr.c_str(), mnStr.size());
+
+    if (!BIP39Wallet::validateMnemonic(mnemonicSS))
+        return UnlockContext(this, false, false);
+
+    SecureString derivedPass;
+    BIP39Wallet::Result res = BIP39Wallet::passphraseFromMnemonic(mnemonicSS, derivedPass);
+    if (res != BIP39Wallet::Result::OK)
+        return UnlockContext(this, false, false);
+
+    bool valid = !was_locked || wallet->Unlock(derivedPass);
+
+    return UnlockContext(this, valid, was_locked && valid);
+}
+
 WalletModel::UnlockContext WalletModel::requestUnlock()
 {
     bool was_locked = getEncryptionStatus() == Locked;
@@ -780,22 +812,6 @@ WalletModel::UnlockContext WalletModel::requestUnlock()
     return UnlockContext(this, valid, was_locked && !fWalletUnlockStakingOnly);
 }
 
-
-WalletModel::UnlockContext WalletModel::requestUnlockWithMnemonic(const QString &mnemonic)
-{
-    bool was_locked = wallet->IsLocked();
-
-    // Attempt unlock via mnemonic-derived key (Option 2 recovery path).
-    // The wallet must have had its vMasterKey linked to the mnemonic
-    // via SeedPhraseDialog after encryption.
-    SecureString mnemonicPass;
-    std::string mnStr = mnemonic.simplified().trimmed().toStdString();
-    mnemonicPass.assign(mnStr.c_str());
-
-    bool valid = !was_locked || wallet->Unlock(mnemonicPass);
-
-    return UnlockContext(this, valid, was_locked && valid);
-}
 WalletModel::UnlockContext::UnlockContext(WalletModel *wallet, bool valid, bool relock):
         wallet(wallet),
         valid(valid),
