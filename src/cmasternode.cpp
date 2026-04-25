@@ -78,8 +78,7 @@ CMasternode::CMasternode(const CMasternode& other)
 	lastVote = other.lastVote;
 	nScanningErrorCount = other.nScanningErrorCount;
 	nLastScanningErrorBlockHeight = other.nLastScanningErrorBlockHeight;
-	nLastPaid = other.nLastPaid;
-	nLastPaid = GetAdjustedTime();
+	nLastPaid = other.nLastPaid; // copy actual last paid time
 	isPortOpen = other.isPortOpen;
 	isOldNode = other.isOldNode;
 }

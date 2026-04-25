@@ -1505,7 +1505,7 @@ bool CWallet::VerifyPassphrase(const SecureString& strWalletPassphrase) const
 	return false;
 }
 
-// NOT CALLED — retained for future use.
+// NOT CALLED â€” retained for future use.
 // This function fully decrypts the wallet.dat, removing all encryption.
 // It uses a two-phase commit: write all plain keys first (WriteKeyOverwrite),
 // then erase encrypted records. If interrupted mid-Phase-A wallet.dat is safe

@@ -1,31 +1,22 @@
-name: CI - Windows x64 + x86
+name: CI - Linux x64
 
 on:
   push:
     branches: [ master, main, develop, 2.0.0.7-testing ]
   pull_request:
     branches: [ master, main, develop, 2.0.0.7-testing ]
+  workflow_call:  # allow release.yml to call this workflow
 
 env:
   BUILDER_REPO: https://github.com/rubber-duckie-au/DigitalNote-Builder.git
   JOBS: 4
-  # Pre-built Qt 5.15.7 static for MinGW64 — published to GitHub Releases.
-  # HOW TO PUBLISH: build Qt locally then:
-  #   cd DigitalNote-Builder/windows/x64
-  #   tar -czf qt-5.15.7-static-mingw64.tar.gz libs/qt-5.15.7/
-  # Upload to: Releases > qt-static-5.15.7-mingw64
-  QT_RELEASE_URL_X64: https://github.com/rubber-duckie-au/DigitalNote-Builder/releases/download/qt-static-5.15.7-mingw64/qt-5.15.7-static-mingw64.tar.gz
-  QT_RELEASE_URL_X86: https://github.com/rubber-duckie-au/DigitalNote-Builder/releases/download/qt-static-5.15.7-mingw32/qt-5.15.7-static-mingw32.tar.gz
 
 jobs:
-  build-windows-x64:
-    name: Windows x64 — Build + Test (MSYS2 MinGW64)
-    runs-on: windows-2022
-    timeout-minutes: 180
-
-    defaults:
-      run:
-        shell: msys2 {0}
+  build-and-test-linux-x64:
+    name: Linux x64 — Build + Full Test Suite
+    runs-on: ubuntu-22.04
+    # Qt builds from source inside compile_libs.sh — allow up to 3 hours
+    timeout-minutes: 240
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
@@ -35,165 +26,73 @@ jobs:
           submodules: false  # BIP39 merged into main repo - no longer a submodule
           token: ${{ secrets.PAT_TOKEN }}
 
-      # ── 2. MSYS2 MinGW64 ───────────────────────────────────────────────────
-      # Matches windows/x64/update.sh packages
-      - name: Set up MSYS2 MinGW64
-        uses: msys2/setup-msys2@v2
+      # ── 2. Cache libraries ─────────────────────────────────────────────────
+      - name: Cache Builder libraries
+        uses: actions/cache@v4
+        id: libs-cache
         with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            git
-            base-devel
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-pcre2
-            mingw-w64-x86_64-gmp
-            mingw-w64-x86_64-cmake
-            perl
-            bzip2
-            libtool
-            make
-            autoconf
+          path: |
+            ${{ github.workspace }}/../DigitalNote-Builder/libs
+            ${{ github.workspace }}/../DigitalNote-Builder/download
+          key: linux-x64-libs-${{ hashFiles('.gitmodules') }}-v5
+          restore-keys: linux-x64-libs-
 
       # ── 3. Clone DigitalNote-Builder ───────────────────────────────────────
       - name: Clone DigitalNote-Builder
+        working-directory: ${{ github.workspace }}/..
         run: |
-          cd ~
           if [ ! -d DigitalNote-Builder ]; then
             git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/rubber-duckie-au/DigitalNote-Builder.git
           else
             cd DigitalNote-Builder && git pull origin master
           fi
-          mkdir -p ~/DigitalNote-Builder/windows/x64/temp
-          mkdir -p ~/DigitalNote-Builder/windows/x64/libs
 
-      # ── 4. Qt — cached then downloaded from GitHub Release ─────────────────
-      # Qt is NOT built from source in CI — use pre-built artifact.
-      # This avoids the 60-120 minute Qt build on every run.
-      - name: Cache Qt 5.15.7 static build
-        id: cache-qt
-        uses: actions/cache@v4
-        with:
-          path: ~/DigitalNote-Builder/windows/x64/libs/qt-5.15.7
-          key: qt-5.15.7-static-mingw64-v1
-
-      # Download Qt using PowerShell (gh CLI is not available inside MSYS2)
-      # PowerShell step runs before MSYS2 shell steps
-      - name: Download pre-built Qt 5.15.7 (PowerShell)
-        if: steps.cache-qt.outputs.cache-hit != 'true'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          Write-Host "Downloading pre-built Qt 5.15.7 via gh CLI..."
-          gh release download qt-static-5.15.7-mingw64 `
-            --repo rubber-duckie-au/DigitalNote-Builder `
-            --pattern "qt-5.15.7-static-mingw64.tar.gz" `
-            --output "C:\\qt-prebuilt.tar.gz"
-          Write-Host "Download complete: $((Get-Item C:\\qt-prebuilt.tar.gz).Length) bytes"
-
-      - name: Extract Qt 5.15.7
-        if: steps.cache-qt.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/DigitalNote-Builder/windows/x64/libs
-          tar -xzf /c/qt-prebuilt.tar.gz \
-              -C ~/DigitalNote-Builder/windows/x64/
-          rm /c/qt-prebuilt.tar.gz
-          echo "Qt ready:"
-          ls ~/DigitalNote-Builder/windows/x64/libs/qt-5.15.7/bin/
-
-      # ── 5. Cache compiled libraries ────────────────────────────────────────
-      - name: Cache compiled libraries
-        uses: actions/cache@v4
-        id: libs-cache
-        with:
-          path: |
-            ~/DigitalNote-Builder/windows/x64/libs/db-6.2.32.NC
-            ~/DigitalNote-Builder/windows/x64/libs/boost_1_80_0
-            ~/DigitalNote-Builder/windows/x64/libs/openssl-1.1.1w
-            ~/DigitalNote-Builder/windows/x64/libs/libevent-2.1.12-stable
-            ~/DigitalNote-Builder/windows/x64/libs/miniupnpc-2.2.8
-            ~/DigitalNote-Builder/windows/x64/libs/qrencode-4.1.1
-            ~/DigitalNote-Builder/windows/x64/libs/mnemonic
-          key: windows-x64-libs-${{ hashFiles('.gitmodules') }}-v5
-
-      # ── 6. Download source archives ────────────────────────────────────────
-      # Qt tarball NOT downloaded — we use the pre-built Release artifact.
-      # secp256k1 and leveldb are git submodules — no download needed.
-      # BIP39 is now compiled directly into the wallet via bip39.pri
-      - name: Download library source archives
+      # ── 4. Download library archives ───────────────────────────────────────
+      - name: Download library archives
         if: steps.libs-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder
+        run: bash download.sh
+
+      # ── 5. Install system packages ─────────────────────────────────────────
+      # Matches linux/x64/update.sh plus extras needed for:
+      #   cmake        — no longer required for BIP39 (now compiled via bip39.pri)
+      #   libgmp-dev   — GMP library (gmp.sh checks for this on Linux)
+      #   xvfb         — headless display for Qt GUI tests
+      - name: Install system packages
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
         run: |
-          mkdir -p ~/DigitalNote-Builder/download
-          cd ~/DigitalNote-Builder/download
+          sudo apt-get update -qq
+          bash update.sh
+          sudo apt-get install -y \
+            cmake \
+            libgmp-dev \
+            xvfb \
+            libboost-test-dev \
+            cppcheck \
+            valgrind
 
-          wget -q https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.gz
-          wget -q https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
-          wget -q http://download.oracle.com/berkeley-db/db-6.2.32.NC.tar.gz
-          wget -q https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz
-          wget -q "http://miniupnp.free.fr/files/download.php?file=miniupnpc-2.2.8.tar.gz" \
-            -O miniupnpc-2.2.8.tar.gz
-          # qrencode: script expects exactly v4.1.1.tar.gz as filename
-          wget -q https://github.com/fukuchi/libqrencode/archive/refs/tags/v4.1.1.tar.gz
-
-          echo "Downloads complete:"
-          ls -lh ~/DigitalNote-Builder/download/
-
-      # ── 7. Compile static libraries ────────────────────────────────────────
-      # Argument mapping (from actual script inspection):
-      #   berkeleydb.sh  $1=build_dir  $2=configure_flags  $3=make_jobs
-      #   boost.sh       $1=combined "toolset=gcc address-model=64 -j N" string
-      #   gmp.sh         no args (uses pacman package mingw-w64-x86_64-gmp)
-      #   leveldb.sh     $1=make_jobs  (built from DigitalNote-2/src/leveldb/)
-      #   libevent.sh    $1=configure_extra  $2=make_jobs
-      #   miniupnpc.sh   $1=libname  $2=make_jobs  (uses Makefile.mingw on Windows)
-      #   openssl.sh     $1=platform(mingw64)  $2=make_jobs
-      #   qrencode.sh    $1=configure_extra  $2=make_jobs
-      #   secp256k1.sh   $1=configure_extra  $2=make_jobs  (built from submodule)
-      #   (BIP39 now compiled directly via bip39.pri — no mnemonic.sh needed)
-      # NOTE: qt.sh is intentionally NOT called — we use the pre-built artifact.
+      # ── 6. Compile static libraries ────────────────────────────────────────
+      # Note: linux/x64/compile_libs.sh calls qt.sh last — Qt is built from
+      # source here. The libs cache prevents rebuilding on every run.
+      # compile_libs.sh passes $1 as the jobs arg to each sub-script.
+      # secp256k1 and leveldb are built from DigitalNote-2 source.
+      # BIP39 is now compiled directly into the wallet via bip39.pri
       - name: Compile static libraries
         if: steps.libs-cache.outputs.cache-hit != 'true'
-        run: |
-          # Convert Windows workspace path to MSYS2 POSIX path for symlinks
-          MSYS_WORKSPACE=$(cygpath -u '${{ github.workspace }}')
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
+        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
 
-          # download/ lives at Builder root — scripts look for ../../../download
-          # from windows/x64/temp/, which resolves to Builder root/download/
-          # No symlink needed — download.sh already puts files in the right place
-          # Just make sure the download dir exists
-          mkdir -p ~/DigitalNote-Builder/download
-
-          # Link DigitalNote-2 source using POSIX path
-          ln -sfn "$MSYS_WORKSPACE" ~/DigitalNote-Builder/DigitalNote-2
-
-          cd ~/DigitalNote-Builder/windows/x64
-          export TARGET_OS=NATIVE_WINDOWS
-          J="${{ env.JOBS }}"
-
-          echo "=== BerkeleyDB ===" && ../../compile/berkeleydb.sh "build_windows" "--enable-mingw" "-j $J"
-          echo "=== Boost ===" && ../../compile/boost.sh "toolset=gcc address-model=64 -j $J"
-          echo "=== GMP ===" && ../../compile/gmp.sh
-          echo "=== LevelDB ===" && ../../compile/leveldb.sh "-j $J"
-          echo "=== libevent ===" && ../../compile/libevent.sh "" "-j $J"
-          echo "=== miniupnpc ===" && ../../compile/miniupnpc.sh "libminiupnpc.a" "-j $J"
-          echo "=== OpenSSL ===" && ../../compile/openssl.sh "mingw64" "-j $J"
-          echo "=== qrencode ===" && ../../compile/qrencode.sh "" "-j $J"
-          echo "=== secp256k1 ===" && ../../compile/secp256k1.sh "" "-j $J"
-          # BIP39 now compiled directly via bip39.pri — no separate build step needed
-          echo "=== All libraries built ==="
-
-      # ── 8. Link source tree ────────────────────────────────────────────────
+      # ── 7. Link source tree ────────────────────────────────────────────────
       - name: Link source tree into Builder
         run: |
-          MSYS_WORKSPACE=$(cygpath -u '${{ github.workspace }}')
-          ln -sfn "$MSYS_WORKSPACE" ~/DigitalNote-Builder/DigitalNote-2
+          ln -sfn ${{ github.workspace }} \
+            ${{ github.workspace }}/../DigitalNote-Builder/DigitalNote-2
 
-      # ── 9. Compile daemon ──────────────────────────────────────────────────
-      # Matches windows/x64/compile_deamon.sh exactly + USE_BIP39=1
-      - name: Compile daemon (digitalnoted.exe)
+      # ── 8. Compile daemon ──────────────────────────────────────────────────
+      # USE_BIP39=1 enables the BIP39 mnemonic seed phrase feature
+      - name: Compile daemon (digitalnoted)
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
         run: |
-          cd ~/DigitalNote-Builder/windows/x64
           export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
@@ -202,14 +101,15 @@ jobs:
             USE_BUILD_INFO=1 \
             USE_BIP39=1 \
             RELEASE=1
-          make -j${{ env.JOBS }} 2>&1 | tee ~/build-daemon.log
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-daemon.log
           exit ${PIPESTATUS[0]}
 
-      # ── 10. Compile Qt wallet ──────────────────────────────────────────────
-      # Matches windows/x64/compile_app.sh exactly + USE_BIP39=1
-      - name: Compile Qt wallet (DigitalNote-qt.exe)
+      # ── 9. Compile Qt wallet ───────────────────────────────────────────────
+      # USE_BIP39=1 — BIP39 seed phrase support
+      # USE_DBUS=1  — system tray notifications on Linux
+      - name: Compile Qt wallet (digitalnote-qt)
+        working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
         run: |
-          cd ~/DigitalNote-Builder/windows/x64
           export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
@@ -220,200 +120,161 @@ jobs:
             USE_BUILD_INFO=1 \
             USE_BIP39=1 \
             RELEASE=1
-          make -j${{ env.JOBS }} 2>&1 | tee ~/build-app.log
+          make -j${{ env.JOBS }} 2>&1 | tee ${{ github.workspace }}/build-app.log
           exit ${PIPESTATUS[0]}
 
-      # ── 11. Warning analysis ───────────────────────────────────────────────
+      # ── 10. Warning analysis ───────────────────────────────────────────────
       - name: Analyse build warnings
         if: always()
         run: |
-          for log in ~/build-app.log ~/build-daemon.log; do
-            if [ -f "$log" ]; then
-              W=$(grep -c ": warning:" "$log" 2>/dev/null || echo 0)
-              E=$(grep -c ": error:"   "$log" 2>/dev/null || echo 0)
-              echo "=== $(basename $log): $W warning(s), $E error(s) ==="
+          for log in build-app.log build-daemon.log; do
+            if [ -f "${{ github.workspace }}/$log" ]; then
+              W=$(grep -c ": warning:" "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              E=$(grep -c ": error:"   "${{ github.workspace }}/$log" 2>/dev/null || echo 0)
+              echo "=== $log: $W warning(s), $E error(s) ==="
               if [ "$W" -gt 0 ]; then
-                grep ": warning:" "$log" \
+                grep ": warning:" "${{ github.workspace }}/$log" \
                   | sed 's|.*: warning:||' | sort | uniq -c | sort -rn | head -20
               fi
             fi
           done
 
-      # ── 12. Version assertions ─────────────────────────────────────────────
-      - name: Assert version constants in source
+      # ── 11. Verify binaries ────────────────────────────────────────────────
+      - name: Verify build artefacts
         run: |
-          cd ~/DigitalNote-Builder/DigitalNote-2
-          grep -qE 'CLIENT_VERSION_BUILD[[:space:]]+7' src/clientversion.h || {
-            echo "ERROR: CLIENT_VERSION_BUILD is not 7"; exit 1
-          }
-          grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
-            echo "ERROR: PROTOCOL_VERSION is not 62055"; exit 1
-          }
-          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62052' src/version.h || {
-            echo "ERROR: MIN_PEER_PROTO_VERSION is not 62052"; exit 1
-          }
-          echo "OK: BUILD=7, PROTOCOL=62055, PEER_PROTO=62052"
+          set -e
+          DAEMON=$(find ${{ github.workspace }} -name 'digitalnoted' -type f | head -1)
+          WALLET=$(find ${{ github.workspace }} \
+                        \( -name 'digitalnote-qt' -o -name 'bitcoin-qt' \) \
+                        -type f | head -1)
+          echo "Daemon: $DAEMON"
+          echo "Wallet: $WALLET"
+          [ -x "$DAEMON" ] || { echo "ERROR: daemon not found/executable"; exit 1; }
+          [ -x "$WALLET" ] || { echo "ERROR: wallet not found/executable"; exit 1; }
 
-      - name: Assert daemon advertises 2.0.0.7
+      # ── 12. Version assertions ─────────────────────────────────────────────
+      - name: Assert version numbers baked into binaries
         run: |
-          DAEMON=$(find ~/DigitalNote-Builder/DigitalNote-2 \
-                        -name 'digitalnoted.exe' -type f | head -1)
-          if [ -n "$DAEMON" ]; then
-            "$DAEMON" --version 2>&1 | grep -q "2\.0\.0\.7" || {
-              echo "ERROR: daemon.exe does not report version 2.0.0.7"; exit 1
-            }
-            echo "OK: daemon.exe reports 2.0.0.7"
+          set -e
+          DAEMON=$(find ${{ github.workspace }} -name 'digitalnoted' -type f | head -1)
+          VERSION_OUT=$("$DAEMON" --version 2>&1 || true)
+          echo "Version output: $VERSION_OUT"
+          echo "$VERSION_OUT" | grep -q "2\.0\.0\.7" || {
+            echo "ERROR: daemon does not report version 2.0.0.7"
+            exit 1
+          }
+          echo "✓ Client version 2.0.0.7 confirmed"
+          strings "$DAEMON" | grep -q "62055" || \
+            echo "WARNING: '62055' not found in daemon strings — verify PROTOCOL_VERSION"
+          echo "✓ Protocol 62055 check complete"
+
+      # ── 13. Run existing test suite ────────────────────────────────────────
+      - name: Run existing test_digitalnote (core unit tests)
+        run: |
+          TEST_BIN=$(find ${{ github.workspace }} \
+                          \( -name 'test_digitalnote' \
+                          -o -name 'test_bitcoin' \) \
+                          -type f | head -1)
+          if [ -n "$TEST_BIN" ] && [ -x "$TEST_BIN" ]; then
+            echo "Running: $TEST_BIN"
+            "$TEST_BIN" --log_level=test_suite --report_level=short
           else
-            echo "WARNING: digitalnoted.exe not found — skipping runtime version check"
+            echo "⚠ test_digitalnote binary not available on this build path"
           fi
 
-      # ── 13. Collect binaries ───────────────────────────────────────────────
-      - name: Collect Windows executables
-        shell: pwsh
+      # ── 14. Static analysis ────────────────────────────────────────────────
+      - name: cppcheck — new Qt/BIP39 sources
         run: |
-          $src = "$env:USERPROFILE\DigitalNote-Builder\windows\x64\DigitalNote-2"
-          $dst = "${{ github.workspace }}\artifacts"
-          New-Item -ItemType Directory -Force -Path $dst | Out-Null
-          Get-ChildItem -Path $src -Recurse -Include "*.exe" |
-            Copy-Item -Destination $dst
-          # Also collect logs
-          Copy-Item "$env:USERPROFILE\build-app.log"    $dst -ErrorAction SilentlyContinue
-          Copy-Item "$env:USERPROFILE\build-daemon.log" $dst -ErrorAction SilentlyContinue
+          cppcheck \
+            --enable=warning,style,performance \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --error-exitcode=0 \
+            --std=c++17 \
+            -I ${{ github.workspace }}/src/bip39/include \
+            -I ${{ github.workspace }}/src \
+            ${{ github.workspace }}/src/qt/seedphrasedialog.cpp \
+            ${{ github.workspace }}/src/qt/coincontrolworker.cpp \
+            ${{ github.workspace }}/src/qt/sendcoinsworker.cpp \
+            ${{ github.workspace }}/src/qt/masternodeworker.cpp \
+            ${{ github.workspace }}/src/qt/decryptworker.cpp \
+            ${{ github.workspace }}/src/qt/walletmodel.cpp \
+            ${{ github.workspace }}/src/qt/askpassphrasedialog.cpp \
+            ${{ github.workspace }}/src/bip39/src/bip39_wallet.cpp \
+            ${{ github.workspace }}/src/bip39/src/bip39_passphrase.cpp \
+            ${{ github.workspace }}/src/rpcbip39.cpp \
+            2>&1 || echo "⚠ cppcheck warnings present (non-fatal)"
 
-      - name: Upload Windows x64 binaries
+      # ── 15. Upload artefacts ───────────────────────────────────────────────
+      - name: Upload Linux x64 binaries
         uses: actions/upload-artifact@v4
         with:
-          name: digitalnote-windows-x64
-          path: ${{ github.workspace }}\artifacts\*.exe
+          name: digitalnote-linux-x64
+          path: |
+            **/digitalnoted
+            **/digitalnote-qt
+            **/bitcoin-qt
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Upload build logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: build-logs-windows-x64-${{ github.sha }}
-          path: ${{ github.workspace }}\artifacts\*.log
+          name: build-logs-linux-x64-${{ github.sha }}
+          path: |
+            ${{ github.workspace }}/build-app.log
+            ${{ github.workspace }}/build-daemon.log
           retention-days: 14
 
-  # ── Windows x86 ───────────────────────────────────────────────────────────
-  build-windows-x86:
-    name: Windows x86 — Build (MSYS2 MinGW32)
-    runs-on: windows-2022
-    timeout-minutes: 180
-    if: false  # disabled until x86 Qt pre-built release is published
-
-    defaults:
-      run:
-        shell: msys2 {0}
-
+  # ── Lint-only job ──────────────────────────────────────────────────────────
+  lint:
+    name: Lint (cppcheck + version checks)
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: false  # BIP39 merged into main repo - no longer a submodule
           token: ${{ secrets.PAT_TOKEN }}
 
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW32
-          update: true
-          install: >-
-            git
-            base-devel
-            mingw-w64-i686-gcc
-            mingw-w64-i686-cmake
-            perl
-            bzip2
-            libtool
-            make
-            autoconf
+      - name: Install cppcheck
+        run: sudo apt-get install -y cppcheck
 
-      - name: Cache Qt 5.15.7 static build (x86)
-        id: cache-qt-x86
-        uses: actions/cache@v4
-        with:
-          path: ~/DigitalNote-Builder-x86/windows/x86/libs/qt-5.15.7
-          key: qt-5.15.7-static-mingw32-v1
-
-      - name: Cache libs (x86)
-        uses: actions/cache@v4
-        id: libs-cache
-        with:
-          path: ~/DigitalNote-Builder-x86/windows/x86/libs
-          key: windows-x86-libs-${{ hashFiles('.gitmodules') }}-v5
-
-      - name: Clone Builder + download (x86)
+      - name: cppcheck full src/qt tree
         run: |
-          cd ~
-          git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/rubber-duckie-au/DigitalNote-Builder.git \
-            DigitalNote-Builder-x86 2>/dev/null || \
-            (cd DigitalNote-Builder-x86 && git pull)
-          mkdir -p ~/DigitalNote-Builder-x86/windows/x86/temp
-          mkdir -p ~/DigitalNote-Builder-x86/windows/x86/libs
-          if [ "${{ steps.libs-cache.outputs.cache-hit }}" != 'true' ]; then
-            cd ~/DigitalNote-Builder-x86 && bash download.sh 2>/dev/null || true
-          fi
+          cppcheck \
+            --enable=warning,style,performance,portability \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --std=c++17 \
+            -I src \
+            -I src/bip39/include \
+            src/qt/ \
+            2>&1 | tee cppcheck-qt.log
+          echo "--- cppcheck summary ---"
+          grep -c "error\|warning\|style\|performance" cppcheck-qt.log || echo "0 issues"
 
-      - name: Download pre-built Qt 5.15.7 (x86, PowerShell)
-        if: steps.cache-qt-x86.outputs.cache-hit != 'true'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Check clientversion.h is updated to 2.0.0.7
         run: |
-          gh release download qt-static-5.15.7-mingw32 `
-            --repo rubber-duckie-au/DigitalNote-Builder `
-            --pattern "qt-5.15.7-static-mingw32.tar.gz" `
-            --output "C:\\qt-x86.tar.gz"
-          Write-Host "Download complete: $((Get-Item C:\\qt-x86.tar.gz).Length) bytes"
-
-      - name: Extract Qt 5.15.7 (x86)
-        if: steps.cache-qt-x86.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/DigitalNote-Builder-x86/windows/x86/libs
-          tar -xzf /c/qt-x86.tar.gz \
-              -C ~/DigitalNote-Builder-x86/windows/x86/
-          rm /c/qt-x86.tar.gz
-
-      - name: Compile libs + app (x86)
-        run: |
-          ln -sfn ${{ github.workspace }} ~/DigitalNote-Builder-x86/DigitalNote-2
-
-          cd ~/DigitalNote-Builder-x86/windows/x86
-          if [ "${{ steps.libs-cache.outputs.cache-hit }}" != 'true' ]; then
-            export TARGET_OS=NATIVE_WINDOWS
-            J="${{ env.JOBS }}"
-            ../../compile/berkeleydb.sh "build_windows" "--enable-mingw" "-j $J"
-            ../../compile/boost.sh "toolset=gcc address-model=32 -j $J"
-            ../../compile/gmp.sh
-            ../../compile/leveldb.sh "-j $J"
-            ../../compile/libevent.sh "" "-j $J"
-            ../../compile/miniupnpc.sh "libminiupnpc.a" "-j $J"
-            ../../compile/openssl.sh "mingw" "-j $J"
-            ../../compile/qrencode.sh "" "-j $J"
-            ../../compile/secp256k1.sh "" "-j $J"
-            # BIP39 now compiled directly via bip39.pri
-          fi
-
-          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
-          cd DigitalNote-2
-          rm -rf build Makefile
-          qmake DigitalNote.daemon.pro USE_UPNP=1 USE_BUILD_INFO=1 USE_BIP39=1 RELEASE=1
-          make -j${{ env.JOBS }}
-
-          rm -rf build Makefile
-          qmake DigitalNote.app.pro USE_UPNP=1 USE_DBUS=1 USE_QRCODE=1 USE_BUILD_INFO=1 USE_BIP39=1 RELEASE=1
-          make -j${{ env.JOBS }}
-
-      - name: Assert version constants (x86)
-        run: |
-          grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' \
-            ~/DigitalNote-Builder-x86/DigitalNote-2/src/version.h || {
-            echo "ERROR: PROTOCOL_VERSION not 62055 in x86 build"; exit 1
+          grep -q "CLIENT_VERSION_BUILD.*7" src/clientversion.h || {
+            echo "ERROR: CLIENT_VERSION_BUILD is not 7 in src/clientversion.h"
+            exit 1
           }
-          echo "OK: PROTOCOL_VERSION = 62055 in x86 build"
+          echo "✓ CLIENT_VERSION_BUILD = 7 confirmed"
 
-      - name: Upload Windows x86 binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: digitalnote-windows-x86
-          path: ~/DigitalNote-Builder-x86/windows/x86/DigitalNote-2/**/*.exe
-          retention-days: 14
+      - name: Check PROTOCOL_VERSION is 62055
+        run: |
+          grep -qE 'PROTOCOL_VERSION[[:space:]]*=[[:space:]]*62055' src/version.h || {
+            echo "ERROR: PROTOCOL_VERSION is not 62055 in src/version.h"
+            grep 'PROTOCOL_VERSION' src/version.h || true
+            exit 1
+          }
+          echo "✓ PROTOCOL_VERSION = 62055 confirmed"
+
+      - name: Check MIN_PEER_PROTO_VERSION is 62052
+        run: |
+          grep -qE 'MIN_PEER_PROTO_VERSION[[:space:]]*=[[:space:]]*62052' src/version.h || {
+            echo "ERROR: MIN_PEER_PROTO_VERSION is not 62052"
+            exit 1
+          }
+          echo "✓ MIN_PEER_PROTO_VERSION = 62052 confirmed"

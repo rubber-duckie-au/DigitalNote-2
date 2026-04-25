@@ -225,7 +225,7 @@ public:
 	bool Unlock(const SecureString& strWalletPassphrase, bool anonymizeOnly = false, bool stakingOnly = false);
 	bool ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase);
 	bool EncryptWallet(const SecureString& strWalletPassphrase);
-	// NOT CALLED — retained for future use (full wallet decryption).
+	// NOT CALLED â€” retained for future use (full wallet decryption).
 	// See cwallet.cpp DecryptWallet for implementation notes.
 	bool DecryptWallet(const SecureString& strWalletPassphrase);
 	bool HasRecoveryPhraseFlag() const;

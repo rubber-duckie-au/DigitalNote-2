@@ -11,6 +11,7 @@
 #include "chainparams.h"
 #include "cmasternode.h"
 #include "cmasternodeman.h"
+#include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
 #include "txdb-leveldb.h"
@@ -837,22 +838,35 @@ json_spirit::Value getblocktemplate(const json_spirit::Array& params, bool fHelp
 		result.push_back(json_spirit::Pair("enforce_devops_payments", true));
 
 		// Include Masternode payments
+		// Fix: use GetBlockPayee (same algorithm as block validation) rather than
+		// GetCurrentMasterNode(1) which used genesis block hash and always returned
+		// the same winner for every block.
 		CAmount masternodeSplit = masternodePayment;
-		CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
-		
-		if (winningNode)
+		CScript mnPayee;
+		CTxIn mnVin;
+		if(masternodePayments.GetBlockPayee(pindexPrev->nHeight + 1, mnPayee, mnVin))
 		{
-			CScript payee = GetScriptForDestination(winningNode->pubkey.GetID());
 			CTxDestination address1;
-			
-			ExtractDestination(payee, address1);
+			ExtractDestination(mnPayee, address1);
 			CBitcoinAddress address2(address1);
-			
 			result.push_back(json_spirit::Pair("masternode_payee", address2.ToString().c_str()));
 		}
 		else
 		{
-			result.push_back(json_spirit::Pair("masternode_payee", devpayee2.c_str()));
+			// vWinning has no entry - fall back to FindOldestNotInVec (same as ProcessBlock)
+			CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
+			if(pmn)
+			{
+				CScript fallbackPayee = GetScriptForDestination(pmn->pubkey.GetID());
+				CTxDestination address1;
+				ExtractDestination(fallbackPayee, address1);
+				CBitcoinAddress address2(address1);
+				result.push_back(json_spirit::Pair("masternode_payee", address2.ToString().c_str()));
+			}
+			else
+			{
+				result.push_back(json_spirit::Pair("masternode_payee", devpayee2.c_str()));
+			}
 		}
 		
 		result.push_back(json_spirit::Pair("payee_amount", (int64_t)masternodeSplit));

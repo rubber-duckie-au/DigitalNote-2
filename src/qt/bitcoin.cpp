@@ -94,7 +94,9 @@ static void InitMessage(const std::string &message)
 {
     if(splashref)
     {
-        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, splashMessageColor);
+        splashref->showMessage(QString::fromStdString(message), Qt::AlignCenter, splashMessageColor);
+        splashref->raise();
+        splashref->activateWindow();
         QApplication::instance()->processEvents();
     }
     LogPrintf("init message: %s\n", message);
@@ -234,8 +236,9 @@ int main(int argc, char *argv[])
             "QScrollBar:horizontal { background-color: #2b2b2b; height: 12px; }"
             "QScrollBar::handle:horizontal { background-color: #555; border-radius: 6px; min-width: 20px; }"
             "QCheckBox { color: #d4d4d4; }"
-            "QCheckBox::indicator { border: 1px solid #555; background-color: #252526; }"
-            "QCheckBox::indicator:checked { background-color: #3d6099; }"
+            "QCheckBox::indicator { width: 13px; height: 13px; border: 1px solid #666; background-color: #2d2d2d; border-radius: 2px; }"
+            "QCheckBox::indicator:unchecked:hover { border: 1px solid #3d6099; }"
+            "QCheckBox::indicator:checked { background-color: #3d6099; border: 1px solid #3d6099; image: url(:/images/checkbox_checked); }"
             "QLabel { color: #d4d4d4; }"
             "QGroupBox { color: #d4d4d4; border: 1px solid #555; border-radius: 4px; margin-top: 8px; }"
             "QGroupBox::title { color: #a0c4ff; }"
@@ -302,11 +305,13 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    // Both splash screens have dark gradient backgrounds - always use white text
-    splashMessageColor = QColor(255, 255, 255);
-    QSplashScreen splash(
-        QPixmap(fUseDarkTheme ? ":/images/splash_dark" : ":/images/splash"),
-        Qt::Widget);
+    // Both themes use same splash image
+    // Light: white text, Dark: black text
+    splashMessageColor = fUseDarkTheme ? QColor(0, 0, 0) : QColor(255, 255, 255);
+    QPixmap splashPixmap(":/images/splash");
+    QSplashScreen splash(splashPixmap,
+        Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::SplashScreen);
+    splash.setAttribute(Qt::WA_TranslucentBackground);
 
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min", false))
     {

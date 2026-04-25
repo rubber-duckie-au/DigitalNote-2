@@ -83,6 +83,7 @@
     <qresource prefix="/images">
         <file alias="about">res/images/about.png</file>
         <file alias="splash">res/images/splash.png</file>
+        <file alias="checkbox_checked">res/images/checkbox_checked.png</file>
         <file alias="header">res/images/header.png</file>
         <file alias="splash-dark">res/images/splash_dark.png</file>
         <file alias="about-dark">res/images/about_dark.png</file>
