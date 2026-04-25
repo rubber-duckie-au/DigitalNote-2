@@ -20,7 +20,7 @@ jobs:
       - name: Checkout DigitalNote-2
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false  # BIP39 merged into main repo - no longer a submodule
           token: ${{ secrets.PAT_TOKEN }}
 
       - name: Cache compiled libraries
@@ -47,7 +47,7 @@ jobs:
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder
         run: bash download.sh
 
-      # Matches macos/x64/update.sh plus cmake (needed by mnemonic.sh)
+      # Matches macos/x64/update.sh packages
       - name: Install Homebrew packages
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
         run: |
@@ -163,7 +163,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false  # BIP39 merged into main repo - no longer a submodule
           token: ${{ secrets.PAT_TOKEN }}
 
       - name: Cache compiled libraries (arm64)

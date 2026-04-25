@@ -32,11 +32,11 @@ jobs:
       - name: Checkout DigitalNote-2
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false  # BIP39 merged into main repo - no longer a submodule
           token: ${{ secrets.PAT_TOKEN }}
 
       # ── 2. MSYS2 MinGW64 ───────────────────────────────────────────────────
-      # Matches windows/x64/update.sh packages plus cmake (needed by mnemonic.sh)
+      # Matches windows/x64/update.sh packages
       - name: Set up MSYS2 MinGW64
         uses: msys2/setup-msys2@v2
         with:
@@ -120,7 +120,7 @@ jobs:
       # ── 6. Download source archives ────────────────────────────────────────
       # Qt tarball NOT downloaded — we use the pre-built Release artifact.
       # secp256k1 and leveldb are git submodules — no download needed.
-      # mnemonic (BIP39) is a git submodule — no download needed.
+      # BIP39 is now compiled directly into the wallet via bip39.pri
       - name: Download library source archives
         if: steps.libs-cache.outputs.cache-hit != 'true'
         run: |
@@ -150,7 +150,7 @@ jobs:
       #   openssl.sh     $1=platform(mingw64)  $2=make_jobs
       #   qrencode.sh    $1=configure_extra  $2=make_jobs
       #   secp256k1.sh   $1=configure_extra  $2=make_jobs  (built from submodule)
-      #   mnemonic.sh    $1=unused  $2=make_jobs  (uses cmake + mingw32-make)
+      #   (BIP39 now compiled directly via bip39.pri — no mnemonic.sh needed)
       # NOTE: qt.sh is intentionally NOT called — we use the pre-built artifact.
       - name: Compile static libraries
         if: steps.libs-cache.outputs.cache-hit != 'true'
@@ -180,7 +180,7 @@ jobs:
           echo "=== OpenSSL ===" && ../../compile/openssl.sh "mingw64" "-j $J"
           echo "=== qrencode ===" && ../../compile/qrencode.sh "" "-j $J"
           echo "=== secp256k1 ===" && ../../compile/secp256k1.sh "" "-j $J"
-          echo "=== BIP39-Mnemonic ===" && ../../compile/mnemonic.sh "" "-j $J"
+          # BIP39 now compiled directly via bip39.pri — no separate build step needed
           echo "=== All libraries built ==="
 
       # ── 8. Link source tree ────────────────────────────────────────────────
@@ -239,7 +239,31 @@ jobs:
             fi
           done
 
-      # ── 12. Version assertions ─────────────────────────────────────────────
+      # ── 12. cppcheck static analysis — new Qt/BIP39 sources ───────────────
+      - name: cppcheck — new Qt/BIP39 sources
+        run: |
+          pacman -S --noconfirm mingw-w64-x86_64-cppcheck 2>/dev/null || true
+          cppcheck \
+            --enable=warning,style,performance \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --error-exitcode=0 \
+            --std=c++17 \
+            -I ~/DigitalNote-Builder/DigitalNote-2/src/bip39/include \
+            -I ~/DigitalNote-Builder/DigitalNote-2/src \
+            ~/DigitalNote-Builder/DigitalNote-2/src/qt/seedphrasedialog.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/qt/decryptworker.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/qt/walletmodel.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/qt/askpassphrasedialog.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/qt/coincontrolworker.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/qt/sendcoinsworker.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/qt/masternodeworker.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/bip39/src/bip39_wallet.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/bip39/src/bip39_passphrase.cpp \
+            ~/DigitalNote-Builder/DigitalNote-2/src/rpcbip39.cpp \
+            2>&1 || echo "⚠ cppcheck warnings present (non-fatal)"
+
+      # ── 13. Version assertions ─────────────────────────────────────────────
       - name: Assert version constants in source
         run: |
           cd ~/DigitalNote-Builder/DigitalNote-2
@@ -309,7 +333,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false  # BIP39 merged into main repo - no longer a submodule
           token: ${{ secrets.PAT_TOKEN }}
 
       - uses: msys2/setup-msys2@v2
@@ -390,7 +414,7 @@ jobs:
             ../../compile/openssl.sh "mingw" "-j $J"
             ../../compile/qrencode.sh "" "-j $J"
             ../../compile/secp256k1.sh "" "-j $J"
-            ../../compile/mnemonic.sh "" "-j $J"
+            # BIP39 now compiled directly via bip39.pri
           fi
 
           export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"

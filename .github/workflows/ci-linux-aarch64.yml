@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false  # BIP39 merged into main repo - no longer a submodule
           token: ${{ secrets.PAT_TOKEN }}
 
       - name: Set up QEMU for arm64 emulation
@@ -47,7 +47,7 @@ jobs:
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder
         run: bash download.sh
 
-      # Matches linux/aarch64/update.sh plus cmake (needed by mnemonic.sh)
+      # Matches linux/aarch64/update.sh packages
       # and libgmp-dev (needed by gmp.sh on Linux)
       - name: Install cross-compile toolchain + system packages
         run: |
@@ -64,7 +64,7 @@ jobs:
             2>/dev/null || true
 
       # Note: aarch64 compile_libs.sh should include secp256k1, leveldb, mnemonic
-      # just like the x64 version. These are built from git submodules.
+      # just like the x64 version.
       - name: Compile static libraries (aarch64)
         if: steps.libs-cache.outputs.cache-hit != 'true'
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64

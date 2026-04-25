@@ -52,6 +52,7 @@ Q_IMPORT_PLUGIN(qtaccessiblewidgets)
 // Need a global reference for the notifications to find the GUI
 static DigitalNoteGUI *guiref;
 static QSplashScreen *splashref;
+static QColor splashMessageColor(255, 255, 255); // default white
 
 static void ThreadSafeMessageBox(const std::string& message, const std::string& caption, unsigned int style)
 {
@@ -93,7 +94,7 @@ static void InitMessage(const std::string &message)
 {
     if(splashref)
     {
-        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(97,78,176));
+        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, splashMessageColor);
         QApplication::instance()->processEvents();
     }
     LogPrintf("init message: %s\n", message);
@@ -301,7 +302,11 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    QSplashScreen splash(QPixmap(":/images/splash"), Qt::Widget);
+    // Both splash screens have dark gradient backgrounds - always use white text
+    splashMessageColor = QColor(255, 255, 255);
+    QSplashScreen splash(
+        QPixmap(fUseDarkTheme ? ":/images/splash_dark" : ":/images/splash"),
+        Qt::Widget);
 
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min", false))
     {
