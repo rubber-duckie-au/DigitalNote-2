@@ -30,7 +30,6 @@ namespace Ui { class SeedPhraseDialog; }
 class WalletModel;
 class QTextEdit;
 class QPushButton;
-class QComboBox;
 class QLabel;
 
 class SeedPhraseDialog : public QDialog
@@ -53,7 +52,6 @@ private slots:
     void onCopyClicked();
     void onCountdownTick();
     void onClipboardClearTick();
-    void onWordCountChanged(int index);
     void onVerifyClicked();
 
 private:
@@ -70,7 +68,7 @@ private:
     QTimer  m_clipboardTimer;
     int     m_countdownSecondsLeft{0};
 
-    BIP39Wallet::WordCount m_wordCount{BIP39Wallet::WordCount::Words24};
+    BIP39Wallet::WordCount m_wordCount{BIP39Wallet::WordCount::Words24}; // Fixed at 24 words
 
     // Holds the mnemonic in Qt-managed memory; cleared on close
     QString m_currentMnemonic;

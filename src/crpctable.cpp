@@ -139,8 +139,7 @@ static const CRPCCommand vRPCCommands[] =
 	{ "debugrpcallowip",        &debugrpcallowip,        false,     false,     false },
 	
 #ifdef USE_BIP39
-	{ "bip39_new_mnemonic",     &bip39_new_mnemonic,     false,     false,     false },
-	{ "bip39_get_privkey",      &bip39_get_privkey,      false,     false,     false }
+	{ "getrecoveryphrase",      &getrecoveryphrase,      false,     false,     true  }
 #endif // USE_BIP39
 };
 

@@ -225,6 +225,14 @@ public:
 	bool Unlock(const SecureString& strWalletPassphrase, bool anonymizeOnly = false, bool stakingOnly = false);
 	bool ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase);
 	bool EncryptWallet(const SecureString& strWalletPassphrase);
+	// NOT CALLED — retained for future use (full wallet decryption).
+	// See cwallet.cpp DecryptWallet for implementation notes.
+	bool DecryptWallet(const SecureString& strWalletPassphrase);
+	bool HasRecoveryPhraseFlag() const;
+	void SetRecoveryPhraseFlag();
+	bool VerifyPassphrase(const SecureString& strWalletPassphrase) const;
+	bool AddMnemonicMasterKey(const SecureString& strWalletPassphrase);
+	bool HasMnemonicMasterKey() const;
 	void GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const;
 
 	/** Increment the next transaction order id

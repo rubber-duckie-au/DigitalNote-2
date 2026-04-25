@@ -8,11 +8,17 @@
 #include "wallet.h"
 #include "seedphrasedialog.h"
 
+#include "bip39/bip39_passphrase.h"
+#include <openssl/crypto.h>
+
 #include <QMessageBox>
+#include <QInputDialog>
 #include <QPushButton>
 #include <QKeyEvent>
 #include <QApplication>
 #include <QClipboard>
+#include <QTextEdit>
+#include <QVBoxLayout>
 #include <QLabel>
 #include <QStackedWidget>
 #include <QVBoxLayout>
@@ -77,6 +83,11 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
             ui->passEdit2->hide();
             ui->passLabel3->hide();
             ui->passEdit3->hide();
+            // Hide staking checkbox for plain Unlock — only show for UnlockStaking
+            if (mode == Unlock) {
+                ui->stakingCheckBox->setChecked(false);
+                ui->stakingCheckBox->hide();
+            }
             setWindowTitle(tr("Unlock wallet"));
 
              // "Forgot password?" recovery link
@@ -298,6 +309,10 @@ void AskPassphraseDialog::accept()
         if(retval == QMessageBox::Yes) {
             if(newpass1 == newpass2) {
                 if(model->setWalletEncrypted(true, newpass1)) {
+                    // Register the mnemonic as a second master key
+                    // so both password AND recovery phrase unlock the wallet
+                    model->addMnemonicMasterKey(newpass1);
+
                     // Derive and show the recovery mnemonic
                     SecureString recoveryMnemonic;
                     bool mnOk = model->generateRecoveryMnemonic(newpass1, recoveryMnemonic);
@@ -376,6 +391,11 @@ void AskPassphraseDialog::accept()
             QMessageBox::critical(this, tr("Wallet decryption failed"),
                 tr("The passphrase entered for the wallet decryption was incorrect."));
         } else {
+            QMessageBox::information(this, tr("Wallet decrypted"),
+                tr("Wallet successfully decrypted.\n\n"
+                   "Your wallet is no longer password protected.\n"
+                   "You can re-encrypt it via Settings \u2192 Encrypt Wallet "
+                   "to generate a 24-word recovery phrase."));
             QDialog::accept();
         }
         break;

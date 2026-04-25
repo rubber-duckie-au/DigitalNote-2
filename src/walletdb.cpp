@@ -155,6 +155,48 @@ bool CWalletDB::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey)
 	return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
 }
 
+// The following are used by DecryptWallet (NOT CALLED - retained for future use)
+bool CWalletDB::WriteKeyOverwrite(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta)
+{
+	nWalletDBUpdated++;
+
+	if (!Write(std::make_pair(std::string("keymeta"), vchPubKey), keyMeta, true))
+		return false;
+
+	std::vector<unsigned char> vchKey;
+	vchKey.reserve(vchPubKey.size() + vchPrivKey.size());
+	vchKey.insert(vchKey.end(), vchPubKey.begin(), vchPubKey.end());
+	vchKey.insert(vchKey.end(), vchPrivKey.begin(), vchPrivKey.end());
+
+	return Write(std::make_pair(std::string("key"), vchPubKey), std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), true);
+}
+
+bool CWalletDB::EraseMasterKey(unsigned int nID)
+{
+	nWalletDBUpdated++;
+	return Erase(std::make_pair(std::string("mkey"), nID));
+}
+
+bool CWalletDB::EraseCryptedKey(const CPubKey& vchPubKey)
+{
+	nWalletDBUpdated++;
+	return Erase(std::make_pair(std::string("ckey"), vchPubKey));
+}
+
+bool CWalletDB::WriteRecoveryPhraseFlag()
+{
+	nWalletDBUpdated++;
+	// Custom key ignored by older wallet versions
+	return Write(std::string("recovery_phrase_v1"), (int)1, true);
+}
+
+bool CWalletDB::HasRecoveryPhraseFlag()
+{
+	int val = 0;
+	Read(std::string("recovery_phrase_v1"), val);
+	return val == 1;
+}
+
 bool CWalletDB::WriteCScript(const uint160& hash, const CScript& redeemScript)
 {
 	nWalletDBUpdated++;

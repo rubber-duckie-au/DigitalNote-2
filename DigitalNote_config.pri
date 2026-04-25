@@ -48,9 +48,9 @@ win32 {
 	DIGITALNOTE_QRENCODE_INCLUDE_PATH = $${DIGITALNOTE_PATH}/../libs/qrencode-4.1.1/include
 	DIGITALNOTE_QRENCODE_LIB_PATH     = $${DIGITALNOTE_PATH}/../libs/qrencode-4.1.1/lib
 	
-	## BIP39
-	DIGITALNOTE_BIP39_INCLUDE_PATH = $${DIGITALNOTE_PATH}/../libs/mnemonic/include
-	DIGITALNOTE_BIP39_LIB_PATH     = $${DIGITALNOTE_PATH}/../libs/mnemonic/lib
+	## BIP39 (sources compiled directly — no external lib needed)
+	DIGITALNOTE_BIP39_INCLUDE_PATH = $${DIGITALNOTE_PATH}/src/bip39/include
+	DIGITALNOTE_BIP39_SRC_PATH     = $${DIGITALNOTE_PATH}/src/bip39/src
 }
 
 macx {
@@ -86,9 +86,9 @@ macx {
 	DIGITALNOTE_QRENCODE_INCLUDE_PATH = $${DIGITALNOTE_PATH}/../libs/qrencode-4.1.1/include
 	DIGITALNOTE_QRENCODE_LIB_PATH     = $${DIGITALNOTE_PATH}/../libs/qrencode-4.1.1/lib
 	
-	## BIP39
-	DIGITALNOTE_BIP39_INCLUDE_PATH = $${DIGITALNOTE_PATH}/../libs/mnemonic/include
-	DIGITALNOTE_BIP39_LIB_PATH     = $${DIGITALNOTE_PATH}/../libs/mnemonic/lib
+	## BIP39 (sources compiled directly — no external lib needed)
+	DIGITALNOTE_BIP39_INCLUDE_PATH = $${DIGITALNOTE_PATH}/src/bip39/include
+	DIGITALNOTE_BIP39_SRC_PATH     = $${DIGITALNOTE_PATH}/src/bip39/src
 }
 
 ##
@@ -124,7 +124,7 @@ macx {
 #	DIGITALNOTE_QRENCODE_INCLUDE_PATH = $${DIGITALNOTE_PATH}/../libs/qrencode-4.1.1/include
 #	DIGITALNOTE_QRENCODE_LIB_PATH     = $${DIGITALNOTE_PATH}/../libs/qrencode-4.1.1/lib
 #	
-#	## BIP39
-#	DIGITALNOTE_BIP39_INCLUDE_PATH = $${DIGITALNOTE_PATH}/../libs/mnemonic/include
-#	DIGITALNOTE_BIP39_LIB_PATH     = $${DIGITALNOTE_PATH}/../libs/mnemonic/lib
+#	## BIP39 (sources compiled directly — no external lib needed)
+#	DIGITALNOTE_BIP39_INCLUDE_PATH = $${DIGITALNOTE_PATH}/src/bip39/include
+#	DIGITALNOTE_BIP39_SRC_PATH     = $${DIGITALNOTE_PATH}/src/bip39/src
 #}

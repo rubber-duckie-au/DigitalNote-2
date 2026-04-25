@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 #include "seedphrasedialog.h"
+#include "decryptworker.h"
+#include <QThread>
+#include <QProgressDialog>
+#include <QApplication>
 #include "walletmodel.h"
 #include "guiutil.h"
 #include "bip39/bip39_wallet.h"
@@ -17,7 +21,6 @@
 #include <QLabel>
 #include <QTextEdit>
 #include <QPushButton>
-#include <QComboBox>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QCheckBox>
@@ -33,6 +36,7 @@ SeedPhraseDialog::SeedPhraseDialog(WalletModel *model, QWidget *parent)
     : QDialog(parent)
     , m_model(model)
 {
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     setWindowTitle(tr("Wallet Seed Phrase (BIP39)"));
     setMinimumSize(680, 520);
     setModal(true);
@@ -78,24 +82,6 @@ void SeedPhraseDialog::setupUi()
     warnLayout->addWidget(warnIcon);
     warnLayout->addWidget(warnText, 1);
     root->addWidget(warnFrame);
-
-    // ── Word-count selector ─────────────────────────────────────────────────
-    auto *optRow = new QHBoxLayout;
-    optRow->addWidget(new QLabel(tr("Mnemonic length:")));
-    auto *wordCountCombo = new QComboBox;
-    wordCountCombo->addItem(tr("12 words (128-bit)"),  static_cast<int>(BIP39Wallet::WordCount::Words12));
-    wordCountCombo->addItem(tr("15 words (160-bit)"),  static_cast<int>(BIP39Wallet::WordCount::Words15));
-    wordCountCombo->addItem(tr("18 words (192-bit)"),  static_cast<int>(BIP39Wallet::WordCount::Words18));
-    wordCountCombo->addItem(tr("21 words (224-bit)"),  static_cast<int>(BIP39Wallet::WordCount::Words21));
-    wordCountCombo->addItem(tr("24 words (256-bit) — Recommended"),
-                                                       static_cast<int>(BIP39Wallet::WordCount::Words24));
-    wordCountCombo->setCurrentIndex(4);  // default: 24
-    wordCountCombo->setObjectName("wordCountCombo");
-    connect(wordCountCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this,           &SeedPhraseDialog::onWordCountChanged);
-    optRow->addWidget(wordCountCombo);
-    optRow->addStretch();
-    root->addLayout(optRow);
 
     // ── Seed phrase display area ─────────────────────────────────────────────
     auto *seedGroup = new QGroupBox(tr("Your Seed Phrase"));
@@ -166,15 +152,6 @@ void SeedPhraseDialog::setupUi()
 
 // ── Slot implementations ─────────────────────────────────────────────────────
 
-void SeedPhraseDialog::onWordCountChanged(int index)
-{
-    auto *combo = findChild<QComboBox*>("wordCountCombo");
-    if (!combo) return;
-    m_wordCount = static_cast<BIP39Wallet::WordCount>(combo->itemData(index).toInt());
-    // Clear existing display when the user changes word count
-    clearMnemonic();
-}
-
 bool SeedPhraseDialog::ensureUnlocked()
 {
     if (!m_model) return false;
@@ -187,13 +164,121 @@ bool SeedPhraseDialog::ensureUnlocked()
 
 void SeedPhraseDialog::onRevealClicked()
 {
-    if (!ensureUnlocked()) {
-        QMessageBox::warning(this, tr("Wallet Locked"),
-            tr("Please unlock your wallet to reveal the seed phrase."));
-        return;
+    if (!m_model) return;
+
+    // Ensure wallet is unlocked before proceeding
+    if (m_model->getEncryptionStatus() == WalletModel::Locked) {
+        WalletModel::UnlockContext ctx(m_model->requestUnlock());
+        if (!ctx.isValid()) return;
     }
 
-    // Disable the button and start the mandatory countdown
+    // Old wallet - add mnemonic master key if not already present
+    // This allows both password AND recovery phrase to unlock the wallet
+    if (m_model->getEncryptionStatus() != WalletModel::Unencrypted &&
+        !m_model->hasRecoveryPhraseSupport())
+    {
+        int ret = QMessageBox::information(this,
+            tr("One-time wallet upgrade required"),
+            tr("Your wallet was encrypted with an older version of DigitalNote\n"
+               "and does not yet have a recovery phrase.\n\n"
+               "Click OK and enter your password to complete this one-time upgrade.\n"
+               "Your wallet stays encrypted throughout - no risk to your funds."),
+            QMessageBox::Ok | QMessageBox::Cancel);
+
+        if (ret != QMessageBox::Ok)
+            return;
+
+        bool ok = false;
+        QString passStr = QInputDialog::getText(
+            this,
+            tr("Recovery Phrase"),
+            tr("Enter your wallet password to upgrade:"),
+            QLineEdit::Password, QString(), &ok);
+
+        if (!ok || passStr.isEmpty())
+            return;
+
+        SecureString upgradePass;
+        std::string passStd = passStr.toStdString();
+        upgradePass.assign(passStd.c_str(), passStd.size());
+        OPENSSL_cleanse(const_cast<char*>(passStd.data()), passStd.size());
+
+        // Verify password first
+        if (!m_model->verifyPassphrase(upgradePass)) {
+            OPENSSL_cleanse(const_cast<char*>(upgradePass.data()), upgradePass.size());
+            QMessageBox::critical(this, tr("Recovery Phrase"),
+                tr("The password you entered is incorrect. Please try again."));
+            return;
+        }
+
+        // Unlock wallet so AddMnemonicMasterKey can access vMasterKey
+        bool wasLocked = (m_model->getEncryptionStatus() == WalletModel::Locked);
+        if (wasLocked) {
+            if (!m_model->setWalletLocked(false, upgradePass)) {
+                OPENSSL_cleanse(const_cast<char*>(upgradePass.data()), upgradePass.size());
+                QMessageBox::critical(this, tr("Recovery Phrase"),
+                    tr("Could not unlock wallet. Please try again."));
+                return;
+            }
+        }
+
+        // Add mnemonic as second master key - wallet stays encrypted with existing password
+        QProgressDialog progress(
+            tr("Adding recovery phrase key..."),
+            QString(), 0, 1, this);
+        progress.setWindowTitle(tr("Recovery Phrase - Upgrading Wallet"));
+        progress.setWindowModality(Qt::WindowModal);
+        progress.setMinimumWidth(420);
+        progress.setWindowFlags(progress.windowFlags() & ~Qt::WindowContextHelpButtonHint);
+        progress.setMinimumDuration(0);
+        progress.setValue(0);
+        progress.show();
+        QApplication::processEvents();
+
+        QThread *thread = new QThread(this);
+        DecryptWorker *worker = new DecryptWorker(m_model, upgradePass);
+        OPENSSL_cleanse(const_cast<char*>(upgradePass.data()), upgradePass.size());
+        worker->moveToThread(thread);
+
+        bool upgradeSuccess = false;
+        QString upgradeError;
+
+        connect(thread, &QThread::started, worker, &DecryptWorker::run);
+        connect(worker, &DecryptWorker::progress, [&](int cur, int total, QString label) {
+            progress.setRange(0, total);
+            progress.setValue(cur);
+            progress.setLabelText(label);
+            QApplication::processEvents();
+        });
+        connect(worker, &DecryptWorker::finished, [&](bool ok, QString err) {
+            upgradeSuccess = ok;
+            upgradeError = err;
+            thread->quit();
+        });
+        connect(thread, &QThread::finished, worker, &QObject::deleteLater);
+        connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+
+        thread->start();
+        while (thread->isRunning()) {
+            QApplication::processEvents(QEventLoop::AllEvents, 100);
+        }
+        progress.close();
+
+        // Re-lock if wallet was locked before
+        if (wasLocked)
+            m_model->setWalletLocked(true);
+
+        if (!upgradeSuccess) {
+            QMessageBox::critical(this, tr("Upgrade failed"), upgradeError);
+            return;
+        }
+
+        QMessageBox::information(this, tr("Wallet upgraded"),
+            tr("Your wallet has been upgraded successfully.\n"
+               "Both your password and recovery phrase now unlock your wallet."));
+    }
+
+    // Start countdown — password will be requested in onCountdownTick
     auto *revealBtn = findChild<QPushButton*>("revealBtn");
     if (revealBtn) revealBtn->setEnabled(false);
 
@@ -247,7 +332,7 @@ void SeedPhraseDialog::onCountdownTick()
     bool ok2 = false;
     QString passQStr = QInputDialog::getText(
         this,
-        tr("Enter your wallet password"),
+        tr("Recovery Phrase"),
         tr("Enter your wallet password to display your recovery phrase:"),
         QLineEdit::Password,
         QString(),
@@ -264,17 +349,25 @@ void SeedPhraseDialog::onCountdownTick()
     passphrase.assign(passStr.c_str(), passStr.size());
     OPENSSL_cleanse(const_cast<char*>(passStr.data()), passStr.size());
 
+    // Verify password without changing wallet lock state
+    if (m_model->getEncryptionStatus() != WalletModel::Unencrypted) {
+        if (!m_model->verifyPassphrase(passphrase)) {
+            OPENSSL_cleanse(const_cast<char*>(passphrase.data()), passphrase.size());
+            QMessageBox::critical(this, tr("Recovery Phrase"),
+                tr("The password you entered is incorrect. Please try again."));
+            auto *revealBtn = findChild<QPushButton*>("revealBtn");
+            if (revealBtn) revealBtn->setEnabled(true);
+            return;
+        }
+    }
+
     SecureString mnemonic;
     bool ok = m_model->generateRecoveryMnemonic(passphrase, mnemonic);
     OPENSSL_cleanse(const_cast<char*>(passphrase.data()), passphrase.size());
 
     if (!ok) {
-        QMessageBox::critical(this, tr("Recovery Phrase Error"),
-            tr("Could not generate the recovery phrase.<br><br>"
-               "This may mean your wallet was encrypted with an older version of "
-               "DigitalNote. To enable recovery phrase support, go to "
-               "<b>Settings \u2192 Decrypt Wallet</b>, then "
-               "<b>Settings \u2192 Encrypt Wallet</b> to re-encrypt."));
+        QMessageBox::critical(this, tr("Recovery Phrase"),
+            tr("Could not generate the recovery phrase. Please try again."));
         auto *revealBtn = findChild<QPushButton*>("revealBtn");
         if (revealBtn) revealBtn->setEnabled(true);
         return;

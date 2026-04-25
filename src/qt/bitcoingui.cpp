@@ -1196,6 +1196,7 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(false);
         lockWalletAction->setVisible(false);
         encryptWalletAction->setEnabled(true);
+        encryptWalletAction->setText(tr("&Encrypt Wallet..."));
         fGUIunlock = true;
         break;
     case WalletModel::Unlocked:
@@ -1204,7 +1205,8 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
         changePassphraseAction->setEnabled(true);
         unlockWalletAction->setVisible(false);
         lockWalletAction->setVisible(true);
-        encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
+        encryptWalletAction->setEnabled(false);
+        encryptWalletAction->setText(tr("&Encrypt Wallet..."));
         fGUIunlock = true;
         break;
     case WalletModel::Locked:
@@ -1213,7 +1215,9 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
         changePassphraseAction->setEnabled(true);
         unlockWalletAction->setVisible(true);
         lockWalletAction->setVisible(false);
-        encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
+        encryptWalletAction->setEnabled(false);
+        encryptWalletAction->setText(tr("&Decrypt Wallet..."));
+        encryptWalletAction->setToolTip(tr("Unlock your wallet first, then use Decrypt Wallet."));
         fGUIunlock = false;
         break;
     }
@@ -1342,8 +1346,8 @@ void DigitalNoteGUI::unlockWallet()
     // Unlock wallet when requested by wallet model
     if(walletModel->getEncryptionStatus() == WalletModel::Locked)
     {
-        AskPassphraseDialog::Mode mode = sender() == unlockWalletAction ?
-              AskPassphraseDialog::UnlockStaking : AskPassphraseDialog::Unlock;
+        // Always use Unlock mode — staking checkbox is available but unticked by default
+        AskPassphraseDialog::Mode mode = AskPassphraseDialog::Unlock;
         AskPassphraseDialog dlg(mode, this);
         dlg.setModel(walletModel);
         dlg.exec();

@@ -1,3 +1,0 @@
-[submodule "src/bip39"]
-    path = src/bip39
-    url = https://github.com/rubber-duckie-au/BIP39-Mnemonic.git

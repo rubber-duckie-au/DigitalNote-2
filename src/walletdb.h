@@ -54,6 +54,12 @@ public:
 	bool WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata &keyMeta);
 	bool WriteCryptedKey(const CPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret, const CKeyMetadata &keyMeta);
 	bool WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey);
+	// The following are used by DecryptWallet (NOT CALLED - retained for future use)
+	bool WriteKeyOverwrite(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata &keyMeta);
+	bool EraseCryptedKey(const CPubKey& vchPubKey);
+	bool EraseMasterKey(unsigned int nID);
+	bool WriteRecoveryPhraseFlag();
+	bool HasRecoveryPhraseFlag();
 
 	bool WriteCScript(const uint160& hash, const CScript& redeemScript);
 

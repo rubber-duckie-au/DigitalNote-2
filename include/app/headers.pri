@@ -311,6 +311,7 @@ HEADERS += src/qt/qvalidatedtextedit.h
 HEADERS += src/qt/seedphrasedialog.h
 HEADERS += src/qt/coincontrolworker.h
 HEADERS += src/qt/sendcoinsworker.h
+HEADERS += src/qt/decryptworker.h
 
 macx {
 	HEADERS += src/qt/macdockiconhandler.h

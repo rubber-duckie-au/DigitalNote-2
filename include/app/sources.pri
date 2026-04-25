@@ -278,6 +278,7 @@ SOURCES += src/qt/flowlayout.cpp
 SOURCES += src/qt/seedphrasedialog.cpp
 SOURCES += src/qt/coincontrolworker.cpp
 SOURCES += src/qt/sendcoinsworker.cpp
+SOURCES += src/qt/decryptworker.cpp
 
 macx {
 	OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm

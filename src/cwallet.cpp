@@ -1,4 +1,8 @@
 #include "compat.h"
+#include "bip39/bip39_passphrase.h"
+#include <fstream>
+#include <boost/filesystem.hpp>
+#include <boost/system/error_code.hpp>
 
 #include <boost/thread.hpp>
 #include <boost/algorithm/string/replace.hpp>
@@ -1184,6 +1188,8 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase, bool anonymizeOnly
 		
 		for(const mapMasterKeys_t::value_type& pMasterKey : mapMasterKeys)
 		{
+			// Use continue (not return false) so ALL master keys are tried
+			// This allows both password and mnemonic hex to unlock the wallet
 			if(!crypter.SetKeyFromPassphrase(
 					strWalletPassphraseFinal,
 					pMasterKey.second.vchSalt,
@@ -1192,19 +1198,20 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase, bool anonymizeOnly
 				)
 			)
 			{
-				return false;
+				continue;
 			}
 			
 			if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
 			{
-				return false;
+				continue;
 			}
 			
 			if (!CCryptoKeyStore::Unlock(vMasterKey))
 			{
-				return false;
+				continue;
 			}
 			
+			// Successfully unlocked with this master key
 			break;
 		}
 
@@ -1446,10 +1453,308 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
 		CDB::Rewrite(strWalletFile);
 	}
 
+	// Mark wallet as recovery-phrase capable (custom key, older wallets ignore it)
+	SetRecoveryPhraseFlag();
+
 	NotifyStatusChanged(this);
 
 	return true;
 }
+
+bool CWallet::VerifyPassphrase(const SecureString& strWalletPassphrase) const
+{
+	if (!IsCrypted())
+		return true;
+
+	CCrypter crypter;
+	CKeyingMaterial vMasterKey;
+
+	{
+		LOCK(cs_wallet);
+
+		for (const mapMasterKeys_t::value_type& pMasterKey : mapMasterKeys)
+		{
+			// Step 1: Derive AES key from passphrase using stored salt/iterations
+			if (!crypter.SetKeyFromPassphrase(
+					strWalletPassphrase,
+					pMasterKey.second.vchSalt,
+					pMasterKey.second.nDeriveIterations,
+					pMasterKey.second.nDerivationMethod))
+				return false;
+
+			// Step 2: Decrypt the stored master key
+			if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
+				return false;
+
+			// Step 3: Verify by decrypting one actual wallet key - no state change
+			if (mapCryptedKeys.empty())
+				return true; // No keys to verify against - trust the master key decrypt
+
+			const CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
+			const CPubKey& vchPubKey = mi->second.first;
+			const std::vector<unsigned char>& vchCryptedSecret = mi->second.second;
+			CKeyingMaterial vchSecret;
+
+			if (!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
+				return false;
+
+			// Valid key material is always 32 bytes
+			return vchSecret.size() == 32;
+		}
+	}
+	return false;
+}
+
+// NOT CALLED — retained for future use.
+// This function fully decrypts the wallet.dat, removing all encryption.
+// It uses a two-phase commit: write all plain keys first (WriteKeyOverwrite),
+// then erase encrypted records. If interrupted mid-Phase-A wallet.dat is safe
+// (both plain and ckey records exist); if interrupted mid-Phase-B the wallet
+// loader handles duplicate keys gracefully.
+// To enable: add Decrypt mode back to askpassphrasedialog and call from GUI.
+bool CWallet::DecryptWallet(const SecureString& strWalletPassphrase)
+{
+	if (!IsCrypted())
+		return false;
+
+	CWalletDB walletdb(strWalletFile);
+	CKeyingMaterial vMasterKey;
+	boost::filesystem::path backupPath = GetDataDir() / "decrypt_wallet_backup.txt";
+	bool bBackupCreated = false;
+
+	{
+		LOCK(cs_wallet);
+
+		// Step 1: Verify passphrase and obtain vMasterKey (single lock scope)
+		bool bUnlockOk = false;
+		for (const auto& pMasterKey : mapMasterKeys)
+		{
+			CCrypter crypter;
+			if (!crypter.SetKeyFromPassphrase(strWalletPassphrase,
+				pMasterKey.second.vchSalt,
+				pMasterKey.second.nDeriveIterations,
+				pMasterKey.second.nDerivationMethod))
+				return false;
+			if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
+				return false;
+			if (CCryptoKeyStore::Unlock(vMasterKey))
+			{
+				bUnlockOk = true;
+				break;
+			}
+			LockKeyStore();
+			return false;
+		}
+		if (!bUnlockOk)
+			return false;
+
+		// Safety backup: dump all private keys before modifying any records
+		{
+			std::ofstream backupFile(backupPath.string().c_str());
+			if (backupFile.is_open())
+			{
+				backupFile << "# DigitalNote DecryptWallet safety backup\n";
+				backupFile << "# Safe to delete after confirming wallet works\n\n";
+				for (const auto& mi : mapCryptedKeys)
+				{
+					const CPubKey& vchPubKey = mi.second.first;
+					CKeyingMaterial vchSecret;
+					if (DecryptSecret(vMasterKey, mi.second.second, vchPubKey.GetHash(), vchSecret))
+					{
+						CKey key;
+						key.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+						backupFile << CDigitalNoteSecret(key).ToString()
+						           << " # addr=" << CDigitalNoteAddress(vchPubKey.GetID()).ToString() << "\n";
+					}
+				}
+				backupFile.close();
+				bBackupCreated = true;
+				LogPrintf("DecryptWallet: safety backup written to %s\n", backupPath.string());
+			}
+		}
+
+		// Step 2: Two-phase commit for safety
+		// Phase A: Write ALL plain keys with overwrite=true
+		// If this fails partway, ckey records still exist - wallet is safe
+		for (const auto& mi : mapCryptedKeys)
+		{
+			const CPubKey& vchPubKey = mi.second.first;
+			const std::vector<unsigned char>& vchCryptedSecret = mi.second.second;
+
+			CKeyingMaterial vchSecret;
+			if (!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
+				return false;
+
+			CKey key;
+			key.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+
+			if (!walletdb.WriteKeyOverwrite(vchPubKey, key.GetPrivKey(), mapKeyMetadata[vchPubKey.GetID()]))
+				return false;
+		}
+
+		// Phase B: All plain keys written - now safe to erase encrypted records
+		for (const auto& mi : mapCryptedKeys)
+		{
+			const CPubKey& vchPubKey = mi.second.first;
+			CKeyingMaterial vchSecret;
+			CKey key;
+			DecryptSecret(vMasterKey, mi.second.second, vchPubKey.GetHash(), vchSecret);
+			key.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+			walletdb.EraseCryptedKey(vchPubKey);
+			CBasicKeyStore::AddKeyPubKey(key, vchPubKey);
+		}
+
+		// Step 3: Decrypt stealth address spend secrets
+		for (setStealthAddresses_t::iterator it = stealthAddresses.begin(); it != stealthAddresses.end(); ++it)
+		{
+			if (it->scan_secret.size() < 32)
+				continue;
+
+			CStealthAddress& sxAddr = const_cast<CStealthAddress&>(*it);
+			CKeyingMaterial vchSecret;
+			uint256 iv = Hash(sxAddr.spend_pubkey.begin(), sxAddr.spend_pubkey.end());
+
+			if (!DecryptSecret(vMasterKey, sxAddr.spend_secret, iv, vchSecret))
+			{
+				LogPrintf("DecryptWallet: failed to decrypt stealth key %s\n", sxAddr.Encoded().c_str());
+				continue;
+			}
+
+			sxAddr.spend_secret.assign(vchSecret.begin(), vchSecret.begin() + 32);
+			walletdb.WriteStealthAddress(sxAddr);
+		}
+
+		// Step 4: Erase master keys from DB and memory
+		for (const auto& mk : mapMasterKeys)
+			walletdb.EraseMasterKey(mk.first);
+		mapMasterKeys.clear();
+
+		// Step 5: Clear crypto state via CCryptoKeyStore
+		mapCryptedKeys.clear();
+		if (!CCryptoKeyStore::SetUnencrypted())
+			return false;
+
+	} // end LOCK(cs_wallet)
+
+	// Step 6: Rewrite skipped - CDB::Rewrite can deadlock when called from
+	// a worker thread while the wallet DB is still open. The wallet is fully
+	// functional without it - encrypted records are already erased above.
+
+	// Delete safety backup on success
+	if (bBackupCreated)
+	{
+		boost::system::error_code ec;
+		boost::filesystem::remove(backupPath, ec);
+		if (!ec)
+			LogPrintf("DecryptWallet: backup deleted after successful decryption\n");
+		else
+			LogPrintf("DecryptWallet: could not delete backup at %s\n", backupPath.string());
+	}
+
+	NotifyStatusChanged(this);
+
+	return true;
+}
+
+
+bool CWallet::HasMnemonicMasterKey() const
+{
+	// A mnemonic master key is identified by the custom "recovery_phrase_v1" flag
+	return HasRecoveryPhraseFlag();
+}
+
+bool CWallet::AddMnemonicMasterKey(const SecureString& strWalletPassphrase)
+{
+	if (!IsCrypted())
+		return false;
+
+	// Already has a mnemonic master key
+	if (HasMnemonicMasterKey())
+		return true;
+
+	// Step 1: Get the current vMasterKey by unlocking with the raw password
+	// The wallet must be unlocked for this to work
+	if (IsLocked())
+		return false;
+
+	// Step 2: Derive mnemonic hex from password via BIP39Passphrase
+	// password -> PBKDF2 -> 32 bytes entropy -> mnemonic -> extract entropy -> hex
+	SecureString mnemonic, mnemonicHex;
+	if (BIP39Passphrase::mnemonicFromPassphrase(strWalletPassphrase, mnemonic) != BIP39Passphrase::Result::OK)
+		return false;
+	if (BIP39Passphrase::passphraseFromMnemonic(mnemonic, mnemonicHex) != BIP39Passphrase::Result::OK)
+		return false;
+	OPENSSL_cleanse(const_cast<char*>(mnemonic.data()), mnemonic.size());
+
+	// Step 3: Get a copy of vMasterKey using correct cs_KeyStore mutex
+	CKeyingMaterial vMasterKey;
+	{
+		LOCK(cs_KeyStore);
+		if (CCryptoKeyStore::vMasterKey.empty())
+		{
+			OPENSSL_cleanse(const_cast<char*>(mnemonicHex.data()), mnemonicHex.size());
+			return false;
+		}
+		vMasterKey = CCryptoKeyStore::vMasterKey;
+	}
+	CCrypter crypter;
+
+	// Step 4: Create a new CMasterKey encrypting vMasterKey with the mnemonic hex
+	CMasterKey kMnemonicKey;
+	kMnemonicKey.vchSalt.resize(WALLET_CRYPTO_SALT_SIZE);
+	if (!GetRandBytes(&kMnemonicKey.vchSalt[0], WALLET_CRYPTO_SALT_SIZE))
+	{
+		OPENSSL_cleanse(const_cast<char*>(mnemonicHex.data()), mnemonicHex.size());
+		return false;
+	}
+
+	kMnemonicKey.nDeriveIterations = 25000;
+	kMnemonicKey.nDerivationMethod = 0;
+
+	if (!crypter.SetKeyFromPassphrase(mnemonicHex, kMnemonicKey.vchSalt,
+			kMnemonicKey.nDeriveIterations, kMnemonicKey.nDerivationMethod))
+	{
+		OPENSSL_cleanse(const_cast<char*>(mnemonicHex.data()), mnemonicHex.size());
+		return false;
+	}
+
+	if (!crypter.Encrypt(vMasterKey, kMnemonicKey.vchCryptedKey))
+	{
+		OPENSSL_cleanse(const_cast<char*>(mnemonicHex.data()), mnemonicHex.size());
+		return false;
+	}
+
+	OPENSSL_cleanse(const_cast<char*>(mnemonicHex.data()), mnemonicHex.size());
+	OPENSSL_cleanse(vMasterKey.data(), vMasterKey.size());
+
+	// Step 5: Add to wallet - now BOTH password and mnemonic hex unlock the wallet
+	{
+		LOCK(cs_wallet);
+		mapMasterKeys[++nMasterKeyMaxID] = kMnemonicKey;
+		if (fFileBacked)
+			CWalletDB(strWalletFile).WriteMasterKey(nMasterKeyMaxID, kMnemonicKey);
+	}
+
+	// Mark wallet as having mnemonic recovery support
+	SetRecoveryPhraseFlag();
+
+	return true;
+}
+
+bool CWallet::HasRecoveryPhraseFlag() const
+{
+	if (!fFileBacked)
+		return false;
+	return CWalletDB(strWalletFile).HasRecoveryPhraseFlag();
+}
+
+void CWallet::SetRecoveryPhraseFlag()
+{
+	if (fFileBacked)
+		CWalletDB(strWalletFile).WriteRecoveryPhraseFlag();
+}
+
+
 
 void CWallet::GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const
 {

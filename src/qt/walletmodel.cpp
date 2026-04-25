@@ -35,6 +35,9 @@
 
 #include "walletmodel.h"
 #include "bip39/bip39_wallet.h"
+#include "bip39/bip39_passphrase.h"
+#include <openssl/evp.h>
+#include <openssl/crypto.h>
 
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet),
@@ -512,8 +515,8 @@ bool WalletModel::setWalletEncrypted(bool encrypted, const SecureString &passphr
     }
     else
     {
-        // Decrypt -- TODO; not supported yet
-        return false;
+        // Decrypt wallet
+        return wallet->DecryptWallet(passphrase);
     }
 }
 
@@ -751,6 +754,8 @@ void WalletModel::unsubscribeFromCoreSignals()
 
 // WalletModel::UnlockContext implementation
 
+
+
 bool WalletModel::generateMnemonic(BIP39Wallet::WordCount wordCount,
                                    SecureString &mnemonic) const
 {
@@ -759,14 +764,34 @@ bool WalletModel::generateMnemonic(BIP39Wallet::WordCount wordCount,
     return res == BIP39Wallet::Result::OK;
 }
 
+bool WalletModel::hasRecoveryPhraseSupport() const
+{
+    return wallet->HasRecoveryPhraseFlag();
+}
+
+bool WalletModel::hasMnemonicMasterKey() const
+{
+    return wallet->HasMnemonicMasterKey();
+}
+
+bool WalletModel::addMnemonicMasterKey(const SecureString &passphrase)
+{
+    return wallet->AddMnemonicMasterKey(passphrase);
+}
+
+bool WalletModel::verifyPassphrase(const SecureString &passphrase) const
+{
+    return wallet->VerifyPassphrase(passphrase);
+}
+
 bool WalletModel::generateRecoveryMnemonic(const SecureString &passphrase,
                                             SecureString &mnemonic) const
 {
     // Derive a 24-word BIP39 recovery mnemonic from the user's passphrase.
     // The same passphrase always produces the same mnemonic — deterministic.
     // This does NOT touch wallet key material.
-    BIP39Wallet::Result res = BIP39Wallet::mnemonicFromPassphrase(passphrase, mnemonic);
-    return res == BIP39Wallet::Result::OK;
+    BIP39Passphrase::Result res = BIP39Passphrase::mnemonicFromPassphrase(passphrase, mnemonic);
+    return res == BIP39Passphrase::Result::OK;
 }
 
 WalletModel::UnlockContext WalletModel::requestUnlockWithMnemonic(const QString &mnemonic)
@@ -782,13 +807,14 @@ WalletModel::UnlockContext WalletModel::requestUnlockWithMnemonic(const QString 
         return UnlockContext(this, false, false);
 
     SecureString derivedPass;
-    BIP39Wallet::Result res = BIP39Wallet::passphraseFromMnemonic(mnemonicSS, derivedPass);
-    if (res != BIP39Wallet::Result::OK)
+    BIP39Passphrase::Result res = BIP39Passphrase::passphraseFromMnemonic(mnemonicSS, derivedPass);
+    if (res != BIP39Passphrase::Result::OK)
         return UnlockContext(this, false, false);
 
     bool valid = !was_locked || wallet->Unlock(derivedPass);
 
-    return UnlockContext(this, valid, was_locked && valid);
+    // relock=false — user chose to unlock with phrase, wallet stays unlocked
+    return UnlockContext(this, valid, false);
 }
 
 WalletModel::UnlockContext WalletModel::requestUnlock()
