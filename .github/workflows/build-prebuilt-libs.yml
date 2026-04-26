@@ -35,7 +35,7 @@ jobs:
   build-linux-x64:
     name: Build libs — Linux x64
     runs-on: ubuntu-22.04
-    timeout-minutes: 240
+    timeout-minutes: 360
     if: inputs.platform == 'linux-x64'
 
     steps:
@@ -86,7 +86,10 @@ jobs:
 
       - name: Compile static libraries
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
-        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
+        run: |
+          CPUS=$(nproc)
+          echo "Building with $CPUS parallel jobs"
+          bash compile_libs.sh "-j $CPUS"
 
       - name: Package libs tarball
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/x64
@@ -111,7 +114,7 @@ jobs:
   build-linux-aarch64:
     name: Build libs — Linux aarch64
     runs-on: ubuntu-22.04
-    timeout-minutes: 240
+    timeout-minutes: 360
     if: inputs.platform == 'linux-aarch64'
 
     steps:
@@ -143,7 +146,10 @@ jobs:
 
       - name: Compile static libraries (aarch64 cross-compile)
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
-        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
+        run: |
+          CPUS=$(nproc)
+          echo "Building with $CPUS parallel jobs"
+          bash compile_libs.sh "-j $CPUS"
 
       - name: Package libs tarball
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/linux/aarch64
@@ -188,7 +194,10 @@ jobs:
 
       - name: Compile static libraries
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
-        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
+        run: |
+          CPUS=$(sysctl -n hw.logicalcpu)
+          echo "Building with $CPUS parallel jobs"
+          bash compile_libs.sh "-j $CPUS"
 
       - name: Package libs tarball
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
@@ -233,7 +242,10 @@ jobs:
 
       - name: Compile static libraries
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
-        run: bash compile_libs.sh "-j ${{ env.JOBS }}"
+        run: |
+          CPUS=$(sysctl -n hw.logicalcpu)
+          echo "Building with $CPUS parallel jobs"
+          bash compile_libs.sh "-j $CPUS"
 
       - name: Package libs tarball
         working-directory: ${{ github.workspace }}/../DigitalNote-Builder/macos/x64
