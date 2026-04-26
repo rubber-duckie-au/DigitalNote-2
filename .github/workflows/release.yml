@@ -56,13 +56,6 @@ jobs:
           path: dist/windows-x64
         continue-on-error: true
 
-      - name: Download Windows x86 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: digitalnote-windows-x86
-          path: dist/windows-x86
-        continue-on-error: true
-
       - name: Download Linux x64 artifact
         uses: actions/download-artifact@v4
         with:
@@ -96,7 +89,7 @@ jobs:
           TAG="${{ github.ref_name }}"
           mkdir -p release
           cd dist
-          for platform in windows-x64 windows-x86 linux-x64 linux-aarch64 macos-x64 macos-arm64; do
+          for platform in windows-x64 linux-x64 linux-aarch64 macos-x64 macos-arm64; do
             if [ -d "$platform" ] && [ "$(ls -A $platform 2>/dev/null)" ]; then
               ZIP="../release/DigitalNote-${TAG}-${platform}.zip"
               zip -r "$ZIP" "$platform/"
@@ -175,7 +168,6 @@ jobs:
             | Platform | File |
             |---|---|
             | Windows x64 | `DigitalNote-${{ github.ref_name }}-windows-x64.zip` |
-            | Windows x86 | `DigitalNote-${{ github.ref_name }}-windows-x86.zip` |
             | Linux x64 | `DigitalNote-${{ github.ref_name }}-linux-x64.zip` |
             | Linux aarch64 (ARM) | `DigitalNote-${{ github.ref_name }}-linux-aarch64.zip` |
             | macOS Intel | `DigitalNote-${{ github.ref_name }}-macos-x64.zip` |
