@@ -21,6 +21,8 @@
 #include <openssl/bn.h>
 
 #include <algorithm>
+#include <chrono>
+#include <thread>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -125,13 +127,24 @@ std::string strRollbackToBlock = "";
 int64_t nMasterNodeChecksDelayBaseTime = 0;
 int maxBlockHeight = -1;
 
+// HOTFIX (v2.0.0.8.1 apple-silicon): MilliSleep historically used
+// boost::this_thread::sleep_for / boost::chrono::milliseconds, which
+// crashed on macOS Apple Silicon (arm64) under specific concurrent
+// startup conditions (SIGSEGV at boost::chrono::steady_clock::now()+68
+// from the SMSG worker thread while the main thread was still inside
+// AppInit2).  The std::chrono / std::thread equivalents are
+// implemented directly by libc++ on macOS without the static-state
+// initialisation pattern that boost::chrono used, and behave
+// identically on Linux/Windows.  Functionally equivalent on all
+// supported platforms, but removes the macOS arm64 race window.
+//
+// Companion fix: SMSG worker-thread creation is deferred from
+// init.cpp Step 10.5 to the end of AppInit2, so by the time
+// MilliSleep is called the application-wide initialisation has
+// completed.  See init.cpp / smsg.cpp.
 void MilliSleep(int64_t n)
 {
-#if BOOST_VERSION >= 105000
-	boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
-#else
-	boost::this_thread::sleep(boost::posix_time::milliseconds(n));
-#endif
+	std::this_thread::sleep_for(std::chrono::milliseconds(n));
 }
 
 int64_t GetTimeMillis()
