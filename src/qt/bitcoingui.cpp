@@ -1751,7 +1751,7 @@ void DigitalNoteGUI::unlockWallet()
     // Unlock wallet when requested by wallet model
     if(walletModel->getEncryptionStatus() == WalletModel::Locked)
     {
-        // Always use Unlock mode — staking checkbox is available but unticked by default
+        // Always use Unlock mode - staking checkbox is available but unticked by default
         AskPassphraseDialog::Mode mode = AskPassphraseDialog::Unlock;
         AskPassphraseDialog dlg(mode, this);
         dlg.setModel(walletModel);
@@ -1849,7 +1849,7 @@ void DigitalNoteGUI::updateWeight()
 //
 // The new state machine reads two atomics published by ThreadStakeMiner
 // (heartbeat + productivity flag) and uses a hammer-latch with a 5-minute
-// safety floor so the icon doesn't flutter on transient §29 defers.  The
+// safety floor so the icon doesn't flutter on transient S29 defers.  The
 // expected-time-between-blocks tooltip is recomputed from nWeight +
 // difficulty rather than the broken counter.
 // ===========================================================================
@@ -2063,7 +2063,7 @@ void DigitalNoteGUI::updateStakingIcon()
     // Avoid taking cs_main directly from a Qt timer thread: IsInitialBlockDownload()
     // and pwalletMain->IsLocked() each acquire heavy locks, and if held by a slow
     // operation (ProcessMessages, block connect, the ThreadStakeMiner queue probe
-    // under §29's cs_main hold) the GUI thread blocks for the duration -- triggers
+    // under S29's cs_main hold) the GUI thread blocks for the duration -- triggers
     // "Not Responding" and freezes the wallet UI.  Use TRY_LOCK and bail out on
     // contention -- the icon refreshes again on the next timer fire when locks are
     // free.  Matches the precedent in updateWeight() just above.

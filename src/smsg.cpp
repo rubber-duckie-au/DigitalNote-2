@@ -3864,31 +3864,76 @@ int Send(std::string &addressFrom, std::string &addressTo, std::string &message,
 		LogPrint("smsg", "Encrypting message for outbox.\n");
 	}
 	
+	// v2.0.0.9 FINDING-2026-006: encrypt the sender's own outbox copy with the
+	// USER-SELECTED sending address (addressFrom), not "the first owned address in
+	// mapAddressBook".
+	//
+	// The old code grabbed the first IsMine entry in the address book as the outbox
+	// key.  That entry is effectively random per wallet (map ordering / what's in the
+	// book) and was only format-checked (SetString), never checked for a retrievable
+	// CKeyID.  If the first owned entry was a stealth/keyless/watch-only address,
+	// Encrypt() failed (err 4 at the GetKeyID call) OR the copy was stored encrypted
+	// to an address the wallet cannot Decrypt() with -- so the message model's
+	// Decrypt(sAddrOutbox) at load time failed and the SENT list showed blank.  The
+	// recipient copy was unaffected, so the message "sent" fine but never appeared in
+	// the sender's own Messages tab -- and only on wallets whose first owned address
+	// wasn't SMSG-encryptable, which looked random.
+	//
+	// addressFrom is the correct key: it is the address the user chose to send from,
+	// it is guaranteed owned, and it was just proven SMSG-encryptable a few lines
+	// above (the recipient copy at Encrypt(smsg, addressFrom, addressTo, ...) at
+	// ~3787 succeeded).  Using it guarantees the sender copy round-trips whenever the
+	// recipient copy does.
 	std::string addressOutbox = "None";
 	CDigitalNoteAddress coinAddrOutbox;
 
-	for(const pairAddressBook_t& entry : pwalletMain->mapAddressBook)
+	// Primary: the sender address the user picked.
+	if (!addressFrom.empty() && addressFrom != "anon"
+		&& coinAddrOutbox.SetString(addressFrom) && coinAddrOutbox.IsValid()
+		&& IsMine(*pwalletMain, coinAddrOutbox.Get()))
 	{
-		// -- get first owned address
-		if (!IsMine(*pwalletMain, entry.first))
+		addressOutbox = addressFrom;
+	}
+	else
+	{
+		// Fallback (e.g. an anonymous/"anon" send with no usable from-address):
+		// first owned address that both parses and is IsMine.  Retained so anon
+		// sends still get an outbox copy where possible.
+		for(const pairAddressBook_t& entry : pwalletMain->mapAddressBook)
 		{
-			continue;
-		}
-		
-		const CDigitalNoteAddress& address = entry.first;
+			if (!IsMine(*pwalletMain, entry.first))
+			{
+				continue;
+			}
 
-		addressOutbox = address.ToString();
-		if (!coinAddrOutbox.SetString(addressOutbox)) // test valid
-		{
-			continue;
+			const CDigitalNoteAddress& address = entry.first;
+			std::string sCandidate = address.ToString();
+
+			if (!coinAddrOutbox.SetString(sCandidate)) // test valid
+			{
+				continue;
+			}
+
+			addressOutbox = sCandidate;
+
+			break;
 		}
-		
-		break;
 	}
 
 	if (addressOutbox == "None")
 	{
-		LogPrint("smsg", "Warning: DigitalNote::SMSG::Send() could not find an address to encrypt outbox message with.\n");
+		// The message WAS sent (the recipient copy above succeeded); we simply could
+		// not store a sender-side copy, so it won't appear in this wallet's Sent
+		// list.  This is NOT a send failure -- do NOT set sError here: the QT caller
+		// treats a non-empty sError together with a non-zero Send() return as
+		// "Send failed", and this path still returns 0 (success).  Log it clearly
+		// (default level, not the smsg-only category) so it is discoverable without
+		// misreporting a successful send.  With the addressFrom primary above this
+		// is now only reachable for an "anon" send from a wallet with no usable
+		// owned address.
+		LogPrintf("DigitalNote::SMSG::Send() : message sent, but no usable owned "
+				  "address was available to encrypt the outbox copy; it will not "
+				  "appear in this wallet's Sent list (FINDING-2026-006).\n");
 	}
 	else
 	{

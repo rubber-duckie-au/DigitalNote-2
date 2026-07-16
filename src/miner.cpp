@@ -131,7 +131,7 @@ int64_t nLastCoinStakeSearchInterval = 0;
 // fLastStakeLoopProductive: TRUE iff the most recent main-loop iteration
 // entered the SignBlock attempt path (all prerequisites met, kernel
 // search executed).  FALSE for any branch that short-circuited (wallet
-// locked, vNodes-empty/IBD, fTryToSync early-out, §29 voted-consensus
+// locked, vNodes-empty/IBD, fTryToSync early-out, S29 voted-consensus
 // defer, velocity-spacing back-off).  Set unconditionally at every
 // branch decision so it always reflects the most recent iteration.
 std::atomic<int64_t> nLastStakeLoopTime(0);
@@ -578,23 +578,35 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 						// behaves identically to the previous direct call.
 						if(!GetEnforcedPayee(pindexPrev->nHeight+1, mn_payee, vin))
 						{
-							// vWinning has no entry for the upcoming height -- fall back
-							// to FindOldestNotInVec (same as ProcessBlock's secondary path).
-							// The previous fallback used GetCurrentMasterNode(1), which
-							// internally calls CalculateScore(1, blockHeight=0) -- the
-							// genesis block hash -- and therefore always returned the same
-							// MN as winner.  That produced the "same MN paid twice in
-							// succession" pattern observed in UAT whenever a staker hit
-							// the fallback path (typically just-restarted wallets or fresh
-							// syncs).  Companion fix to rpcmining.cpp:847.
-							CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
-							if(pmn)
+							// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC):
+							// no voted winner.  If the chain has been stalled
+							// >= RESCUE_STALL_SECS (block-relative), this is a rescue
+							// block and MUST pay the deterministic devops address, NOT a
+							// node-local FindOldestNotInVec pick (divergent -> the 7728
+							// fork / attack surface B1.1; validators running the rescue
+							// rule accept ONLY devops here).  Post-activation the RPC gate
+							// (EnforceVotedConsensusReadyOrThrow) only lets us build once
+							// rescue is active, so FindOldestNotInVec is effectively
+							// bypassed post-activation.
+							if (IsRescueActive(pindexPrev, pindexPrev->nHeight + 1, GetAdjustedTime()))
 							{
-								mn_payee = GetScriptForDestination(pmn->pubkey.GetID());
+								mn_payee = do_payee;
 							}
 							else
 							{
-								mn_payee = do_payee;
+								// vWinning has no entry for the upcoming height -- legacy
+								// fallback (pre-activation normal path; see FindOldestNotInVec
+								// rationale / the "same MN paid twice" UAT fix vs the old
+								// GetCurrentMasterNode(1)).
+								CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
+								if(pmn)
+								{
+									mn_payee = GetScriptForDestination(pmn->pubkey.GetID());
+								}
+								else
+								{
+									mn_payee = do_payee;
+								}
 							}
 						}
 						else
@@ -1100,7 +1112,7 @@ void ThreadStakeMiner(CWallet *pwallet)
 				// updateStakingIcon -> IsInitialBlockDownload.
 				//
 				// CW0 (2026-05-30): cs_main MUST be released before the
-				// MilliSleep below.  The original §24 fix placed the LOCK
+				// MilliSleep below.  The original S24 fix placed the LOCK
 				// without a fresh scope, so its lifetime extended through
 				// the defer-and-retry path -- cs_main was held for the
 				// full 5s sleep, starving ProcessMessages / GUI /
@@ -1123,26 +1135,64 @@ void ThreadStakeMiner(CWallet *pwallet)
 
 				if (!fHaveCanonical)
 				{
-					static int64_t nLastGateLog = 0;
-					int64_t nNow = GetTime();
+					// v2.0.0.9 consensus rescue (v2009-rescue-devops-fallback-SPEC):
+					// no voted winner.  Normally we defer (below) rather than mint a
+					// block the fleet would reject.  BUT if the chain has been stalled
+					// >= RESCUE_STALL_SECS (block-relative), this is a genuine
+					// deadlock (cold queues after a coordinated restart, below-floor,
+					// sustained propagation failure) that deferring will never break.
+					// In that case fall through and build a block: CreateCoinStake's
+					// MN-slot fill lands on the devops fallback (no resolvable winner),
+					// and validators accept it as a rescue block (CheckBlock ->
+					// IsRescueActive).  The producer decides using GetAdjustedTime()
+					// (the block's timestamp is not finalised yet, ~= now); the block
+					// is then stamped so the committed validator predicate holds by
+					// construction -- the same pattern the VRX nBits path uses.
+					//
+					// pindexBest is the parent (block at nNextHeight-1); its
+					// GetMedianTimePast() is committed, so every node computes the
+					// same rescue decision.
+					bool fRescue = IsRescueActive(pindexBest, nNextHeight, GetAdjustedTime());
 
-					// Rate-limit the log so a deferring node does not flood
-					// debug.log (it retries every 5s).
-					if (nNow - nLastGateLog >= 30)
+					if (!fRescue)
 					{
-						nLastGateLog = nNow;
-						LogPrintf("ThreadStakeMiner -- deferring: voted consensus "
-								  "active for height %d (activation %d) but this "
-								  "node has no canonical winner yet; not minting "
-								  "a block the fleet would reject. Vote tracker "
-								  "not ready.\n",
-								  nNextHeight, nActivationHeight);
+						static int64_t nLastGateLog = 0;
+						int64_t nNow = GetTime();
+
+						// Rate-limit the log so a deferring node does not flood
+						// debug.log (it retries every 5s).
+						if (nNow - nLastGateLog >= 30)
+						{
+							nLastGateLog = nNow;
+							LogPrintf("ThreadStakeMiner -- deferring: voted consensus "
+									  "active for height %d (activation %d) but this "
+									  "node has no canonical winner yet; not minting "
+									  "a block the fleet would reject. Vote tracker "
+									  "not ready.\n",
+									  nNextHeight, nActivationHeight);
+						}
+
+						MilliSleep(5000);
+
+						fLastStakeLoopProductive.store(false);
+						continue;
 					}
 
-					MilliSleep(5000);
+					// Rescue active -- log once per 30s and fall through to build.
+					{
+						static int64_t nLastRescueLog = 0;
+						int64_t nNow = GetTime();
 
-					fLastStakeLoopProductive.store(false);
-					continue;
+						if (nNow - nLastRescueLog >= 30)
+						{
+							nLastRescueLog = nNow;
+							LogPrintf("ThreadStakeMiner -- RESCUE: no voted winner for "
+									  "height %d and chain stalled >= %ds; minting a "
+									  "devops-fallback rescue block to advance the "
+									  "chain.\n",
+									  nNextHeight, (int)RESCUE_STALL_SECS);
+						}
+					}
 				}
 			}
 		}

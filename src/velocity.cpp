@@ -47,10 +47,12 @@ bool Velocity_check(int nHeight)
 	return false;
 }
 
-/* Velocity(CBlockIndex* prevBlock, CBlock* block) ? true : false
-   Goes close to the top of CBlock::AcceptBlock
-   Returns true if proposed Block matches constrains */
-bool Velocity(CBlockIndex* prevBlock, CBlock* block)
+/* Velocity(CBlockIndex* prevBlock, CBlock* block) -> VelocityResult
+   Called near the top of CBlock::AcceptBlock.
+   HOTFIX (v2.0.0.8.1): returns a 3-state enum instead of bool so the
+   caller can distinguish severe rejections (DoS-worthy) from benign
+   ones (clock skew). */
+VelocityResult Velocity(CBlockIndex* prevBlock, CBlock* block)
 {
 	const mapPrevTx_t mapInputs;
 
@@ -132,7 +134,7 @@ bool Velocity(CBlockIndex* prevBlock, CBlock* block)
 		{
 			LogPrintf("DENIED: Not enough TXs in block\n");
 			
-			return false;
+			return VelocityResult::RejectedSevere;
 		}
 		
 		// Authenticate submitted block's TXs
@@ -146,7 +148,7 @@ bool Velocity(CBlockIndex* prevBlock, CBlock* block)
 				{
 					LogPrintf("DENIED: Balance has insuficient funds for attempted TX with Velocity\n");
 					
-					return false;
+					return VelocityResult::RejectedSevere;
 				}
 			}
 			
@@ -154,7 +156,7 @@ bool Velocity(CBlockIndex* prevBlock, CBlock* block)
 			{
 				LogPrintf("DENIED: Invalid TX value found by Velocity\n");
 				
-				return false;
+				return VelocityResult::RejectedSevere;
 			}
 			
 			if(VELOCITY_MIN_FEE[i] > 0 && TXinput > 0)
@@ -163,39 +165,99 @@ bool Velocity(CBlockIndex* prevBlock, CBlock* block)
 				{
 					LogPrintf("DENIED: Invalid network fee found by Velocity\n");
 					
-					return false;
+					return VelocityResult::RejectedSevere;
 				}
 			}
 		}
 	}
 
-	// Verify minimum Velocity rate
+	// Verify minimum Velocity rate.
+	// Too-rapid block spacing is a real attack indicator (a malicious
+	// staker producing back-to-back blocks faster than min spacing) and
+	// remains DoS-worthy.
 	if( VELOCITY_RATE[i] > 0 && TXrate >= VELOCITY_MIN_RATE[i] )
 	{
 		LogPrintf("CHECK_PASSED: block spacing has met Velocity constraints\n");
 	}
-	// Rates that are too rapid are rejected without exception
 	else if( VELOCITY_RATE[i] > 0 && TXrate < VELOCITY_MIN_RATE[i] )
 	{
-		LogPrintf("DENIED: Minimum block spacing not met for Velocity\n");
+		LogPrintf("DENIED: Minimum block spacing not met for Velocity (severe)\n");
 		
-		return false;
+		return VelocityResult::RejectedSevere;
 	}
+	
+	// HOTFIX (v2.0.0.8.1) -- REMOVED dead code at this location.
+	// 
+	// The original file had a third `else if` here that purported to
+	// validate timestamps "based on previous block history".  It was
+	// unreachable: VELOCITY_RATE[i] > 0 is always true on mainnet, so
+	// either the first or second branch above always fires.  The
+	// `else if` after a `return false` branch was structurally dead.
+	//
+	// The chain-history timestamp invariants the dead code was meant
+	// to enforce (block_ts >= prev_block_ts + min_spacing, etc.) are
+	// already covered by AcceptBlock()'s GetPastTimeLimit() /
+	// FutureDrift() checks in cblock.cpp.  No semantic loss from
+	// removing the dead branch.
 
-	// Validate timestamp is logical based on previous block history
-	else if(CURstamp < CURvalstamp || OLDstamp < OLDvalstamp || TXstampC < CURvalstamp || TXstampO < OLDvalstamp)
+	// HOTFIX (v2.0.0.8.1) -- WALL-CLOCK TIMESTAMP CHECK.
+	//
+	// The previous implementation used BLOCK_SPACING_MIN (45 seconds)
+	// as the tolerance for "is this block's timestamp in the future
+	// relative to our system clock?" and then returned `false`, which
+	// the caller mapped to DoS(100) -> ban.  That combination caused
+	// the 2026-06-13 self-isolation incident where a freshly-started
+	// node banned 86% of its mainnet peers during the volatile
+	// nTimeOffset bootstrap window.
+	//
+	// Three changes:
+	//   1) Tolerance widened from 45s -> 180s.  Stake-grinding is
+	//      bounded by STAKE_TIMESTAMP_MASK=15 (16-sec granularity),
+	//      giving ~11 attempts per slot at 180s versus ~3 at 45s --
+	//      not a meaningful security degradation.
+	//   2) Severity is BENIGN: clock skew is noise, not malice.  The
+	//      block is still rejected; the peer is not banned.
+	//   3) Bootstrap grace period: the check is skipped entirely
+	//      when our own time view is unstable (insufficient samples)
+	//      or our offset is itself large.  A node whose
+	//      nTimeOffset has not yet converged is in no position to
+	//      judge another node's "future" claim.
+	//
+	// The full post-mortem is in v209-TODO.md.
 	{
-		LogPrintf("DENIED: Block timestamp is not logical\n");
-		
-		return false;
-	}
+		static const int64_t WALLCLOCK_FUTURE_TOLERANCE     = 180; // seconds
+		static const int     MIN_TIME_SAMPLES_FOR_ENFORCE   = 11;
+		static const int64_t MAX_SELF_OFFSET_FOR_ENFORCE    = 60;
 
-	// Validate timestamp is logical based on system time
-	if(CURstamp > SYSbaseStamp || CURstamp > SYScrntstamp || TXstampC > SYSbaseStamp || TXstampC > SYScrntstamp)
-	{
-		LogPrintf("DENIED: Block timestamp is not logical\n");
-		
-		return false;
+		int  nSamples    = GetTimeOffsetSampleCount();
+		int64_t nOffset  = GetTimeOffset();
+		bool fStableTime = (nSamples >= MIN_TIME_SAMPLES_FOR_ENFORCE)
+		                && (abs64(nOffset) < MAX_SELF_OFFSET_FOR_ENFORCE);
+
+		if (fStableTime)
+		{
+			int64_t SYSbaseTol = GetTime()         + WALLCLOCK_FUTURE_TOLERANCE;
+			int64_t SYScrntTol = GetAdjustedTime() + WALLCLOCK_FUTURE_TOLERANCE;
+
+			if (CURstamp > SYSbaseTol || CURstamp > SYScrntTol
+			    || TXstampC > SYSbaseTol || TXstampC > SYScrntTol)
+			{
+				LogPrintf("DENIED: Block timestamp is not logical "
+				          "(block_ts=%d, local+%ds=%d, adjusted+%ds=%d) "
+				          "[benign -- clock skew, peer not banned]\n",
+				          (int)CURstamp,
+				          (int)WALLCLOCK_FUTURE_TOLERANCE, (int)SYSbaseTol,
+				          (int)WALLCLOCK_FUTURE_TOLERANCE, (int)SYScrntTol);
+				
+				return VelocityResult::RejectedBenign;
+			}
+		}
+		else
+		{
+			LogPrintf("Velocity wall-clock check skipped: time view not stable "
+			          "(samples=%d, our offset=%ds -- not authoritative)\n",
+			          nSamples, (int)nOffset);
+		}
 	}
 
 	// Verify coinbase transaction includes DevOps payment
@@ -245,7 +307,7 @@ bool Velocity(CBlockIndex* prevBlock, CBlock* block)
 		{
 			LogPrintf("DENIED: block does not contain valid devops payment\n");
 			
-			return false;
+			return VelocityResult::RejectedSevere;
 		}
 	}
 
@@ -254,23 +316,23 @@ bool Velocity(CBlockIndex* prevBlock, CBlock* block)
 	{
 		if(VELOCITY_MIN_TX[i] > 0)
 		{
-			return false;
+			return VelocityResult::RejectedSevere;
 		}
 		
 		if(VELOCITY_MIN_VALUE[i] > 0)
 		{
-			return false;
+			return VelocityResult::RejectedSevere;
 		}
 		
 		if(VELOCITY_MIN_FEE[i] > 0)
 		{
-			return false;
+			return VelocityResult::RejectedSevere;
 		}
 	}
 
 	// Velocity constraints met, return block acceptance
 	LogPrintf("ACCEPTED: block has met all Velocity constraints\n");
 
-	return true;
+	return VelocityResult::Accepted;
 }
 

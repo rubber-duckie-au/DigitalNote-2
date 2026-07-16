@@ -20,7 +20,21 @@ static const bool VELOCITY_FACTOR[] = { false };				// Treat Switches as factors
 static const bool VELOCITY_EXPLICIT[] = { false };				// Require all switches to trigger a block
 
 bool Velocity_check(int nHeight);
-bool Velocity(CBlockIndex* prevBlock, CBlock* block);
+
+// HOTFIX (v2.0.0.8.1): Velocity() now returns a 3-state result so the
+// caller can distinguish ban-worthy rejections (suspicious behaviour)
+// from benign rejections (clock skew, transient noise).  Previously
+// the caller responded to every Velocity rejection with DoS(100),
+// which caused mass false-positive bans of honest peers during the
+// volatile bootstrap window when nTimeOffset is still settling.
+enum class VelocityResult
+{
+	Accepted,
+	RejectedBenign,    // clock skew or other benign condition; peer not at fault
+	RejectedSevere     // attack-like (too-fast spacing, etc.); DoS-worthy
+};
+
+VelocityResult Velocity(CBlockIndex* prevBlock, CBlock* block);
 
 int VelocityI(int nHeight);
 

@@ -1641,7 +1641,7 @@ bool CWallet::VerifyPassphrase(const SecureString& strWalletPassphrase) const
 	return false;
 }
 
-// NOT CALLED — retained for future use.
+// NOT CALLED - retained for future use.
 // This function fully decrypts the wallet.dat, removing all encryption.
 // It uses a two-phase commit: write all plain keys first (WriteKeyOverwrite),
 // then erase encrypted records. If interrupted mid-Phase-A wallet.dat is safe
@@ -1843,7 +1843,7 @@ bool CWallet::HasMnemonicMasterKey() const
 	return mapMasterKeys.size() > 1;
 }
 // ---------------------------------------------------------------------------
-// AddMnemonicMasterKey — D2 version (vMasterKey-derived, no password param)
+// AddMnemonicMasterKey - D2 version (vMasterKey-derived, no password param)
 // ---------------------------------------------------------------------------
 //
 // Derives the recovery-phrase entropy from the current vMasterKey, encrypts
@@ -1970,7 +1970,7 @@ bool CWallet::AddMnemonicMasterKey()
 
 
 // ---------------------------------------------------------------------------
-// GetCurrentMnemonic — re-derive the mnemonic from the current vMasterKey
+// GetCurrentMnemonic - re-derive the mnemonic from the current vMasterKey
 // ---------------------------------------------------------------------------
 //
 // Useful for "show me my recovery phrase" UI: at any moment when the wallet
@@ -2001,7 +2001,7 @@ bool CWallet::GetCurrentMnemonic(SecureString& mnemonicOut) const
 
 
 // ---------------------------------------------------------------------------
-// RotateMnemonicMasterKey — replace vMasterKey, re-encrypt all keys
+// RotateMnemonicMasterKey - replace vMasterKey, re-encrypt all keys
 // ---------------------------------------------------------------------------
 //
 // This is the heavyweight rotation: produces a new vMasterKey, re-wraps every
@@ -2970,7 +2970,7 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
 			{
 				int pct = std::max(1, std::min(99, (pindex->nHeight - nStartHeight) * 100 / nTotal));
 				ShowProgress(strprintf(ui_translate("Rescanning... block %d"), pindex->nHeight), pct);
-				// Splash mirror — see entry-point comment above.
+				// Splash mirror - see entry-point comment above.
 				uiInterface.InitMessage(strprintf(
 					ui_translate("Rescanning... block %d / %d"),
 					pindex->nHeight, nEndHeight));
@@ -4105,15 +4105,35 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		// fix as miner.cpp's PoW path got in M3p5).
 		if(!GetEnforcedPayee(pindexPrev->nHeight+1, payee, vin))
 		{
-			CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
-
-			if(pmn)
+			// v2.0.0.9 consensus rescue (v2009-rescue-devops-fallback-SPEC):
+			// no voted winner.  If the chain has been stalled >= RESCUE_STALL_SECS
+			// (block-relative), this is a rescue block: it MUST pay the devops
+			// address, NOT a locally-chosen FindOldestNotInVec masternode.  That
+			// legacy pick is node-local and divergent (the 7728 fork / attack
+			// surface B1.1); a validator running the rescue rule accepts ONLY the
+			// deterministic devops payee here, so paying anything else would get
+			// this block rejected.  Post-activation, FindOldestNotInVec is bypassed
+			// entirely -- devops is the deterministic terminus.
+			if (IsRescueActive(pindexPrev, pindexPrev->nHeight + 1, GetAdjustedTime()))
 			{
-				payee = GetScriptForDestination(pmn->pubkey.GetID());
+				payee = GetScriptForDestination(devopaddress.Get());
 			}
 			else
 			{
-				payee = GetScriptForDestination(devopaddress.Get());
+				// No winner but not (yet) a rescue -- retain legacy behaviour.
+				// Pre-activation this is the normal path; post-activation the
+				// producer gate (ThreadStakeMiner) defers until rescue is active,
+				// so this legacy pick is only reachable pre-activation in practice.
+				CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
+
+				if(pmn)
+				{
+					payee = GetScriptForDestination(pmn->pubkey.GetID());
+				}
+				else
+				{
+					payee = GetScriptForDestination(devopaddress.Get());
+				}
 			}
 		}
 		else

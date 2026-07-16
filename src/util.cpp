@@ -21,6 +21,7 @@
 #include <openssl/bn.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -1600,7 +1601,7 @@ boost::filesystem::path GetConfigFile()
 {
 	boost::filesystem::path pathConfigFile(GetArg("-conf", "DigitalNote.conf"));
 	
-	if (!pathConfigFile.is_complete())
+	if (!pathConfigFile.is_absolute())
 	{
 		// v2.0.0.8: network-specific.  A -testnet launch reads
 		// <datadir>/testnet/DigitalNote.conf; mainnet reads
@@ -1616,7 +1617,7 @@ boost::filesystem::path GetMasternodeConfigFile()
 {
 	boost::filesystem::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));
 	
-	if (!pathConfigFile.is_complete())
+	if (!pathConfigFile.is_absolute())
 	{
 		pathConfigFile = GetDataDir() / pathConfigFile;
 	}
@@ -1820,7 +1821,7 @@ boost::filesystem::path GetPidFile()
 {
 	boost::filesystem::path pathPidFile(GetArg("-pid", "DigitalNoted.pid"));
 
-	if (!pathPidFile.is_complete())
+	if (!pathPidFile.is_absolute())
 	{
 		// v2.0.0.8: network-specific, via the command-line flags, so the
 		// pidfile created in the early -daemon path (before SelectParams)
@@ -1966,11 +1967,26 @@ void SetMockTime(int64_t nMockTimeIn)
 static CCriticalSection cs_nTimeOffset;
 static int64_t nTimeOffset = 0;
 
+// HOTFIX (v2.0.0.8.1) -- running count of accepted peer time samples.
+// Bumped in AddTimeData() under cs_nTimeOffset.  Read lock-free via
+// GetTimeOffsetSampleCount().  Used by Velocity()'s bootstrap-grace
+// logic to suppress wall-clock timestamp enforcement until our view
+// of "what time it is" has been confirmed by enough peers to be
+// reliable.
+static std::atomic<int> nTimeOffsetSamples(0);
+
 int64_t GetTimeOffset()
 {
 	LOCK(cs_nTimeOffset);
 	
 	return nTimeOffset;
+}
+
+// HOTFIX (v2.0.0.8.1) -- accessor for the running peer-time sample
+// count, read lock-free.  Used by Velocity()'s bootstrap-grace logic.
+int GetTimeOffsetSampleCount()
+{
+	return nTimeOffsetSamples.load();
 }
 
 int64_t GetAdjustedTime()
@@ -1994,6 +2010,11 @@ void AddTimeData(const CNetAddr& ip, int64_t nTime)
 	// Add data
 	static CMedianFilter<int64_t> vTimeOffsets(200,0);
 	vTimeOffsets.input(nOffsetSample);
+	
+	// HOTFIX (v2.0.0.8.1) -- expose sample count for Velocity's
+	// bootstrap-grace decision.  Stored in an atomic so callers can
+	// read without taking cs_nTimeOffset.
+	nTimeOffsetSamples.store(vTimeOffsets.size());
 
 	LogPrintf("Added time data, samples %d, offset %+d (%+d minutes)\n", vTimeOffsets.size(), nOffsetSample, nOffsetSample/60);
 

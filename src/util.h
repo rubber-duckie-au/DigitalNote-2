@@ -262,6 +262,12 @@ int64_t GetTime();
 void SetMockTime(int64_t nMockTimeIn);
 int64_t GetAdjustedTime();
 int64_t GetTimeOffset();
+
+// HOTFIX (v2.0.0.8.1) -- accessor for the running count of peer time
+// samples used to compute nTimeOffset.  Velocity timestamp enforcement
+// uses this to determine if our time view has stabilised enough for us
+// to be authoritative about a peer's claimed block timestamp.
+int GetTimeOffsetSampleCount();
 std::string FormatFullVersion();
 std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
 void AddTimeData(const CNetAddr& ip, int64_t nTime);

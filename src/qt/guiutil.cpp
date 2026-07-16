@@ -751,7 +751,7 @@ void applyDefaultFont(QApplication *app)
         family = app->font().family();
 
     QFont f(family);
-    // 10pt at 96 DPI ~= 13px — comfortable at 1080p, scales cleanly to 4K.
+    // 10pt at 96 DPI ~= 13px - comfortable at 1080p, scales cleanly to 4K.
     f.setPointSize(scaledFontPoints(10));
     f.setStyleHint(QFont::SansSerif);
     f.setHintingPreference(QFont::PreferFullHinting); // crisp on Windows

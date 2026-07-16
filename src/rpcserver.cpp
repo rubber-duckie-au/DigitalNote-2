@@ -1,4 +1,5 @@
 #include "acceptedconnection.h"
+#include <chrono>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
@@ -35,7 +36,10 @@
 
 #include "rpcserver.h"
 
-typedef boost::shared_ptr<boost::asio::deadline_timer> share_ptr_deadline_timer_t;
+// v2.0.0.9 (Boost 1.89): boost::asio::deadline_timer was removed from boost/asio.hpp.
+// Migrated to steady_timer (chrono-based). Timeout semantics are identical; the only
+// change is posix_time::seconds -> std::chrono::seconds at the expires call below.
+typedef boost::shared_ptr<boost::asio::steady_timer> share_ptr_deadline_timer_t;
 typedef std::map<std::string, share_ptr_deadline_timer_t> map_deadline_timer_t;
  
 // RETROCOMPATIBILITY SHOULD NOT BE AN OPTION
@@ -244,15 +248,16 @@ void ErrorReply(std::ostream& stream, const json_spirit::Object& objError, const
 
 bool ClientAllowed(const boost::asio::ip::address& address)
 {
-	// Make sure that IPv4-compatible and IPv4-mapped IPv6 addresses are treated as IPv4 addresses
-	if (address.is_v6() &&
-		(
-			address.to_v6().is_v4_compatible() ||
-			address.to_v6().is_v4_mapped()
-		)
-	)
+	// Make sure that IPv4-mapped IPv6 addresses are treated as IPv4 addresses.
+	// v2.0.0.9 (Boost 1.87 asio): address_v6::is_v4_compatible() and to_v4() were removed.
+	// IPv4-COMPATIBLE addresses (::/96) are an obsolete class deprecated by RFC 4291 (2006)
+	// and are no longer accepted here (Boost removed the accessor because the concept is
+	// dead); IPv4-MAPPED addresses (::ffff:0:0/96) remain handled, via make_address_v4().
+	// For an access-control allow-list this is the conservative direction (it stops giving
+	// an obsolete address class special IPv4 treatment). [REVIEW: intentional behaviour change]
+	if (address.is_v6() && address.to_v6().is_v4_mapped())
 	{
-		return ClientAllowed(address.to_v6().to_v4());
+		return ClientAllowed(boost::asio::ip::make_address_v4(boost::asio::ip::v4_mapped, address.to_v6()));
 	}
 
 	if (address == boost::asio::ip::address_v4::loopback() ||
@@ -260,7 +265,7 @@ bool ClientAllowed(const boost::asio::ip::address& address)
 		(
 			address.is_v4() &&
 			// Check whether IPv4 addresses match 127.0.0.0/8 (loopback subnet)
-			(address.to_v4().to_ulong() & 0xff000000) == 0x7f000000
+			(address.to_v4().to_uint() & 0xff000000) == 0x7f000000
 		)
 	)
 	{
@@ -417,7 +422,7 @@ void StartRPCThreads()
 
 		boost::filesystem::path pathCertFile(GetArg("-rpcsslcertificatechainfile", "server.cert"));
 		
-		if (!pathCertFile.is_complete())
+		if (!pathCertFile.is_absolute())
 		{
 			pathCertFile = boost::filesystem::path(GetDataDir()) / pathCertFile;
 		}
@@ -433,7 +438,7 @@ void StartRPCThreads()
 		
 		boost::filesystem::path pathPKFile(GetArg("-rpcsslprivatekeyfile", "server.pem"));
 		
-		if (!pathPKFile.is_complete())
+		if (!pathPKFile.is_absolute())
 		{
 			pathPKFile = boost::filesystem::path(GetDataDir()) / pathPKFile;
 		}
@@ -470,7 +475,7 @@ void StartRPCThreads()
 		acceptor->set_option(boost::asio::ip::v6_only(loopback), v6_only_error);
 
 		acceptor->bind(endpoint);
-		acceptor->listen(boost::asio::socket_base::max_connections);
+		acceptor->listen(boost::asio::socket_base::max_listen_connections);
 
 		RPCListen(acceptor, *rpc_ssl_context, fUseSSL);
 
@@ -493,7 +498,7 @@ void StartRPCThreads()
 			acceptor->open(endpoint.protocol());
 			acceptor->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
 			acceptor->bind(endpoint);
-			acceptor->listen(boost::asio::socket_base::max_connections);
+			acceptor->listen(boost::asio::socket_base::max_listen_connections);
 
 			RPCListen(acceptor, *rpc_ssl_context, fUseSSL);
 
@@ -564,12 +569,12 @@ void RPCRunLater(const std::string& name, boost::function<void(void)> func, int6
 		deadlineTimers.insert(
 			std::make_pair(
 				name,
-				share_ptr_deadline_timer_t(new boost::asio::deadline_timer(*rpc_io_service))
+				share_ptr_deadline_timer_t(new boost::asio::steady_timer(*rpc_io_service))
 			)
 		);
 	}
 
-	deadlineTimers[name]->expires_from_now(boost::posix_time::seconds(nSeconds));
+	deadlineTimers[name]->expires_after(std::chrono::seconds(nSeconds));
 	deadlineTimers[name]->async_wait(
 		boost::bind(
 			&RPCRunHandler,

@@ -246,7 +246,7 @@ public:
     // Wallet backup
     bool backupWallet(const QString &filename);
 
-    // BIP39 recovery phrase — derives a 24-word mnemonic from the wallet passphrase.
+    // BIP39 recovery phrase - derives a 24-word mnemonic from the wallet passphrase.
     // Call after encryption to show the user their recovery phrase.
     // passphrase is the raw encryption passphrase just typed by the user.
     bool generateMnemonic(BIP39Wallet::WordCount wordCount, SecureString &mnemonic) const;

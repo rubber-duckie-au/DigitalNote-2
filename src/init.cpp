@@ -707,7 +707,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 	std::string strWalletFileName = GetArg("-wallet", "wallet.dat");
 
 	// strWalletFileName must be a plain filename without a directory
-	if (strWalletFileName != boost::filesystem::basename(strWalletFileName) + boost::filesystem::extension(strWalletFileName))
+	if (strWalletFileName != boost::filesystem::path(strWalletFileName).stem().string() + boost::filesystem::path(strWalletFileName).extension().string())
 	{
 		return InitError(strprintf(ui_translate("Wallet %s resides outside data directory %s."), strWalletFileName, strDataDir));
 	}
@@ -755,7 +755,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 		// which is "" (never initialised in the codebase), so SetPrivKey
 		// returns false unconditionally even when the WIF is perfectly valid.
 		// The masternode-payments master infrastructure is non-operational
-		// network-wide (see CHANGELOG §22.5) and will be replaced by
+		// network-wide (see CHANGELOG S22.5) and will be replaced by
 		// masternode-voted consensus in v2.0.0.8.  For now, the -masternodepaymentskey
 		// arg is used solely to load the spork-signing privkey; the
 		// masternodePayments side stays disabled (enabled = false) which
@@ -985,20 +985,51 @@ bool AppInit2(boost::thread_group& threadGroup)
 
 		if (boost::filesystem::exists(GetDataDir() / strWalletFileName))
 		{
-			CDBEnv::VerifyResult r = bitdb.Verify(strWalletFileName, CWalletDB::Recover);
-			
-			if (r == CDBEnv::RECOVER_OK)
-			{
-				std::string msg = strprintf(ui_translate("Warning: wallet.dat corrupt, data salvaged!"
-										 " Original wallet.dat saved as wallet.{timestamp}.bak in %s; if"
-										 " your balance or transactions are incorrect you should"
-										 " restore from a backup."), strDataDir);
-				InitWarning(msg);
-			}
-			
+			// v2.0.0.9 S3.11 (FINDING-2026-001): detect corruption WITHOUT invoking
+			// the deprecated CWalletDB::Recover salvage.  The old code passed
+			// CWalletDB::Recover as Verify()'s recovery callback, so a normal
+			// startup that found BDB corruption silently ran the same
+			// Salvage()+DB_NOOVERWRITE path that -salvagewallet was gated off for
+			// (it can drop live records with no clear warning).  We now VERIFY
+			// ONLY (NULL callback) and, on corruption, route recovery through the
+			// safe RebuildWallet() -- the cursor-walk rebuild that keeps only live
+			// records and swaps atomically, exactly the path -rebuildwallet uses.
+			CDBEnv::VerifyResult r = bitdb.Verify(strWalletFileName, NULL);
+
 			if (r == CDBEnv::RECOVER_FAIL)
 			{
-				return InitError(ui_translate("wallet.dat corrupt, salvage failed"));
+				LogPrintf("AppInit2: wallet.dat failed BDB verification; "
+				          "auto-recovering via RebuildWallet (safe path).\n");
+
+				uiInterface.InitMessage(ui_translate("Recovering corrupt wallet..."));
+
+				std::string strRebuildErr;
+				bool fOK = RebuildWallet(bitdb, strWalletFileName, strRebuildErr);
+
+				if (!fOK)
+				{
+					LogPrintf("AppInit2: auto RebuildWallet failed: %s\n", strRebuildErr);
+
+					return InitError(strprintf(ui_translate(
+						"wallet.dat is corrupt and automatic recovery failed: %s\n"
+						"As a last resort you can start with"
+						" -salvagewallet -iknowsalvagewalletisdangerous, but that path"
+						" can silently drop records -- restore from a backup if you"
+						" have one."), strRebuildErr));
+				}
+
+				std::string msg = strprintf(ui_translate(
+					"Warning: wallet.dat was corrupt and has been rebuilt. The"
+					" original was saved as wallet.dat.bak in %s. If your balance or"
+					" transactions look wrong, restore from a backup."), strDataDir);
+				InitWarning(msg);
+
+				// Reconstruct the wallet's tx cache from canonical chain data.
+				if (SoftSetBoolArg("-rescan", true))
+				{
+					LogPrintf("AppInit2 : parameter interaction: auto-recover"
+					          " -> setting -rescan=1\n");
+				}
 			}
 		}
 	} // (!fDisableWallet)

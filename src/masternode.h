@@ -17,6 +17,11 @@ class uint256;
 
 #define MASTERNODE_MIN_CONFIRMATIONS	7
 #define MASTERNODE_MIN_DSEEP_SECONDS	(30*60)
+// v2.0.0.9 FINDING-2026-002 (TODO 3.12b): dseep dedup cache tuning.
+// Retention == the +/-1h dseep accept window, so an entry lives at least as long
+// as a replay of it could still fall inside the window.  MAX is a memory backstop.
+#define MASTERNODE_DSEEP_SEEN_RETENTION	(60*60)
+#define MASTERNODE_DSEEP_SEEN_MAX		10000
 #define MASTERNODE_MIN_DSEE_SECONDS		(5*60)
 #define MASTERNODE_PING_SECONDS			(1*60)
 #define MASTERNODE_EXPIRATION_SECONDS	(65*60)
@@ -51,7 +56,7 @@ class uint256;
 //
 //   VOTE_TIME_WINDOW_SECONDS
 //     Maximum acceptable skew between vote.nTimeSigned and local clock.
-//     Matches the existing ±30min tolerance used by dsee/dseep.
+//     Matches the existing +/-30min tolerance used by dsee/dseep.
 //
 //   REORG_DEPTH_BUFFER
 //     When computing vote inputs (lastPaidHeight from chain), use chain

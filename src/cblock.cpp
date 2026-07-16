@@ -23,6 +23,7 @@
 #include "net/cnode.h"
 #include "net.h"
 #include "cmasternodeman.h"
+#include "masternode.h"			// v2.0.9 P1: VOTED_CONSENSUS_ACTIVATION_HEIGHT (mainnet floor)
 #include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
@@ -54,6 +55,7 @@
 #include "cflatdata.h"
 
 #include "cblock.h"
+#include "mining.h"		// v2.0.9: RESCUE_STALL_SECS (consensus rescue)
 
 // Every received block is assigned a unique and increasing identifier, so we
 // know which one to give priority in case of a fork.
@@ -79,10 +81,29 @@ uint32_t nBlockSequenceId = 1;
 // without spork plumbing.  See M4-design-notes.md S4 Pattern 3.
 namespace {
 
+// v2.0.9 P1 (FINDING-2026-003): un-strand the mainnet voted-consensus activation.
+//
+// History: making voted-consensus activation a block-height constant
+// (VOTED_CONSENSUS_ACTIVATION_HEIGHT = 1480000, masternode.h) was intentional; the
+// accident was that this height was never WIRED to the floor macro the resolver reads.
+// So a stock mainnet build resolved the floor to INT_MAX and voted consensus never
+// activated, while the Rust v3 node wired 1480000 and would split from C++ at that
+// height.  This release does the wiring the M4 design always intended.
+//
+// Behaviour after this change (Steve's spec, confirmed):
+//   * HEIGHT IS SET IN-BINARY. A stock mainnet build activates at exactly 1480000 with
+//     no spork required -- the floor IS VOTED_CONSENSUS_ACTIVATION_HEIGHT, so 1480000
+//     has a single source of truth (masternode.h) and the value + mechanism cannot
+//     drift apart again.
+//   * SPORK-15 MAY LOWER, NEVER RAISE. GetEffectiveVotedConsensusActivationHeight()
+//     returns min(floor, spork-15 when set > 0), so signing spork-15 below 1480000
+//     pulls activation earlier (operational lever, no rebuild); a spork value above
+//     1480000 is ignored. This bounded-spork-authority property is why activation is
+//     (deliberately) the one constant read through a resolver rather than directly.
 #ifdef VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET
 const int VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET_VAL = VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET;
 #else
-const int VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET_VAL = INT_MAX;
+const int VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET_VAL = VOTED_CONSENSUS_ACTIVATION_HEIGHT;
 #endif
 
 #ifdef VOTED_CONSENSUS_ACTIVATION_FLOOR_TESTNET
@@ -192,6 +213,60 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut)
 	}
 
 	return masternodePayments.GetBlockPayee(nBlockHeight, payeeOut, vinOut);
+}
+
+// v2.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC).
+//
+// Post-activation, when no voted-consensus winner exists for this height AND the
+// chain has been stalled for a fixed, block-relative interval, a block that pays the
+// devops address in the masternode slot is a valid rescue block.  This lets an
+// otherwise-deadlocked fleet (cold vote queues after a coordinated restart,
+// below-floor, sustained propagation failure) advance deterministically instead of
+// stalling or forking on a divergent legacy FindOldestNotInVec payee.
+//
+// The predicate is a PURE FUNCTION OF COMMITTED CHAIN DATA so producer and validator
+// (live and on resync) compute the identical answer -- the same determinism
+// discipline as the VRX resync fix (measure from committed block timestamps, never
+// GetAdjustedTime()/live tip):
+//   * activation: GetEffectiveVotedConsensusActivationHeight() (height-derived).
+//   * no winner:  GetCanonicalWinnerFromQueues(N) == false.
+//   * stall:      blockTime - pprev->GetMedianTimePast() >= RESCUE_STALL_SECS,
+//                 where blockTime is the candidate block's own committed nTime.
+//
+// pprev == NULL (genesis) can never satisfy the activation gate, so the null case is
+// handled by the height check short-circuiting first.
+//
+// Producer/validator time-basis agreement: the producer calls this with
+// GetAdjustedTime() (the block's nTime is not finalised at decision time, ~= now);
+// the validator calls it with the block's committed nTime.  A block built during a
+// rescue carries nTime ~= now (PoW: CBlock::UpdateTime pulls nTime up to
+// GetAdjustedTime(); PoS: the coinstake kernel time is at most a few minutes below
+// wall-clock via the stake search-back window).  During a >= 30 min stall that few-
+// second/minute slack is negligible against RESCUE_STALL_SECS, so the committed
+// predicate the validator checks holds by construction for any block the producer
+// chose to build.  (Same discipline as the VRX nBits fix: the validator's decision
+// is a pure function of committed block data; the producer merely ensures the block
+// it stamps satisfies it.)
+bool IsRescueActive(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime)
+{
+	if (nBlockHeight < GetEffectiveVotedConsensusActivationHeight())
+	{
+		return false;
+	}
+
+	if (pindexPrev == NULL)
+	{
+		return false;
+	}
+
+	CScript votedPayeeProbe;
+	if (voteTracker.GetCanonicalWinnerFromQueues(nBlockHeight, votedPayeeProbe))
+	{
+		// A voted winner exists -- not a rescue situation.
+		return false;
+	}
+
+	return (nBlockTime - pindexPrev->GetMedianTimePast()) >= RESCUE_STALL_SECS;
 }
 
 bool CBlock::DoS(int nDoSIn, bool fIn) const
@@ -1596,29 +1671,40 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 								}
 								else if (addressOut.ToString() == strVfyDevopsAddress)
 								{
-									// v2.0.0.8 Spec C D3/D4: the block pays the devops
-									// address in the MN slot -- the rare "masternode
-									// cannot be determined" fallback.  The weak check
-									// allows this (see the IsPayeeAValidMasternode ||
-									// devops test above); the strict check must not
-									// reject it or it would reject blocks the weak
-									// check passes.  ALLOW it -- but loudly: at/after
-									// activation this means voted consensus produced
-									// NO payee for this height, which should not
-									// happen if consensus is healthy.  Unconditional
-									// LogPrintf (NOT fDebug) -- monitored signal.
+									// The block pays the devops address in the MN slot.
+									//
+									// v2.0.9 consensus rescue (SPEC): post-activation this
+									// is ONLY valid as a rescue block -- i.e. when there is
+									// no voted winner for this height AND the chain has been
+									// stalled >= RESCUE_STALL_SECS (block-relative).  A
+									// devops MN-slot payee outside that window is now a
+									// rejectable payee, closing the pre-2.0.9 hole where any
+									// devops MN-slot block was accepted unconditionally
+									// post-activation.  Pre-activation is unaffected: the
+									// height gate in IsRescueActive fails, but so does the
+									// GetEnforcedPayee!=CScript() guard on this whole block,
+									// so pre-activation devops blocks never reach here.
+									if (IsRescueActive(pindex->pprev, pindex->nHeight, pindex->GetBlockTime()))
 									{
-										int nVotedActivation = GetEffectiveVotedConsensusActivationHeight();
+										LogPrintf("CheckBlock() : NOTICE - PoS height %d rescue block "
+												  "(no voted winner + %ds stall) pays devops in the "
+												  "masternode slot -- accepted.\n",
+												  pindex->nHeight, (int)RESCUE_STALL_SECS);
+									}
+									else
+									{
+										LogPrintf("CheckBlock() : PoS height %d pays devops in the "
+												  "masternode slot but rescue conditions are NOT met "
+												  "(voted winner exists, or stall < %ds) -- rejecting\n",
+												  pindex->nHeight, (int)RESCUE_STALL_SECS);
 
-										if (pindex->nHeight >= nVotedActivation)
-										{
-											LogPrintf("CheckBlock() : NOTICE - PoS height %d at/after "
-													  "voted-consensus activation %d but block pays the "
-													  "devops fallback in the masternode slot -- voted "
-													  "consensus produced no payee for this height. "
-													  "Consensus coverage gap; investigate.\n",
-													  pindex->nHeight, nVotedActivation);
-										}
+										fBlockHasPayments = false;
+
+										// Divergent/opportunistic devops payee, not a genuine
+										// rescue -- treat as a soft failure like any payee
+										// mismatch (a peer mid-propagation may briefly see no
+										// winner); CW11 tiered DoS applies below.
+										nPaymentsDoSScore = std::min(nPaymentsDoSScore, 10);
 									}
 								}
 								else
@@ -1826,22 +1912,27 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 								}
 								else if (addressOut.ToString() == strVfyDevopsAddress)
 								{
-									// v2.0.0.8 Spec C D3/D4: devops-fallback payee in
-									// the MN slot.  Allow (the weak check does); but
-									// loudly NOTICE it at/after activation -- see the
-									// PoS counterpart above for full rationale.
+									// v2.0.9 consensus rescue (SPEC): devops MN-slot payee is
+									// valid post-activation ONLY as a rescue block (no voted
+									// winner + >= RESCUE_STALL_SECS block-relative stall).
+									// See the PoS counterpart above for full rationale.
+									if (IsRescueActive(pindex->pprev, pindex->nHeight, pindex->GetBlockTime()))
 									{
-										int nVotedActivation = GetEffectiveVotedConsensusActivationHeight();
+										LogPrintf("CheckBlock() : NOTICE - PoW height %d rescue block "
+												  "(no voted winner + %ds stall) pays devops in the "
+												  "masternode slot -- accepted.\n",
+												  pindex->nHeight, (int)RESCUE_STALL_SECS);
+									}
+									else
+									{
+										LogPrintf("CheckBlock() : PoW height %d pays devops in the "
+												  "masternode slot but rescue conditions are NOT met "
+												  "(voted winner exists, or stall < %ds) -- rejecting\n",
+												  pindex->nHeight, (int)RESCUE_STALL_SECS);
 
-										if (pindex->nHeight >= nVotedActivation)
-										{
-											LogPrintf("CheckBlock() : NOTICE - PoW height %d at/after "
-													  "voted-consensus activation %d but block pays the "
-													  "devops fallback in the masternode slot -- voted "
-													  "consensus produced no payee for this height. "
-													  "Consensus coverage gap; investigate.\n",
-													  pindex->nHeight, nVotedActivation);
-										}
+										fBlockHasPayments = false;
+
+										nPaymentsDoSScore = std::min(nPaymentsDoSScore, 10);
 									}
 								}
 								else
@@ -2032,7 +2123,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 // both must be honoured by any conforming validator, but they have
 // unrelated origins:
 //
-// Class A — controlled fork operations (pre-existing, 4 entries):
+// Class A  controlled fork operations (pre-existing, 4 entries):
 //   - 46921, 46923, 46924: v1.0.1.5 mandatory-update activation cluster,
 //     May 2019.  Three blocks within ~3 minutes, all at floor difficulty
 //     (1f00ffff), all carrying the activation transition for the mandatory
@@ -2045,7 +2136,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 //     GetDevOpsPayment; 403117's own nBits is consensus-derivable so it is
 //     NOT in this list.
 //
-// Class B — stall-recovery archaeology (v2.0.0.8 D.1.4, 26 entries):
+// Class B  stall-recovery archaeology (v2.0.0.8 D.1.4, 26 entries):
 //   Blocks where v2.0.0.6's broken VRX_ThreadCurve produced different
 //   nBits than v2.0.0.8's working curve computes.  v2.0.0.6's recovery
 //   loop never engaged (difTime was always zero on PoW retarget); during
@@ -2135,14 +2226,28 @@ bool CBlock::AcceptBlock()
 		return DoS(100, error("AcceptBlock() : reject too new nVersion = %d", nVersion));
 	}
 
-	// Check block against Velocity parameters
+	// Check block against Velocity parameters.
+	// v2.0.0.8.1 HOTFIX (S3.10): Velocity() now returns a 3-state VelocityResult
+	// so we distinguish severe rejections (DoS-worthy) from benign ones (clock
+	// skew during the bootstrap window when nTimeOffset is still settling).
+	// Previously every Velocity rejection mapped to DoS(100), mass-banning honest
+	// peers.  See velocity.cpp for the full rationale.
 	if(Velocity_check(nHeight))
 	{
-		// Announce Velocity constraint failure
-		if(!Velocity(pindexPrev, this))
+		VelocityResult vRes = Velocity(pindexPrev, this);
+
+		if (vRes == VelocityResult::RejectedSevere)
 		{
-			return DoS(100, error("AcceptBlock() : Velocity rejected block %d, required parameters not met", nHeight));
+			return DoS(100, error("AcceptBlock() : Velocity rejected block %d (severe), required parameters not met", nHeight));
 		}
+		else if (vRes == VelocityResult::RejectedBenign)
+		{
+			// Block is rejected, but the peer is NOT punished -- clock skew is
+			// benign network noise; the peer may keep relaying correctly-
+			// timestamped blocks.  No DoS score is raised.
+			return error("AcceptBlock() : Velocity rejected block %d (benign -- clock skew, no DoS)", nHeight);
+		}
+		// else VelocityResult::Accepted -- fall through
 	}
 
 	uint256 hashProof;

@@ -15,12 +15,12 @@
 //   * FirstTimeAutoReveal -- caller already has the phrase in hand (because
 //     they just generated it during initial encryption).  The dialog opens
 //     with the phrase visible immediately, no password prompt, and the
-//     "Replace phrase…" rotation button is hidden (rotating a brand-new
+//     "Replace phrase..." rotation button is hidden (rotating a brand-new
 //     phrase makes no sense).
 //
 // Security design
 // ---------------
-//  * The mnemonic is never stored in a QLabel's text — it is written directly
+//  * The mnemonic is never stored in a QLabel's text - it is written directly
 //    into the styled word grid and cleared on close via clearMnemonic().
 //  * In Normal mode, the "Reveal" button requires the wallet to be unlocked
 //    first, and a 10-second countdown must complete before display.

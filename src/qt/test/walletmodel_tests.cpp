@@ -5,7 +5,7 @@
 // src/qt/test/walletmodel_tests.cpp
 //
 // Qt unit tests for WalletModel, AddressTableModel, and
-// TransactionTableModel — the existing GUI data models.
+// TransactionTableModel - the existing GUI data models.
 // These sit in src/qt/test/ matching Bitcoin Core convention and are
 // compiled into test_digitalnote-qt by bitcoin-qt.pro.
 //
@@ -38,31 +38,31 @@ private slots:
     void initTestCase();
     void cleanupTestCase();
 
-    // ── Version checks visible through ClientModel ───────────────────────────
+    // -- Version checks visible through ClientModel ---------------------------
     void testClientVersionString();
     void testProtocolVersionFromModel();
 
-    // ── OptionsModel ─────────────────────────────────────────────────────────
+    // -- OptionsModel ---------------------------------------------------------
     void testOptionsModelCreates();
     void testDisplayUnitDefaultIsXDN();
     void testDisplayUnitLabels();
 
-    // ── WalletModel encryption status ────────────────────────────────────────
+    // -- WalletModel encryption status ----------------------------------------
     void testEncryptionStatusEnum();
 
-    // ── AddressTableModel columns ─────────────────────────────────────────────
+    // -- AddressTableModel columns ---------------------------------------------
     void testAddressTableColumnCount();
     void testAddressTableColumnHeaders();
 
-    // ── TransactionTableModel columns ─────────────────────────────────────────
+    // -- TransactionTableModel columns -----------------------------------------
     void testTransactionTableColumnCount();
     void testTransactionTableColumnHeaders();
 
-    // ── SendCoinsRecipient ────────────────────────────────────────────────────
+    // -- SendCoinsRecipient ----------------------------------------------------
     void testSendCoinsRecipientDefaults();
     void testSendCoinsRecipientAmountValidation();
 
-    // ── AmountFormatting via WalletModel statics ──────────────────────────────
+    // -- AmountFormatting via WalletModel statics ------------------------------
     void testFormatAmountOneXDN();
     void testFormatAmountZero();
     void testFormatAmountMaxMoney();
@@ -71,7 +71,7 @@ private:
     QApplication *m_app{nullptr};
 };
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
+// -- Setup ---------------------------------------------------------------------
 
 void TestWalletModel::initTestCase()
 {
@@ -85,7 +85,7 @@ void TestWalletModel::cleanupTestCase()
     m_app = nullptr;
 }
 
-// ── Version ───────────────────────────────────────────────────────────────────
+// -- Version -------------------------------------------------------------------
 
 void TestWalletModel::testClientVersionString()
 {
@@ -102,7 +102,7 @@ void TestWalletModel::testProtocolVersionFromModel()
     QCOMPARE(PROTOCOL_VERSION, 2007);
 }
 
-// ── OptionsModel ──────────────────────────────────────────────────────────────
+// -- OptionsModel --------------------------------------------------------------
 
 void TestWalletModel::testOptionsModelCreates()
 {
@@ -132,17 +132,17 @@ void TestWalletModel::testDisplayUnitLabels()
     }
 }
 
-// ── WalletModel encryption status ────────────────────────────────────────────
+// -- WalletModel encryption status --------------------------------------------
 
 void TestWalletModel::testEncryptionStatusEnum()
 {
-    // Verify enum values are distinct — used in GUI state machine
+    // Verify enum values are distinct - used in GUI state machine
     QVERIFY(WalletModel::Unencrypted != WalletModel::Locked);
     QVERIFY(WalletModel::Locked      != WalletModel::Unlocked);
     QVERIFY(WalletModel::Unencrypted != WalletModel::Unlocked);
 }
 
-// ── AddressTableModel ─────────────────────────────────────────────────────────
+// -- AddressTableModel ---------------------------------------------------------
 
 void TestWalletModel::testAddressTableColumnCount()
 {
@@ -153,12 +153,12 @@ void TestWalletModel::testAddressTableColumnCount()
 
 void TestWalletModel::testAddressTableColumnHeaders()
 {
-    // The column count enum values are 0 and 1 — exactly 2 columns
+    // The column count enum values are 0 and 1 - exactly 2 columns
     int numCols = AddressTableModel::ColumnIndex::Address + 1;
     QCOMPARE(numCols, 2);
 }
 
-// ── TransactionTableModel ─────────────────────────────────────────────────────
+// -- TransactionTableModel -----------------------------------------------------
 
 void TestWalletModel::testTransactionTableColumnCount()
 {
@@ -180,7 +180,7 @@ void TestWalletModel::testTransactionTableColumnHeaders()
     QVERIFY(TransactionTableModel::Amount + 1 >= 5);
 }
 
-// ── SendCoinsRecipient ────────────────────────────────────────────────────────
+// -- SendCoinsRecipient --------------------------------------------------------
 
 void TestWalletModel::testSendCoinsRecipientDefaults()
 {
@@ -200,7 +200,7 @@ void TestWalletModel::testSendCoinsRecipientAmountValidation()
     QVERIFY(!MoneyRange(r.amount));
 }
 
-// ── Amount formatting (static helpers) ───────────────────────────────────────
+// -- Amount formatting (static helpers) ---------------------------------------
 
 void TestWalletModel::testFormatAmountOneXDN()
 {

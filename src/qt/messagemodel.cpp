@@ -1,4 +1,5 @@
 #include "compat.h"
+#include <algorithm>
 
 #include <QSet>
 #include <QTimer>
@@ -12,6 +13,7 @@
 #include <boost/bind.hpp>
 
 #include "guiutil.h"
+#includ "util.h"
 #include "guiconstants.h"
 #include "bitcoinunits.h"
 #include "optionsmodel.h"
@@ -146,6 +148,15 @@ public:
 
             delete it;
         }
+
+        // The load loops above use append (unsorted, DB-iteration order). Live inserts
+        // (newMessage/newOutboxMessage) use std::lower_bound, which REQUIRES a sorted
+        // range. Without this sort, lower_bound runs on unsorted data and returns a wrong
+        // index; the resulting beginInsertRows(index,index) is inconsistent with the row
+        // actually shown, so QSortFilterProxyModel rejects it ("invalid inserted rows
+        // reported by source model") and the message never appears in the inbox even
+        // though it decrypted and toasted. Sort once here to restore the invariant.
+        std::stable_sort(cachedMessageTable.begin(), cachedMessageTable.end(), MessageTableEntryLessThan());
     }
 
     void newMessage(const DigitalNote::SMSG::Stored& inboxHdr)
@@ -311,6 +322,30 @@ private:
         } else
         {
             int index = std::lower_bound(cachedMessageTable.begin(), cachedMessageTable.end(), message.received_datetime, MessageTableEntryLessThan()) - cachedMessageTable.begin();
+
+            // Defensive: beginInsertRows requires 0 <= index <= rowCount(). If the table
+            // is ever not fully sorted (e.g. a stored entry with a zero/garbage
+            // received_datetime), lower_bound can return a position inconsistent with the
+            // row actually shown, and QSortFilterProxyModel rejects the insert ("invalid
+            // inserted rows"), dropping the message from the view. Clamp to the valid
+            // range and log any anomaly so the offending entry can be identified.
+            int nRows = cachedMessageTable.size();
+            if (index < 0 || index > nRows)
+            {
+                LogPrintf("MessageModel::addMessageEntry: clamped out-of-range index %d (rows=%d) type=%d to=%s from=%s recv=%lld\n",
+                          index, nRows, (int)message.type,
+                          message.to_address.toStdString(), message.from_address.toStdString(),
+                          (long long)message.received_datetime.toTime_t());
+                index = (index < 0) ? 0 : nRows;
+            }
+
+            if (!message.received_datetime.isValid() || message.received_datetime.toTime_t() == 0)
+            {
+                LogPrintf("MessageModel::addMessageEntry: entry with invalid/zero received_datetime type=%d to=%s from=%s -- ordering may be off\n",
+                          (int)message.type, message.to_address.toStdString(), message.from_address.toStdString());
+            }
+
+            //qWarning() << "DIAG messagemodel beginInsertRows first=" << index << "last=" << index << "rowCount=" << cachedMessageTable.size();
             parent->beginInsertRows(QModelIndex(), index, index);
             cachedMessageTable.insert(
                         index,

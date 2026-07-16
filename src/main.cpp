@@ -2505,7 +2505,7 @@ void PrintBlockTree()
 		{
 			if (vNext[i]->pnext)
 			{
-				boost::swap(vNext[0], vNext[i]);
+				std::swap(vNext[0], vNext[i]);
 				
 				break;
 			}

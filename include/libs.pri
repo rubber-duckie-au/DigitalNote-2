@@ -24,7 +24,7 @@ contains(RELEASE, 1) {
 	LIBS += $${DIGITALNOTE_OPENSSL_LIB_PATH}/libssl.a
 	LIBS += $${DIGITALNOTE_OPENSSL_LIB_PATH}/libcrypto.a
 	LIBS += $${DIGITALNOTE_GMP_LIB_PATH}/libgmp.a
-	LIBS += $${DIGITALNOTE_BOOST_LIB_PATH}/libboost_system$${DIGITALNOTE_BOOST_SUFFIX}.a
+		# BOOST 1.89 floor: libboost_system removed (header-only since 1.69; stub deleted 1.89) -- nothing to link
 	LIBS += $${DIGITALNOTE_BOOST_LIB_PATH}/libboost_filesystem$${DIGITALNOTE_BOOST_SUFFIX}.a
 	LIBS += $${DIGITALNOTE_BOOST_LIB_PATH}/libboost_program_options$${DIGITALNOTE_BOOST_SUFFIX}.a
 	LIBS += $${DIGITALNOTE_BOOST_LIB_PATH}/libboost_thread$${DIGITALNOTE_BOOST_SUFFIX}.a
@@ -45,7 +45,7 @@ contains(RELEASE, 1) {
 	LIBS += -lssl
 	LIBS += -lcrypto
 	LIBS += -lgmp
-	LIBS += -lboost_system$${DIGITALNOTE_BOOST_SUFFIX}
+		# BOOST 1.89 floor: libboost_system removed (header-only) -- no -l needed
 	LIBS += -lboost_filesystem$${DIGITALNOTE_BOOST_SUFFIX}
 	LIBS += -lboost_program_options$${DIGITALNOTE_BOOST_SUFFIX}
 	LIBS += -lboost_thread$${DIGITALNOTE_BOOST_SUFFIX}
@@ -84,5 +84,13 @@ win32 {
 	LIBS += -loleaut32
 	LIBS += -luuid
 	LIBS += -lgdi32
+	# v2.0.9: OpenSSL 3.x winstore cert-store provider (winstore_store.obj in
+	# libcrypto.a) calls the Windows CryptoAPI (CertOpenStore /
+	# CertFreeCertificateContext / CertFindCertificateInStore, ...), which live
+	# in crypt32.  OpenSSL 1.1.1w did not reference these so -lcrypt32 was not
+	# needed before; the 3.x static link requires it or ld reports undefined
+	# __imp_Cert* references.  Must come AFTER the OpenSSL .a entries (it does:
+	# this win32 block is emitted after the RELEASE libs block above).
+	LIBS += -lcrypt32
 	LIBS += -pthread
 }

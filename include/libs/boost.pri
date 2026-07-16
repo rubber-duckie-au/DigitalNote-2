@@ -1,9 +1,7 @@
 defined(DIGITALNOTE_BOOST_LIB_PATH, var) {
 	FAIL = 0
 	
-	!exists($${DIGITALNOTE_BOOST_LIB_PATH}/libboost_system$${DIGITALNOTE_BOOST_SUFFIX}.a) {
-		FAIL = 1
-	}
+	# BOOST 1.89 floor: libboost_system removed (header-only since 1.69) -- no existence check
 	
 	!exists($${DIGITALNOTE_BOOST_LIB_PATH}/libboost_filesystem$${DIGITALNOTE_BOOST_SUFFIX}.a) {
 		FAIL = 1

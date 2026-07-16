@@ -131,7 +131,15 @@ void MessagePage::setModel(MessageModel *model)
     model->proxyModel->setDynamicSortFilter(true);
     model->proxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
     model->proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    model->proxyModel->sort(MessageModel::ReceivedDateTime);
+    // NOTE: do NOT call proxyModel->sort() here. The source MessageModel already keeps
+    // cachedMessageTable ordered (lower_bound insert + load-time sort), and with
+    // setDynamicSortFilter(true) an ACTIVE proxy sort tries to re-map every source
+    // beginInsertRows/endInsertRows into its own sort arrangement. When the source's
+    // reported insert position doesn't match the proxy's sort comparison of the new row,
+    // Qt emits "QSortFilterProxyModel: invalid inserted rows reported by source model"
+    // and drops the row from the view (symptom: messages received/toasted but the inbox
+    // stays blank). The view's sortByColumn() below still orders the DISPLAY without
+    // forcing the proxy into that conflicting dynamic-sort-on-insert path.
     model->proxyModel->setFilterRole(MessageModel::Ambiguous);
     model->proxyModel->setFilterFixedString("true");
 

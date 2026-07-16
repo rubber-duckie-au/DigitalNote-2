@@ -12,6 +12,7 @@
 #include "cmasternode.h"
 #include "cmasternodeman.h"
 #include "cmasternodepayments.h"
+#include "cmasternodevotetracker.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
 #include "txdb-leveldb.h"
@@ -29,6 +30,7 @@
 #include "ctxout.h"
 #include "ctransaction.h"
 #include "main_extern.h"
+#include "thread.h"			// v2.0.0.9 S3.15: LOCK macro (cs_main is extern in main_extern.h)
 #include "cbitcoinaddress.h"
 #include "cnodestination.h"
 #include "ckeyid.h"
@@ -64,6 +66,134 @@ void ShutdownRPCMining()
 	}
 
 	delete pMiningKey; pMiningKey = NULL;
+}
+
+// ============================================================================
+// PoW consensus readiness gate (v2.0.0.8.1)
+//
+// Mirrors the ThreadStakeMiner readiness gate at miner.cpp:1063 (PoS side).
+// Called by the PoW block-template RPCs (getworkex, getwork, getblocktemplate)
+// AND by the mintblock debug RPC before they invoke CreateNewBlock.
+//
+// The v2.0.0.8 M1Q design routes both the block PRODUCER (CreateNewBlock ->
+// GetEnforcedPayee) and the block VALIDATOR (CheckBlock -> GetEnforcedPayee)
+// through the same voted-consensus source (voteTracker.GetCanonicalWinnerFrom-
+// Queues).  When that source returns a winner both sides agree; when it does
+// NOT, GetEnforcedPayee falls back to legacy masternodePayments.GetBlockPayee.
+//
+// The legacy fallback is CORRECT for the "no node in the fleet has consensus"
+// case (pre-activation, or after a fleet-wide vote gap).  It is DANGEROUS
+// when it fires ONLY on this node -- i.e., the rest of the fleet has quorum
+// and enforces voted-consensus while this node's tracker is below quorum and
+// silently falls back.  The resulting block pays a legacy-derived MN; every
+// other fleet node evaluates it against the voted-consensus payee, sees a
+// mismatch, and rejects.  Half the fleet accepts (this node's chain), half
+// rejects (the vote-aware fleet) -> chain split.
+//
+// PoS mining already has this gate: ThreadStakeMiner probes GetCanonicalWinner-
+// FromQueues before minting and sleeps 5s if false, refusing to produce a
+// block the fleet would reject.
+//
+// PoW mining had no equivalent: getworkex/getwork/getblocktemplate called
+// CreateNewBlock unconditionally.  Observed live on testnet 2026-06-30:
+// miner's CountVotingEligible transiently dropped to 4 (< MIN_ENABLED_FOR_
+// CONSENSUS = 5) around 23:37 UTC, blocks 7722-7728 were built via legacy
+// fallback with divergent payees, and the vote-aware fleet-half rejected all
+// of them until an operator-triggered reorg unstuck the chain.
+//
+// This helper matches the PoS gate's semantics: probe GetCanonicalWinnerFrom-
+// Queues at nNextHeight, and if it returns false while past activation,
+// throw an RPC error the miner treats as retriable.  Reuses -10
+// (RPC_CLIENT_IN_INITIAL_DOWNLOAD) which is already the convention for
+// "not-ready-retry-later" in this file.
+//
+// Rate-limited log line so a persistently-deferring node does not flood
+// debug.log at the miner's poll rate.
+// ============================================================================
+static void EnforceVotedConsensusReadyOrThrow()
+{
+	if (pindexBest == NULL)
+	{
+		// Not initialised yet -- the existing pindexBest->nHeight
+		// dereference below the caller's other gates will handle
+		// this uniformly.  Return quietly here to preserve caller
+		// semantics.
+		return;
+	}
+
+	int nNextHeight = pindexBest->nHeight + 1;
+	int nActivationHeight = GetEffectiveVotedConsensusActivationHeight();
+
+	if (nNextHeight < nActivationHeight)
+	{
+		// Pre-activation: legacy path IS the correct payee source,
+		// exactly as the PoS gate handles it.  Do not gate.
+		return;
+	}
+
+	CScript votedPayeeProbe;
+	bool fHaveCanonical = false;
+	{
+		// Match the PoS gate's lock discipline: cs_main FIRST, released
+		// BEFORE any wait, scoped strictly around the tracker probe.
+		// GetCanonicalWinnerFromQueues internally takes cs_main +
+		// voteTracker.cs in canonical order; the outer LOCK here is
+		// explicit but recursive-safe.
+		LOCK(cs_main);
+
+		fHaveCanonical = voteTracker.GetCanonicalWinnerFromQueues(
+				nNextHeight, votedPayeeProbe);
+	}   // cs_main released
+
+	if (!fHaveCanonical)
+	{
+		// v2.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): no voted
+		// winner.  Normally we refuse to serve a template (throw -10).  BUT if the
+		// chain has been stalled >= RESCUE_STALL_SECS (block-relative), this is a
+		// genuine deadlock; allow the template so CreateNewBlock builds a
+		// devops-fallback rescue block that validators accept (CheckBlock ->
+		// IsRescueActive).  Producer decides with GetAdjustedTime() (~= the block's
+		// eventual nTime); determinism is enforced on validation from committed data.
+		if (IsRescueActive(pindexBest, nNextHeight, GetAdjustedTime()))
+		{
+			static int64_t nLastRescueLog = 0;
+			int64_t nNow = GetTime();
+
+			if (nNow - nLastRescueLog >= 30)
+			{
+				nLastRescueLog = nNow;
+				LogPrintf("PoW block-template creation -- RESCUE: no voted winner "
+						  "for height %d and chain stalled >= %ds; serving a "
+						  "devops-fallback rescue template.\n",
+						  nNextHeight, (int)RESCUE_STALL_SECS);
+			}
+
+			return;   // permit the build
+		}
+
+		static int64_t nLastGateLog = 0;
+		int64_t nNow = GetTime();
+
+		// Rate-limit: an external miner polls every 1-5s; without
+		// throttling the log would grow at 10-50 lines/minute during
+		// a sustained defer.
+		if (nNow - nLastGateLog >= 30)
+		{
+			nLastGateLog = nNow;
+			LogPrintf("PoW block-template creation -- deferring: "
+					  "voted consensus active for height %d "
+					  "(activation %d) but this node has no "
+					  "canonical winner yet; not serving a template "
+					  "the fleet would reject.  Vote tracker not "
+					  "ready.\n",
+					  nNextHeight, nActivationHeight);
+		}
+
+		throw JSONRPCError(-10,
+				"voted consensus active but this node has no canonical "
+				"winner for the next block; retry once vote tracker is "
+				"ready");
+	}
 }
 
 json_spirit::Value getsubsidy(const json_spirit::Array& params, bool fHelp)
@@ -346,6 +476,12 @@ json_spirit::Value getworkex(const json_spirit::Array& params, bool fHelp)
 	{
 		throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
 	}
+
+	// v2.0.0.8.1: PoW consensus readiness gate.  Refuses to serve a
+	// block template if the node's own voted-consensus tracker cannot
+	// resolve the next-height winner (matches the PoS gate at
+	// miner.cpp:1063).  See EnforceVotedConsensusReadyOrThrow above.
+	EnforceVotedConsensusReadyOrThrow();
 	
 	static mapNewBlock_t mapNewBlock;
 	static std::vector<CBlock*> vNewBlock;
@@ -542,6 +678,12 @@ json_spirit::Value getwork(const json_spirit::Array& params, bool fHelp)
 	{
 		throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
 	}
+
+	// v2.0.0.8.1: PoW consensus readiness gate.  Refuses to serve a
+	// block template if the node's own voted-consensus tracker cannot
+	// resolve the next-height winner (matches the PoS gate at
+	// miner.cpp:1063).  See EnforceVotedConsensusReadyOrThrow above.
+	EnforceVotedConsensusReadyOrThrow();
 	
 	static mapNewBlock_t mapNewBlock;	// FIXME: thread safety
 	static std::vector<CBlock*> vNewBlock;
@@ -745,6 +887,12 @@ json_spirit::Value getblocktemplate(const json_spirit::Array& params, bool fHelp
 	{
 		throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
 	}
+
+	// v2.0.0.8.1: PoW consensus readiness gate.  Refuses to serve a
+	// block template if the node's own voted-consensus tracker cannot
+	// resolve the next-height winner (matches the PoS gate at
+	// miner.cpp:1063).  See EnforceVotedConsensusReadyOrThrow above.
+	EnforceVotedConsensusReadyOrThrow();
 
 	// Update block
 	static unsigned int nTransactionsUpdatedLast;

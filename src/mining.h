@@ -20,6 +20,13 @@ static const int64_t BLOCK_SPACING = 120;
 static const int64_t BLOCK_SPACING_MIN = 45;
 /** Block spacing maximum */
 static const int64_t BLOCK_SPACING_MAX = 190;
+// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): a block that pays the
+// devops address in the masternode slot is a valid rescue block only once the chain
+// has been stalled (block-relative, no voted winner) for at least this long.  30 min:
+// well above organic ~15 min high-difficulty gaps (so ordinary slow blocks are never
+// rescued) and well below VRX's 1 h difficulty-recovery onset (so the two never
+// interact).  Identical on mainnet and testnet.
+static const int64_t RESCUE_STALL_SECS = 30 * 60;
 /** Desired block times/spacing */
 static const int64_t GetTargetSpacing = BLOCK_SPACING;
 /** MNengine collateral */

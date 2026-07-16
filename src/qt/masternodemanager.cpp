@@ -379,7 +379,7 @@ static QString seconds_to_DHMS(qint64 duration)
 
 	if (duration <= 0 || duration > kMaxPlausibleSeconds)
 	{
-		return QString("—");
+		return QString("--");
 	}
 
 	QString res;
@@ -438,7 +438,7 @@ void MasternodeManager::updateNodeList()
 		QTableWidgetItem* statusItem = new QTableWidgetItem(QString::number(mn.IsEnabled()));
 		// v2.0.0.8 UAT-6a: pass the raw signed delta.  seconds_to_DHMS
 		// now refuses to format negative or wildly-out-of-range values
-		// (which indicate uninitialised mn.sigTime), returning "—" instead
+		// (which indicate uninitialised mn.sigTime), returning "-" instead
 		// of a 47000-day display.
 		QTableWidgetItem* activeSecondsItem = new QTableWidgetItem(seconds_to_DHMS((qint64)mn.lastTimeSeen - (qint64)mn.sigTime));
 		QTableWidgetItem* lastSeenItem = new QTableWidgetItem(QString::fromStdString(DateTimeStrFormat(mn.lastTimeSeen)));

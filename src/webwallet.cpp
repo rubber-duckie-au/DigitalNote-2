@@ -19,15 +19,14 @@ namespace DigitalNote
 namespace Webwallet
 {
 
-Webwallet::server		ext_server;
 Webwallet::connections	ext_connections;
 Webwallet::broadcast	ext_broadcast;
 
 bool 					ext_mode = false;
 bool					ext_connector_enabled = false;
 
-/* on_open insert websocketpp::connection_hdl into channel
- * on_close remove websocketpp::connection_hdl from channel
+/* on_open insert the session (shared_ptr) into the channel
+ * on_close remove the session from the channel
  * on_message queue send to all channels
  */
 
@@ -86,7 +85,7 @@ void ThreadWebsocket()
 		LogPrint("webwallet", "webwallet: ThreadWebsocketServer before run .\n");
 		DigitalNote::Webwallet::ext_broadcast.run(7778);
 	}
-	catch (websocketpp::exception const & e)
+	catch (const std::exception & e)
 	{
 		LogPrint("webwallet", "webwallet: ERROR: Failed to start ThreadWebsocketServer websocket thread. \n");
 		LogPrint("webwallet", e.what());

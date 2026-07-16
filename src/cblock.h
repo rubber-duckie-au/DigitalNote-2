@@ -24,6 +24,10 @@ class CNode;  // v2.0.0.8 PB-MN-FETCH Lite: pfrom parameter on CheckBlock
 // the canonical voted payee from voteTracker.  M5 routes block CREATION
 // through this same hook so creators agree with validators post-activation.
 bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut);
+// v2.0.9 consensus rescue: true iff a devops MN-slot block at (nBlockHeight, nBlockTime)
+// extending pindexPrev is a valid rescue block (post-activation, no voted winner,
+// >= RESCUE_STALL_SECS block-relative stall). Pure function of committed chain data.
+bool IsRescueActive(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime);
 
 // v2.0.0.8 PB-16: expose the spork-aware activation height so consensus-
 // adjacent code (notably CMasternodeMan::FindOldestNotInVecChainDerived)

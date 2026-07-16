@@ -115,7 +115,7 @@ private:
     void updateNodeDetail(const CNodeCombinedStats *stats);
 
     /** Toggle in-flight UI state.  When true: disable input, start
-     *  the elapsed-time tick, show "Running…" hint.  When false:
+     *  the elapsed-time tick, show "Running..." hint.  When false:
      *  re-enable input, stop the tick, show elapsed time in the
      *  reply prefix. */
     void setCommandInFlight(bool inFlight);
@@ -147,7 +147,7 @@ private:
     bool m_commandInFlight;
     /** Wall-clock timer started when a command goes in flight, read on
      *  reply to print elapsed time.  Also drives the tick that updates
-     *  the "Running… (Ns)" indicator while in flight. */
+     *  the "Running... (Ns)" indicator while in flight. */
     QElapsedTimer m_inFlightTimer;
     /** Periodic tick (1Hz) that updates the in-flight elapsed-time
      *  display.  Started with the command, stopped on reply. */

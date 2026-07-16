@@ -54,14 +54,15 @@ bool SSLIOStreamDevice<Protocol>::connect(const std::string& server, const std::
 {
 	// Boost Version < 1.70 handling (Updated) - Thank you https://github.com/g1itch
 	boost::asio::ip::tcp::resolver resolver(GetIOService(stream));
-	// Boost Version < 1.70 handling (Depricated) - Thank you Mino#8171
-	// boost::asio::ip::tcp::resolver resolver(stream.get_io_service());
-	// boost::asio::ip::tcp::resolver resolver(GET_IO_SERVICE(stream));
-	boost::asio::ip::tcp::resolver::query query(server.c_str(), port.c_str());
-	boost::asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-	boost::asio::ip::tcp::resolver::iterator end;
+	// v2.0.0.9 (Boost 1.87 asio): resolver::query and resolver::iterator were removed.
+	// resolve(host, service) now returns a results_type range that is directly iterable.
+	// The close-and-try-next-endpoint retry semantics below are preserved unchanged.
 	boost::system::error_code error = boost::asio::error::host_not_found;
-	
+	boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(server.c_str(), port.c_str());
+
+	boost::asio::ip::tcp::resolver::results_type::const_iterator endpoint_iterator = endpoints.begin();
+	boost::asio::ip::tcp::resolver::results_type::const_iterator end = endpoints.end();
+
 	while (error && endpoint_iterator != end)
 	{
 		stream.lowest_layer().close();

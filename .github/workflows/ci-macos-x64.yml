@@ -41,7 +41,6 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           submodules: false
-          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Cache fast libraries
         uses: actions/cache@v4
@@ -49,14 +48,14 @@ jobs:
         with:
           path: |
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/db-6.2.32.NC
-            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/boost_1_80_0
-            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/openssl-1.1.1w
+            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/boost_1_91_0
+            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/openssl-3.5.7
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/libevent-2.1.12-stable
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/miniupnpc-2.2.8
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/qrencode-4.1.1
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/gmp-6.3.0
-          key: macos-x64-fast-libs-${{ hashFiles('include/libs.pri', 'include/libs/bip39.pri') }}-v5
-          restore-keys: macos-x64-fast-libs-
+          key: macos-x64-fast-libs-v9-${{ hashFiles('DigitalNote_config.pri', 'include/libs.pri', 'include/libs/bip39.pri') }}
+          restore-keys: macos-x64-fast-libs-v9-
           save-always: true
 
       - name: Clone DigitalNote-Builder
@@ -72,7 +71,7 @@ jobs:
             # Initialize in place and pull the repo on top — cached untracked
             # files in libs/ are preserved.
             git init -q
-            git remote add origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/rubber-duckie-au/DigitalNote-Builder.git
+            git remote add origin https://github.com/rubber-duckie-au/DigitalNote-Builder.git
             git fetch -q --depth=1 origin master
             git reset -q --hard origin/master
           fi
@@ -91,8 +90,8 @@ jobs:
           # gmplib.org) instead of hanging the whole job. Keeping output verbose
           # so a future failure shows the actual URL/HTTP code.
           WGET="wget --tries=3 --timeout=60 --no-verbose"
-          $WGET https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.gz
-          $WGET https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
+          $WGET https://archives.boost.io/release/1.91.0/source/boost_1_91_0.tar.gz
+          $WGET https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz
           $WGET http://download.oracle.com/berkeley-db/db-6.2.32.NC.tar.gz
           $WGET https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz
           $WGET "http://miniupnp.free.fr/files/download.php?file=miniupnpc-2.2.8.tar.gz" -O miniupnpc-2.2.8.tar.gz
@@ -124,7 +123,6 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           submodules: false
-          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Cache Qt
         uses: actions/cache@v4
@@ -148,7 +146,7 @@ jobs:
             # Initialize in place and pull the repo on top — cached untracked
             # files in libs/ are preserved.
             git init -q
-            git remote add origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/rubber-duckie-au/DigitalNote-Builder.git
+            git remote add origin https://github.com/rubber-duckie-au/DigitalNote-Builder.git
             git fetch -q --depth=1 origin master
             git reset -q --hard origin/master
           fi
@@ -184,21 +182,20 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           submodules: false
-          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Restore fast libraries from cache
         uses: actions/cache@v4
         with:
           path: |
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/db-6.2.32.NC
-            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/boost_1_80_0
-            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/openssl-1.1.1w
+            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/boost_1_91_0
+            ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/openssl-3.5.7
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/libevent-2.1.12-stable
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/miniupnpc-2.2.8
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/qrencode-4.1.1
             ${{ runner.workspace }}/DigitalNote-Builder/macos/x64/libs/gmp-6.3.0
-          key: macos-x64-fast-libs-${{ hashFiles('include/libs.pri', 'include/libs/bip39.pri') }}-v5
-          restore-keys: macos-x64-fast-libs-
+          key: macos-x64-fast-libs-v9-${{ hashFiles('DigitalNote_config.pri', 'include/libs.pri', 'include/libs/bip39.pri') }}
+          restore-keys: macos-x64-fast-libs-v9-
           save-always: true
 
       - name: Restore Qt from cache
@@ -221,7 +218,7 @@ jobs:
             # Initialize in place and pull the repo on top — cached untracked
             # files in libs/ are preserved.
             git init -q
-            git remote add origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/rubber-duckie-au/DigitalNote-Builder.git
+            git remote add origin https://github.com/rubber-duckie-au/DigitalNote-Builder.git
             git fetch -q --depth=1 origin master
             git reset -q --hard origin/master
           fi

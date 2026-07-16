@@ -1038,7 +1038,7 @@ WalletModel::UnlockContext WalletModel::requestUnlockWithMnemonic(const QString 
 
     bool valid = !was_locked || wallet->Unlock(derivedPass);
 
-    // relock=false — user chose to unlock with phrase, wallet stays unlocked
+    // relock=false - user chose to unlock with phrase, wallet stays unlocked
     return UnlockContext(this, valid, false);
 }
 

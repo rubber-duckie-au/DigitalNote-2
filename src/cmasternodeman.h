@@ -35,6 +35,14 @@ private:
 	// which masternodes we've asked for
 	std::map<COutPoint, int64_t> mWeAskedForMasternodeListEntry;
 
+	// v2.0.0.9 FINDING-2026-002 (TODO 3.12b): dedup cache for inbound dseep
+	// heartbeats.  Key = Hash(vin, sigTime, stop, vchSig); value = GetTime() of
+	// first sight.  All access is inside the "dseep" handler, which runs under
+	// cs_process_message (taken at the top of ProcessMessage), so these need no
+	// separate lock.
+	std::map<uint256, int64_t> mapSeenDseep;
+	int64_t nLastDseepCleanup;
+
 	// ----------------------------------------------------------------------
 	// v2.0.0.8: chain-derived last-paid-height cache.
 	//

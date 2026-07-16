@@ -3313,7 +3313,7 @@ json_spirit::Value cclistcoins(const json_spirit::Array& params, bool fHelp)
 }
 
 // ---------------------------------------------------------------------------
-// lockunspent / listlockunspent — Bitcoin Core compatible UTXO lock RPCs.
+// lockunspent / listlockunspent - Bitcoin Core compatible UTXO lock RPCs.
 //
 // These are how power users lock collateral UTXOs from outside the GUI
 // (e.g. shell scripts, monitoring tooling).  The locks they set persist

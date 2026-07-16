@@ -8,7 +8,7 @@
 // and the implementations into src/qt/guiutil.cpp.
 // The HiDPI attribute block goes into src/qt/bitcoin.cpp before QApplication.
 //
-// ─── ADD TO src/qt/guiutil.h (inside namespace GUIUtil) ─────────────────────
+// --- ADD TO src/qt/guiutil.h (inside namespace GUIUtil) ---------------------
 //
 //   /**
 //    * Returns a font point size scaled to the current screen's logical DPI.
@@ -25,7 +25,7 @@
 //    */
 //   void applyDefaultFont(QApplication *app);
 //
-// ─── ADD TO src/qt/guiutil.cpp ───────────────────────────────────────────────
+// --- ADD TO src/qt/guiutil.cpp -----------------------------------------------
 
 #include <QScreen>
 #include <QGuiApplication>
@@ -68,7 +68,7 @@ void GUIUtil::applyDefaultFont(QApplication *app)
         family = app->font().family();
 
     QFont f(family);
-    // 10pt @ 96 DPI ≈ 13 CSS px — comfortable for 1080p; scales up for 4K.
+    // 10pt @ 96 DPI ~ 13 CSS px - comfortable for 1080p; scales up for 4K.
     f.setPointSize(scaledFontPoints(10));
     f.setStyleHint(QFont::SansSerif);
     f.setHintingPreference(QFont::PreferFullHinting); // crisp on Windows
@@ -77,7 +77,7 @@ void GUIUtil::applyDefaultFont(QApplication *app)
 
 // } // namespace GUIUtil
 
-// ─── ADD TO src/qt/bitcoin.cpp (BEFORE QApplication app(argc, argv)) ────────
+// --- ADD TO src/qt/bitcoin.cpp (BEFORE QApplication app(argc, argv)) --------
 //
 // #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
 //     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
@@ -92,7 +92,7 @@ void GUIUtil::applyDefaultFont(QApplication *app)
 // // Then, after:  QApplication app(argc, argv);
 //     GUIUtil::applyDefaultFont(&app);
 //
-// ─── ADD TO src/qt/overviewpage.cpp (constructor, after setupUi) ─────────────
+// --- ADD TO src/qt/overviewpage.cpp (constructor, after setupUi) -------------
 //
 //     // DPI-aware balance label fonts
 //     QFont balFont = ui->labelBalance->font();
@@ -103,7 +103,7 @@ void GUIUtil::applyDefaultFont(QApplication *app)
 //     ui->labelImmature->setFont(balFont);
 //     ui->labelTotal->setFont(balFont);
 //
-// ─── REPLACE in src/qt/res/styles/light.qss ──────────────────────────────────
+// --- REPLACE in src/qt/res/styles/light.qss ----------------------------------
 // Change every  font-size: Npx  to  font-size: Npt
 // Rule of thumb at 96 DPI:  pt = px * 0.75
 //
@@ -119,5 +119,5 @@ void GUIUtil::applyDefaultFont(QApplication *app)
 //   QToolTip       { font-size: 9pt;  }
 //   QStatusBar     { font-size: 9pt;  }
 //
-// Large balance display labels — set programmatically via scaledFontPoints(14)
+// Large balance display labels - set programmatically via scaledFontPoints(14)
 // in overviewpage.cpp rather than in QSS, so they scale with the system DPI.

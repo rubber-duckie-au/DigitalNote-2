@@ -27,7 +27,7 @@
 #include <QFrame>
 #include <QRandomGenerator>
 
-// ── Password generator ───────────────────────────────────────────────────────
+// -- Password generator -------------------------------------------------------
 
 static QString generateStrongPassword(int length = 20)
 {
@@ -44,7 +44,7 @@ static QString generateStrongPassword(int length = 20)
     return result;
 }
 
-// ── Constructor ──────────────────────────────────────────────────────────────
+// -- Constructor --------------------------------------------------------------
 
 AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
     QDialog(parent),
@@ -83,7 +83,7 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
             ui->passEdit2->hide();
             ui->passLabel3->hide();
             ui->passEdit3->hide();
-            // Hide staking checkbox for plain Unlock — only show for UnlockStaking
+            // Hide staking checkbox for plain Unlock - only show for UnlockStaking
             if (mode == Unlock) {
                 ui->stakingCheckBox->setChecked(false);
                 ui->stakingCheckBox->hide();
@@ -219,7 +219,7 @@ void AskPassphraseDialog::setModel(WalletModel *model)
     }
 }
 
-// ── Slots ────────────────────────────────────────────────────────────────────
+// -- Slots --------------------------------------------------------------------
 
 void AskPassphraseDialog::onGeneratePassword()
 {
@@ -286,7 +286,7 @@ void AskPassphraseDialog::onSwitchToPassword()
     passDlg->deleteLater();
 }
 
-// ── accept() ─────────────────────────────────────────────────────────────────
+// -- accept() -----------------------------------------------------------------
 
 void AskPassphraseDialog::accept()
 {
@@ -452,7 +452,7 @@ void AskPassphraseDialog::accept()
     }
 }
 
-// ── textChanged ───────────────────────────────────────────────────────────────
+// -- textChanged ---------------------------------------------------------------
 
 void AskPassphraseDialog::textChanged()
 {
@@ -479,7 +479,7 @@ void AskPassphraseDialog::textChanged()
     ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(acceptable);
 }
 
-// ── Event handlers ────────────────────────────────────────────────────────────
+// -- Event handlers ------------------------------------------------------------
 
 bool AskPassphraseDialog::event(QEvent *event)
 {

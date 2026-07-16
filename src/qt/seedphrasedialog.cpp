@@ -31,7 +31,7 @@
 #include <QGridLayout>
 #include <QSizePolicy>
 
-// ── Constructor / Destructor ────────────────────────────────────────────────
+// -- Constructor / Destructor ------------------------------------------------
 
 SeedPhraseDialog::SeedPhraseDialog(WalletModel *model, QWidget *parent)
     : QDialog(parent)
@@ -97,7 +97,7 @@ SeedPhraseDialog::~SeedPhraseDialog()
     clearMnemonic();
 }
 
-// ── UI setup (programmatic — no .ui file dependency) ────────────────────────
+// -- UI setup (programmatic - no .ui file dependency) ------------------------
 
 void SeedPhraseDialog::setupUi()
 {
@@ -105,7 +105,7 @@ void SeedPhraseDialog::setupUi()
     root->setSpacing(12);
     root->setContentsMargins(16, 16, 16, 16);
 
-    // ── Warning banner ──────────────────────────────────────────────────────
+    // -- Warning banner ------------------------------------------------------
     auto *warnFrame = new QFrame;
     warnFrame->setFrameShape(QFrame::StyledPanel);
     warnFrame->setStyleSheet(
@@ -124,11 +124,11 @@ void SeedPhraseDialog::setupUi()
     warnLayout->addWidget(warnText, 1);
     root->addWidget(warnFrame);
 
-    // ── Seed phrase display area ─────────────────────────────────────────────
+    // -- Seed phrase display area ---------------------------------------------
     auto *seedGroup = new QGroupBox(tr("Your Seed Phrase"));
     auto *seedLayout = new QVBoxLayout(seedGroup);
 
-    // Grid to display each word individually — cleaner than a text blob
+    // Grid to display each word individually - cleaner than a text blob
     auto *wordGrid = new QWidget;
     wordGrid->setObjectName("wordGrid");
     wordGrid->setLayout(new QGridLayout);
@@ -146,7 +146,7 @@ void SeedPhraseDialog::setupUi()
 
     root->addWidget(seedGroup, 1);
 
-    // ── Countdown / reveal row ───────────────────────────────────────────────
+    // -- Countdown / reveal row -----------------------------------------------
     auto *btnRow = new QHBoxLayout;
 
     auto *countdownLabel = new QLabel;
@@ -182,8 +182,8 @@ void SeedPhraseDialog::setupUi()
 
     root->addLayout(btnRow);
 
-    // ── Close + advanced rotation ────────────────────────────────────────────
-    // "Replace phrase…" launches RotatePhraseDialog (compromised phrase
+    // -- Close + advanced rotation --------------------------------------------
+    // "Replace phrase..." launches RotatePhraseDialog (compromised phrase
     // remediation).  Buried here rather than promoted to a top-level menu
     // item -- this is a destructive security operation, not a casual setting.
     auto *rotateBtn = new QPushButton(tr("Replace phrase…"));
@@ -208,7 +208,7 @@ void SeedPhraseDialog::setupUi()
     root->addLayout(closeRow);
 }
 
-// ── Mode-driven UI adjustments ───────────────────────────────────────────────
+// -- Mode-driven UI adjustments -----------------------------------------------
 //
 // Called after setupUi() in both constructors.  The Normal-mode UI is the
 // default state already built by setupUi(); FirstTimeAutoReveal-mode hides
@@ -240,7 +240,7 @@ void SeedPhraseDialog::applyModeAdjustments()
     }
 }
 
-// ── Slot implementations ─────────────────────────────────────────────────────
+// -- Slot implementations -----------------------------------------------------
 
 bool SeedPhraseDialog::ensureUnlocked()
 {
@@ -406,7 +406,7 @@ void SeedPhraseDialog::onRevealClicked()
         OPENSSL_cleanse(const_cast<char*>(mnemonic.data()), mnemonic.size());
     }
 
-    // Start countdown — phrase will be displayed when it elapses.
+    // Start countdown - phrase will be displayed when it elapses.
     auto *revealBtn = findChild<QPushButton*>("revealBtn");
     if (revealBtn) revealBtn->setEnabled(false);
 
@@ -440,7 +440,7 @@ void SeedPhraseDialog::onCountdownTick()
     m_countdownTimer.stop();
     if (label) label->hide();
 
-    // The wallet must be encrypted — unencrypted wallets have no recovery
+    // The wallet must be encrypted - unencrypted wallets have no recovery
     // phrase to display.
     if (m_model->getEncryptionStatus() == WalletModel::Unencrypted) {
         QMessageBox::information(this, tr("Recovery Phrase Unavailable"),
@@ -591,7 +591,7 @@ void SeedPhraseDialog::onVerifyClicked()
     }
 }
 
-// ── clearMnemonic ─────────────────────────────────────────────────────────────
+// -- clearMnemonic -------------------------------------------------------------
 
 void SeedPhraseDialog::clearMnemonic()
 {
@@ -619,7 +619,7 @@ void SeedPhraseDialog::clearMnemonic()
     if (revealBtn)   revealBtn->setEnabled(true);
 }
 
-// ── Window events ─────────────────────────────────────────────────────────────
+// -- Window events -------------------------------------------------------------
 
 void SeedPhraseDialog::closeEvent(QCloseEvent *event)
 {

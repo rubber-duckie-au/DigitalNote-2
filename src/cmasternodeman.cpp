@@ -15,6 +15,8 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "serialize.h"
+#include "enums/serialize_type.h"		// v2.0.9 S3.12: SER_GETHASH for the dseep dedup-cache hash
+#include "hash.h"						// v2.0.9 S3.12: Hash() for the dseep dedup-cache key
 #include "cmasternode.h"
 #include "cmasternodepayments.h"
 #include "cmasternodevotetracker.h"
@@ -45,6 +47,7 @@ CMasternodeMan::CMasternodeMan()
 {
 	nDsqCount = 0;
 	nLastPaidHeightScannedTo = 0;
+	nLastDseepCleanup = 0;
 }
 
 bool CMasternodeMan::Add(CMasternode &mn)
@@ -1152,16 +1155,79 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
 		if (sigTime > GetAdjustedTime() + 60 * 60)
 		{
-			LogPrintf("dseep - Signature rejected, too far into the future %s\n", vin.ToString().c_str());
+			// v2.0.0.9 FINDING-2026-002 (TODO 3.12a): demote to -debug=masternode.
+			// A misbehaving peer re-broadcasting cached dseeps was observed
+			// flooding debug.log at ~26 lines/s via these window rejections.
+			LogPrint("masternode", "dseep - Signature rejected, too far into the future %s\n", vin.ToString().c_str());
 			
 			return;
 		}
 
 		if (sigTime <= GetAdjustedTime() - 60 * 60)
 		{
-			LogPrintf("dseep - Signature rejected, too far into the past %s - %d %d \n", vin.ToString().c_str(), sigTime, GetAdjustedTime());
-			
+			// v2.0.9 FINDING-2026-002 (TODO 3.12a): demote to -debug=masternode
+			// (this is the exact line that flooded debug.log during the incident).
+			LogPrint("masternode", "dseep - Signature rejected, too far into the past %s - %d %d \n", vin.ToString().c_str(), sigTime, GetAdjustedTime());
+
+			// v2.0.9 FINDING-2026-002 (TODO 3.12c): a dseep older than the 1h
+			// accept window is stale or replayed.  Score the source lightly (+1):
+			// ~100 stale dseeps to reach the ban threshold -- above the noise
+			// floor for a peer that briefly forwards one stale ping, but enough
+			// to auto-disconnect a persistent flooder.  Kept at +1 deliberately;
+			// higher values risk false positives on clock skew / suspend-resume.
+			Misbehaving(pfrom->GetId(), 1);
+
 			return;
+		}
+
+		// v2.0.9 FINDING-2026-002 (TODO 3.12b): dedup before any expensive work
+		// (Find + signature verify).  A peer replaying identical cached dseeps
+		// within the 1h accept window would otherwise be fully processed every
+		// time (~78x traffic/CPU amplification observed).  Serialized by
+		// cs_process_message; mirrors mapSeenMasternodeVotes in cmasternodepayments.
+		{
+			CDataStream ssDseep(SER_GETHASH, 0);
+			ssDseep << vin << sigTime << stop << vchSig;
+			uint256 hashDseep = Hash(ssDseep.begin(), ssDseep.end());
+
+			int64_t nNow = GetTime();
+
+			// Opportunistic GC (at most once per 60s): drop entries older than the
+			// accept window, then clear entirely if still over the memory backstop.
+			if (nNow - nLastDseepCleanup > 60)
+			{
+				nLastDseepCleanup = nNow;
+
+				std::map<uint256, int64_t>::iterator it = mapSeenDseep.begin();
+
+				while (it != mapSeenDseep.end())
+				{
+					if (it->second < nNow - MASTERNODE_DSEEP_SEEN_RETENTION)
+					{
+						mapSeenDseep.erase(it++);
+					}
+					else
+					{
+						++it;
+					}
+				}
+
+				if (mapSeenDseep.size() > MASTERNODE_DSEEP_SEEN_MAX)
+				{
+					LogPrint("masternode", "dseep - mapSeenDseep exceeded %d entries, clearing\n", (int)MASTERNODE_DSEEP_SEEN_MAX);
+
+					mapSeenDseep.clear();
+				}
+			}
+
+			if (mapSeenDseep.count(hashDseep))
+			{
+				// Already handled this exact dseep; drop silently (no relay, no
+				// re-verify, no re-log).
+				return;
+			}
+
+			mapSeenDseep[hashDseep] = nNow;
 		}
 
 		// see if we have this masternode

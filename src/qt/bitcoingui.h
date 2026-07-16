@@ -145,7 +145,7 @@ private:
     // m_bHammerLatched: once updateStakingIcon() resolves the icon to
     // Hammer via the full Phase-A prerequisite walk, latch this flag.
     // While latched, only the invalidating-events set + a 5-minute
-    // staleness floor can drop us off Hammer; transient §29 defers do
+    // staleness floor can drop us off Hammer; transient S29 defers do
     // not flutter the icon.  Single-threaded (only the GUI main thread
     // touches it), so no atomic.
     mutable bool m_bHammerLatched;
