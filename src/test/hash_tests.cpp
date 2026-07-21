@@ -4,7 +4,7 @@
 //
 // src/test/hash_tests.cpp
 //
-// Tests for SHA-256, SHA-512, RIPEMD-160, Hash(), Hash160() — all core
+// Tests for SHA-256, SHA-512, RIPEMD-160, Hash(), Hash160() - all core
 // cryptographic primitives used throughout DigitalNote-2.
 
 #include <boost/test/unit_test.hpp>
@@ -21,7 +21,7 @@
 
 BOOST_AUTO_TEST_SUITE(HashTests)
 
-// ── SHA-256 known-answer tests ────────────────────────────────────────────────
+// -- SHA-256 known-answer tests ------------------------------------------------
 // Vectors from NIST FIPS 180-4
 
 BOOST_AUTO_TEST_CASE(SHA256_EmptyString)
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(SHA256_SameInputSameOutput)
     );
 }
 
-// ── RIPEMD-160 known-answer tests ─────────────────────────────────────────────
+// -- RIPEMD-160 known-answer tests ---------------------------------------------
 
 BOOST_AUTO_TEST_CASE(RIPEMD160_EmptyString)
 {
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(RIPEMD160_ABC)
     BOOST_CHECK_EQUAL(HexStr(digest, digest + CRIPEMD160::OUTPUT_SIZE), expected);
 }
 
-// ── SHA-512 sanity tests ──────────────────────────────────────────────────────
+// -- SHA-512 sanity tests ------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(SHA512_OutputSizeIs64Bytes)
 {
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(SHA512_EmptyStringKnownAnswer)
     BOOST_CHECK(hex.substr(0, 8) == "cf83e135");
 }
 
-// ── Double-SHA256 (Hash) ──────────────────────────────────────────────────────
+// -- Double-SHA256 (Hash) ------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(Hash256_OutputIsUint256)
 {
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE(Hash256_DifferentInputsDifferentOutput)
     BOOST_CHECK_NE(ha, hb);
 }
 
-// ── Hash160 (RIPEMD160(SHA256(x))) ───────────────────────────────────────────
+// -- Hash160 (RIPEMD160(SHA256(x))) -------------------------------------------
 
 BOOST_AUTO_TEST_CASE(Hash160_OutputIsUint160)
 {

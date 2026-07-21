@@ -14,12 +14,12 @@
 
 #include "amount.h"        // CAmount, COIN, CENT
 #include "util.h"
-// main.h for MIN_TX_FEE, MIN_RELAY_TX_FEE, MAX_MONEY — include guard-safe
+// main.h for MIN_TX_FEE, MIN_RELAY_TX_FEE, MAX_MONEY - include guard-safe
 #include "main.h"
 
 BOOST_AUTO_TEST_SUITE(AmountTests)
 
-// ── Monetary constants ────────────────────────────────────────────────────────
+// -- Monetary constants --------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(CoinEquals100000000Satoshis)
 {
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(MoneyRangeRejectsOverMax)
     BOOST_CHECK(!MoneyRange(MAX_MONEY + 1));
 }
 
-// ── Fee constants ─────────────────────────────────────────────────────────────
+// -- Fee constants -------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(MinTxFeeIsPositive)
 {
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(MinRelayTxFeeIsPositive)
 
 BOOST_AUTO_TEST_CASE(MinRelayTxFeeNotGreaterThanMinTxFee)
 {
-    // Relay fee should be ≤ min transaction fee
+    // Relay fee should be <= min transaction fee
     BOOST_CHECK_LE(MIN_RELAY_TX_FEE, MIN_TX_FEE);
 }
 
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(MinTxFeeUnderMaxMoney)
     BOOST_CHECK_LT(MIN_TX_FEE, MAX_MONEY);
 }
 
-// ── Arithmetic safety ─────────────────────────────────────────────────────────
+// -- Arithmetic safety ---------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(CoinMultiplicationDoesNotOverflow)
 {

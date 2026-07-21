@@ -2,7 +2,7 @@
 #include "net.h"
 #include "net/cnodestats.h"
 #include "cblock.h"
-#include "mining.h"		// v2.0.9: RESCUE_STALL_SECS (consensus rescue)
+#include "mining.h"		// v2.0.0.9: RESCUE_STALL_SECS (consensus rescue)
 #include "ctransaction.h"
 #include "ctxout.h"
 #include "ctxin.h"
@@ -51,7 +51,7 @@ static void EnforceVotedConsensusReadyOrThrow()
 
 	if (!fHaveCanonical)
 	{
-		// v2.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): permit a
+		// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): permit a
 		// devops-fallback rescue block once the chain has been stalled
 		// >= RESCUE_STALL_SECS (block-relative).  See rpcmining.cpp for rationale.
 		if (IsRescueActive(pindexBest, nNextHeight, GetAdjustedTime()))

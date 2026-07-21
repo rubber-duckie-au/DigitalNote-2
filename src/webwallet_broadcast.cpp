@@ -16,7 +16,7 @@
 #include "webwallet.h"
 #include "webwallet_broadcast.h"
 
-// v2.0.9 Boost.Beast migration of the web-wallet connector (was websocketpp 0.8.2).
+// v2.0.0.9 Boost.Beast migration of the web-wallet connector (was websocketpp 0.8.2).
 //
 // Behaviour preserved from the websocketpp version:
 //   * plain ws:// server (no TLS), listening on the given port (7778),

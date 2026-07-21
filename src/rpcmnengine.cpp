@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <boost/lexical_cast.hpp>
 
 #include "enums/rpcerrorcode.h"
@@ -17,6 +18,9 @@
 #include "net/cnode.h"
 #include "net.h"
 #include "ckey.h"
+#include "version.h"
+#include "clientversion.h"
+#include "spork.h"
 #include "main_extern.h"
 #include "cblockindex.h"
 #include "cblock.h"
@@ -1508,6 +1512,174 @@ json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp)
 	obj.push_back(json_spirit::Pair("per_payee", perPayee));
 
 	return obj;
+}
+
+
+// v2.0.0.9 TODO 3.19 / PhaseD S4: deployment + activation-readiness telemetry.
+//
+// Answers the M8 question -- "at activation_height - 2 weeks, has enough of the
+// network moved to a consensus-capable build to proceed?" -- from THIS node's view.
+//
+// Everything here is read-only observation.  Two independent readiness signals are
+// reported and they are NOT interchangeable:
+//
+//   peers.*        -- how much of the network we can SEE is running a
+//                     consensus-capable build (protocol >= 62059).  This is a
+//                     rollout-progress signal.  It is inherently partial: it counts
+//                     only our own connections, not the whole network.
+//
+//   masternodes.*  -- whether the voted-consensus DENOMINATOR can still resolve.
+//                     This is the SAFETY signal and it is the one that can stall the
+//                     chain: voting_eligible counts MNs at
+//                     MIN_VOTING_PROTOCOL_VERSION+ (62058 -- deliberately NOT the
+//                     same as PROTOCOL_VERSION; see the guardrails in version.h /
+//                     masternode.h), and it must stay >= MIN_ENABLED_FOR_CONSENSUS.
+//                     If meets_consensus_floor goes false post-activation the chain
+//                     cannot resolve a voted payee and depends on the 3.16 rescue.
+json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fHelp)
+{
+	if (fHelp || params.size() != 0)
+	{
+		throw std::runtime_error(
+			"getdeploymentstatus\n"
+			"\nReports v2.0.0.9 voted-consensus deployment and activation readiness\n"
+			"as seen by THIS node.  Feeds the M8 proceed/defer decision.\n"
+			"\nResult:\n"
+			"{\n"
+			"  \"build\": {\n"
+			"    \"client_version\": n,             (numeric) this node's CLIENT_VERSION\n"
+			"    \"protocol_version\": n,           (numeric) this node's PROTOCOL_VERSION\n"
+			"    \"consensus_capable\": bool        (boolean) true if this build's mainnet activation is wired (not INT_MAX)\n"
+			"  },\n"
+			"  \"activation\": {\n"
+			"    \"effective_height\": n,           (numeric) activation height in force (compiled floor, or spork-15 if it LOWERS it)\n"
+			"    \"spork15_value\": n,              (numeric) raw spork-15 value (0 = unset/no override)\n"
+			"    \"spork15_lowering\": bool,        (boolean) true if spork-15 is what is currently in force (pulling activation earlier)\n"
+			"    \"current_height\": n,             (numeric) current chain tip\n"
+			"    \"blocks_remaining\": n,           (numeric) blocks until activation (0 once activated)\n"
+			"    \"activated\": bool                (boolean) tip >= effective activation height\n"
+			"  },\n"
+			"  \"peers\": {\n"
+			"    \"total\": n,                      (numeric) connected peers with a negotiated version\n"
+			"    \"consensus_capable\": n,          (numeric) peers at PROTOCOL_VERSION or above\n"
+			"    \"pre_consensus\": n,              (numeric) peers below it (cannot activate)\n"
+			"    \"consensus_capable_share\": x.xx  (numeric) capable/total, -1 if no peers\n"
+			"  },\n"
+			"  \"masternodes\": {\n"
+			"    \"total\": n,                      (numeric) masternodes known to this node\n"
+			"    \"enabled\": n,                    (numeric) enabled masternodes\n"
+			"    \"voting_eligible\": n,            (numeric) MNs counting toward the consensus denominator\n"
+			"    \"min_voting_protocol_version\": n,(numeric) the denominator floor (NOT PROTOCOL_VERSION)\n"
+			"    \"min_required_for_consensus\": n, (numeric) MIN_ENABLED_FOR_CONSENSUS\n"
+			"    \"meets_consensus_floor\": bool,   (boolean) voting_eligible >= min_required (SAFETY signal)\n"
+			"    \"measured_at_height\": n          (numeric) height the eligibility was measured for\n"
+			"  }\n"
+			"}\n"
+			"\nExamples:\n"
+			+ HelpExampleCli("getdeploymentstatus", "")
+			+ HelpExampleRpc("getdeploymentstatus", "")
+		);
+	}
+
+	if (pindexBest == NULL)
+	{
+		throw std::runtime_error("Chain not loaded");
+	}
+
+	json_spirit::Object result;
+
+	// -- build ---------------------------------------------------------------
+	const int effectiveActivation = GetEffectiveVotedConsensusActivationHeight();
+
+	json_spirit::Object build;
+	build.push_back(json_spirit::Pair("client_version", CLIENT_VERSION));
+	build.push_back(json_spirit::Pair("protocol_version", PROTOCOL_VERSION));
+
+	// "Consensus capable" means this build can actually reach activation.  Every
+	// pre-2.0.0.9 mainnet build resolved the floor to INT_MAX (FINDING-2026-003)
+	// and could never activate no matter how long it ran.
+	build.push_back(json_spirit::Pair("consensus_capable", effectiveActivation != std::numeric_limits<int>::max()));
+	result.push_back(json_spirit::Pair("build", build));
+
+	// -- activation ----------------------------------------------------------
+	const int tipHeight = pindexBest->nHeight;
+	const int64_t spork15 = GetSporkValue(SPORK_15_VOTED_CONSENSUS_ACTIVATION);
+
+	// Spork-15 may only LOWER activation, never raise it:
+	// GetEffectiveVotedConsensusActivationHeight() returns the spork value only when
+	// (spork > 0 && spork < floor), otherwise the compiled-in floor.  So if the
+	// effective height equals a set spork value, the spork is what is in force.
+	// (The compiled-in floor itself lives in an anonymous namespace in cblock.cpp and
+	// is deliberately not exposed here; effective_height is what actually governs.)
+	const bool spork15Lowering = (spork15 > 0 && (int)spork15 == effectiveActivation);
+
+	json_spirit::Object activation;
+	activation.push_back(json_spirit::Pair("effective_height", effectiveActivation));
+	activation.push_back(json_spirit::Pair("spork15_value", spork15));
+	activation.push_back(json_spirit::Pair("spork15_lowering", spork15Lowering));
+	activation.push_back(json_spirit::Pair("current_height", tipHeight));
+
+	const bool activated = (tipHeight >= effectiveActivation);
+	activation.push_back(json_spirit::Pair("activated", activated));
+	activation.push_back(json_spirit::Pair("blocks_remaining", activated ? 0 : (effectiveActivation - tipHeight)));
+	result.push_back(json_spirit::Pair("activation", activation));
+
+	// -- peers ---------------------------------------------------------------
+	// Rollout-progress signal.  Partial by nature: our own connections only.
+	int peersTotal = 0;
+	int peersCapable = 0;
+
+	{
+		LOCK(cs_vNodes);
+
+		for(CNode* pnode : vNodes)
+		{
+			if (pnode == NULL)
+			{
+				continue;
+			}
+
+			// Skip peers that have not completed version negotiation -- their
+			// nVersion is not yet meaningful.
+			if (pnode->nVersion == 0)
+			{
+				continue;
+			}
+
+			peersTotal++;
+
+			if (pnode->nVersion >= PROTOCOL_VERSION)
+			{
+				peersCapable++;
+			}
+		}
+	}
+
+	json_spirit::Object peers;
+	peers.push_back(json_spirit::Pair("total", peersTotal));
+	peers.push_back(json_spirit::Pair("consensus_capable", peersCapable));
+	peers.push_back(json_spirit::Pair("pre_consensus", peersTotal - peersCapable));
+	peers.push_back(json_spirit::Pair("consensus_capable_share",
+		peersTotal > 0 ? ((double)peersCapable / (double)peersTotal) : -1.0));
+	result.push_back(json_spirit::Pair("peers", peers));
+
+	// -- masternodes (the SAFETY signal) -------------------------------------
+	// Measure eligibility for the height the queues actually cover (tip +
+	// VOTE_LOOKAHEAD), matching what GetCanonicalWinnerFromQueues will ask.
+	const int measuredAt = tipHeight + VOTE_LOOKAHEAD;
+	const int votingEligible = mnodeman.CountVotingEligible(measuredAt, MIN_VOTING_PROTOCOL_VERSION);
+
+	json_spirit::Object mns;
+	mns.push_back(json_spirit::Pair("total", mnodeman.size()));
+	mns.push_back(json_spirit::Pair("enabled", mnodeman.CountEnabled()));
+	mns.push_back(json_spirit::Pair("voting_eligible", votingEligible));
+	mns.push_back(json_spirit::Pair("min_voting_protocol_version", MIN_VOTING_PROTOCOL_VERSION));
+	mns.push_back(json_spirit::Pair("min_required_for_consensus", MIN_ENABLED_FOR_CONSENSUS));
+	mns.push_back(json_spirit::Pair("meets_consensus_floor", votingEligible >= MIN_ENABLED_FOR_CONSENSUS));
+	mns.push_back(json_spirit::Pair("measured_at_height", measuredAt));
+	result.push_back(json_spirit::Pair("masternodes", mns));
+
+	return result;
 }
 
 json_spirit::Value listequivocators(const json_spirit::Array& params, bool fHelp)

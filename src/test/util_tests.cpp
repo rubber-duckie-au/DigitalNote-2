@@ -18,7 +18,7 @@
 
 BOOST_AUTO_TEST_SUITE(UtilStringTests)
 
-// ── HexStr ────────────────────────────────────────────────────────────────────
+// -- HexStr --------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(HexStr_EmptyInput)
 {
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(HexStr_AllFF)
     BOOST_CHECK_EQUAL(HexStr(v.begin(), v.end()), "ffffff");
 }
 
-// ── ParseHex ──────────────────────────────────────────────────────────────────
+// -- ParseHex ------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(ParseHex_EmptyString)
 {
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(ParseHex_RoundtripWithHexStr)
     BOOST_CHECK_EQUAL(HexStr(bytes.begin(), bytes.end()), hex);
 }
 
-// ── IsHex ─────────────────────────────────────────────────────────────────────
+// -- IsHex ---------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(IsHex_ValidLower)
 {
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(IsHex_InvalidCharFalse)
     BOOST_CHECK(!IsHex("xyz123"));
 }
 
-// ── DecodeBase64 / EncodeBase64 ───────────────────────────────────────────────
+// -- DecodeBase64 / EncodeBase64 -----------------------------------------------
 
 BOOST_AUTO_TEST_CASE(Base64_EncodeEmpty)
 {
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(Base64_EncodeEmpty)
 
 BOOST_AUTO_TEST_CASE(Base64_KnownVector)
 {
-    // "Man" → "TWFu"
+    // "Man" -> "TWFu"
     BOOST_CHECK_EQUAL(EncodeBase64("Man"), "TWFu");
 }
 
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(Base64_RoundtripBinary)
         BOOST_CHECK_EQUAL(static_cast<unsigned char>(decoded[i]), data[i]);
 }
 
-// ── SanitizeString ────────────────────────────────────────────────────────────
+// -- SanitizeString ------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(SanitizeString_NoopOnSafe)
 {
@@ -166,7 +166,7 @@ BOOST_AUTO_TEST_CASE(SanitizeString_RemovesControlChars)
     BOOST_CHECK(sanitized.find('\x01') == std::string::npos);
 }
 
-// ── atoi64 / FormatMoney ──────────────────────────────────────────────────────
+// -- atoi64 / FormatMoney ------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(Atoi64_PositiveNumber)
 {
@@ -185,14 +185,14 @@ BOOST_AUTO_TEST_CASE(Atoi64_Zero)
 
 BOOST_AUTO_TEST_CASE(FormatMoney_OneXDN)
 {
-    // 1 XDN = 100,000,000 satoshis → "1.00000000"
+    // 1 XDN = 100,000,000 satoshis -> "1.00000000"
     std::string s = FormatMoney(COIN);
     BOOST_CHECK_EQUAL(s, "1.00000000");
 }
 
 BOOST_AUTO_TEST_CASE(FormatMoney_OneCent)
 {
-    // 1 CENT = 1,000,000 satoshis → "0.01000000"
+    // 1 CENT = 1,000,000 satoshis -> "0.01000000"
     std::string s = FormatMoney(CENT);
     BOOST_CHECK_EQUAL(s, "0.01000000");
 }
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(ParseMoney_RejectsNegative)
     BOOST_CHECK(!ParseMoney("-1.0", val));
 }
 
-// ── itostr / strprintf ────────────────────────────────────────────────────────
+// -- itostr / strprintf --------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(Strprintf_BasicFormat)
 {

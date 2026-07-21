@@ -26,7 +26,7 @@
 
 BOOST_AUTO_TEST_SUITE(TransactionTests)
 
-// ── Empty transaction basics ──────────────────────────────────────────────────
+// -- Empty transaction basics --------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(EmptyTransactionHasNoInputsOrOutputs)
 {
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(FinalizedEmptyTxHashIsNotZero)
     BOOST_CHECK(tx.GetHash() != uint256());
 }
 
-// ── Coinbase detection ────────────────────────────────────────────────────────
+// -- Coinbase detection --------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(CoinbaseInputHasNullPrevout)
 {
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(RegularTxIsNotCoinbase)
     BOOST_CHECK(!tx.IsCoinBase());
 }
 
-// ── CTxOut ────────────────────────────────────────────────────────────────────
+// -- CTxOut --------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(TxOutWithZeroValueIsValid)
 {
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(TxOutOverMaxValueFails)
     BOOST_CHECK(!MoneyRange(out.nValue));
 }
 
-// ── Serialisation round-trip ──────────────────────────────────────────────────
+// -- Serialisation round-trip --------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(TransactionSerialiseRoundtrip)
 {
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(SerialiseUsesCurrentProtocolVersion)
     BOOST_CHECK_GT(ss.size(), 0u);
 }
 
-// ── Hash stability ────────────────────────────────────────────────────────────
+// -- Hash stability ------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(SameTransactionProducesSameHash)
 {
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(DifferentNLockTimeProducesDifferentHash)
     BOOST_CHECK_NE(t1.GetHash(), t2.GetHash());
 }
 
-// ── Transaction size limits ───────────────────────────────────────────────────
+// -- Transaction size limits ---------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(MaxStandardTxSizeIsPositive)
 {
@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE(MaxStandardTxSizeUnder1MB)
     BOOST_CHECK_LE(MAX_STANDARD_TX_SIZE, 1000000u);
 }
 
-// ── CTxIn sequence / locktime ─────────────────────────────────────────────────
+// -- CTxIn sequence / locktime -------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(FinalSequenceValueIsMaxUint32)
 {

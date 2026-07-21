@@ -151,4 +151,12 @@
     <qresource prefix="/fonts">
         <file alias="monospace">res/fonts/RobotoMono-Bold.ttf</file>
     </qresource>
+    <!-- XDN custom emoji. Referenced by shortcode via XdnEmoji (see xdnemoji.cpp); aliases
+         match the entries there (:/emoji/DN etc). Images in src/qt/res/emoji/. -->
+    <qresource prefix="/emoji">
+        <file alias="DN">res/emoji/DN.png</file>
+        <file alias="moon">res/emoji/moon.png</file>
+        <file alias="xdn">res/emoji/xdn.png</file>
+        <file alias="xdnwhite">res/emoji/xdnwhite.png</file>
+    </qresource>
 </RCC>

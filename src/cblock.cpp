@@ -23,7 +23,7 @@
 #include "net/cnode.h"
 #include "net.h"
 #include "cmasternodeman.h"
-#include "masternode.h"			// v2.0.9 P1: VOTED_CONSENSUS_ACTIVATION_HEIGHT (mainnet floor)
+#include "masternode.h"			// v2.0.0.9 P1: VOTED_CONSENSUS_ACTIVATION_HEIGHT (mainnet floor)
 #include "cmasternodepayments.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
@@ -55,7 +55,7 @@
 #include "cflatdata.h"
 
 #include "cblock.h"
-#include "mining.h"		// v2.0.9: RESCUE_STALL_SECS (consensus rescue)
+#include "mining.h"		// v2.0.0.9: RESCUE_STALL_SECS (consensus rescue)
 
 // Every received block is assigned a unique and increasing identifier, so we
 // know which one to give priority in case of a fork.
@@ -81,7 +81,7 @@ uint32_t nBlockSequenceId = 1;
 // without spork plumbing.  See M4-design-notes.md S4 Pattern 3.
 namespace {
 
-// v2.0.9 P1 (FINDING-2026-003): un-strand the mainnet voted-consensus activation.
+// v2.0.0.9 P1 (FINDING-2026-003): un-strand the mainnet voted-consensus activation.
 //
 // History: making voted-consensus activation a block-height constant
 // (VOTED_CONSENSUS_ACTIVATION_HEIGHT = 1480000, masternode.h) was intentional; the
@@ -215,7 +215,7 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut)
 	return masternodePayments.GetBlockPayee(nBlockHeight, payeeOut, vinOut);
 }
 
-// v2.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC).
+// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC).
 //
 // Post-activation, when no voted-consensus winner exists for this height AND the
 // chain has been stalled for a fixed, block-relative interval, a block that pays the
@@ -224,14 +224,50 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut)
 // below-floor, sustained propagation failure) advance deterministically instead of
 // stalling or forking on a divergent legacy FindOldestNotInVec payee.
 //
-// The predicate is a PURE FUNCTION OF COMMITTED CHAIN DATA so producer and validator
-// (live and on resync) compute the identical answer -- the same determinism
-// discipline as the VRX resync fix (measure from committed block timestamps, never
-// GetAdjustedTime()/live tip):
+// DETERMINISM BOUNDARY -- READ THIS BEFORE PORTING OR CHANGING THE PREDICATE.
+// Two of the three terms are pure functions of committed chain data; the third is
+// NOT.  An earlier revision of this comment claimed the whole predicate was a pure
+// function of committed chain data.  That was wrong, and the distinction matters for
+// anyone reimplementing this rule (see the Rust parity note at the end).
 //   * activation: GetEffectiveVotedConsensusActivationHeight() (height-derived).
-//   * no winner:  GetCanonicalWinnerFromQueues(N) == false.
+//                 COMMITTED -- identical on every node at a given height.
 //   * stall:      blockTime - pprev->GetMedianTimePast() >= RESCUE_STALL_SECS,
 //                 where blockTime is the candidate block's own committed nTime.
+//                 COMMITTED -- the same VRX-resync discipline (measure from
+//                 committed block timestamps, never GetAdjustedTime()/live tip).
+//   * no winner:  GetCanonicalWinnerFromQueues(N) == false.
+//                 *** NODE-LOCAL, NOT COMMITTED. ***  This reads voteTracker's
+//                 in-memory mapQueues, which is populated from network messages
+//                 (ProcessQueue) and is not derived from the chain.  Two nodes can
+//                 hold different queue state for the same height and therefore
+//                 compute DIFFERENT rescue verdicts for the SAME block.
+//
+// Why the stall does not heal the asymmetry: OnBlockConnectedQueues() prunes queues
+// by height and only fires on block-connect, and ProcessQueue enforces
+// VOTE_TIME_WINDOW_SECONDS at ARRIVAL only -- an already-accepted queue has no
+// time-based expiry.  During a >= RESCUE_STALL_SECS stall no block connects, so a
+// lingering pre-stall queue for the stalled height cannot age out for as long as the
+// stall lasts.
+//
+// Why this is tolerable as shipped (but see the caveat):
+//   * The designed scenario converges.  The cold-start stall (TODO 3.17) leaves NO
+//     node holding queues -- they are not reseeded without block production -- so
+//     every node agrees "no winner" and rescues together.
+//   * A node that genuinely holds a canonical winner is not stalled in the first
+//     place: its own producer can mint on the normal voted path.
+//   * A disagreeing validator SOFT-fails (fBlockHasPayments = false, DoS capped at
+//     10) rather than banning, so the mismatch degrades rather than partitions.
+// Residual exposure: a NON-PRODUCING validator holding a stale queue cannot break
+// the stall, will reject the rescue blocks the producing majority accepts, and
+// cannot expire that queue while the stall lasts -- it falls out of consensus until
+// restarted.  If that is ever observed, the fix is to make the "no winner" term
+// stable rather than instantaneous (or to age queues on a timer, not only on
+// block-connect).
+//
+// RUST PARITY: this predicate is slated to be published byte-for-byte for the v3
+// implementation.  Publish the determinism boundary WITH it -- a second
+// implementation that assumes term 2 is committed-derived will diverge from C++
+// exactly when the rescue matters.
 //
 // pprev == NULL (genesis) can never satisfy the activation gate, so the null case is
 // handled by the height check short-circuiting first.
@@ -243,10 +279,11 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut)
 // GetAdjustedTime(); PoS: the coinstake kernel time is at most a few minutes below
 // wall-clock via the stake search-back window).  During a >= 30 min stall that few-
 // second/minute slack is negligible against RESCUE_STALL_SECS, so the committed
-// predicate the validator checks holds by construction for any block the producer
-// chose to build.  (Same discipline as the VRX nBits fix: the validator's decision
-// is a pure function of committed block data; the producer merely ensures the block
-// it stamps satisfies it.)
+// STALL term the validator checks holds by construction for any block the producer
+// chose to build.  (Same discipline as the VRX nBits fix: for this term the
+// validator's decision is a pure function of committed block data; the producer
+// merely ensures the block it stamps satisfies it.  Note this reasoning covers the
+// stall term ONLY -- it says nothing about the node-local "no winner" term above.)
 bool IsRescueActive(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime)
 {
 	if (nBlockHeight < GetEffectiveVotedConsensusActivationHeight())
@@ -1673,12 +1710,12 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 								{
 									// The block pays the devops address in the MN slot.
 									//
-									// v2.0.9 consensus rescue (SPEC): post-activation this
+									// v2.0.0.9 consensus rescue (SPEC): post-activation this
 									// is ONLY valid as a rescue block -- i.e. when there is
 									// no voted winner for this height AND the chain has been
 									// stalled >= RESCUE_STALL_SECS (block-relative).  A
 									// devops MN-slot payee outside that window is now a
-									// rejectable payee, closing the pre-2.0.9 hole where any
+									// rejectable payee, closing the pre-2.0.0.9 hole where any
 									// devops MN-slot block was accepted unconditionally
 									// post-activation.  Pre-activation is unaffected: the
 									// height gate in IsRescueActive fails, but so does the
@@ -1912,7 +1949,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 								}
 								else if (addressOut.ToString() == strVfyDevopsAddress)
 								{
-									// v2.0.9 consensus rescue (SPEC): devops MN-slot payee is
+									// v2.0.0.9 consensus rescue (SPEC): devops MN-slot payee is
 									// valid post-activation ONLY as a rescue block (no voted
 									// winner + >= RESCUE_STALL_SECS block-relative stall).
 									// See the PoS counterpart above for full rationale.

@@ -1,4 +1,7 @@
+#include <QBoxLayout>
+#include <QSizePolicy>
 #include <QSortFilterProxyModel>
+#include <QDebug>
 #include <QClipboard>
 #include <QMessageBox>
 #include <QMenu>
@@ -11,6 +14,11 @@
 #include "sendmessagesdialog.h"
 #include "qt/plugins/mrichtexteditor/mrichtextedit.h"
 #include "messagemodel.h"
+#include "conversationmodel.h"
+#include "conversationthreadmodel.h"
+#include "conversationbubbledelegate.h"
+#include "conversationlistdelegate.h"
+#include "chatcomposer.h"
 #include "bitcoingui.h"
 #include "csvmodelwriter.h"
 #include "guiutil.h"
@@ -76,6 +84,11 @@ MessagePage::MessagePage(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::MessagePage),
     model(0),
+    conversationModel(0),
+    threadModel(0),
+    bubbleDelegate(0),
+    listDelegate(0),
+    chatComposer(0),
     msgdelegate(new MessageViewDelegate()),
     messageTextEdit(new MRichTextEdit())
 {
@@ -124,44 +137,126 @@ void MessagePage::setModel(MessageModel *model)
     if(!model)
         return;
 
-    //if (model->proxyModel)
-    //    delete model->proxyModel;
+    // The proxy model is still created (other code/paths may reference model->proxyModel),
+    // but it no longer drives the inbox view -- the Back-flow uses ConversationModel /
+    // ConversationThreadModel directly instead of the fragile flat-table + proxy plumbing.
     model->proxyModel = new QSortFilterProxyModel(this);
     model->proxyModel->setSourceModel(model);
     model->proxyModel->setDynamicSortFilter(true);
     model->proxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
     model->proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    // NOTE: do NOT call proxyModel->sort() here. The source MessageModel already keeps
-    // cachedMessageTable ordered (lower_bound insert + load-time sort), and with
-    // setDynamicSortFilter(true) an ACTIVE proxy sort tries to re-map every source
-    // beginInsertRows/endInsertRows into its own sort arrangement. When the source's
-    // reported insert position doesn't match the proxy's sort comparison of the new row,
-    // Qt emits "QSortFilterProxyModel: invalid inserted rows reported by source model"
-    // and drops the row from the view (symptom: messages received/toasted but the inbox
-    // stays blank). The view's sortByColumn() below still orders the DISPLAY without
-    // forcing the proxy into that conflicting dynamic-sort-on-insert path.
-    model->proxyModel->setFilterRole(MessageModel::Ambiguous);
-    model->proxyModel->setFilterFixedString("true");
 
-    ui->tableView->setModel(model->proxyModel);
-    ui->tableView->sortByColumn(MessageModel::ReceivedDateTime, Qt::DescendingOrder);
+    // SMSG redesign (Back-flow): the top-level "inbox" is now the conversation list
+    // (ConversationModel), not the flat message table. Selecting a conversation hides this
+    // list and shows the thread (bubbles) + compose; Back returns here.
+    if(!bubbleDelegate)
+    {
+        bubbleDelegate = new ConversationBubbleDelegate(this);
+    }
 
-    ui->listConversation->setModel(model->proxyModel);
-    ui->listConversation->setModelColumn(MessageModel::HTML);
+    // Build the conversation-grouped model and the thread model BEFORE binding them to the
+    // views (otherwise setModel() would receive a null pointer and the list would stay empty).
+    conversationModel = new ConversationModel(model, this);
+    threadModel = new ConversationThreadModel(model, this);
 
-    // Set column widths
-    ui->tableView->horizontalHeader()->resizeSection(MessageModel::Type,             100);
-    ui->tableView->horizontalHeader()->resizeSection(MessageModel::Label,            100);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(MessageModel::Label,            QHeaderView::Stretch);
-    ui->tableView->horizontalHeader()->resizeSection(MessageModel::FromAddress,      320);
-    ui->tableView->horizontalHeader()->resizeSection(MessageModel::ToAddress,        320);
-    ui->tableView->horizontalHeader()->resizeSection(MessageModel::SentDateTime,     170);
-    ui->tableView->horizontalHeader()->resizeSection(MessageModel::ReceivedDateTime, 170);
+    ui->tableView->setModel(conversationModel);
+    // ConversationModel is a single-column list model; make the QTableView present it as a
+    // clean list: no visible header, the one column stretched to full width, whole-row
+    // selection, and a comfortable row height for the label + preview text.
+    ui->tableView->horizontalHeader()->setStretchLastSection(true);
+    ui->tableView->horizontalHeader()->setVisible(false);
+    ui->tableView->verticalHeader()->setVisible(false);
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->verticalHeader()->setDefaultSectionSize(68);
+    ui->tableView->setShowGrid(false);
+    if(!listDelegate)
+    {
+        listDelegate = new ConversationListDelegate(this);
+    }
+    ui->tableView->setItemDelegate(listDelegate);
+    ui->tableView->setMouseTracking(true);
 
-    //ui->messageEdit->setMinimumHeight(100);
+    ui->listConversation->setModel(threadModel);
+    ui->listConversation->setModelColumn(0);
+    ui->listConversation->setItemDelegate(bubbleDelegate);
 
-    // Hidden columns
-    ui->tableView->setColumnHidden(MessageModel::Message, true);
+    // Replace the dated MRichTextEdit compose widget with the modern ChatComposer, at runtime
+    // (avoids editing the .ui). Insert it into the same layout slot as the old messageEdit,
+    // then hide messageEdit. All compose interactions go through chatComposer from here;
+    // messageEdit is kept (hidden) so nothing else that references it breaks.
+    if(!chatComposer)
+    {
+        chatComposer = new ChatComposer(this);
+
+        // Insert the composer directly into the known compose layout (ui->verticalLayout, the
+        // vertical layout that holds messageDetails, messageEdit and the button row), right
+        // after the old messageEdit. Using the named layout is robust -- parentWidget()->
+        // layout() is not, because a widget's parent is the containing WIDGET, skipping
+        // layouts, so it would return the wrong (top-level) layout.
+        int idx = ui->verticalLayout->indexOf(ui->messageEdit);
+        if(idx >= 0)
+        {
+            ui->verticalLayout->insertWidget(idx + 1, chatComposer);
+        }
+        else
+        {
+            ui->verticalLayout->addWidget(chatComposer);
+        }
+
+        chatComposer->hide();
+
+        // Permanently hide the old MRichTextEdit (its full word-processor ribbon is replaced
+        // by the ChatComposer). It stays in the tree so nothing that references it breaks.
+        ui->messageEdit->hide();
+
+        // Reorder so the action buttons (Send / Copy / Delete) sit BELOW the composer: remove
+        // the button row from its slot and re-add it at the end (after the composer). Natural
+        // chat flow: thread -> compose box -> Send underneath.
+        ui->verticalLayout->removeItem(ui->horizontalLayout);
+        ui->verticalLayout->addLayout(ui->horizontalLayout);
+
+        // Distribute vertical space: the conversation (messageDetails) should absorb all the
+        // extra height when the window grows; the composer and button row stay compact at the
+        // bottom. Give messageDetails a stretch factor and everything else zero so the thread
+        // fills the available real estate instead of leaving a gap.
+        int detailsIdx = ui->verticalLayout->indexOf(ui->messageDetails);
+        if(detailsIdx >= 0)
+        {
+            ui->verticalLayout->setStretch(detailsIdx, 1);
+        }
+        int composerIdx = ui->verticalLayout->indexOf(chatComposer);
+        if(composerIdx >= 0)
+        {
+            ui->verticalLayout->setStretch(composerIdx, 0);
+        }
+
+        // Keep the composer from expanding vertically -- it should hug its content height.
+        chatComposer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+        // Ensure the conversation groupbox is allowed to grow vertically to fill the space.
+        ui->messageDetails->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        // The compose section lives in ui->verticalLayout, which is itself an item inside the
+        // outer ui->verticalLayout_2 (alongside the label and the conversation-list tableView).
+        // Give that inner layout a stretch factor within the outer one, so the whole
+        // thread+compose section expands to fill the window height instead of sitting at its
+        // hint height and leaving a gap. The tableView (list view) also gets stretch so the
+        // list fills the height when it is the visible view.
+        int innerIdx = ui->verticalLayout_2->indexOf(ui->verticalLayout);
+        if(innerIdx >= 0)
+        {
+            ui->verticalLayout_2->setStretch(innerIdx, 1);
+        }
+        int tableIdx = ui->verticalLayout_2->indexOf(ui->tableView);
+        if(tableIdx >= 0)
+        {
+            ui->verticalLayout_2->setStretch(tableIdx, 1);
+        }
+
+        // Send when the composer signals Enter.
+        connect(chatComposer, SIGNAL(sendRequested()), this, SLOT(on_sendButton_clicked()));
+    }
 
     connect(ui->tableView->selectionModel(),        SIGNAL(selectionChanged(QItemSelection, QItemSelection)), this, SLOT(selectionChanged()));
     connect(ui->tableView,                          SIGNAL(doubleClicked(QModelIndex)),                       this, SLOT(selectionChanged()));
@@ -171,6 +266,16 @@ void MessagePage::setModel(MessageModel *model)
 
     // Scroll to bottom
     connect(model, SIGNAL(rowsInserted(QModelIndex,int,int)), this, SLOT(incomingMessage()));
+
+    // Refresh the conversation list when the model resets (e.g. after unlock or after a
+    // send/receive rebuilds it). Use a dedicated handler that preserves the current view:
+    // if a thread is open, stay in it; do not bounce back to the list on every rebuild.
+    connect(conversationModel, SIGNAL(modelReset()), this, SLOT(conversationsRebuilt()));
+
+    // Initial state: show the conversation list, hide the thread/compose until a
+    // conversation is selected.
+    ui->messageDetails->hide();
+    ui->tableView->show();
 
     selectionChanged();
 }
@@ -182,7 +287,7 @@ void MessagePage::on_sendButton_clicked()
 
     std::string sError;
     std::string sendTo  = replyToAddress.toStdString();
-    std::string message = ui->messageEdit->toHtml().toStdString();
+    std::string message = (chatComposer ? chatComposer->toHtml() : ui->messageEdit->toHtml()).toStdString();
     std::string addFrom = replyFromAddress.toStdString();
 
     if (DigitalNote::SMSG::Send(addFrom, sendTo, message, sError) != 0)
@@ -195,7 +300,7 @@ void MessagePage::on_sendButton_clicked()
     };
 
     //ui->messageEdit->setMaximumHeight(30);
-    ui->messageEdit->clear();
+    if(chatComposer) chatComposer->clear();
     ui->listConversation->scrollToBottom();
 }
 
@@ -239,37 +344,74 @@ void MessagePage::on_deleteButton_clicked()
     }
 }
 
+void MessagePage::conversationsRebuilt()
+{
+    // The conversation model just rebuilt (unlock, or a send/receive changed the messages).
+    // The tableView (bound to the model) refreshes its rows automatically, and the thread
+    // model auto-rebuilds on the same message-model change (it listens to rowsInserted). So
+    // there is nothing to reload here -- crucially, we must simply NOT navigate back to the
+    // list. If a thread is open, keep it open and scroll to the newest message.
+    if(ui->messageDetails->isVisible())
+    {
+        ui->listConversation->scrollToBottom();
+    }
+}
+
 void MessagePage::on_backButton_clicked()
 {
-    model->proxyModel->setFilterRole(false);
-    model->proxyModel->setFilterFixedString("");
-    model->resetFilter();
-    model->proxyModel->setFilterRole(MessageModel::Ambiguous);
-    model->proxyModel->setFilterFixedString("true");
-
+    // Back-flow: return from a thread to the conversation list.
     ui->tableView->clearSelection();
     ui->listConversation->clearSelection();
-    itemSelectionChanged();
-    selectionChanged();
 
     ui->messageDetails->hide();
     ui->tableView->show();
+
     ui->newButton->setEnabled(true);
     ui->newButton->setVisible(true);
     ui->sendButton->setEnabled(false);
     ui->sendButton->setVisible(false);
-    ui->messageEdit->setVisible(false);
+    if(chatComposer) { chatComposer->setVisible(false); chatComposer->clear(); }
+    ui->contactLabel->clear();
 }
 
 void MessagePage::selectionChanged()
 {
-    // Set button states based on selected tab and selection
-    QTableView *table = ui->tableView;
-    if(!table->selectionModel())
+    // Back-flow: the top-level list (tableView) now shows CONVERSATIONS (ConversationModel).
+    // Selecting one opens its thread: set the thread model's channel by pair key, capture the
+    // reply addresses for that channel (so a reply always uses the correct my-address), and
+    // switch from the conversation list to the thread + compose view. Deselecting returns to
+    // the list state.
+    QAbstractItemView *list = ui->tableView;
+
+    if(!list->selectionModel())
         return;
 
-    if(table->selectionModel()->hasSelection())
+    if(list->selectionModel()->hasSelection() && conversationModel)
     {
+        int row = list->selectionModel()->selectedRows().isEmpty()
+                    ? list->currentIndex().row()
+                    : list->selectionModel()->selectedRows().first().row();
+
+        if(row < 0 || row >= conversationModel->rowCount())
+            return;
+
+        // Channel identity for this conversation.
+        QString pairKey      = conversationModel->pairKeyAt(row);
+        QString counterparty = conversationModel->counterpartyAt(row);
+        QString myAddress    = conversationModel->myAddressAt(row);
+        QString displayName  = conversationModel->data(conversationModel->index(row, 0),
+                                                       ConversationModel::DisplayNameRole).toString();
+
+        // Reply addressing: the counterparty is the recipient, my-address is the sender for
+        // this channel. This is what guarantees a reply is never mis-addressed.
+        replyToAddress   = counterparty;
+        replyFromAddress = myAddress;
+
+        ui->contactLabel->setText(displayName);
+
+        // Load the thread for this channel (oldest -> newest) and show it.
+        threadModel->setPairKey(pairKey);
+
         replyAction->setEnabled(true);
         copyFromAddressAction->setEnabled(true);
         copyToAddressAction->setEnabled(true);
@@ -283,48 +425,18 @@ void MessagePage::selectionChanged()
         ui->newButton->setVisible(false);
         ui->sendButton->setEnabled(true);
         ui->sendButton->setVisible(true);
-        ui->messageEdit->setVisible(true);
+        if(chatComposer) chatComposer->setVisible(true);
 
         ui->tableView->hide();
-
-        // Figure out which message was selected
-        QModelIndexList labelColumn       = table->selectionModel()->selectedRows(MessageModel::Label);
-        QModelIndexList addressFromColumn = table->selectionModel()->selectedRows(MessageModel::FromAddress);
-        QModelIndexList addressToColumn   = table->selectionModel()->selectedRows(MessageModel::ToAddress);
-        QModelIndexList typeColumn        = table->selectionModel()->selectedRows(MessageModel::Type);
-
-        int type;
-
-        foreach (QModelIndex index, typeColumn)
-            type = (table->model()->data(index).toString() == MessageModel::Sent ? MessageTableEntry::Sent : MessageTableEntry::Received);
-
-        foreach (QModelIndex index, labelColumn)
-            ui->contactLabel->setText(table->model()->data(index).toString());
-
-        foreach (QModelIndex index, addressFromColumn)
-            if(type == MessageTableEntry::Sent)
-                replyFromAddress = table->model()->data(index).toString();
-            else
-                replyToAddress = table->model()->data(index).toString();
-
-        foreach (QModelIndex index, addressToColumn)
-            if(type == MessageTableEntry::Sent)
-                replyToAddress = table->model()->data(index).toString();
-            else
-                replyFromAddress = table->model()->data(index).toString();
-
-        QString filter = (type == MessageTableEntry::Sent ? replyToAddress + replyFromAddress : replyToAddress + replyFromAddress);
-
-        model->proxyModel->setFilterRole(false);
-        model->proxyModel->setFilterFixedString("");
-        model->proxyModel->sort(MessageModel::ReceivedDateTime);
-        model->proxyModel->setFilterRole(MessageModel::FilterAddressRole);
-        model->proxyModel->setFilterFixedString(filter);
         ui->messageDetails->show();
-        ui->listConversation->setCurrentIndex(model->proxyModel->index(0, 0, QModelIndex()));
+        ui->listConversation->scrollToBottom();
     }
     else
     {
+        // No conversation selected: show the conversation list, hide the thread/compose.
+        ui->messageDetails->hide();
+        ui->tableView->show();
+
         ui->newButton->setEnabled(true);
         ui->newButton->setVisible(true);
         ui->sendButton->setEnabled(false);
@@ -332,58 +444,24 @@ void MessagePage::selectionChanged()
         ui->copyFromAddressButton->setEnabled(false);
         ui->copyToAddressButton->setEnabled(false);
         ui->deleteButton->setEnabled(false);
-        ui->messageEdit->hide();
-        ui->messageDetails->hide();
-        ui->messageEdit->clear();
+        if(chatComposer) { chatComposer->hide(); chatComposer->clear(); }
     }
 }
 
 void MessagePage::itemSelectionChanged()
 {
-    // Set button states based on selected tab and selection
-    QListView *list = ui->listConversation;
-    if(!list->selectionModel())
-        return;
-
-    if(list->selectionModel()->hasSelection())
-    {
-        replyAction->setEnabled(true);
-        copyFromAddressAction->setEnabled(true);
-        copyToAddressAction->setEnabled(true);
-        deleteAction->setEnabled(true);
-
-        ui->copyFromAddressButton->setEnabled(true);
-        ui->copyToAddressButton->setEnabled(true);
-        ui->deleteButton->setEnabled(true);
-
-        ui->newButton->setEnabled(false);
-        ui->newButton->setVisible(false);
-        ui->sendButton->setEnabled(true);
-        ui->sendButton->setVisible(true);
-        ui->messageEdit->setVisible(true);
-
-        ui->tableView->hide();
-
-    }
-    else
-    {
-        ui->newButton->setEnabled(true);
-        ui->newButton->setVisible(true);
-        ui->sendButton->setEnabled(false);
-        ui->sendButton->setVisible(false);
-        ui->copyFromAddressButton->setEnabled(false);
-        ui->copyToAddressButton->setEnabled(false);
-        ui->deleteButton->setEnabled(false);
-        ui->messageEdit->hide();
-        ui->messageDetails->hide();
-        ui->messageEdit->clear();
-    }
+    // Back-flow: the thread list (listConversation) shows message bubbles for the open
+    // conversation. Selecting an individual bubble does not change page state -- the
+    // conversation is already open and the compose/buttons are already configured by
+    // selectionChanged(). Intentionally a no-op to avoid the old proxy-era side effects.
 }
 
 void MessagePage::incomingMessage()
 {
     ui->listConversation->scrollToBottom();
 }
+
+
 
 void MessagePage::messageTextChanged()
 {

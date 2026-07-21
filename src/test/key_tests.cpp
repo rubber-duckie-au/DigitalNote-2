@@ -19,13 +19,13 @@
 #include "hash.h"
 
 // Known-answer test vector from Bitcoin Core key_tests.cpp
-// private key (WIF-decoded) → expected compressed pubkey
+// private key (WIF-decoded) -> expected compressed pubkey
 static const std::string kPrivHex =
     "12b004fff7f4b69ef8650e767f18f11ede158148b425660723b9f9a66e61f747";
 
 BOOST_AUTO_TEST_SUITE(KeyTests)
 
-// ── Key generation ────────────────────────────────────────────────────────────
+// -- Key generation ------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(NewCompressedKeyIsValid)
 {
@@ -54,11 +54,11 @@ BOOST_AUTO_TEST_CASE(TwoNewKeysAreDistinct)
     CKey k1, k2;
     k1.MakeNewKey(true);
     k2.MakeNewKey(true);
-    // Astronomically unlikely to collide — if this fails the RNG is broken
+    // Astronomically unlikely to collide - if this fails the RNG is broken
     BOOST_CHECK(k1.GetPubKey() != k2.GetPubKey());
 }
 
-// ── Public key derivation ─────────────────────────────────────────────────────
+// -- Public key derivation -----------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(CompressedPubKeyIs33Bytes)
 {
@@ -91,11 +91,11 @@ BOOST_AUTO_TEST_CASE(PubKeyIDMatchesHash160)
     key.MakeNewKey(true);
     CPubKey pub  = key.GetPubKey();
     CKeyID  kid  = pub.GetID();
-    // GetID() is RIPEMD160(SHA256(pubkey_bytes)) — must be non-zero
+    // GetID() is RIPEMD160(SHA256(pubkey_bytes)) - must be non-zero
     BOOST_CHECK(kid != CKeyID());
 }
 
-// ── Sign / Verify ─────────────────────────────────────────────────────────────
+// -- Sign / Verify -------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(SignAndVerifyRoundtrip)
 {
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(SignatureLengthInDERRange)
     );
     std::vector<unsigned char> sig;
     BOOST_REQUIRE(key.Sign(hash, sig));
-    // DER-encoded secp256k1 signatures are 70–72 bytes
+    // DER-encoded secp256k1 signatures are 70-72 bytes
     BOOST_CHECK_GE(sig.size(), 70u);
     BOOST_CHECK_LE(sig.size(), 72u);
 }
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(WrongHashFails)
     BOOST_CHECK(!pub.Verify(h2, sig));
 }
 
-// ── Compact sign / recover ────────────────────────────────────────────────────
+// -- Compact sign / recover ----------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(SignCompactAndRecoverPubKey)
 {
@@ -211,11 +211,11 @@ BOOST_AUTO_TEST_CASE(SignCompactAndRecoverPubKey)
     BOOST_CHECK_EQUAL(recovered, pub);
 }
 
-// ── Known-answer test from Bitcoin Core ──────────────────────────────────────
+// -- Known-answer test from Bitcoin Core --------------------------------------
 
 BOOST_AUTO_TEST_CASE(KnownPrivKeyProducesKnownPubKey)
 {
-    // kPrivHex → compressed pubkey starts with 02 or 03
+    // kPrivHex -> compressed pubkey starts with 02 or 03
     std::vector<unsigned char> privBytes = ParseHex(kPrivHex);
     CKey key;
     key.Set(privBytes.begin(), privBytes.end(), /*fCompressedIn=*/true);

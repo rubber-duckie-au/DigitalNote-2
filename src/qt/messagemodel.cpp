@@ -1,5 +1,6 @@
 #include "compat.h"
 #include <algorithm>
+#include <QDebug>
 
 #include <QSet>
 #include <QTimer>
@@ -13,7 +14,7 @@
 #include <boost/bind.hpp>
 
 #include "guiutil.h"
-#includ "util.h"
+#include "util.h"
 #include "guiconstants.h"
 #include "bitcoinunits.h"
 #include "optionsmodel.h"
@@ -345,7 +346,6 @@ private:
                           (int)message.type, message.to_address.toStdString(), message.from_address.toStdString());
             }
 
-            //qWarning() << "DIAG messagemodel beginInsertRows first=" << index << "last=" << index << "rowCount=" << cachedMessageTable.size();
             parent->beginInsertRows(QModelIndex(), index, index);
             cachedMessageTable.insert(
                         index,
@@ -624,6 +624,10 @@ void MessageModel::newOutboxMessage(const DigitalNote::SMSG::Stored &smsgOutbox)
 void MessageModel::walletUnlocked()
 {
     priv->walletUnlocked();
+
+    // The table was just (re)populated now that the wallet is unlocked and private keys are
+    // available. Notify downstream models (ConversationModel) to rebuild from the new data.
+    emit refreshed();
 }
 
 void MessageModel::setEncryptionStatus(int status)

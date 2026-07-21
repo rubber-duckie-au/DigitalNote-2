@@ -1135,7 +1135,7 @@ void ThreadStakeMiner(CWallet *pwallet)
 
 				if (!fHaveCanonical)
 				{
-					// v2.0.0.9 consensus rescue (v2009-rescue-devops-fallback-SPEC):
+					// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC):
 					// no voted winner.  Normally we defer (below) rather than mint a
 					// block the fleet would reject.  BUT if the chain has been stalled
 					// >= RESCUE_STALL_SECS (block-relative), this is a genuine

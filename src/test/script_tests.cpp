@@ -21,7 +21,7 @@
 
 BOOST_AUTO_TEST_SUITE(ScriptTests)
 
-// ── CScript construction ──────────────────────────────────────────────────────
+// -- CScript construction ------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(EmptyScriptIsEmpty)
 {
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(P2PKHScriptEndsWithOpChecksig)
     BOOST_CHECK_EQUAL(s.back(), static_cast<uint8_t>(OP_CHECKSIG));
 }
 
-// ── Standard script recognition ───────────────────────────────────────────────
+// -- Standard script recognition -----------------------------------------------
 
 BOOST_AUTO_TEST_CASE(P2PKHIsRecognisedAsStandard)
 {
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(RandomBytesAreNonstandardScript)
     BOOST_CHECK_EQUAL(type, TX_NONSTANDARD);
 }
 
-// ── Multisig script ───────────────────────────────────────────────────────────
+// -- Multisig script -----------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(P2PKH_2of3MultisigIsRecognised)
 {
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(P2PKH_2of3MultisigIsRecognised)
     BOOST_CHECK_EQUAL(static_cast<int>(dests.size()), 3);
 }
 
-// ── Script IsUnspendable ──────────────────────────────────────────────────────
+// -- Script IsUnspendable ------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(OP_RETURNScriptIsUnspendable)
 {
@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_CASE(P2PKHScriptIsSpendable)
     BOOST_CHECK(!s.IsUnspendable());
 }
 
-// ── GetDestination round-trip ─────────────────────────────────────────────────
+// -- GetDestination round-trip -------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(GetDestinationRoundtrip)
 {

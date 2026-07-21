@@ -193,6 +193,11 @@ public slots:
 signals:
     // Asynchronous error notification
     void error(const QString &title, const QString &message, bool modal);
+
+    // Emitted after the message table is (re)populated -- notably after the wallet is
+    // unlocked, since messages are stored encrypted and cannot be loaded while locked.
+    // Downstream models (e.g. ConversationModel) rebuild on this.
+    void refreshed();
 };
 
 #endif // MESSAGEMODEL_H

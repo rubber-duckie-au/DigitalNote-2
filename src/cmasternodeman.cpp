@@ -15,8 +15,8 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "serialize.h"
-#include "enums/serialize_type.h"		// v2.0.9 S3.12: SER_GETHASH for the dseep dedup-cache hash
-#include "hash.h"						// v2.0.9 S3.12: Hash() for the dseep dedup-cache key
+#include "enums/serialize_type.h"		// v2.0.0.9 S3.12: SER_GETHASH for the dseep dedup-cache hash
+#include "hash.h"						// v2.0.0.9 S3.12: Hash() for the dseep dedup-cache key
 #include "cmasternode.h"
 #include "cmasternodepayments.h"
 #include "cmasternodevotetracker.h"
@@ -1165,11 +1165,11 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
 		if (sigTime <= GetAdjustedTime() - 60 * 60)
 		{
-			// v2.0.9 FINDING-2026-002 (TODO 3.12a): demote to -debug=masternode
+			// v2.0.0.9 FINDING-2026-002 (TODO 3.12a): demote to -debug=masternode
 			// (this is the exact line that flooded debug.log during the incident).
 			LogPrint("masternode", "dseep - Signature rejected, too far into the past %s - %d %d \n", vin.ToString().c_str(), sigTime, GetAdjustedTime());
 
-			// v2.0.9 FINDING-2026-002 (TODO 3.12c): a dseep older than the 1h
+			// v2.0.0.9 FINDING-2026-002 (TODO 3.12c): a dseep older than the 1h
 			// accept window is stale or replayed.  Score the source lightly (+1):
 			// ~100 stale dseeps to reach the ban threshold -- above the noise
 			// floor for a peer that briefly forwards one stale ping, but enough
@@ -1180,7 +1180,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 			return;
 		}
 
-		// v2.0.9 FINDING-2026-002 (TODO 3.12b): dedup before any expensive work
+		// v2.0.0.9 FINDING-2026-002 (TODO 3.12b): dedup before any expensive work
 		// (Find + signature verify).  A peer replaying identical cached dseeps
 		// within the 1h accept window would otherwise be fully processed every
 		// time (~78x traffic/CPU amplification observed).  Serialized by

@@ -19,8 +19,8 @@
 
 BOOST_AUTO_TEST_SUITE(SporkTests)
 
-// ── Spork ID constants ────────────────────────────────────────────────────────
-// These IDs must not change between releases — peers cross-check them.
+// -- Spork ID constants --------------------------------------------------------
+// These IDs must not change between releases - peers cross-check them.
 
 BOOST_AUTO_TEST_CASE(SporkInstantTXHasExpectedID)
 {
@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE(SporkMasternodePaymentsHasExpectedID)
 
 BOOST_AUTO_TEST_CASE(SporkIDsAreUnique)
 {
-    // IDs must all be distinct — a collision would mean two features share
+    // IDs must all be distinct - a collision would mean two features share
     // the same broadcast signal
     std::vector<int> ids = {
         SPORK_2_INSTANTX,
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(SporkIDsArePositive)
     BOOST_CHECK_GT(SPORK_3_INSTANTX_BLOCK_FILTERING, 0);
 }
 
-// ── IsSporkActive default state ────────────────────────────────────────────────
+// -- IsSporkActive default state ------------------------------------------------
 // Without a live network, sporks not yet broadcast should return the
 // hard-coded default (active or inactive depending on spork).
 
@@ -66,12 +66,12 @@ BOOST_AUTO_TEST_CASE(IsSporkActiveReturnsBool)
 {
     // Just verify it compiles and returns without crashing
     bool result = IsSporkActive(SPORK_2_INSTANTX);
-    BOOST_CHECK(result == true || result == false); // tautology — checks no crash
+    BOOST_CHECK(result == true || result == false); // tautology - checks no crash
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_SUITE(MasternodeConstantTests)
 
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(RPCPortIs18094)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_SUITE(PoSKernelTests)
 
@@ -145,14 +145,14 @@ BOOST_AUTO_TEST_CASE(BlockSpacingIs2Minutes)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_SUITE(ChainParamsTests)
 
 BOOST_AUTO_TEST_CASE(MainnetMessageStart4Bytes)
 {
     SelectParams(CBaseChainParams::MAIN);
-    // pchMessageStart is 4 bytes — must all be non-zero to distinguish from noise
+    // pchMessageStart is 4 bytes - must all be non-zero to distinguish from noise
     const CMessageHeader::MessageStartChars& start = Params().MessageStart();
     bool allZero = (start[0] == 0 && start[1] == 0 && start[2] == 0 && start[3] == 0);
     BOOST_CHECK(!allZero);

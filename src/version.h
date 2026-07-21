@@ -31,15 +31,49 @@ static const int DATABASE_VERSION = 70509;
 //   62055 = v2.0.0.7
 //   62057 = v2.0.0.8 PRE-QUEUE  (per-height single vote -- the earlier
 //           testnet build; this protocol is now superseded/dead)
-//   62058 = v2.0.0.8 POST-QUEUE (this build: M1Q queue-based voting).
+//   62058 = v2.0.0.8 POST-QUEUE (M1Q queue-based voting).
 //           Adds the mnvotequeue / getmnqueues messages; it is the version
 //           at which a node is counted as a queue-voting peer.
+//   62059 = v2.0.0.9 (this build).  CONSENSUS-CAPABLE: this is the first
+//           build whose mainnet voted-consensus activation is actually
+//           wired (FINDING-2026-003: the resolver now reads
+//           VOTED_CONSENSUS_ACTIVATION_HEIGHT = 1480000; every earlier
+//           mainnet build resolved to INT_MAX and could NEVER activate).
+//           It also carries the 3.16 devops rescue rule.
 //
-// MIN_PEER_PROTO_VERSION is intentionally NOT bumped -- v2.0.0.8 nodes
-// continue to accept v2.0.0.7 peers (62055) for the entire deployment
-// window, and v2.0.0.7 peers continue to accept v2.0.0.8 nodes because
-// 62056 > 62052.  Soft-fork compatible.
-static const int PROTOCOL_VERSION = 62058;
+// WHY 62059 EXISTS (TODO 3.19).  With activation set in stone at 1480000 the
+// network holds two behaviourally distinct classes that are otherwise hard to
+// tell apart: pre-2.0.0.9 builds (activation == INT_MAX, voted consensus can
+// never fire) and 2.0.0.9 builds (activation == 1480000, it will).  A distinct
+// protocol version makes that visible in the version handshake, so getpeerinfo
+// and the deployment-status telemetry can COUNT consensus-capable peers ahead
+// of the M8 proceed/defer decision at activation_height - 2 weeks, instead of
+// inferring it from subver strings.
+//
+// ---------------------------------------------------------------------------
+// DO NOT "BUMP THE OTHER TWO IN LOCKSTEP".  Three constants look related; only
+// this one moves for v2.0.0.9.
+//
+//   MIN_PEER_PROTO_VERSION (62052) -- intentionally NOT bumped.  Raising it
+//     would DISCONNECT pre-2.0.0.9 peers, partitioning the network during the
+//     rollout.  2.0.0.9 must identify itself while still interoperating.
+//     Fencing off old peers is a SEPARATE decision for the M8 window, taken on
+//     the telemetry this bump enables -- not a side effect of it.
+//
+//   MIN_VOTING_PROTOCOL_VERSION (62058, masternode.h) -- intentionally NOT
+//     bumped, and this is the dangerous one.  It is the protocol floor for the
+//     voted-consensus DENOMINATOR: cmasternodevotetracker.cpp calls
+//     CountVotingEligible(N, MIN_VOTING_PROTOCOL_VERSION) and then requires
+//     eligibleVoters >= MIN_ENABLED_FOR_CONSENSUS (5).  Bumping it to 62059
+//     would exclude every v2.0.0.8 masternode (62058) from the denominator the
+//     moment 2.0.0.9 ships.  Until 5+ masternodes have upgraded, eligibleVoters
+//     would fall below the floor and voted consensus would stop resolving --
+//     i.e. the below-floor dead chain that TODO 3.16 exists to rescue, induced
+//     deliberately by a version constant.  The v2.0.0.8 fleet is M1Q
+//     queue-capable and must keep counting.  Raise it only after the fleet has
+//     demonstrably migrated, as its own decision with its own soak.
+// ---------------------------------------------------------------------------
+static const int PROTOCOL_VERSION = 62059;
 
 // intial proto version, to be increased after version/verack negotiation
 static const int INIT_PROTO_VERSION = 209;

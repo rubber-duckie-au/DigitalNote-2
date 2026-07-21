@@ -147,7 +147,7 @@ static void EnforceVotedConsensusReadyOrThrow()
 
 	if (!fHaveCanonical)
 	{
-		// v2.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): no voted
+		// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): no voted
 		// winner.  Normally we refuse to serve a template (throw -10).  BUT if the
 		// chain has been stalled >= RESCUE_STALL_SECS (block-relative), this is a
 		// genuine deadlock; allow the template so CreateNewBlock builds a

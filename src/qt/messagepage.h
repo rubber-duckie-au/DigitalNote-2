@@ -13,6 +13,11 @@ QT_BEGIN_NAMESPACE
 class QTableView;
 class QItemSelection;
 class QSortFilterProxyModel;
+class ConversationModel;
+class ConversationThreadModel;
+class ConversationBubbleDelegate;
+class ConversationListDelegate;
+class ChatComposer;
 class QMenu;
 class QModelIndex;
 class MessageViewDelegate;
@@ -42,6 +47,11 @@ public slots:
 private:
     Ui::MessagePage *ui;
     MessageModel *model;
+    ConversationModel *conversationModel;
+    ConversationThreadModel *threadModel;
+    ConversationBubbleDelegate *bubbleDelegate;
+    ConversationListDelegate *listDelegate;
+    ChatComposer *chatComposer;
     
     QMenu *contextMenu;
     QAction *replyAction;
@@ -60,6 +70,7 @@ private slots:
     void on_copyToAddressButton_clicked();
     void on_deleteButton_clicked();
     void on_backButton_clicked();
+    void conversationsRebuilt();
     void messageTextChanged();
     void selectionChanged();
     void itemSelectionChanged();

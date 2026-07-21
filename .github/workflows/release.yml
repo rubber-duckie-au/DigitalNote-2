@@ -20,6 +20,7 @@ on:
           - 2.0.0.7-testing
           - v2.0.0.8-voted-consensus
           - v2008.1-apple-silicon-fix
+          - v2009
         default: ""
       draft:
         description: "Publish as draft (RECOMMENDED — uncheck only when ready to make the release public)"

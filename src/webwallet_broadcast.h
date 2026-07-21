@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-// v2.0.9 Boost.Beast migration. See webwallet.h for rationale.
+// v2.0.0.9 Boost.Beast migration. See webwallet.h for rationale.
 // The public interface of broadcast is preserved 1:1 with the websocketpp version
 // (run/stop/on_open/on_close/sendMessage/process_messages) so webwallet.cpp is
 // unchanged except for the connection handle type (connection_hdl -> shared_ptr<session>).

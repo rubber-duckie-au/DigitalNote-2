@@ -89,7 +89,7 @@ CDB::CDB(const std::string& strFilename, const char* pszMode) : pdb(NULL), activ
 				
 				--bitdb.mapFileUseCount[strFile];
 				
-				// v2.0.9 TODO 4.6: capture the filename BEFORE strFile is cleared,
+				// v2.0.0.9 TODO 4.6: capture the filename BEFORE strFile is cleared,
 				// and translate the raw BDB return code.  Previously this threw
 				// "CDB : Error <n>, can't open database " -- an opaque numeric code
 				// and an EMPTY filename (strFile had already been reset above).

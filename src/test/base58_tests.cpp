@@ -20,7 +20,7 @@
 
 BOOST_AUTO_TEST_SUITE(Base58Tests)
 
-// ── Encode / decode round-trip ────────────────────────────────────────────────
+// -- Encode / decode round-trip ------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(EncodeDecodeRoundtrip)
 {
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(EmptyBytesEncodesEmpty)
 {
     std::vector<unsigned char> empty;
     std::string encoded = EncodeBase58(empty);
-    // Some implementations encode empty as "" or "1" — test consistency
+    // Some implementations encode empty as "" or "1" - test consistency
     std::vector<unsigned char> decoded;
     BOOST_CHECK(DecodeBase58(encoded, decoded));
     BOOST_CHECK(decoded.empty());
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(InvalidCharacterRejected)
     BOOST_CHECK(!DecodeBase58("0InvalidChar", decoded));
 }
 
-// ── Checksummed encoding ──────────────────────────────────────────────────────
+// -- Checksummed encoding ------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(EncodeDecodeCheckRoundtrip)
 {
@@ -89,9 +89,9 @@ BOOST_AUTO_TEST_CASE(CorruptedChecksumRejected)
     BOOST_CHECK(!DecodeBase58Check(corrupted, decoded));
 }
 
-// ── CBitcoinAddress / DigitalNote mainnet prefix ──────────────────────────────
-// DigitalNote mainnet P2PKH prefix = 0x19 (decimal 25) → addresses start with "X"
-// Mainnet P2SH prefix = 0x0D (decimal 13) → addresses start with "6"
+// -- CBitcoinAddress / DigitalNote mainnet prefix ------------------------------
+// DigitalNote mainnet P2PKH prefix = 0x19 (decimal 25) -> addresses start with "X"
+// Mainnet P2SH prefix = 0x0D (decimal 13) -> addresses start with "6"
 
 BOOST_AUTO_TEST_CASE(MainnetP2PKHAddressStartsWithX)
 {

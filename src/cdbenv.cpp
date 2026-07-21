@@ -103,7 +103,7 @@ CDBEnv::VerifyResult CDBEnv::Verify(std::string strFile, bool (*recoverFunc)(CDB
 		return VERIFY_OK;
 	}
 
-	// v2.0.9 TODO 4.6: the verify failure was previously silent -- name the file
+	// v2.0.0.9 TODO 4.6: the verify failure was previously silent -- name the file
 	// and translate the raw BDB code before deciding whether to recover, so an
 	// operator can tell a genuinely corrupt wallet from (e.g.) a lock/permission
 	// problem.
@@ -139,7 +139,7 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive, std::vector<CDBEnv::
 
 	if (result == DB_VERIFY_BAD)
 	{
-		// v2.0.9 TODO 4.6: name the file being salvaged.
+		// v2.0.0.9 TODO 4.6: name the file being salvaged.
 		LogPrintf("Error: Salvage of %s found errors, all data may not be recoverable.\n", strFile);
 		
 		if (!fAggressive)
@@ -152,7 +152,7 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive, std::vector<CDBEnv::
 
 	if (result != 0 && result != DB_VERIFY_BAD)
 	{
-		// v2.0.9 TODO 4.6: translate the raw BDB code and name the file.
+		// v2.0.0.9 TODO 4.6: translate the raw BDB code and name the file.
 		LogPrintf("ERROR: db salvage of %s failed -- %s (%d)\n", strFile, DbEnv::strerror(result), result);
 		
 		return false;

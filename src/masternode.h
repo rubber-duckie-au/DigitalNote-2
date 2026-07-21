@@ -80,13 +80,26 @@ class uint256;
 //
 //   MIN_VOTING_PROTOCOL_VERSION
 //     Minimum peer protocol version that counts toward the consensus
-//     denominator.
+//     denominator.  Currently 62058 = the M1Q queue-capable floor.
 //
-//     TEMPORARY: set to 62057 for the debug-build wedge-reproduction soak
-//     so the test staker can form quorum with the rest of the fleet (which
-//     is at 62057).  See ledger S24 / S25.  RETURN TO 62058 before release
-//     -- the production rationale (queue denominator counts ONLY M1Q
-//     queue-capable MNs in lockstep with PROTOCOL_VERSION) is unchanged.
+//     HISTORICAL: this was temporarily lowered to 62057 for the debug-build
+//     wedge-reproduction soak (so the test staker could form quorum with a
+//     fleet then at 62057; see ledger S24 / S25).  That soak is over and the
+//     value has been RETURNED TO 62058 -- the production rationale (the queue
+//     denominator counts ONLY M1Q queue-capable MNs) is unchanged.
+//
+//     v2.0.0.9 / TODO 3.19 -- DO NOT raise this to track PROTOCOL_VERSION.
+//     PROTOCOL_VERSION moved to 62059 for v2.0.0.9, but this floor stays at
+//     62058 ON PURPOSE.  It gates the consensus DENOMINATOR:
+//     cmasternodevotetracker.cpp calls CountVotingEligible(N,
+//     MIN_VOTING_PROTOCOL_VERSION) and requires the result to be
+//     >= MIN_ENABLED_FOR_CONSENSUS (5).  Raising it to 62059 would drop every
+//     v2.0.0.8 masternode (62058) out of the denominator the instant v2.0.0.9
+//     ships; until 5+ masternodes upgrade, voted consensus would stop
+//     resolving -- the below-floor dead chain TODO 3.16 exists to rescue,
+//     self-inflicted via a constant.  The v2.0.0.8 fleet IS queue-capable and
+//     must keep counting.  Raise this only once the fleet has demonstrably
+//     migrated, as a separate decision with its own soak.
 // ---------------------------------------------------------------------------
 
 #define VOTED_CONSENSUS_ACTIVATION_HEIGHT				1480000

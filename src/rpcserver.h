@@ -173,6 +173,7 @@ extern json_spirit::Value masternode(const json_spirit::Array& params, bool fHel
 extern json_spirit::Value masternodelist(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getmnlastpaid(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value listequivocators(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value clearequivocator(const json_spirit::Array& params, bool fHelp);
 

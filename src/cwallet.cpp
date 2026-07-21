@@ -4105,7 +4105,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		// fix as miner.cpp's PoW path got in M3p5).
 		if(!GetEnforcedPayee(pindexPrev->nHeight+1, payee, vin))
 		{
-			// v2.0.0.9 consensus rescue (v2009-rescue-devops-fallback-SPEC):
+			// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC):
 			// no voted winner.  If the chain has been stalled >= RESCUE_STALL_SECS
 			// (block-relative), this is a rescue block: it MUST pay the devops
 			// address, NOT a locally-chosen FindOldestNotInVec masternode.  That
