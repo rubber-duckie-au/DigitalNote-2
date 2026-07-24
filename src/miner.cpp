@@ -583,12 +583,19 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 							// >= RESCUE_STALL_SECS (block-relative), this is a rescue
 							// block and MUST pay the deterministic devops address, NOT a
 							// node-local FindOldestNotInVec pick (divergent -> the 7728
-							// fork / attack surface B1.1; validators running the rescue
-							// rule accept ONLY devops here).  Post-activation the RPC gate
+							// fork / attack surface B1.1).
+							//
+							// v2.0.0.9 2026-07-23: an earlier revision added "validators
+							// running the rescue rule accept ONLY devops here".  No longer
+							// true -- validators accept a devops MN-slot payee
+							// unconditionally post-activation (FINDING-2026-009).  Paying
+							// devops here is still correct because it is the DETERMINISTIC
+							// choice; the point is to avoid a node-local pick, not to
+							// satisfy a validator predicate.  Post-activation the RPC gate
 							// (EnforceVotedConsensusReadyOrThrow) only lets us build once
 							// rescue is active, so FindOldestNotInVec is effectively
 							// bypassed post-activation.
-							if (IsRescueActive(pindexPrev, pindexPrev->nHeight + 1, GetAdjustedTime()))
+							if (ShouldMintRescueBlock(pindexPrev, pindexPrev->nHeight + 1, GetAdjustedTime()))
 							{
 								mn_payee = do_payee;
 							}
@@ -1142,17 +1149,23 @@ void ThreadStakeMiner(CWallet *pwallet)
 					// deadlock (cold queues after a coordinated restart, below-floor,
 					// sustained propagation failure) that deferring will never break.
 					// In that case fall through and build a block: CreateCoinStake's
-					// MN-slot fill lands on the devops fallback (no resolvable winner),
-					// and validators accept it as a rescue block (CheckBlock ->
-					// IsRescueActive).  The producer decides using GetAdjustedTime()
-					// (the block's timestamp is not finalised yet, ~= now); the block
-					// is then stamped so the committed validator predicate holds by
-					// construction -- the same pattern the VRX nBits path uses.
+					// MN-slot fill lands on the devops fallback (no resolvable winner).
 					//
-					// pindexBest is the parent (block at nNextHeight-1); its
-					// GetMedianTimePast() is committed, so every node computes the
-					// same rescue decision.
-					bool fRescue = IsRescueActive(pindexBest, nNextHeight, GetAdjustedTime());
+					// v2.0.0.9 2026-07-23 CORRECTION.  An earlier revision of this comment
+					// claimed "GetMedianTimePast() is committed, so every node computes the
+					// same rescue decision."  THAT WAS FALSE.  The MTP term is committed,
+					// but the predicate as a whole also reads voteTracker's in-memory
+					// mapQueues, which is node-local.  On 2026-07-23 that split the testnet
+					// (block 16489: producer saw no winner and minted; a validator holding a
+					// queue winner rejected it and stalled).  See FINDING-2026-009.
+					//
+					// Validators NO LONGER evaluate this predicate -- CheckBlock accepts a
+					// devops MN-slot payee unconditionally post-activation.  So this is a
+					// pure PRODUCER decision: if it is wrong we mint one devops-paid block
+					// instead of a masternode-paid one, and every node still accepts it.
+					// The GetAdjustedTime() argument is likewise harmless now: there is no
+					// validator-side counterpart left for it to disagree with.
+					bool fRescue = ShouldMintRescueBlock(pindexBest, nNextHeight, GetAdjustedTime());
 
 					if (!fRescue)
 					{
@@ -1230,7 +1243,30 @@ void ThreadStakeMiner(CWallet *pwallet)
 		// ===================================================================
 		{
 			int64_t nTipTime        = pindexBest->GetBlockTime();
-			int64_t nEarliestValid  = nTipTime + BLOCK_SPACING_MIN;
+
+			// v2.0.0.9 FINDING-2026-010 -- STAKE_TIMESTAMP_MASK correction.
+			//
+			// Waiting for wall-clock >= tipTime + BLOCK_SPACING_MIN is NOT
+			// sufficient.  The coinstake timestamp is masked DOWN to
+			// STAKE_TIMESTAMP_MASK+1 second granularity before the block is
+			// stamped (cblock.cpp: txCoinStake.nTime &= ~STAKE_TIMESTAMP_MASK),
+			// which can move the timestamp the block actually CARRIES up to
+			// STAKE_TIMESTAMP_MASK seconds EARLIER -- back below the spacing
+			// floor.  Velocity then rejects it:
+			//     "DENIED: Minimum block spacing not met for Velocity (severe)"
+			// and the staker retries until wall-clock happens to land past the
+			// next mask boundary.  Observed on testnet 2026-07-23: tip
+			// 1784801968, gate released at 1784802014, masked to 1784802000 ->
+			// spacing 32s < 45s -> DENIED; accepted only at the next boundary
+			// 1784802016 (spacing 48s).
+			//
+			// FIX: round UP to the first mask boundary at or after the spacing
+			// floor.  That is the earliest timestamp a coinstake can actually
+			// carry and still satisfy Velocity.  No staking opportunity is lost
+			// -- because of the mask, timestamps between the floor and that
+			// boundary were never obtainable in the first place.
+			int64_t nEarliestValid  = (nTipTime + BLOCK_SPACING_MIN + STAKE_TIMESTAMP_MASK)
+									  & ~((int64_t)STAKE_TIMESTAMP_MASK);
 			int64_t nNow            = GetAdjustedTime();
 
 			if (nNow < nEarliestValid)

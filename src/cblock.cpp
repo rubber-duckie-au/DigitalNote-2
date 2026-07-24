@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include <algorithm>
+#include <atomic>
 #include <boost/thread.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
@@ -215,77 +216,116 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut)
 	return masternodePayments.GetBlockPayee(nBlockHeight, payeeOut, vinOut);
 }
 
-// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC).
+// v2.0.0.9 devops rescue -- PRODUCER POLICY ONLY (NOT a consensus rule).
 //
-// Post-activation, when no voted-consensus winner exists for this height AND the
-// chain has been stalled for a fixed, block-relative interval, a block that pays the
-// devops address in the masternode slot is a valid rescue block.  This lets an
-// otherwise-deadlocked fleet (cold vote queues after a coordinated restart,
-// below-floor, sustained propagation failure) advance deterministically instead of
-// stalling or forking on a divergent legacy FindOldestNotInVec payee.
+// ===========================================================================
+// THIS IS NOT A VALIDITY PREDICATE.  DO NOT CALL IT FROM CheckBlock().
+// ===========================================================================
+// Superseded spec: v209-rescue-devops-fallback-SPEC section 7 ("the tightening")
+// is DROPPED.  Current spec: v209-rescue-fix-SPEC-2026-07-23.md.
 //
-// DETERMINISM BOUNDARY -- READ THIS BEFORE PORTING OR CHANGING THE PREDICATE.
-// Two of the three terms are pure functions of committed chain data; the third is
-// NOT.  An earlier revision of this comment claimed the whole predicate was a pure
-// function of committed chain data.  That was wrong, and the distinction matters for
-// anyone reimplementing this rule (see the Rust parity note at the end).
-//   * activation: GetEffectiveVotedConsensusActivationHeight() (height-derived).
-//                 COMMITTED -- identical on every node at a given height.
-//   * stall:      blockTime - pprev->GetMedianTimePast() >= RESCUE_STALL_SECS,
-//                 where blockTime is the candidate block's own committed nTime.
-//                 COMMITTED -- the same VRX-resync discipline (measure from
-//                 committed block timestamps, never GetAdjustedTime()/live tip).
-//   * no winner:  GetCanonicalWinnerFromQueues(N) == false.
-//                 *** NODE-LOCAL, NOT COMMITTED. ***  This reads voteTracker's
-//                 in-memory mapQueues, which is populated from network messages
-//                 (ProcessQueue) and is not derived from the chain.  Two nodes can
-//                 hold different queue state for the same height and therefore
-//                 compute DIFFERENT rescue verdicts for the SAME block.
+// WHAT HAPPENED.  Until 2026-07-23 this predicate was also consulted by
+// CheckBlock() to decide whether a devops MN-slot block was valid.  Because it
+// reads voteTracker's in-memory mapQueues -- node-local state fed by network
+// messages, not committed chain data -- block validity became a function of
+// local queue state.  On 2026-07-23 that split the testnet: two nodes running
+// the IDENTICAL v2.0.0.9 build reached opposite verdicts on block 16489
+// (hash 6376aa3e...).  The producer held no queue for that height, minted a
+// devops rescue block and advanced to 16494; a validator that DID hold a queue
+// winner rejected it and stalled at 16488.  FINDING-2026-009 / TODO 3.20.
 //
-// Why the stall does not heal the asymmetry: OnBlockConnectedQueues() prunes queues
-// by height and only fires on block-connect, and ProcessQueue enforces
-// VOTE_TIME_WINDOW_SECONDS at ARRIVAL only -- an already-accepted queue has no
-// time-based expiry.  During a >= RESCUE_STALL_SECS stall no block connects, so a
-// lingering pre-stall queue for the stalled height cannot age out for as long as the
-// stall lasts.
+// THE RULE THAT FOLLOWS.  Validation must be reproducible from the chain alone:
+// ConnectBlock() re-runs CheckBlock() during resync and reorg, long after any
+// live queue state is gone.  A predicate that reads mapQueues cannot be
+// replayed, so it cannot be a validity rule.  CheckBlock() now accepts a devops
+// MN-slot payee unconditionally post-activation (v2.0.0.8 behaviour, which is
+// empirically compatible: on 2026-07-23 v2.0.0.8 nodes accepted these blocks
+// and only v2.0.0.9 nodes split).
 //
-// Why this is tolerable as shipped (but see the caveat):
-//   * The designed scenario converges.  The cold-start stall (TODO 3.17) leaves NO
-//     node holding queues -- they are not reseeded without block production -- so
-//     every node agrees "no winner" and rescues together.
-//   * A node that genuinely holds a canonical winner is not stalled in the first
-//     place: its own producer can mint on the normal voted path.
-//   * A disagreeing validator SOFT-fails (fBlockHasPayments = false, DoS capped at
-//     10) rather than banning, so the mismatch degrades rather than partitions.
-// Residual exposure: a NON-PRODUCING validator holding a stale queue cannot break
-// the stall, will reject the rescue blocks the producing majority accepts, and
-// cannot expire that queue while the stall lasts -- it falls out of consensus until
-// restarted.  If that is ever observed, the fix is to make the "no winner" term
-// stable rather than instantaneous (or to age queues on a timer, not only on
-// block-connect).
+// CONSEQUENCE: every caller of this function is now a PRODUCER.  Node-local
+// terms are therefore safe here by construction -- no block's validity depends
+// on the answer.  A wrong answer costs at most one devops-paid block instead of
+// a masternode-paid one; it can never fork the chain.
 //
-// RUST PARITY: this predicate is slated to be published byte-for-byte for the v3
-// implementation.  Publish the determinism boundary WITH it -- a second
-// implementation that assumes term 2 is committed-derived will diverge from C++
-// exactly when the rescue matters.
+// WHAT THE PREDICATE ANSWERS: "should THIS node mint a devops fallback block to
+// break a stall?"  All four conditions must hold:
 //
-// pprev == NULL (genesis) can never satisfy the activation gate, so the null case is
-// handled by the height check short-circuiting first.
+//   1. height >= activation                       [committed]
+//   2. chain stalled >= RESCUE_STALL_SECS         [committed, block-relative]
+//   3. observation window elapsed                 [node-local -- see below]
+//   4. still no canonical winner in the queues    [node-local]
 //
-// Producer/validator time-basis agreement: the producer calls this with
-// GetAdjustedTime() (the block's nTime is not finalised at decision time, ~= now);
-// the validator calls it with the block's committed nTime.  A block built during a
-// rescue carries nTime ~= now (PoW: CBlock::UpdateTime pulls nTime up to
-// GetAdjustedTime(); PoS: the coinstake kernel time is at most a few minutes below
-// wall-clock via the stake search-back window).  During a >= 30 min stall that few-
-// second/minute slack is negligible against RESCUE_STALL_SECS, so the committed
-// STALL term the validator checks holds by construction for any block the producer
-// chose to build.  (Same discipline as the VRX nBits fix: for this term the
-// validator's decision is a pure function of committed block data; the producer
-// merely ensures the block it stamps satisfies it.  Note this reasoning covers the
-// stall term ONLY -- it says nothing about the node-local "no winner" term above.)
-bool IsRescueActive(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime)
+// CONDITION 3 IS THE 2026-07-23 FIX.  Conditions 2 and 4 are measured on
+// DIFFERENT CLOCKS, and that is what made a restart look like a network-wide
+// deadlock:
+//   * the stall is CHAIN-relative, so a freshly started node inherits the whole
+//     stall instantly -- there is no grace period;
+//   * "no winner" is NODE-LOCAL, and a freshly started node has an empty vote
+//     tracker BY DEFINITION.
+// Both were true at t=0 of uptime.  On 2026-07-23 testnet4 restarted at
+// 10:17:49 and minted a rescue block at 10:18:28 -- THIRTY-NINE SECONDS later --
+// having had no opportunity to learn that the rest of the fleet held a perfectly
+// good voted winner.  Absence of evidence was being read as evidence of absence.
+// Condition 3 requires the node to have been CAPABLE OF LEARNING (peered and out
+// of IBD) for RESCUE_MIN_OBSERVATION_SECS before an empty tracker counts as a
+// statement about the NETWORK rather than about itself.
+//
+// WHY THIS DOES NOT BREAK COLD START (the case the rescue exists for): after a
+// coordinated fleet restart no node holds queues, so all nodes wait out the same
+// window; if the masternodes are healthy, queues form and a winner appears (no
+// rescue needed); if they genuinely cannot form -- below floor, propagation dead
+// -- the window expires with still no winner and the rescue fires.  The window
+// is satisfiable while stalled because IsInitialBlockDownload() returns FALSE
+// once the tip stops moving (its "nLastUpdate < 15s" clause fails), so this gate
+// is NOT circular -- unlike the tip-freshness check in ThreadStakeMiner, which
+// can never be satisfied during a stall.  See SPEC section 6.1.
+//
+// LOCK ORDER: condition 3 calls IsInitialBlockDownload(), which takes cs_main
+// ONLY.  It is evaluated BEFORE GetCanonicalWinnerFromQueues() takes
+// LOCK2(cs_main, voteTracker.cs), so voteTracker.cs is never held while cs_main
+// is acquired.  This preserves the canonical cs_main -> voteTracker.cs order and
+// stays clear of the gdb-proven ABBA wedge of 2026-05-31.
+//
+// PRODUCER/VALIDATOR TIME ASYMMETRY (unchanged, and now harmless): producers
+// pass GetAdjustedTime() because the block's final nTime is not yet known.  Over
+// a >= 30 minute stall the few seconds of slack are immaterial, and since
+// validators no longer evaluate this predicate at all, the asymmetry cannot
+// cause disagreement.
+
+// Tracks when this node first became CAPABLE OF LEARNING about vote queues --
+// i.e. peered and out of initial block download.  Reset (not merely paused) if
+// that capability is lost, so a node cannot bank observation credit while blind.
+// Self-initialising: no init.cpp wiring required.
+static std::atomic<int64_t> nRescueObservationStart(0);
+
+static bool IsRescueObservationWindowElapsed()
 {
+	// Unlocked vNodes.size() read -- established practice in this tree
+	// (miner.cpp ThreadStakeMiner sync gate, net.cpp connection management).
+	bool fCapable = (vNodes.size() >= (size_t)RESCUE_MIN_PEERS) && !IsInitialBlockDownload();
+
+	if (!fCapable)
+	{
+		nRescueObservationStart.store(0);
+
+		return false;
+	}
+
+	int64_t nStart = nRescueObservationStart.load();
+
+	if (nStart == 0)
+	{
+		nRescueObservationStart.store(GetTime());
+
+		return false;
+	}
+
+	return (GetTime() - nStart) >= RESCUE_MIN_OBSERVATION_SECS;
+}
+
+bool ShouldMintRescueBlock(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime)
+{
+	// 1. Committed: activation height.
 	if (nBlockHeight < GetEffectiveVotedConsensusActivationHeight())
 	{
 		return false;
@@ -296,6 +336,20 @@ bool IsRescueActive(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBl
 		return false;
 	}
 
+	// 2. Committed: the chain really has been stalled.
+	if ((nBlockTime - pindexPrev->GetMedianTimePast()) < RESCUE_STALL_SECS)
+	{
+		return false;
+	}
+
+	// 3. Node-local: have we been around long enough for an empty vote tracker to
+	//    mean anything?  Evaluated BEFORE the tracker probe -- see LOCK ORDER above.
+	if (!IsRescueObservationWindowElapsed())
+	{
+		return false;
+	}
+
+	// 4. Node-local: after all of the above, still no winner anywhere we can see.
 	CScript votedPayeeProbe;
 	if (voteTracker.GetCanonicalWinnerFromQueues(nBlockHeight, votedPayeeProbe))
 	{
@@ -303,7 +357,7 @@ bool IsRescueActive(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBl
 		return false;
 	}
 
-	return (nBlockTime - pindexPrev->GetMedianTimePast()) >= RESCUE_STALL_SECS;
+	return true;
 }
 
 bool CBlock::DoS(int nDoSIn, bool fIn) const
@@ -1710,39 +1764,38 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 								{
 									// The block pays the devops address in the MN slot.
 									//
-									// v2.0.0.9 consensus rescue (SPEC): post-activation this
-									// is ONLY valid as a rescue block -- i.e. when there is
-									// no voted winner for this height AND the chain has been
-									// stalled >= RESCUE_STALL_SECS (block-relative).  A
-									// devops MN-slot payee outside that window is now a
-									// rejectable payee, closing the pre-2.0.0.9 hole where any
-									// devops MN-slot block was accepted unconditionally
-									// post-activation.  Pre-activation is unaffected: the
-									// height gate in IsRescueActive fails, but so does the
-									// GetEnforcedPayee!=CScript() guard on this whole block,
-									// so pre-activation devops blocks never reach here.
-									if (IsRescueActive(pindex->pprev, pindex->nHeight, pindex->GetBlockTime()))
-									{
-										LogPrintf("CheckBlock() : NOTICE - PoS height %d rescue block "
-												  "(no voted winner + %ds stall) pays devops in the "
-												  "masternode slot -- accepted.\n",
-												  pindex->nHeight, (int)RESCUE_STALL_SECS);
-									}
-									else
-									{
-										LogPrintf("CheckBlock() : PoS height %d pays devops in the "
-												  "masternode slot but rescue conditions are NOT met "
-												  "(voted winner exists, or stall < %ds) -- rejecting\n",
-												  pindex->nHeight, (int)RESCUE_STALL_SECS);
-
-										fBlockHasPayments = false;
-
-										// Divergent/opportunistic devops payee, not a genuine
-										// rescue -- treat as a soft failure like any payee
-										// mismatch (a peer mid-propagation may briefly see no
-										// winner); CW11 tiered DoS applies below.
-										nPaymentsDoSScore = std::min(nPaymentsDoSScore, 10);
-									}
+									// ============================================================
+									// DO NOT ADD A CONDITION HERE.  READ THIS FIRST.
+									// ============================================================
+									// This branch accepts UNCONDITIONALLY and must continue to.
+									//
+									// An earlier v2.0.0.9 draft gated it on IsRescueActive(),
+									// which consults voteTracker's in-memory mapQueues --
+									// NODE-LOCAL state fed by network messages, NOT committed
+									// chain data.  That made block validity a function of local
+									// queue state, and on 2026-07-23 it split the testnet: two
+									// nodes running the IDENTICAL build reached opposite verdicts
+									// on block 16489.  The producer held no queue for that height
+									// and minted a devops block; a validator that did hold one
+									// rejected it and stalled.  See FINDING-2026-009 and
+									// v209-rescue-fix-SPEC-2026-07-23.md.
+									//
+									// Validation MUST be reproducible from the chain alone:
+									// ConnectBlock() re-runs CheckBlock() on resync and reorg,
+									// long after any live queue state is gone.  A predicate that
+									// reads mapQueues cannot be replayed and therefore cannot be
+									// a validity rule.
+									//
+									// The rescue decision is PRODUCER POLICY ONLY -- see
+									// ShouldMintRescueBlock() in this file.  Accepting here
+									// unconditionally restores v2.0.0.8 behaviour (empirically
+									// confirmed compatible on 2026-07-23: v2.0.0.8 nodes accepted
+									// these blocks; only v2.0.0.9 nodes split), so v2.0.0.9 ships
+									// with NO consensus rule change and needs no activation
+									// ceremony.
+									LogPrintf("CheckBlock() : NOTICE - PoS height %d pays devops in the "
+											  "masternode slot -- accepted.\n",
+											  pindex->nHeight);
 								}
 								else
 								{
@@ -1949,28 +2002,15 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 								}
 								else if (addressOut.ToString() == strVfyDevopsAddress)
 								{
-									// v2.0.0.9 consensus rescue (SPEC): devops MN-slot payee is
-									// valid post-activation ONLY as a rescue block (no voted
-									// winner + >= RESCUE_STALL_SECS block-relative stall).
-									// See the PoS counterpart above for full rationale.
-									if (IsRescueActive(pindex->pprev, pindex->nHeight, pindex->GetBlockTime()))
-									{
-										LogPrintf("CheckBlock() : NOTICE - PoW height %d rescue block "
-												  "(no voted winner + %ds stall) pays devops in the "
-												  "masternode slot -- accepted.\n",
-												  pindex->nHeight, (int)RESCUE_STALL_SECS);
-									}
-									else
-									{
-										LogPrintf("CheckBlock() : PoW height %d pays devops in the "
-												  "masternode slot but rescue conditions are NOT met "
-												  "(voted winner exists, or stall < %ds) -- rejecting\n",
-												  pindex->nHeight, (int)RESCUE_STALL_SECS);
-
-										fBlockHasPayments = false;
-
-										nPaymentsDoSScore = std::min(nPaymentsDoSScore, 10);
-									}
+									// DO NOT ADD A CONDITION HERE.  Accepts unconditionally,
+									// exactly as the PoS counterpart above -- see the full
+									// rationale there (FINDING-2026-009, testnet split of
+									// 2026-07-23, v209-rescue-fix-SPEC-2026-07-23.md).
+									// Validity must be reproducible from committed chain data
+									// alone; the rescue decision is producer policy only.
+									LogPrintf("CheckBlock() : NOTICE - PoW height %d pays devops in the "
+											  "masternode slot -- accepted.\n",
+											  pindex->nHeight);
 								}
 								else
 								{

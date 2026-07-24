@@ -27,7 +27,11 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut);
 // v2.0.0.9 consensus rescue: true iff a devops MN-slot block at (nBlockHeight, nBlockTime)
 // extending pindexPrev is a valid rescue block (post-activation, no voted winner,
 // >= RESCUE_STALL_SECS block-relative stall). Pure function of committed chain data.
-bool IsRescueActive(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime);
+// v2.0.0.9 rescue -- PRODUCER POLICY ONLY.  NOT a validity predicate: never call
+// this from CheckBlock().  Renamed from IsRescueActive() on 2026-07-23 so that a
+// validator call reads as obviously wrong.  See FINDING-2026-009 and
+// v209-rescue-fix-SPEC-2026-07-23.md.
+bool ShouldMintRescueBlock(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime);
 
 // v2.0.0.8 PB-16: expose the spork-aware activation height so consensus-
 // adjacent code (notably CMasternodeMan::FindOldestNotInVecChainDerived)

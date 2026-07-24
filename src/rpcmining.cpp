@@ -152,9 +152,9 @@ static void EnforceVotedConsensusReadyOrThrow()
 		// chain has been stalled >= RESCUE_STALL_SECS (block-relative), this is a
 		// genuine deadlock; allow the template so CreateNewBlock builds a
 		// devops-fallback rescue block that validators accept (CheckBlock ->
-		// IsRescueActive).  Producer decides with GetAdjustedTime() (~= the block's
+		// ShouldMintRescueBlock).  Producer decides with GetAdjustedTime() (~= the block's
 		// eventual nTime); determinism is enforced on validation from committed data.
-		if (IsRescueActive(pindexBest, nNextHeight, GetAdjustedTime()))
+		if (ShouldMintRescueBlock(pindexBest, nNextHeight, GetAdjustedTime()))
 		{
 			static int64_t nLastRescueLog = 0;
 			int64_t nNow = GetTime();

@@ -54,7 +54,7 @@ static void EnforceVotedConsensusReadyOrThrow()
 		// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): permit a
 		// devops-fallback rescue block once the chain has been stalled
 		// >= RESCUE_STALL_SECS (block-relative).  See rpcmining.cpp for rationale.
-		if (IsRescueActive(pindexBest, nNextHeight, GetAdjustedTime()))
+		if (ShouldMintRescueBlock(pindexBest, nNextHeight, GetAdjustedTime()))
 		{
 			LogPrintf("mintblock -- RESCUE: no voted winner for height %d and "
 					  "chain stalled >= %ds; building a devops-fallback rescue "

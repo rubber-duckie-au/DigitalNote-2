@@ -4110,11 +4110,19 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 			// (block-relative), this is a rescue block: it MUST pay the devops
 			// address, NOT a locally-chosen FindOldestNotInVec masternode.  That
 			// legacy pick is node-local and divergent (the 7728 fork / attack
-			// surface B1.1); a validator running the rescue rule accepts ONLY the
-			// deterministic devops payee here, so paying anything else would get
-			// this block rejected.  Post-activation, FindOldestNotInVec is bypassed
-			// entirely -- devops is the deterministic terminus.
-			if (IsRescueActive(pindexPrev, pindexPrev->nHeight + 1, GetAdjustedTime()))
+			// surface B1.1).
+			//
+			// v2.0.0.9 2026-07-23: an earlier revision said "a validator running
+			// the rescue rule accepts ONLY the deterministic devops payee here".
+			// No longer true -- validators accept a devops MN-slot payee
+			// unconditionally post-activation, because a validity rule must not
+			// depend on node-local vote-queue state (FINDING-2026-009; the testnet
+			// split of 2026-07-23).  Paying devops here remains correct because it
+			// is the DETERMINISTIC choice: the point is to avoid a node-local pick,
+			// not to satisfy a validator predicate.  Post-activation,
+			// FindOldestNotInVec is bypassed entirely -- devops is the
+			// deterministic terminus.
+			if (ShouldMintRescueBlock(pindexPrev, pindexPrev->nHeight + 1, GetAdjustedTime()))
 			{
 				payee = GetScriptForDestination(devopaddress.Get());
 			}
