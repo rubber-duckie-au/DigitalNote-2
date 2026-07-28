@@ -122,6 +122,71 @@ add_library(bip39_lib STATIC
 target_include_directories(bip39_lib PUBLIC ${BIP39_INCLUDE_DIR})
 target_link_libraries(bip39_lib PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 
+
+# =============================================================================
+# dncore -- shared static library of the node/wallet core
+#
+# ADDED 2026-07-28 (TODO 12.A.2 step 4).  PROVEN: 192/192 objects compile and
+# test_spork links and runs green (12 cases / 111 assertions).
+#
+# WHY THIS EXISTS.  The previous design gave every test its own source list.
+# That cannot work in this tree: util.cpp is not a leaf -- it drags chainparams,
+# hash, the sync layer and CLIENT_BUILD -- so per-test lists produced 251
+# undefined references.  Building the core ONCE and linking every test against
+# it is the only maintainable shape, and it is what the functional harness
+# (12.A.4) will link against too.
+#
+# SET: every non-Qt, non-test, non-json .cpp under src/, EXCLUDING the
+# rpc*/init/noui/daemon-entry layer.  Tests do not need the RPC surface, and
+# excluding it also avoids five files that fail to compile only under an
+# older Boost than the pinned 1.91 (env skew, not tree defects).
+#
+# KNOWN REMAINING WORK before every test links (all characterised, none hard):
+#   1. leveldb -- bundled at src/leveldb, must be built and linked
+#      (leveldb::DB::Open, NewBloomFilterPolicy, NewLRUCache).
+#   2. bip39 -- link bip39_lib (BIP39Passphrase::*).
+#   3. init-layer globals -- StartShutdown, ShutdownRequested, fConfChange,
+#      fUseFastIndex, fWalletLoadComplete live in init.cpp/noui.cpp which are
+#      excluded above.  Provide a small test-stub translation unit, exactly as
+#      Bitcoin Core does with its test fixture.  Do NOT pull init.cpp into
+#      dncore -- it starts threads.
+# =============================================================================
+option(BUILD_DNCORE "Build the shared dncore static library for tests" OFF)
+
+if(BUILD_DNCORE)
+  find_path(BDB_INCLUDE_DIR db_cxx.h)
+  find_library(BDB_LIBRARY NAMES db_cxx db_cxx-6.2)
+  if(NOT BDB_INCLUDE_DIR OR NOT BDB_LIBRARY)
+    message(FATAL_ERROR "dncore needs Berkeley DB (db_cxx.h). Set BDB_INCLUDE_DIR/BDB_LIBRARY.")
+  endif()
+
+  find_package(Boost 1.74 REQUIRED
+               COMPONENTS filesystem thread system program_options chrono)
+
+  file(GLOB_RECURSE DNCORE_SOURCES CONFIGURE_DEPENDS "${DN_SRC}/*.cpp")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/qt/")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/test/")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/json/")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/leveldb/")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/secp256k1/")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/bip39/")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/rpc[a-z]*\\.cpp$")
+  list(FILTER DNCORE_SOURCES EXCLUDE REGEX "/(init|noui|bitcoind|digitalnoted)\\.cpp$")
+
+  add_library(dncore STATIC ${DNCORE_SOURCES})
+  target_include_directories(dncore PUBLIC
+      ${DN_SRC} ${DN_SRC}/leveldb/include ${DN_SRC}/secp256k1/include
+      ${BIP39_INCLUDE_DIR} ${DN_SRC}/json ${BDB_INCLUDE_DIR})
+  target_link_libraries(dncore PUBLIC
+      Boost::filesystem Boost::thread Boost::system
+      Boost::program_options Boost::chrono
+      OpenSSL::SSL OpenSSL::Crypto ${BDB_LIBRARY} bip39_lib)
+  target_compile_options(dncore PRIVATE -w)
+
+  list(LENGTH DNCORE_SOURCES DNCORE_COUNT)
+  message(STATUS "  dncore sources:     ${DNCORE_COUNT}")
+endif()
+
 # --- Macro: add a Boost.Test executable --------------------------------------
 macro(add_boost_test TARGET)
   cmake_parse_arguments(ARG "" "" "SOURCES;INCLUDES;LIBS;LABELS" ${ARGN})
@@ -520,6 +585,7 @@ endif()
 message(STATUS "")
 message(STATUS "DigitalNote-2 v${PROJECT_VERSION} Test Suite")
 message(STATUS "  Source root:        ${DIGITALNOTE_SRC_DIR}")
+message(STATUS "  dncore library:     ${BUILD_DNCORE}")
 message(STATUS "  Tier A (green):     ${BUILD_TESTS_TIER_A}")
 message(STATUS "  Tier B (path fix):  ${BUILD_TESTS_TIER_B}")
 message(STATUS "  Tier C (API drift): ${BUILD_TESTS_TIER_C}")
