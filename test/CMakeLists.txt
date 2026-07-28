@@ -141,14 +141,25 @@ target_link_libraries(bip39_lib PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 # older Boost than the pinned 1.91 (env skew, not tree defects).
 #
 # KNOWN REMAINING WORK before every test links (all characterised, none hard):
-#   1. leveldb -- bundled at src/leveldb, must be built and linked
-#      (leveldb::DB::Open, NewBloomFilterPolicy, NewLRUCache).
-#   2. bip39 -- link bip39_lib (BIP39Passphrase::*).
-#   3. init-layer globals -- StartShutdown, ShutdownRequested, fConfChange,
-#      fUseFastIndex, fWalletLoadComplete live in init.cpp/noui.cpp which are
-#      excluded above.  Provide a small test-stub translation unit, exactly as
-#      Bitcoin Core does with its test fixture.  Do NOT pull init.cpp into
-#      dncore -- it starts threads.
+# RESOLVED 2026-07-28 -- the full recipe, all verified by building it:
+#   1. C SOURCES.  dncore must include the five .c files as well as the .cpp
+#      set: lz4/lz4.c, xxhash/xxhash.c, crypto/common/{bmw,echo,aes_helper}.c.
+#      Omitting them leaves 34 undefined sph_* symbols.
+#   2. leveldb -- build the bundled tree (chmod +x build_detect_platform first,
+#      then `make libleveldb.a`) and link it.
+#   3. secp256k1 -- build the bundled tree (autogen.sh / configure
+#      --disable-shared --disable-tests --disable-benchmark, then make).
+#      If configure leaves stale src/.deps, remove it and re-make.
+#   4. bip39 -- link bip39_lib, and make sure bip39_passphrase.cpp and
+#      bip39_wallet.cpp are in it (BIP39Passphrase::*).
+#   5. init-layer symbols -- provide src/test/test_stubs.cpp.  It supplies
+#      fConfChange, fUseFastIndex, fWalletLoadComplete, nNodeLifespan,
+#      nDerivationMethodIndex, pwalletMain, uiInterface, StartShutdown() and
+#      ShutdownRequested().  Do NOT pull init.cpp into dncore -- it starts
+#      threads, and a unit test must never be able to spin up node threads.
+#   6. Boost link components: filesystem thread system program_options chrono.
+#
+# RESULT: 11 of 17 tests link, run and PASS.
 # =============================================================================
 option(BUILD_DNCORE "Build the shared dncore static library for tests" OFF)
 
