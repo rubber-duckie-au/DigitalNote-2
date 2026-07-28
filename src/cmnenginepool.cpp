@@ -15,6 +15,7 @@
 #include "cinv.h"
 #include "mining.h"
 #include "main_extern.h"
+#include "checkpoints.h"
 #include "cvalidationstate.h"
 #include "creservekey.h"
 #include "cmasternode.h"
@@ -250,6 +251,49 @@ bool CMNenginePool::IsBlockchainSynced()
 
 	fBlockchainSynced = true;
 
+	return true;
+}
+
+// FINDING-2026-011: stall-tolerant variant of IsBlockchainSynced() for the
+// masternode-gossip gate.  IsBlockchainSynced() returns false whenever the tip
+// is more than one hour old; on a STALLED chain that permanently blocks dsee/
+// dseep processing, so vMasternodes can never repopulate -- the very list needed
+// to resolve the stall (the CountVotingEligible denominator).  This returns true
+// once the block index is fully built, REGARDLESS of tip age, so the list can
+// rebuild during a stall.  It still returns false during genuine initial sync,
+// import, or reindex, when trusting masternode gossip would be wrong.
+//
+// Deliberately does NOT cache into fBlockchainSynced and does NOT apply the
+// 1-hour tip-age test.  Same principle as the v2.0.0.9 rescue fix: a stalled
+// chain must not be treated as "not synced", because that blocks the mechanisms
+// that end the stall.
+bool CMNenginePool::IsMasternodeListSyncable()
+{
+	if (fImporting || fReindex)
+	{
+		return false;
+	}
+
+	TRY_LOCK(cs_main, lockMain);
+
+	if (!lockMain)
+	{
+		return false;
+	}
+
+	if (pindexBest == NULL)
+	{
+		return false;
+	}
+
+	// Genuinely behind our peers -> still catching up, do not trust MN gossip yet.
+	if (pindexBest->nHeight < Checkpoints::GetTotalBlocksEstimate())
+	{
+		return false;
+	}
+
+	// NOTE: no "tip older than 1h" test -- a stalled tip is exactly when we must
+	// still accept dsee/dseep to rebuild the list and recover.
 	return true;
 }
 

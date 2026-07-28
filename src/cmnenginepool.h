@@ -90,6 +90,8 @@ public:
 	int GetMaxPoolTransactions();
 	bool IsSessionReady();
 	bool IsBlockchainSynced();
+	// FINDING-2026-011: stall-tolerant check for the masternode-gossip gate.
+	bool IsMasternodeListSyncable();
 	void Check();
 	void CheckFinalTransaction();
 	/// Charge fees to bad actors (Charge clients a fee if they're abusive)

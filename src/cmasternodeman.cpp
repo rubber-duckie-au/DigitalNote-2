@@ -789,7 +789,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 	//	return;
 	//}
 
-	if(!mnEnginePool.IsBlockchainSynced())
+	// FINDING-2026-011: use the stall-tolerant check here.  The strict
+	// IsBlockchainSynced() drops ALL dsee/dseep once the tip is > 1h old,
+	// which on a stalled chain permanently prevents vMasternodes from
+	// repopulating -- the list needed to resolve the stall.  This variant
+	// still refuses gossip during genuine initial sync / import / reindex.
+	if(!mnEnginePool.IsMasternodeListSyncable())
 	{
 		return;
 	}

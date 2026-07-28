@@ -3228,7 +3228,12 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 		// Backward-compatible: pre-M1Q peers silently drop "getmnqueues".
 		pfrom->PushMessage("getmnqueues");
 
-		if(!IsInitialBlockDownload())
+		// FINDING-2026-011: pull the full masternode list on connect whenever the
+		// index is built, not only when out of IBD.  During a stall IsInitialBlockDownload()
+		// is true (tip > 8h old), so a restarted node would never bulk-request the list and
+		// would rely on the slow throttled per-entry AskForMN path.  IsMasternodeListSyncable()
+		// still refuses during genuine initial sync / import / reindex.
+		if(mnEnginePool.IsMasternodeListSyncable())
 		{
 			mnodeman.DsegUpdate(pfrom);
 		}
