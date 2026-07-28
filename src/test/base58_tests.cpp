@@ -12,10 +12,11 @@
 #include <string>
 #include <vector>
 
+#include "allocators/securestring.h"
 #include "base58.h"
 #include "chainparams.h"
-#include "key.h"
-#include "uint256.h"
+#include "ckey.h"
+#include "uint/uint256.h"
 #include "util.h"
 
 BOOST_AUTO_TEST_SUITE(Base58Tests)

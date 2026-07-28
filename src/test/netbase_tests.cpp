@@ -3,7 +3,10 @@
 #include <string>
 #include <vector>
 
+#include "compat.h"
 #include "netbase.h"
+#include "net/cnetaddr.h"
+#include "net/cservice.h"
 
 using namespace std;
 

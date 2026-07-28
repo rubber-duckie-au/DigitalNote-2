@@ -12,12 +12,28 @@
 #include <vector>
 #include <cstring>
 
+#include "allocators/securestring.h"
+#include "uint/uint160.h"
 #include "hash.h"      // CHash256, CHash160, Hash(), Hash160()
-#include "crypto/sha256.h"
-#include "crypto/sha512.h"
-#include "crypto/ripemd160.h"
-#include "uint256.h"
-#include "utilstrencodings.h"  // HexStr, ParseHex
+#include "crypto/common/sha256.h"
+#include "crypto/common/sha512.h"
+#include "crypto/common/ripemd160.h"
+#include "uint/uint256.h"
+#include "util.h"
+
+// v2.0.0.9 (TODO 12.A.2 step 3): Boost.Test needs operator<< to print a value
+// on assertion failure.  uint160 / uint256 have no stream operator, so
+// BOOST_CHECK_EQUAL on them failed to compile with "Type has to implement
+// operator<< to be printable".  Providing the printers here (rather than
+// downgrading to BOOST_CHECK) keeps both values visible when a test fails.
+namespace boost { namespace test_tools { namespace tt_detail {
+    template<> struct print_log_value<uint160> {
+        void operator()(std::ostream& os, uint160 const& v) { os << v.GetHex(); }
+    };
+    template<> struct print_log_value<uint256> {
+        void operator()(std::ostream& os, uint256 const& v) { os << v.GetHex(); }
+    };
+}}}
 
 BOOST_AUTO_TEST_SUITE(HashTests)
 

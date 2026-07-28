@@ -12,9 +12,15 @@
 #include <cstdint>
 #include <limits>
 
-#include "amount.h"        // CAmount, COIN, CENT
+#include "main_const.h"
+
+// v2.0.0.9 (TODO 12.A.2 step 3): this fork has no MAX_SINGLE_TX.  The value that
+// MoneyRange() validates against is MAX_SINGLE_TX (main_const.h:42,
+// 10000000000 * COIN).  The upstream name was inherited by these tests and
+// never existed here, so the cap was NEVER actually being asserted.
+#include "types/camount.h"        // CAmount, COIN, CENT
 #include "util.h"
-// main.h for MIN_TX_FEE, MIN_RELAY_TX_FEE, MAX_MONEY - include guard-safe
+// main.h for MIN_TX_FEE, MIN_RELAY_TX_FEE, MAX_SINGLE_TX - include guard-safe
 #include "main.h"
 
 BOOST_AUTO_TEST_SUITE(AmountTests)
@@ -31,14 +37,14 @@ BOOST_AUTO_TEST_CASE(CentEquals1000000Satoshis)
     BOOST_CHECK_EQUAL(CENT, CAmount(1000000));
 }
 
-BOOST_AUTO_TEST_CASE(MaxMoneyIsPositive)
+BOOST_AUTO_TEST_CASE(MaxSingleTxIsPositive)
 {
-    BOOST_CHECK_GT(MAX_MONEY, CAmount(0));
+    BOOST_CHECK_GT(MAX_SINGLE_TX, CAmount(0));
 }
 
-BOOST_AUTO_TEST_CASE(MaxMoneyFitsInInt64)
+BOOST_AUTO_TEST_CASE(MaxSingleTxFitsInInt64)
 {
-    BOOST_CHECK_LE(MAX_MONEY,
+    BOOST_CHECK_LE(MAX_SINGLE_TX,
                    static_cast<CAmount>(std::numeric_limits<int64_t>::max()));
 }
 
@@ -49,7 +55,7 @@ BOOST_AUTO_TEST_CASE(MoneyRangeAcceptsZero)
 
 BOOST_AUTO_TEST_CASE(MoneyRangeAcceptsMaxMoney)
 {
-    BOOST_CHECK(MoneyRange(MAX_MONEY));
+    BOOST_CHECK(MoneyRange(MAX_SINGLE_TX));
 }
 
 BOOST_AUTO_TEST_CASE(MoneyRangeRejectsNegative)
@@ -60,7 +66,7 @@ BOOST_AUTO_TEST_CASE(MoneyRangeRejectsNegative)
 
 BOOST_AUTO_TEST_CASE(MoneyRangeRejectsOverMax)
 {
-    BOOST_CHECK(!MoneyRange(MAX_MONEY + 1));
+    BOOST_CHECK(!MoneyRange(MAX_SINGLE_TX + 1));
 }
 
 // -- Fee constants -------------------------------------------------------------
@@ -83,7 +89,7 @@ BOOST_AUTO_TEST_CASE(MinRelayTxFeeNotGreaterThanMinTxFee)
 
 BOOST_AUTO_TEST_CASE(MinTxFeeUnderMaxMoney)
 {
-    BOOST_CHECK_LT(MIN_TX_FEE, MAX_MONEY);
+    BOOST_CHECK_LT(MIN_TX_FEE, MAX_SINGLE_TX);
 }
 
 // -- Arithmetic safety ---------------------------------------------------------

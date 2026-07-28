@@ -4,7 +4,7 @@
 //
 // src/test/util_tests.cpp
 //
-// Tests for util.h / utilstrencodings.h helpers: hex encoding, string
+// Tests for util.h helpers: hex encoding, string
 // manipulation, argument parsing, time formatting, and sanitisation
 // functions used throughout the DigitalNote-2 codebase.
 
@@ -14,7 +14,8 @@
 #include <cstdint>
 
 #include "util.h"
-#include "utilstrencodings.h"
+#include "main_const.h"
+#include "types/camount.h"
 
 BOOST_AUTO_TEST_SUITE(UtilStringTests)
 
@@ -133,7 +134,12 @@ BOOST_AUTO_TEST_CASE(Base64_RoundtripString)
     const std::string original = "DigitalNote XDN v2.0.0.7";
     std::string encoded = EncodeBase64(original);
     bool invalid = false;
-    std::string decoded = DecodeBase64(encoded, &invalid);
+    // v2.0.0.9 (TODO 12.A.2 step 3): util.h offers DecodeBase64(const char*,
+    // bool*) -> vector<unsigned char>, and DecodeBase64(const string&) ->
+    // string.  There is no (string, bool*) overload; use the char* form so the
+    // invalid flag is still exercised, then rebuild the string.
+    std::vector<unsigned char> raw = DecodeBase64(encoded.c_str(), &invalid);
+    std::string decoded(raw.begin(), raw.end());
     BOOST_CHECK(!invalid);
     BOOST_CHECK_EQUAL(decoded, original);
 }
@@ -143,7 +149,12 @@ BOOST_AUTO_TEST_CASE(Base64_RoundtripBinary)
     std::vector<unsigned char> data = {0x00, 0xFF, 0x80, 0x7F, 0x01};
     std::string encoded = EncodeBase64(data.data(), data.size());
     bool invalid = false;
-    std::string decoded = DecodeBase64(encoded, &invalid);
+    // v2.0.0.9 (TODO 12.A.2 step 3): util.h offers DecodeBase64(const char*,
+    // bool*) -> vector<unsigned char>, and DecodeBase64(const string&) ->
+    // string.  There is no (string, bool*) overload; use the char* form so the
+    // invalid flag is still exercised, then rebuild the string.
+    std::vector<unsigned char> raw = DecodeBase64(encoded.c_str(), &invalid);
+    std::string decoded(raw.begin(), raw.end());
     BOOST_CHECK(!invalid);
     BOOST_CHECK_EQUAL(decoded.size(), data.size());
     for (size_t i = 0; i < data.size(); ++i)
@@ -225,7 +236,12 @@ BOOST_AUTO_TEST_CASE(Strprintf_BasicFormat)
 
 BOOST_AUTO_TEST_CASE(Strprintf_EmptyFormat)
 {
-    BOOST_CHECK_EQUAL(strprintf(""), "");
+    // v2.0.0.9 (TODO 12.A.2 step 3): strprintf in this fork is tinyformat's
+    // tfm::format (tinyformat.h:988), which requires a format string AND at
+    // least one argument.  The upstream single-argument strprintf("") form
+    // does not exist here, so the empty-format case is expressed with an
+    // explicit (unused) argument instead.
+    BOOST_CHECK_EQUAL(strprintf("%s", ""), "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

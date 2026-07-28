@@ -2,8 +2,15 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/foreach.hpp>
 
+#include "allocators/securestring.h"
 #include "script.h"
-#include "key.h"
+#include "cscript.h"
+#include "uint/uint160.h"
+#include "cscriptid.h"
+#include "types/ctxdestination.h"
+#include "cnodestination.h"
+#include "cstealthaddress.h"
+#include "ckey.h"
 
 using namespace std;
 

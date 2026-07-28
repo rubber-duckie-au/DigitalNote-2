@@ -12,11 +12,28 @@
 #include <string>
 #include <vector>
 
-#include "key.h"
-#include "uint256.h"
-#include "utilstrencodings.h"
-#include "random.h"
+#include "allocators/securestring.h"
+#include "ckey.h"
+#include "cpubkey.h"
+#include "ckeyid.h"
+#include "uint/uint256.h"
+#include "util.h"
 #include "hash.h"
+
+// v2.0.0.9 (TODO 12.A.2 step 3): Boost.Test printer for CPubKey.  Without it,
+// BOOST_CHECK_EQUAL on a CPubKey fails to compile ("Type has to implement
+// operator<< to be printable").  CPubKey exposes begin()/end(), so the raw
+// key bytes are rendered as hex.
+namespace boost { namespace test_tools { namespace tt_detail {
+    template<> struct print_log_value<CPubKey> {
+        void operator()(std::ostream& os, CPubKey const& v)
+        {
+            static const char* d = "0123456789abcdef";
+            for (const unsigned char* p = v.begin(); p != v.end(); ++p)
+                os << d[*p >> 4] << d[*p & 0x0f];
+        }
+    };
+}}}
 
 // Known-answer test vector from Bitcoin Core key_tests.cpp
 // private key (WIF-decoded) -> expected compressed pubkey

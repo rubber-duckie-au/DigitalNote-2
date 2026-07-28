@@ -4,6 +4,9 @@
 #include <vector>
 
 #include "serialize.h"
+#include "enums/serialize_type.h"
+#include "cvarint.h"
+#include "cdatastream.h"
 
 using namespace std;
 
@@ -21,7 +24,7 @@ BOOST_AUTO_TEST_CASE(varints)
         BOOST_CHECK(size == ss.size());
     }
 
-    for (uint64 i = 0;  i < 100000000000ULL; i += 999999937) {
+    for (uint64_t i = 0;  i < 100000000000ULL; i += 999999937) {
         ss << VARINT(i);
         size += ::GetSerializeSize(VARINT(i), 0, 0);
         BOOST_CHECK(size == ss.size());
@@ -34,8 +37,8 @@ BOOST_AUTO_TEST_CASE(varints)
         BOOST_CHECK_MESSAGE(i == j, "decoded:" << j << " expected:" << i);
     }
 
-    for (uint64 i = 0;  i < 100000000000ULL; i += 999999937) {
-        uint64 j;
+    for (uint64_t i = 0;  i < 100000000000ULL; i += 999999937) {
+        uint64_t j;
         ss >> VARINT(j);
         BOOST_CHECK_MESSAGE(i == j, "decoded:" << j << " expected:" << i);
     }
