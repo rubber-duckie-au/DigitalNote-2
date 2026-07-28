@@ -4,6 +4,12 @@
 #include "main.h"
 #include "util.h"
 #include "allocators/lockedpagemanagerbase.h"
+// v2.0.0.9 (TODO 12.A.2): LockedPageManagerBase's member definitions live in
+// the .cpp, which carries no explicit instantiation for this test's own
+// TestLocker.  The file contains ONLY template definitions (verified), so
+// including it here instantiates them for TestLocker without duplicating any
+// symbol already in dncore.
+#include "allocators/lockedpagemanagerbase.cpp"
 
 BOOST_AUTO_TEST_SUITE(allocator_tests)
 

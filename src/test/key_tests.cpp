@@ -40,6 +40,17 @@ namespace boost { namespace test_tools { namespace tt_detail {
 static const std::string kPrivHex =
     "12b004fff7f4b69ef8650e767f18f11ede158148b425660723b9f9a66e61f747";
 
+// v2.0.0.9 (TODO 12.A.2 step 3): key operations call into libsecp256k1, which
+// requires an initialised context.  Without ECC_Start() the first key op
+// dereferences a null context and the binary segfaults.  A Boost global
+// fixture guarantees setup/teardown around the whole module.
+struct ECCTestSetup
+{
+    ECCTestSetup()  { ECC_Start(); }
+    ~ECCTestSetup() { ECC_Stop();  }
+};
+BOOST_GLOBAL_FIXTURE(ECCTestSetup);
+
 BOOST_AUTO_TEST_SUITE(KeyTests)
 
 // -- Key generation ------------------------------------------------------------

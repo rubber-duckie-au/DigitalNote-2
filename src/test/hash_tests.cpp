@@ -46,7 +46,13 @@ BOOST_AUTO_TEST_CASE(SHA256_EmptyString)
     unsigned char digest[CSHA256::OUTPUT_SIZE];
     h.Finalize(digest);
     // SHA256("") = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-    std::string expected =
+    // v2.0.0.9 (TODO 12.A.2 step 3): expected value re-derived.  The
+    // originals here were hand-assembled and wrong -- the old comments show
+    // the author trying to reconcile the digit count.  The wallet CSHA256
+    // output was arbitrated against FOUR independent implementations
+    // (python hashlib, sha256sum, openssl, and a from-spec pure-python
+    // SHA-256): all four agree with the wallet.  The CODE is correct.
+    const std::string expected =
         "e3b0c44298fc1c149afbf4c8996fb924"
         "27ae41e4649b934ca495991b7852b855";
     BOOST_CHECK_EQUAL(HexStr(digest, digest + CSHA256::OUTPUT_SIZE), expected);
@@ -59,12 +65,15 @@ BOOST_AUTO_TEST_CASE(SHA256_ABC)
     h.Write(reinterpret_cast<const unsigned char*>(input.data()), input.size());
     unsigned char digest[CSHA256::OUTPUT_SIZE];
     h.Finalize(digest);
-    std::string expected =
-        "ba7816bf8f01cfea414140de5dae2ec7"
-        "3b00361bbef0469db7d8f93cac6e00d0";  // Note: 'a'=61, corrected:
-    // Actual SHA256("abc") = ba7816bf8f01cfea414140de5dae2ec73b00361bbef0469db7d8f93cac6e00d0 but that is 63 hex chars
-    // Correct: ba7816bf8f01cfea414140de5dae2ec73b00361bbef0469db7d8f93cac6e00d0
-    // = ba7816bf8f01cfea414140de5dae2ec7 3b00361bbef0469db7d8f93cac6e00d0 -- 64 chars total, correct
+    // v2.0.0.9 (TODO 12.A.2 step 3): expected value re-derived.  The
+    // originals here were hand-assembled and wrong -- the old comments show
+    // the author trying to reconcile the digit count.  The wallet CSHA256
+    // output was arbitrated against FOUR independent implementations
+    // (python hashlib, sha256sum, openssl, and a from-spec pure-python
+    // SHA-256): all four agree with the wallet.  The CODE is correct.
+    const std::string expected =
+        "ba7816bf8f01cfea414140de5dae2223"
+        "b00361a396177a9cb410ff61f20015ad";
     BOOST_CHECK_EQUAL(HexStr(digest, digest + CSHA256::OUTPUT_SIZE), expected);
 }
 

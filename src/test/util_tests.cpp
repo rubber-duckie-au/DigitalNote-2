@@ -165,7 +165,9 @@ BOOST_AUTO_TEST_CASE(Base64_RoundtripBinary)
 
 BOOST_AUTO_TEST_CASE(SanitizeString_NoopOnSafe)
 {
-    const std::string safe = "DigitalNote_XDN-2.0.0.7";
+    // safeChars (util.cpp:665) is [a-zA-Z0-9] .,;_/:?@ and deliberately
+    // EXCLUDES the hyphen, so a hyphen is not a "safe" character here.
+    const std::string safe = "DigitalNote_XDN 2.0.0.9";
     BOOST_CHECK_EQUAL(SanitizeString(safe), safe);
 }
 
@@ -198,19 +200,28 @@ BOOST_AUTO_TEST_CASE(FormatMoney_OneXDN)
 {
     // 1 XDN = 100,000,000 satoshis -> "1.00000000"
     std::string s = FormatMoney(COIN);
-    BOOST_CHECK_EQUAL(s, "1.00000000");
+        // v2.0.0.9 (TODO 12.A.2 step 3): expectation corrected against the tree.
+    // The CODE is right; the inherited upstream expectation was wrong.
+    // FormatMoney right-trims excess zeros (util.cpp:566-571).
+    BOOST_CHECK_EQUAL(s, "1.00");
 }
 
 BOOST_AUTO_TEST_CASE(FormatMoney_OneCent)
 {
     // 1 CENT = 1,000,000 satoshis -> "0.01000000"
     std::string s = FormatMoney(CENT);
-    BOOST_CHECK_EQUAL(s, "0.01000000");
+        // v2.0.0.9 (TODO 12.A.2 step 3): expectation corrected against the tree.
+    // The CODE is right; the inherited upstream expectation was wrong.
+    // FormatMoney right-trims excess zeros (util.cpp:566-571).
+    BOOST_CHECK_EQUAL(s, "0.01");
 }
 
 BOOST_AUTO_TEST_CASE(FormatMoney_Zero)
 {
-    BOOST_CHECK_EQUAL(FormatMoney(0), "0.00000000");
+        // v2.0.0.9 (TODO 12.A.2 step 3): expectation corrected against the tree.
+    // The CODE is right; the inherited upstream expectation was wrong.
+    // FormatMoney right-trims excess zeros (util.cpp:566-571).
+    BOOST_CHECK_EQUAL(FormatMoney(0), "0.00");
 }
 
 BOOST_AUTO_TEST_CASE(ParseMoney_RoundtripOneCoin)
