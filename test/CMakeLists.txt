@@ -59,8 +59,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # =============================================================================
 
 # --- Build options -----------------------------------------------------------
-option(BUILD_TESTS_TIER_A  "Tier A: tests that compile clean today"       ON)
-option(BUILD_TESTS_TIER_B  "Tier B: need include-path repair (12.A.2 s2)" OFF)
+option(BUILD_TESTS_TIER_A  "Tier A: the 17 tests that compile clean"      ON)
 option(BUILD_TESTS_TIER_C  "Tier C: need API-drift repair (12.A.2 s3)"    OFF)
 option(BUILD_TESTS_TIER_D  "Tier D: need BDB / deep wallet link graph"    OFF)
 option(BUILD_BIP39_TESTS   "Tests for the BIP39-Mnemonic library"         ON)
@@ -219,7 +218,12 @@ macro(add_boost_test TARGET)
 endmacro()
 
 # =============================================================================
-# TIER A -- compile clean against the current tree (verified 2026-07-28)
+# TIER A -- COMPILE CLEAN against the current tree.  17 of 24.
+# RE-TIERED 2026-07-28: after the step 2/3 repairs, twelve tests that now
+# compile were still sitting in Tiers B and C, which default OFF -- so the
+# suite was building far less than it could.  Tier B is now EMPTY and has
+# been REMOVED; every include-path repair landed.
+# When a Tier C or D test is fixed, MOVE IT INTO THIS LIST.
 # =============================================================================
 if(BUILD_TESTS_TIER_A)
 
@@ -262,17 +266,6 @@ if(BUILD_TESTS_TIER_A)
              ${DN_SRC}/util.cpp
     LABELS   "unit;tierA;container"
   )
-
-endif()
-
-# =============================================================================
-# TIER B -- include-path repair needed INSIDE the test .cpp files
-#
-# Each entry notes the specific rename.  The source lists below already use
-# this fork's real filenames, so once the #include lines in the test file are
-# corrected the target should compile.  See TODO 12.A.2 step 2.
-# =============================================================================
-if(BUILD_TESTS_TIER_B)
 
   # base64_tests.cpp: includes main.h + wallet.h; compiles, but drags the
   # deep link graph.  Promote to Tier A once linking is resolved (step 4).
@@ -338,18 +331,67 @@ if(BUILD_TESTS_TIER_B)
     LABELS   "unit;tierB;crypto"
   )
 
-  # key.h -> ckey.h; script.h is flat in this fork (not script/script.h)
-  add_boost_test(test_sigopcount
-    SOURCES  ${DN_TEST_SRC}/sigopcount_tests.cpp
-             ${DN_SRC}/script.cpp
-             ${DN_SRC}/cscript.cpp
-             ${DN_SRC}/ckey.cpp
-             ${DN_SRC}/cpubkey.cpp
+  # DecodeBase64 default-argument conflict against util.h:222.  The test
+  # redeclares the function with a default for parameter 2.  Drop the
+  # redeclaration and include util.h.
+  add_boost_test(test_util
+    SOURCES  ${DN_TEST_SRC}/util_tests.cpp
+             ${DN_SRC}/util.cpp
+    LABELS   "unit;tierC;util"
+  )
+
+  # CDataStream not visible from serialize.h alone -- header split.
+  add_boost_test(test_serialize
+    SOURCES  ${DN_TEST_SRC}/serialize_tests.cpp
+             ${DN_SRC}/util.cpp
+    LABELS   "unit;tierC;serialize"
+  )
+
+  # SOCKET not declared -- needs the platform/compat header this fork uses.
+  add_boost_test(test_netbase
+    SOURCES  ${DN_TEST_SRC}/netbase_tests.cpp
+             ${DN_SRC}/netbase.cpp
+             ${DN_SRC}/util.cpp
+    LABELS   "unit;tierC;net"
+  )
+
+  # LockedPageManagerBase no longer exists.  Re-point at the current
+  # allocator implementation or retire the test.
+  add_boost_test(test_allocator
+    SOURCES  ${DN_TEST_SRC}/allocator_tests.cpp
+             ${DN_SRC}/util.cpp
+    LABELS   "unit;tierC;allocator"
+  )
+
+  # HIGHEST VALUE REPAIR IN THE SUITE.  spork_tests.cpp expects
+  # SPORK_9_MASTERNODE_SUPERBLOCKS.  This tree has
+  # SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT, and superblocks moved to
+  # SPORK_13_ENABLE_SUPERBLOCKS.  The spork ID map changed and the test never
+  # followed -- consensus-adjacent, repair with care and re-derive the
+  # expectations from cspork.h / spork.h rather than editing symbol names
+  # until it compiles.
+  add_boost_test(test_spork
+    SOURCES  ${DN_TEST_SRC}/spork_tests.cpp
+             ${DN_SRC}/spork.cpp
+             ${DN_SRC}/masternode.cpp
+             ${DN_SRC}/kernel.cpp
+             ${DN_SRC}/chainparams.cpp
+             ${DN_SRC}/util.cpp
              ${DN_SRC}/hash.cpp
              ${DN_SRC}/uint/uint256.cpp
-    LIBS     secp256k1
-    LABELS   "unit;tierB;script"
+    LABELS   "unit;tierC;spork;consensus"
   )
+
+endif()
+
+# =============================================================================
+# TIER C -- genuine API drift.  These reference symbols this fork does not
+# have (CBaseChainParams, Checkpoints::CheckBlock, script/standard.h,
+# script/interpreter.h, primitives/transaction.h).  Fixing includes is NOT
+# enough -- their EXPECTATIONS must be re-derived from the tree.  Treat them
+# as new tests written against this codebase.  See TODO 12.A.2 step 3.
+# =============================================================================
+if(BUILD_TESTS_TIER_C)
 
   # base58.h ok; key.h -> ckey.h; uint256.h -> uint/uint256.h
   add_boost_test(test_base58
@@ -404,78 +446,25 @@ if(BUILD_TESTS_TIER_B)
     LABELS   "unit;tierB;transaction"
   )
 
-endif()
-
-# =============================================================================
-# TIER C -- genuine API drift.  These need CODE changes, not path changes.
-# =============================================================================
-if(BUILD_TESTS_TIER_C)
-
-  # HIGHEST VALUE REPAIR IN THE SUITE.  spork_tests.cpp expects
-  # SPORK_9_MASTERNODE_SUPERBLOCKS.  This tree has
-  # SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT, and superblocks moved to
-  # SPORK_13_ENABLE_SUPERBLOCKS.  The spork ID map changed and the test never
-  # followed -- consensus-adjacent, repair with care and re-derive the
-  # expectations from cspork.h / spork.h rather than editing symbol names
-  # until it compiles.
-  add_boost_test(test_spork
-    SOURCES  ${DN_TEST_SRC}/spork_tests.cpp
-             ${DN_SRC}/spork.cpp
-             ${DN_SRC}/masternode.cpp
-             ${DN_SRC}/kernel.cpp
-             ${DN_SRC}/chainparams.cpp
-             ${DN_SRC}/util.cpp
+  # key.h -> ckey.h; script.h is flat in this fork (not script/script.h)
+  add_boost_test(test_sigopcount
+    SOURCES  ${DN_TEST_SRC}/sigopcount_tests.cpp
+             ${DN_SRC}/script.cpp
+             ${DN_SRC}/cscript.cpp
+             ${DN_SRC}/ckey.cpp
+             ${DN_SRC}/cpubkey.cpp
              ${DN_SRC}/hash.cpp
              ${DN_SRC}/uint/uint256.cpp
-    LABELS   "unit;tierC;spork;consensus"
-  )
-
-  # DecodeBase64 default-argument conflict against util.h:222.  The test
-  # redeclares the function with a default for parameter 2.  Drop the
-  # redeclaration and include util.h.
-  add_boost_test(test_util
-    SOURCES  ${DN_TEST_SRC}/util_tests.cpp
-             ${DN_SRC}/util.cpp
-    LABELS   "unit;tierC;util"
-  )
-
-  # LockedPageManagerBase no longer exists.  Re-point at the current
-  # allocator implementation or retire the test.
-  add_boost_test(test_allocator
-    SOURCES  ${DN_TEST_SRC}/allocator_tests.cpp
-             ${DN_SRC}/util.cpp
-    LABELS   "unit;tierC;allocator"
-  )
-
-  # CDataStream not visible from serialize.h alone -- header split.
-  add_boost_test(test_serialize
-    SOURCES  ${DN_TEST_SRC}/serialize_tests.cpp
-             ${DN_SRC}/util.cpp
-    LABELS   "unit;tierC;serialize"
-  )
-
-  # SOCKET not declared -- needs the platform/compat header this fork uses.
-  add_boost_test(test_netbase
-    SOURCES  ${DN_TEST_SRC}/netbase_tests.cpp
-             ${DN_SRC}/netbase.cpp
-             ${DN_SRC}/util.cpp
-    LABELS   "unit;tierC;net"
+    LIBS     secp256k1
+    LABELS   "unit;tierB;script"
   )
 
 endif()
 
 # =============================================================================
-# TIER D -- needs Berkeley DB and/or the deep wallet link graph
+# TIER D -- needs Berkeley DB (db_cxx.h) and the deep wallet link graph.
 # =============================================================================
 if(BUILD_TESTS_TIER_D)
-
-  find_path(BDB_INCLUDE_DIR db_cxx.h)
-  find_library(BDB_LIBRARY NAMES db_cxx db_cxx-6.2)
-  if(NOT BDB_INCLUDE_DIR OR NOT BDB_LIBRARY)
-    message(FATAL_ERROR
-      "Tier D needs Berkeley DB (db_cxx.h). Set BDB_INCLUDE_DIR/BDB_LIBRARY, "
-      "or leave BUILD_TESTS_TIER_D=OFF.")
-  endif()
 
   # accounting_tests.cpp: init.h, wallet.h, walletdb.h -> needs BDB.
   add_boost_test(test_accounting
@@ -586,8 +575,7 @@ message(STATUS "")
 message(STATUS "DigitalNote-2 v${PROJECT_VERSION} Test Suite")
 message(STATUS "  Source root:        ${DIGITALNOTE_SRC_DIR}")
 message(STATUS "  dncore library:     ${BUILD_DNCORE}")
-message(STATUS "  Tier A (green):     ${BUILD_TESTS_TIER_A}")
-message(STATUS "  Tier B (path fix):  ${BUILD_TESTS_TIER_B}")
+message(STATUS "  Tier A (17, green): ${BUILD_TESTS_TIER_A}")
 message(STATUS "  Tier C (API drift): ${BUILD_TESTS_TIER_C}")
 message(STATUS "  Tier D (BDB):       ${BUILD_TESTS_TIER_D}")
 message(STATUS "  BIP39 unit tests:   ${BUILD_BIP39_TESTS}")
