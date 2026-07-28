@@ -14,6 +14,8 @@
 
 #include "allocators/securestring.h"
 #include "ckey.h"
+#include "eccverifyhandle.h"
+#include <memory>
 #include "cpubkey.h"
 #include "ckeyid.h"
 #include "uint/uint256.h"
@@ -46,8 +48,15 @@ static const std::string kPrivHex =
 // fixture guarantees setup/teardown around the whole module.
 struct ECCTestSetup
 {
-    ECCTestSetup()  { ECC_Start(); }
-    ~ECCTestSetup() { ECC_Stop();  }
+    // init.cpp:694-696 shows the required pair: ECC_Start() AND a live
+    // ECCVerifyHandle.  ECC_Start() alone is NOT enough -- verification still
+    // dereferences an uninitialised context and the binary segfaults.  Hold the
+    // handle for the lifetime of the test module, exactly as init.cpp holds
+    // globalVerifyHandle for the lifetime of the node.
+    ECCTestSetup()  { ECC_Start(); handle.reset(new ECCVerifyHandle()); }
+    ~ECCTestSetup() { handle.reset(); ECC_Stop(); }
+
+    std::unique_ptr<ECCVerifyHandle> handle;
 };
 BOOST_GLOBAL_FIXTURE(ECCTestSetup);
 
@@ -133,10 +142,9 @@ BOOST_AUTO_TEST_CASE(SignAndVerifyRoundtrip)
 
     // Hash something to sign
     const std::string msg = "DigitalNote XDN 2.0.0.7 test message";
-    uint256 hash = Hash(
-        reinterpret_cast<const unsigned char*>(msg.data()),
-        reinterpret_cast<const unsigned char*>(msg.data()) + msg.size()
-    );
+    // Hash<char*> is instantiated in hash.cpp; Hash<const unsigned char*> is not.
+    char* p_msg = const_cast<char*>(msg.data());
+    uint256 hash = Hash(p_msg, p_msg + msg.size());
 
     std::vector<unsigned char> sig;
     BOOST_CHECK(key.Sign(hash, sig));
@@ -149,10 +157,9 @@ BOOST_AUTO_TEST_CASE(SignatureLengthInDERRange)
     CKey key;
     key.MakeNewKey(true);
     const std::string msg = "test";
-    uint256 hash = Hash(
-        reinterpret_cast<const unsigned char*>(msg.data()),
-        reinterpret_cast<const unsigned char*>(msg.data()) + msg.size()
-    );
+    // Hash<char*> is instantiated in hash.cpp; Hash<const unsigned char*> is not.
+    char* p_msg = const_cast<char*>(msg.data());
+    uint256 hash = Hash(p_msg, p_msg + msg.size());
     std::vector<unsigned char> sig;
     BOOST_REQUIRE(key.Sign(hash, sig));
     // DER-encoded secp256k1 signatures are 70-72 bytes
@@ -167,10 +174,9 @@ BOOST_AUTO_TEST_CASE(TamperedSignatureFails)
     CPubKey pub = key.GetPubKey();
 
     const std::string msg = "tamper test";
-    uint256 hash = Hash(
-        reinterpret_cast<const unsigned char*>(msg.data()),
-        reinterpret_cast<const unsigned char*>(msg.data()) + msg.size()
-    );
+    // Hash<char*> is instantiated in hash.cpp; Hash<const unsigned char*> is not.
+    char* p_msg = const_cast<char*>(msg.data());
+    uint256 hash = Hash(p_msg, p_msg + msg.size());
 
     std::vector<unsigned char> sig;
     BOOST_REQUIRE(key.Sign(hash, sig));
@@ -187,10 +193,9 @@ BOOST_AUTO_TEST_CASE(WrongKeyFails)
     key2.MakeNewKey(true);
 
     const std::string msg = "wrong key test";
-    uint256 hash = Hash(
-        reinterpret_cast<const unsigned char*>(msg.data()),
-        reinterpret_cast<const unsigned char*>(msg.data()) + msg.size()
-    );
+    // Hash<char*> is instantiated in hash.cpp; Hash<const unsigned char*> is not.
+    char* p_msg = const_cast<char*>(msg.data());
+    uint256 hash = Hash(p_msg, p_msg + msg.size());
 
     std::vector<unsigned char> sig;
     BOOST_REQUIRE(key1.Sign(hash, sig));
@@ -205,10 +210,11 @@ BOOST_AUTO_TEST_CASE(WrongHashFails)
 
     const std::string msg1 = "original message";
     const std::string msg2 = "different message";
-    uint256 h1 = Hash(reinterpret_cast<const unsigned char*>(msg1.data()),
-                      reinterpret_cast<const unsigned char*>(msg1.data()) + msg1.size());
-    uint256 h2 = Hash(reinterpret_cast<const unsigned char*>(msg2.data()),
-                      reinterpret_cast<const unsigned char*>(msg2.data()) + msg2.size());
+    // Hash<char*> is instantiated in hash.cpp; Hash<const unsigned char*> is not.
+    char* p1 = const_cast<char*>(msg1.data());
+    char* p2 = const_cast<char*>(msg2.data());
+    uint256 h1 = Hash(p1, p1 + msg1.size());
+    uint256 h2 = Hash(p2, p2 + msg2.size());
 
     std::vector<unsigned char> sig;
     BOOST_REQUIRE(key.Sign(h1, sig));
@@ -224,10 +230,9 @@ BOOST_AUTO_TEST_CASE(SignCompactAndRecoverPubKey)
     CPubKey pub = key.GetPubKey();
 
     const std::string msg = "compact recovery test";
-    uint256 hash = Hash(
-        reinterpret_cast<const unsigned char*>(msg.data()),
-        reinterpret_cast<const unsigned char*>(msg.data()) + msg.size()
-    );
+    // Hash<char*> is instantiated in hash.cpp; Hash<const unsigned char*> is not.
+    char* p_msg = const_cast<char*>(msg.data());
+    uint256 hash = Hash(p_msg, p_msg + msg.size());
 
     std::vector<unsigned char> sigCompact;
     BOOST_REQUIRE(key.SignCompact(hash, sigCompact));
@@ -246,7 +251,10 @@ BOOST_AUTO_TEST_CASE(KnownPrivKeyProducesKnownPubKey)
     // kPrivHex -> compressed pubkey starts with 02 or 03
     std::vector<unsigned char> privBytes = ParseHex(kPrivHex);
     CKey key;
-    key.Set(privBytes.begin(), privBytes.end(), /*fCompressedIn=*/true);
+    // CKey::Set<unsigned char const*> is instantiated in ckey.cpp;
+    // CKey::Set<std::vector<unsigned char>::iterator> is not.
+    const unsigned char* pb = privBytes.data();
+    key.Set(pb, pb + privBytes.size(), /*fCompressedIn=*/true);
     BOOST_CHECK(key.IsValid());
 
     CPubKey pub = key.GetPubKey();

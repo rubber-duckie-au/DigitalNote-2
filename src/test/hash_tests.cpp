@@ -14,6 +14,11 @@
 
 #include "allocators/securestring.h"
 #include "uint/uint160.h"
+// v2.0.0.9 (TODO 12.A.2): use a type the production tree ALREADY instantiates.
+// The wallet keeps template bodies in .cpp files with an explicit instantiation
+// list; adding to that list purely to satisfy a test would change shipping code
+// for no user benefit.  Testing the instantiated type also tests what actually
+// ships, which is better coverage, not worse.
 #include "hash.h"      // CHash256, CHash160, Hash(), Hash160()
 #include "crypto/common/sha256.h"
 #include "crypto/common/sha512.h"
@@ -105,9 +110,18 @@ BOOST_AUTO_TEST_CASE(SHA256_SameInputSameOutput)
         h.Finalize(d.data());
         return d;
     };
+    // v2.0.0.9 (TODO 12.A.2 step 3): the original called hashOnce() four times
+    // inline, so begin() and end() were iterators into DIFFERENT temporaries --
+    // and both temporaries were destroyed at the end of the full expression.
+    // Iterating first.begin() -> second.end() over freed memory ran off the end
+    // and HUNG the test binary (exit 124 on timeout, never an assertion
+    // failure).  Materialise both vectors first so the iterator pairs are valid
+    // and belong to the same container.
+    const std::vector<unsigned char> first  = hashOnce();
+    const std::vector<unsigned char> second = hashOnce();
     BOOST_CHECK_EQUAL_COLLECTIONS(
-        hashOnce().begin(), hashOnce().end(),
-        hashOnce().begin(), hashOnce().end()
+        first.begin(),  first.end(),
+        second.begin(), second.end()
     );
 }
 
@@ -162,10 +176,9 @@ BOOST_AUTO_TEST_CASE(SHA512_EmptyStringKnownAnswer)
 BOOST_AUTO_TEST_CASE(Hash256_OutputIsUint256)
 {
     const std::string input = "DigitalNote";
-    uint256 h = Hash(
-        reinterpret_cast<const unsigned char*>(input.data()),
-        reinterpret_cast<const unsigned char*>(input.data()) + input.size()
-    );
+    // Hash<char*> is instantiated in hash.cpp; Hash<const unsigned char*> is not.
+    char* begin = const_cast<char*>(input.data());
+    uint256 h = Hash(begin, begin + input.size());
     // Result should be 32-byte uint256, not all-zero
     BOOST_CHECK(h != uint256());
 }
@@ -173,24 +186,19 @@ BOOST_AUTO_TEST_CASE(Hash256_OutputIsUint256)
 BOOST_AUTO_TEST_CASE(Hash256_Deterministic)
 {
     const std::string input = "test_determinism";
-    uint256 h1 = Hash(
-        reinterpret_cast<const unsigned char*>(input.data()),
-        reinterpret_cast<const unsigned char*>(input.data()) + input.size()
-    );
-    uint256 h2 = Hash(
-        reinterpret_cast<const unsigned char*>(input.data()),
-        reinterpret_cast<const unsigned char*>(input.data()) + input.size()
-    );
+    char* begin = const_cast<char*>(input.data());
+    uint256 h1 = Hash(begin, begin + input.size());
+    uint256 h2 = Hash(begin, begin + input.size());
     BOOST_CHECK_EQUAL(h1, h2);
 }
 
 BOOST_AUTO_TEST_CASE(Hash256_DifferentInputsDifferentOutput)
 {
     const std::string a = "aaa", b = "bbb";
-    uint256 ha = Hash(reinterpret_cast<const unsigned char*>(a.data()),
-                      reinterpret_cast<const unsigned char*>(a.data()) + a.size());
-    uint256 hb = Hash(reinterpret_cast<const unsigned char*>(b.data()),
-                      reinterpret_cast<const unsigned char*>(b.data()) + b.size());
+    char* pa = const_cast<char*>(a.data());
+    char* pb = const_cast<char*>(b.data());
+    uint256 ha = Hash(pa, pa + a.size());
+    uint256 hb = Hash(pb, pb + b.size());
     BOOST_CHECK_NE(ha, hb);
 }
 

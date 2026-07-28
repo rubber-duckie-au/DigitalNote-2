@@ -59,7 +59,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # =============================================================================
 
 # --- Build options -----------------------------------------------------------
-option(BUILD_TESTS_TIER_A  "Tier A: the 17 tests that compile clean"      ON)
+option(BUILD_TESTS_TIER_A  "Tier A: the 17 tests that pass"               ON)
 option(BUILD_TESTS_TIER_C  "Tier C: need API-drift repair (12.A.2 s3)"    OFF)
 option(BUILD_TESTS_TIER_D  "Tier D: need BDB / deep wallet link graph"    OFF)
 option(BUILD_BIP39_TESTS   "Tests for the BIP39-Mnemonic library"         ON)
@@ -229,7 +229,7 @@ macro(add_boost_test TARGET)
 endmacro()
 
 # =============================================================================
-# TIER A -- COMPILE CLEAN against the current tree.  17 of 24.
+# TIER A -- COMPILE, LINK, RUN and PASS.  17 of 24.
 # RE-TIERED 2026-07-28: after the step 2/3 repairs, twelve tests that now
 # compile were still sitting in Tiers B and C, which default OFF -- so the
 # suite was building far less than it could.  Tier B is now EMPTY and has
@@ -271,6 +271,12 @@ if(BUILD_TESTS_TIER_A)
     LABELS   "unit;tierA;crypto"
   )
 
+  # v2.0.0.9 (TODO 12.A.2): rewritten from mruset<int> to mruset<CAddress>.
+  # mruset<int> is not instantiated (mruset.cpp lists only CAddress and CInv);
+  # CInv could not substitute because it has operator< but no operator==, which
+  # this test's "mru == std::set" assertions require.  CAddress inherits both
+  # from CService/CNetAddr -- and is a type the wallet genuinely stores in an
+  # mruset (net/cnode.h setAddrKnown).  No shipping code was changed.
   add_boost_test(test_mruset
     SOURCES  ${DN_TEST_SRC}/mruset_tests.cpp
              ${DN_SRC}/mruset.cpp
