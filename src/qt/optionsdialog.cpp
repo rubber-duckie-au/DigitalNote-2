@@ -8,6 +8,23 @@
 #include "optionsmodel.h"
 
 #include <QDir>
+
+// v2.0.0.9 Qt6: QLocale::nativeCountryName() is deprecated in favour of
+// nativeTerritoryName().  The new name does NOT exist in Qt5, so this cannot be
+// a straight rename -- it needs a version-guarded alias.
+//
+// MUST sit AFTER a Qt header: QT_VERSION and QT_VERSION_CHECK come from
+// <QtCore/qglobal.h>.  Placed before any Qt include, the preprocessor sees an
+// undefined QT_VERSION_CHECK and fails with
+//     error: missing binary operator before token '('
+// v2.0.0.9 Qt6: QLocale::nativeCountryName() is deprecated in favour of
+// nativeTerritoryName().  The new name does NOT exist in Qt5, so this cannot be
+// a straight rename -- it needs a version-guarded alias.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+#define XDN_NATIVE_TERRITORY(loc) (loc).nativeTerritoryName()
+#else
+#define XDN_NATIVE_TERRITORY(loc) (loc).nativeCountryName()
+#endif
 #include <QIntValidator>
 #include <QLocale>
 #include <QMessageBox>
@@ -34,7 +51,7 @@ OptionsDialog::OptionsDialog(QWidget *parent) :
     /* Display elements init */
     QDir translations(":translations");
     ui->lang->addItem(QString("(") + tr("default") + QString(")"), QVariant(""));
-    foreach(const QString &langStr, translations.entryList())
+    for (const QString &langStr : translations.entryList())
     {
         QLocale locale(langStr);
 
@@ -43,7 +60,7 @@ OptionsDialog::OptionsDialog(QWidget *parent) :
         {
 #if QT_VERSION >= 0x040800
             /** display language strings as "native language - native country (locale name)", e.g. "Deutsch - Deutschland (de)" */
-            ui->lang->addItem(locale.nativeLanguageName() + QString(" - ") + locale.nativeCountryName() + QString(" (") + langStr + QString(")"), QVariant(langStr));
+            ui->lang->addItem(locale.nativeLanguageName() + QString(" - ") + XDN_NATIVE_TERRITORY(locale) + QString(" (") + langStr + QString(")"), QVariant(langStr));
 #else
             /** display language strings as "language - country (locale name)", e.g. "German - Germany (de)" */
             ui->lang->addItem(QLocale::languageToString(locale.language()) + QString(" - ") + QLocale::countryToString(locale.country()) + QString(" (") + langStr + QString(")"), QVariant(langStr));

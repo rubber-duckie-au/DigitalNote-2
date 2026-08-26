@@ -499,6 +499,41 @@ bool CActiveMasternode::Register(CTxIn vin, CService service, CKey keyCollateral
 		
 		mnodeman.Add(mn);
 	}
+	else
+	{
+		// v2.0.0.9 FINDING-2026-013: update an EXISTING local entry.
+		//
+		// Previously there was no else-branch here: re-registering a masternode
+		// this wallet already knew about relayed a fresh dsee to every peer but
+		// left THIS node's own entry untouched.  Peers therefore converged on the
+		// new values while the controller's own Masternodes tab kept showing the
+		// version and sigTime from whenever the entry was first added -- which is
+		// how a 2.0.0.8 fleet came to display 62055 for 102 days.
+		//
+		// The staleness was previously self-correcting by accident: an outage
+		// longer than MASTERNODE_REMOVAL_SECONDS (70 min) dropped the entry, so
+		// the next start took the pmn == NULL branch above and re-stamped it.
+		// Making the fleet tolerant of transient drops removed that accidental
+		// repair and exposed this gap.  The tolerance is correct; this is the
+		// missing half.
+		//
+		// These are exactly the fields carried in the dsee relayed immediately
+		// below, so the local entry now matches what peers are told.  sig and
+		// sigTime are updated together: they are a signed pair and must not be
+		// allowed to diverge.
+		LogPrintf("CActiveMasternode::Register() - Updating existing masternode entry service: %s - vin: %s\n",
+			service.ToString().c_str(), vin.ToString().c_str());
+		
+		pmn->addr               = service;
+		pmn->pubkey2            = pubKeyMasternode;
+		pmn->sig                = vchMasterNodeSignature;
+		pmn->sigTime            = masterNodeSignatureTime;
+		pmn->protocolVersion    = PROTOCOL_VERSION;
+		pmn->donationAddress    = donationAddress;
+		pmn->donationPercentage = donationPercentage;
+		
+		pmn->UpdateLastSeen(masterNodeSignatureTime);
+	}
 
 	//send to all peers
 	LogPrintf("CActiveMasternode::Register() - RelayElectionEntry vin = %s\n", vin.ToString().c_str());

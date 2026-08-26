@@ -1,6 +1,11 @@
 #include "trafficgraphwidget.h"
 #include "clientmodel.h"
 
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QPaintEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QColor>
@@ -134,10 +139,10 @@ void TrafficGraphWidget::updateRates()
     }
 
     float tmax = 0.0f;
-    foreach(float f, vSamplesIn) {
+    for (float f : vSamplesIn) {
         if(f > tmax) tmax = f;
     }
-    foreach(float f, vSamplesOut) {
+    for (float f : vSamplesOut) {
         if(f > tmax) tmax = f;
     }
     fMax = tmax;

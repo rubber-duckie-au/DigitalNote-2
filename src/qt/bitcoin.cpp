@@ -4,14 +4,40 @@
 
 #include "compat.h"
 
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QHeaderView>
+#include <QToolTip>
 #include <QApplication>
+#include <QGuiApplication>
+#include <QScreen>
+#include <QStyle>
+#include <QStyleFactory>
 #include <QMessageBox>
+// v2.0.0.9 Qt6: QTextCodec was REMOVED from qtbase in Qt6 (it moved to the
+// qt5compat module, which we do not build).  The only uses in this file are
+// already dead code behind `#if QT_VERSION < 0x050000` below, so the include
+// just needs the same guard rather than a QStringConverter port.
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QTextCodec>
+#endif
 #include <QLocale>
 #include <QTimer>
 #include <QTranslator>
 #include <QSplashScreen>
 #include <QLibraryInfo>
+
+// v2.0.0.9 Qt6: QLibraryInfo::location() is deprecated in Qt6 in favour of
+// path().  path() does NOT exist in Qt5, so this cannot be a straight rename --
+// it needs a version-guarded alias.  Defined once here rather than repeating
+// the #if at both call sites.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#define XDN_QT_TRANSLATIONS_PATH QLibraryInfo::path(QLibraryInfo::TranslationsPath)
+#else
+#define XDN_QT_TRANSLATIONS_PATH QLibraryInfo::location(QLibraryInfo::TranslationsPath)
+#endif
 
 #include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
@@ -222,7 +248,11 @@ int main(int argc, char *argv[])
 #endif
 
     Q_INIT_RESOURCE(bitcoin);
-    #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+    // v2.0.0.9 Qt6: BOTH attributes are deprecated in Qt6 and have NO EFFECT --
+    // high-DPI scaling and pixmaps are always enabled.  Setting them only
+    // produces -Wdeprecated-declarations noise, so the block is now upper-
+    // bounded at Qt6.  Behaviour is unchanged on Qt5 and on Qt6.
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 #endif
@@ -231,7 +261,74 @@ int main(int argc, char *argv[])
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 #endif
     QApplication app(argc, argv);
+
+    // ---------------------------------------------------------------------
+    // GUI DIAGNOSTIC (capture) + STYLE PIN
+    //
+    // >>> DO NOT CALL LogPrintf() HERE. <<<
+    // LogPrintStr() -> boost::call_once(DebugPrintInit) -> GetDataDir(), and
+    // this point is BEFORE ReadConfigFile() (line ~378).  The first LogPrintf
+    // in the process permanently binds debug.log to whatever GetDataDir()
+    // returns at that moment -- so logging here would either be silently
+    // dropped or, worse, pin the log file to the wrong directory for the whole
+    // run.  That is why the first attempt produced no output on Qt5.
+    //
+    // The style pin MUST stay here (before any widget exists); only the
+    // reporting is deferred.  Values are captured now and logged after the
+    // datadir and config are established.
+    // ---------------------------------------------------------------------
+    QString diagDefaultStyle = QApplication::style()
+                                 ? QApplication::style()->objectName() : "(none)";
+    QString diagStyles       = QStyleFactory::keys().join(", ");
+    QString diagPinned       = "(not pinned - Qt5 uses the platform default)";
+    QString diagDefaultFont  = app.font().family();
+    int     diagDefaultPt    = app.font().pointSize();
+    qreal   diagLogicalDpi   = 0, diagPhysicalDpi = 0, diagDpr = 0;
+
+    if (QScreen *scr = QGuiApplication::primaryScreen())
+    {
+        diagLogicalDpi  = scr->logicalDotsPerInch();
+        diagPhysicalDpi = scr->physicalDotsPerInch();
+        diagDpr         = scr->devicePixelRatio();
+    }
+
+    // v2.0.0.9 Qt6: PIN THE WIDGET STYLE.
+    //
+    // This application has NEVER called QApplication::setStyle(), so it has
+    // always inherited the PLATFORM DEFAULT.  On Qt5/Windows that was
+    // "windowsvista".  Qt 6.7 introduced a "windows11" style and made it the
+    // default, so a Qt6 build silently changes menus, tab bars, table grids,
+    // headers, frames and control metrics at once, with no code change.
+    //
+    // It bites hard here because fUseDarkTheme defaults to FALSE
+    // (optionsmodel.cpp:58) -- in the default configuration there is NO
+    // application stylesheet and the platform style IS the entire appearance.
+    // Every per-widget setStyleSheet() was also authored against vista metrics.
+    //
+    // Qt5 is untouched: it already resolves here by default.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    {
+        const QStringList preferred = { "windowsvista", "Windows", "Fusion" };
+        const QStringList available = QStyleFactory::keys();
+
+        for (const QString &want : preferred)
+        {
+            if (available.contains(want, Qt::CaseInsensitive))
+            {
+                QApplication::setStyle(QStyleFactory::create(want));
+                diagPinned = want;
+                break;
+            }
+        }
+    }
+#endif
+
     GUIUtil::applyDefaultFont(&app);
+
+    // Captured AFTER applyDefaultFont: what the UI actually uses.
+    const QString diagResolvedFont = app.font().family();
+    const int     diagResolvedPt   = app.font().pointSize();
+    const int     diagResolvedPx   = app.font().pixelSize();
 
     // Do this early as we don't want to bother initializing if we are just calling IPC
     // ... but do it after creating app, so QCoreApplication::arguments is initialized:
@@ -268,6 +365,33 @@ int main(int argc, char *argv[])
 
     ReadConfigFile(mapArgs, mapMultiArgs);
 
+    // ---------------------------------------------------------------------
+    // GUI DIAGNOSTIC (emit).  Safe here: the datadir is established, so the
+    // first LogPrintf binds debug.log to the correct location.
+    //
+    // Compare these lines between a Qt5 and a Qt6 build.  Three questions:
+    //   1. which style did each Qt choose by default?
+    //   2. did logicalDpi change?  (scaledFontPoints() scales by dpi/96, so a
+    //      shift here means fonts are sized differently)
+    //   3. what font is actually resolved?
+    //
+    // >>> KNOWN BUG, PRE-DATES Qt6 <<<  guiutil.cpp:756 loads
+    // ":/fonts/Inter-Regular.ttf", but bitcoin.qrc ships only
+    // res/fonts/RobotoMono-Bold.ttf (alias "monospace").  Inter is NOT in the
+    // resources, so addApplicationFont() returns -1 on EVERY run and the family
+    // falls back to the platform default -- which differs between Qt5 and Qt6.
+    // If resolvedFont is not "Inter", that is this bug, not the migration.
+    // ---------------------------------------------------------------------
+    LogPrintf("GUI: qt=%s platformDefaultStyle=%s stylePinned=%s\n",
+              qVersion(), qPrintable(diagDefaultStyle), qPrintable(diagPinned));
+    LogPrintf("GUI: stylesAvailable=[%s]\n", qPrintable(diagStyles));
+    LogPrintf("GUI: logicalDpi=%.1f physicalDpi=%.1f devicePixelRatio=%.2f\n",
+              diagLogicalDpi, diagPhysicalDpi, diagDpr);
+    LogPrintf("GUI: platformDefaultFont='%s' pointSize=%d\n",
+              qPrintable(diagDefaultFont), diagDefaultPt);
+    LogPrintf("GUI: resolvedFont='%s' pointSize=%d pixelSize=%d\n",
+              qPrintable(diagResolvedFont), diagResolvedPt, diagResolvedPx);
+
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)
     app.setOrganizationName("DigitalNote");
@@ -279,6 +403,88 @@ int main(int argc, char *argv[])
 
     // ... then GUI settings:
     OptionsModel optionsModel;
+
+    // ---------------------------------------------------------------------
+    // v2.0.0.9: Windows control-contrast stylesheet (light theme only).
+    //
+    // WHY.  Pinning the style to "windowsvista" makes Qt6 match Qt5 -- verified
+    // by comparing qt5-win11 and qt6-win11 screenshots, which are effectively
+    // identical.  But on WINDOWS 11 that style delegates to the newer OS
+    // theming, which renders buttons flat white and input borders very light.
+    // Windows 10 drew the same style with grey buttons and darker borders.
+    //
+    // So this is NOT a Qt5-vs-Qt6 difference and NOT a migration regression --
+    // it is Windows 10 vs Windows 11 rendering the same style.  Restoring the
+    // higher-contrast look is therefore a DESIGN choice, applied deliberately
+    // rather than inherited from whatever the OS decides.
+    //
+    // SCOPE, deliberately narrow:
+    //   * Windows only -- macOS and Linux keep their native appearance, which
+    //     is correct on those platforms.
+    //   * Light theme only -- fUseDarkTheme installs its own full stylesheet
+    //     below and must not be double-styled.
+    //   * Buttons and input borders only.  No layout, spacing or colour changes
+    //     beyond contrast.
+    //
+    // SAFE against the 69 per-widget setStyleSheet() calls in this codebase:
+    // the link-style buttons (askpassphrasedialog) and coloured action buttons
+    // (seedphrasedialog) explicitly set "border: none" and their own
+    // background, so they override this.  The two that set only "color:#888"
+    // inherit the standard button look, which is an improvement.
+    //
+    // TO REVERT: delete this block.  TO TUNE: the palette below mirrors the
+    // Windows 10 control colours -- #f0f0f0 face, #adadad border, #0078d7
+    // accent on hover.
+    // ---------------------------------------------------------------------
+#ifdef Q_OS_WIN
+    if (!fUseDarkTheme) {
+        qApp->setStyleSheet(
+            "QPushButton {"
+            "  background-color: #f0f0f0;"
+            "  border: 1px solid #adadad;"
+            "  border-radius: 2px;"
+            "  padding: 4px 12px;"
+            "  min-height: 16px;"
+            "}"
+            "QPushButton:hover   { background-color: #e5f1fb; border-color: #0078d7; }"
+            "QPushButton:pressed { background-color: #cce4f7; border-color: #005499; }"
+            "QPushButton:default { border-color: #0078d7; }"
+            "QPushButton:disabled {"
+            "  background-color: #f5f5f5; color: #a0a0a0; border-color: #d0d0d0;"
+            "}"
+
+            // Inputs: Win10 used a noticeably darker border than Win11 does.
+            "QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox,"
+            "QComboBox, QAbstractSpinBox {"
+            "  border: 1px solid #7a7a7a;"
+            "  border-radius: 2px;"
+            "  padding: 2px 4px;"
+            "  background-color: #ffffff;"
+            "}"
+            "QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus,"
+            "QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {"
+            "  border: 1px solid #0078d7;"
+            "}"
+            "QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled {"
+            "  background-color: #f5f5f5; color: #a0a0a0; border-color: #d0d0d0;"
+            "}"
+
+            // Frames and item views: restore a visible edge.
+            "QTreeWidget, QTreeView, QTableWidget, QTableView, QListWidget, QListView {"
+            "  border: 1px solid #7a7a7a;"
+            "}"
+
+            // EXCEPTION: the Overview page's recent-transactions list is meant to
+            // sit flush on the page with no frame -- overviewpage.ui already
+            // styles it "QListView { background: transparent; }".  The generic
+            // rule above gave it a box it never had.  Excluded by objectName.
+            "#listTransactions {"
+            "  border: none;"
+            "  background: transparent;"
+            "}"
+        );
+    }
+#endif
 
     // Apply dark theme stylesheet if enabled
     if (fUseDarkTheme) {
@@ -347,11 +553,11 @@ int main(int argc, char *argv[])
     // - Then load the more specific locale translator
 
     // Load e.g. qt_de.qm
-    if (qtTranslatorBase.load("qt_" + lang, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
+    if (qtTranslatorBase.load("qt_" + lang, XDN_QT_TRANSLATIONS_PATH))
         app.installTranslator(&qtTranslatorBase);
 
     // Load e.g. qt_de_DE.qm
-    if (qtTranslator.load("qt_" + lang_territory, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
+    if (qtTranslator.load("qt_" + lang_territory, XDN_QT_TRANSLATIONS_PATH))
         app.installTranslator(&qtTranslator);
 
     // Load e.g. bitcoin_de.qm (shortcut "de" needs to be defined in bitcoin.qrc)

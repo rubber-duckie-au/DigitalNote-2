@@ -41,7 +41,18 @@ DigitalNoteAmountField::DigitalNoteAmountField(QWidget *parent):
     // listeners on the AmountField widget.  Was previously SLOT(textChanged())
     // which made Qt look up textChanged on the slot list, fail, and log
     // a runtime warning per AmountField construction.
-    connect(amount, SIGNAL(valueChanged(QString)), this, SIGNAL(textChanged()));
+    // v2.0.0.9 Qt6: QDoubleSpinBox had TWO valueChanged overloads in Qt5 --
+    // valueChanged(double) and valueChanged(const QString&).  Qt6 REMOVED the
+    // QString one (it is now textChanged(const QString&)).  A string-based
+    // connect to a signal that no longer exists fails at RUNTIME, not compile
+    // time -- Qt logs "No such signal QDoubleSpinBox::valueChanged(QString)"
+    // and the connection is silently never made, so the amount field stops
+    // notifying its listeners.
+    //
+    // valueChanged(double) exists in BOTH versions and is what this connection
+    // actually wants (it forwards "the amount changed" upward; the payload is
+    // discarded). Using it avoids a version guard entirely.
+    connect(amount, SIGNAL(valueChanged(double)), this, SIGNAL(textChanged()));
     connect(unit, SIGNAL(currentIndexChanged(int)), this, SLOT(unitChanged(int)));
 
     // Set default based on configuration

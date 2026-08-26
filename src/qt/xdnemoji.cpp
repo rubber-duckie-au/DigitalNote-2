@@ -1,4 +1,5 @@
-#include <QRegExp>
+// v2.0.0.9 Qt6: QRegExp removed from qtbase.
+#include <QRegularExpression>
 #include <QImage>
 
 #include "xdnemoji.h"
@@ -101,7 +102,7 @@ QString XdnEmoji::substituteImagesToShortcodes(const QString &html)
 	{
 		const Entry &e = s_entries.at(i);
 
-		QRegExp rx(QString("<img[^>]*src=\"%1\"[^>]*/?>").arg(QRegExp::escape(e.resourcePath)));
+		QRegularExpression rx(QString("<img[^>]*src=\"%1\"[^>]*/?>").arg(QRegularExpression::escape(e.resourcePath)));
 		out.replace(rx, e.shortcode);
 	}
 

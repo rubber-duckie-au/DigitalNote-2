@@ -1,7 +1,18 @@
 #include "compat.h"
 
+// v2.0.0.9 FINDING-2026-013: FindNode()/CNode::nVersion for the observed
+// protocol column (display only).
+#include "net.h"
+#include <map>
+
 #include <boost/lexical_cast.hpp>
 #include <fstream>
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QAction>
+#include <QHeaderView>
 #include <QAbstractItemDelegate>
 #include <QClipboard>
 #include <QPainter>
@@ -426,6 +437,28 @@ void MasternodeManager::updateNodeList()
 	ui->tableWidgetMasternodes->setRowCount(0);
 	std::vector<CMasternode> vMasternodes = mnodeman.GetFullMasternodeVector();
 
+	// v2.0.0.9 FINDING-2026-013: snapshot versions observed on the wire, ONCE.
+	//
+	// cs_masternodes is already held by this function, so cs_vNodes nests inside
+	// it.  Checked safe: cs_masternodes appears in exactly TWO places in the whole
+	// tree -- its declaration (masternode.cpp:13) and the TRY_LOCK above -- so no
+	// path can take these in the opposite order and no ABBA is possible.
+	std::map<std::string, int> mapObservedVersions;
+
+	{
+		LOCK(cs_vNodes);
+
+		for(CNode *pnode : vNodes)
+		{
+			if (pnode == NULL || pnode->nVersion == 0)
+			{
+				continue;   // handshake incomplete -- nVersion not meaningful
+			}
+
+			mapObservedVersions[pnode->addr.ToString()] = pnode->nVersion;
+		}
+	}
+
 	for(CMasternode& mn : vMasternodes)
 	{
 		int mnRow = 0;
@@ -434,7 +467,66 @@ void MasternodeManager::updateNodeList()
 		// populate list
 		// Address, Protocol, Status, Active Seconds, Last Seen, Pub Key
 		QTableWidgetItem* addressItem = new QTableWidgetItem(QString::fromStdString(mn.addr.ToString()));
-		QTableWidgetItem* protocolItem = new QTableWidgetItem(QString::number(mn.protocolVersion));
+		// v2.0.0.9 FINDING-2026-013: prefer the version OBSERVED on the wire.
+		//
+		// mn.protocolVersion is stamped by whichever wallet last ran
+		// "masternode start" for this node -- the collateral holder -- using THAT
+		// wallet's compile-time PROTOCOL_VERSION (cactivemasternode.cpp:466).  It
+		// describes the CONTROLLER, not the daemon running at this address, and on
+		// mainnet was observed wrong in BOTH directions: 62055 for 2.0.0.8 hosts,
+		// and 62059 for a host that has never run 2.0.0.9.
+		//
+		// A trailing "*" marks an observed value; a bare number means
+		// "advertised, unverified".
+		//
+		// >>> DISPLAY ONLY.  Deliberately does NOT write back to
+		// >>> mn.protocolVersion. <<<  That value is inside the signed dsee that
+		// >>> dseg relays alongside mn.sig, so altering it locally would break
+		// >>> signature verification at every peer -- and the observed version is
+		// >>> node-local, so feeding it into consensus would make the
+		// >>> voted-consensus denominator MORE divergent (FINDING-2026-014).
+		// Preference order, best source first:
+		//   1. nAttestedVersion -- the masternode's OWN signed mnver claim.  Needs
+		//      no connection to us, so this is the best-covered and most direct
+		//      evidence.  Shown with a trailing '*'.
+		//   2. observed on the wire -- requires a live connection, so partial.
+		//      Also shown with '*'; both are "verified, not merely advertised".
+		//   3. mn.protocolVersion -- the dsee-advertised value.  Bare number,
+		//      meaning "advertised by a controller, unverified".
+		QString protocolText = QString::number(mn.protocolVersion);
+		int nShown = mn.protocolVersion;
+		QString strSource;
+
+		std::map<std::string, int>::const_iterator itObs =
+			mapObservedVersions.find(mn.addr.ToString());
+
+		if (mn.nAttestedVersion != 0)
+		{
+			nShown = mn.nAttestedVersion;
+			strSource = QObject::tr("signed by the masternode itself");
+		}
+		else if (itObs != mapObservedVersions.end())
+		{
+			nShown = itObs->second;
+			strSource = QObject::tr("observed on the network connection");
+		}
+
+		if (nShown != mn.protocolVersion)
+		{
+			protocolText = QString::number(nShown) + "*";
+		}
+
+		QTableWidgetItem* protocolItem = new QTableWidgetItem(protocolText);
+
+		if (protocolText.endsWith("*"))
+		{
+			protocolItem->setToolTip(
+				QObject::tr("Actual version: %1 (%2)\nAdvertised: %3\n\n"
+							"The advertised value is stamped by whichever wallet last started "
+							"this masternode, not by the masternode itself, so it can be out "
+							"of date or simply wrong.")
+					.arg(nShown).arg(strSource).arg(mn.protocolVersion));
+		}
 		QTableWidgetItem* statusItem = new QTableWidgetItem(QString::number(mn.IsEnabled()));
 		// v2.0.0.8 UAT-6a: pass the raw signed delta.  seconds_to_DHMS
 		// now refuses to format negative or wildly-out-of-range values

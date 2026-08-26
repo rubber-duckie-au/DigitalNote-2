@@ -5,6 +5,11 @@
 #include "bitcoinunits.h"
 #include "coutpoint.h"
 
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QAction>
 #include <QApplication>
 #include <QClipboard>
 #include <QHeaderView>

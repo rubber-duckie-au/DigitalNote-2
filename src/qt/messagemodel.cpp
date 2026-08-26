@@ -102,8 +102,8 @@ public:
                 {
                     label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(msg.sFromAddress));
 
-                    sent_datetime    .setTime_t(msg.timestamp);
-                    received_datetime.setTime_t(smsgStored.timeReceived);
+                    sent_datetime    .setSecsSinceEpoch(msg.timestamp);
+                    received_datetime.setSecsSinceEpoch(smsgStored.timeReceived);
                     
                     memcpy(&vchKey[0], chKey, 18);
 
@@ -130,8 +130,8 @@ public:
                 {
                     label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(smsgStored.sAddrTo));
 
-                    sent_datetime    .setTime_t(msg.timestamp);
-                    received_datetime.setTime_t(smsgStored.timeReceived);
+                    sent_datetime    .setSecsSinceEpoch(msg.timestamp);
+                    received_datetime.setSecsSinceEpoch(smsgStored.timeReceived);
                     
                     memcpy(&vchKey[0], chKey, 18);
 
@@ -174,8 +174,8 @@ public:
         {
             label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(msg.sFromAddress));
 
-            sent_datetime    .setTime_t(msg.timestamp);
-            received_datetime.setTime_t(smsgStored.timeReceived);
+            sent_datetime    .setSecsSinceEpoch(msg.timestamp);
+            received_datetime.setSecsSinceEpoch(smsgStored.timeReceived);
 
             std::string sPrefix("im");
             DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) &smsgStored.vchMessage[0];
@@ -212,8 +212,8 @@ public:
         {
             label = parent->getWalletModel()->getAddressTableModel()->labelForAddress(QString::fromStdString(smsgStored.sAddrTo));
 
-            sent_datetime    .setTime_t(msg.timestamp);
-            received_datetime.setTime_t(smsgStored.timeReceived);
+            sent_datetime    .setSecsSinceEpoch(msg.timestamp);
+            received_datetime.setSecsSinceEpoch(smsgStored.timeReceived);
 
             std::string sPrefix("sm");
             DigitalNote::SMSG::SecureMessage* psmsg = (DigitalNote::SMSG::SecureMessage*) &smsgStored.vchMessage[0];
@@ -336,11 +336,11 @@ private:
                 LogPrintf("MessageModel::addMessageEntry: clamped out-of-range index %d (rows=%d) type=%d to=%s from=%s recv=%lld\n",
                           index, nRows, (int)message.type,
                           message.to_address.toStdString(), message.from_address.toStdString(),
-                          (long long)message.received_datetime.toTime_t());
+                          (long long)message.received_datetime.toSecsSinceEpoch());
                 index = (index < 0) ? 0 : nRows;
             }
 
-            if (!message.received_datetime.isValid() || message.received_datetime.toTime_t() == 0)
+            if (!message.received_datetime.isValid() || message.received_datetime.toSecsSinceEpoch() == 0)
             {
                 LogPrintf("MessageModel::addMessageEntry: entry with invalid/zero received_datetime type=%d to=%s from=%s -- ordering may be off\n",
                           (int)message.type, message.to_address.toStdString(), message.from_address.toStdString());
@@ -422,7 +422,7 @@ MessageModel::StatusCode MessageModel::sendMessages(const QList<SendMessagesReci
         return OK;
 
     // Pre-check input data for validity
-    foreach(const SendMessagesRecipient &rcp, recipients)
+    for (const SendMessagesRecipient &rcp : recipients)
     {
         if(!walletModel->validateAddress(rcp.address))
             return InvalidAddress;

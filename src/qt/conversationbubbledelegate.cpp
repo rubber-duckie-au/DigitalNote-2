@@ -3,6 +3,7 @@
 #include <QFontMetrics>
 #include <QTextOption>
 #include <QTextDocument>
+#include <QRegularExpression>
 #include <QAbstractTextDocumentLayout>
 #include <QImage>
 #include <QUrl>
@@ -35,6 +36,28 @@ static void buildBubbleDoc(QTextDocument &doc, const QString &raw, const QFont &
 	// Start from the message as HTML. If it is plain text, escape it so stray < or & do not
 	// get interpreted, then it is safe to inject emoji <img> tags.
 	QString html = looksLikeHtml ? raw : raw.toHtmlEscaped();
+
+	// v2.0.0.9: strip baked-in font-family so the bubble's own font governs.
+	//
+	// WHY.  A message composed in ChatComposer is stored as QTextEdit::toHtml(),
+	// which emits a FULL html document including
+	//     <body style=" font-family:'...'; font-size:...;">
+	// Because setHtml() honours that inline style, it OVERRIDES the
+	// doc.setDefaultFont(font) below -- so bubbles rendered whatever font the
+	// SENDER's editor happened to default to (observed: a monospace/Courier
+	// fallback), while messages from older builds rendered in a different font
+	// again.  Same conversation, inconsistent typography.
+	//
+	// Stripping only `font-family` leaves bold / italic / underline / font-size
+	// intact, so deliberate formatting still survives -- only the typeface is
+	// normalised to the application font.  Values are quoted but never contain
+	// a semicolon, so matching to the first `;` is safe.
+	//
+	// Applied to HTML input only; plain text has no style attributes to strip.
+	if(looksLikeHtml)
+	{
+		html.remove(QRegularExpression("font-family\\s*:[^;\"]*;"));
+	}
 
 	// Resolve emoji shortcodes to <img> tags (sized to the current font height).
 	QFontMetrics fm(font);

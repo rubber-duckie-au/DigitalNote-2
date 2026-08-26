@@ -16,7 +16,8 @@
 #include <QTextCursor>
 #include <QTextBlock>
 #include <QKeyEvent>
-#include <QRegExp>
+// v2.0.0.9 Qt6: QRegExp removed from qtbase.
+#include <QRegularExpression>
 #include <QFont>
 
 #include <QIcon>
@@ -313,6 +314,22 @@ ChatComposer::ChatComposer(QWidget *parent) :
 	m_colorAction(0),
 	m_emojiButton(0)
 {
+	// v2.0.0.9: pin the compose editor to the application font.
+	//
+	// messageHtml() ships QTextEdit::toHtml(), which bakes the editor's
+	// resolved font-family into the sent payload.  Left unset, the editor
+	// inherits whatever Qt falls back to on the platform -- observed on
+	// Windows as a monospace/Courier face -- so every recipient rendered the
+	// message in that font.  Setting it explicitly makes the wire format
+	// deterministic instead of platform-dependent.
+	//
+	// The receiving side also strips font-family (see buildBubbleDoc in
+	// conversationbubbledelegate.cpp), which covers messages already sent and
+	// messages from older builds.  Both ends are fixed on purpose: this one
+	// makes NEW messages correct at source, that one makes ALL messages render
+	// consistently on display.
+	m_editor->document()->setDefaultFont(QApplication::font());
+
 	QVBoxLayout *layout = new QVBoxLayout(this);
 	layout->setContentsMargins(0, 0, 0, 0);
 	layout->setSpacing(2);
@@ -741,9 +758,17 @@ QString ChatComposer::messageHtml() const
 	s = XdnEmoji::substituteImagesToShortcodes(s);
 
 	// Auto-link emails and URLs that were typed as plain text.
-	s = s.replace(QRegExp("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)([a-zA-Z\\d]+@[a-zA-Z\\d]+\\.[a-zA-Z]+)"),
+	// v2.0.0.9 Qt6: QRegExp -> QRegularExpression.  The patterns are already
+	// PCRE-compatible (\\s, \\d, non-capturing (?:...)) and the \\1 / \\2
+	// backreferences in the REPLACEMENT string work identically for both
+	// overloads of QString::replace, so this is a straight type swap.
+	//
+	// >>> VISUAL TEST REQUIRED: this is the Messages tab auto-linker.  Confirm
+	// >>> typed emails and URLs still turn into links, and that existing <a>
+	// >>> tags are not double-wrapped, before calling the migration done. <<<
+	s = s.replace(QRegularExpression("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)([a-zA-Z\\d]+@[a-zA-Z\\d]+\\.[a-zA-Z]+)"),
 	              "\\1<a href=\"mailto:\\2\">\\2</a>");
-	s = s.replace(QRegExp("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)((?:https?|ftp|file)://[^\\s'\"<>]+)"),
+	s = s.replace(QRegularExpression("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)((?:https?|ftp|file)://[^\\s'\"<>]+)"),
 	              "\\1<a href=\"\\2\">\\2</a>");
 
 	return s;

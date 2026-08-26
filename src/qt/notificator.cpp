@@ -135,13 +135,32 @@ const QDBusArgument &operator>>(const QDBusArgument &a, FreedesktopImage &i)
 
 int FreedesktopImage::metaType()
 {
+    // v2.0.0.9 Qt6: qDBusRegisterMetaType<T>() returns QMetaType in Qt6 but int
+    // in Qt5.  Take the id on Qt6 so this function's declared `int` return type
+    // is unchanged -- callers that only need the id keep working on both.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    return qDBusRegisterMetaType<FreedesktopImage>().id();
+#else
     return qDBusRegisterMetaType<FreedesktopImage>();
+#endif
 }
 
 QVariant FreedesktopImage::toVariant(const QImage &img)
 {
     FreedesktopImage fimg(img);
-    return QVariant(FreedesktopImage::metaType(), &fimg);
+
+    // v2.0.0.9 Qt6: the QVariant(int typeId, const void *copy) constructor was
+    // REMOVED in Qt6 -- the surviving overload takes QMetaType, not int.  Rather
+    // than version-guard the constructor, use QVariant::fromValue(), which is
+    // available and identical in behaviour on BOTH Qt5 and Qt6 and needs no
+    // type id at all (Q_DECLARE_METATYPE(FreedesktopImage) is at line ~89).
+    //
+    // metaType() is still called first for its SIDE EFFECT: it performs the
+    // qDBusRegisterMetaType<>() registration that the DBus marshalling relies
+    // on.  Dropping the call would compile but break notification images.
+    FreedesktopImage::metaType();
+
+    return QVariant::fromValue(fimg);
 }
 
 void Notificator::notifyDBus(Class cls, const QString &title, const QString &text, const QIcon &icon, int millisTimeout)

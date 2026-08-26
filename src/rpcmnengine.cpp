@@ -1561,9 +1561,15 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			"  },\n"
 			"  \"peers\": {\n"
 			"    \"total\": n,                      (numeric) connected peers with a negotiated version\n"
-			"    \"consensus_capable\": n,          (numeric) peers at PROTOCOL_VERSION or above\n"
-			"    \"pre_consensus\": n,              (numeric) peers below it (cannot activate)\n"
+			"    \"consensus_capable\": n,          (numeric) peers at MIN_VOTING_PROTOCOL_VERSION or\n"
+			"                                       above -- i.e. able to take part in voted consensus.\n"
+			"                                       NOTE this is the 62058 floor, NOT PROTOCOL_VERSION:\n"
+			"                                       v2.0.0.8 peers are queue-capable and DO count.\n"
+			"    \"pre_consensus\": n,              (numeric) peers below that floor\n"
 			"    \"consensus_capable_share\": x.xx  (numeric) capable/total, -1 if no peers\n"
+			"    \"at_current_build\": n,           (numeric) peers at PROTOCOL_VERSION or above --\n"
+			"                                       an UPGRADE ADOPTION metric, not a capability one\n"
+			"    \"at_current_build_share\": x.xx   (numeric) at_current_build/total, -1 if no peers\n"
 			"  },\n"
 			"  \"masternodes\": {\n"
 			"    \"total\": n,                      (numeric) masternodes known to this node\n"
@@ -1573,8 +1579,24 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			"    \"min_required_for_consensus\": n, (numeric) MIN_ENABLED_FOR_CONSENSUS\n"
 			"    \"meets_consensus_floor\": bool,   (boolean) voting_eligible >= min_required (SAFETY signal)\n"
 			"    \"measured_at_height\": n          (numeric) height the eligibility was measured for\n"
+			"  },\n"
+			"  \"version_drift\": {                 (object) DIAGNOSTIC ONLY -- see FINDING-2026-014\n"
+			"    \"observed\": n,                   (numeric) masternodes this node is CONNECTED to, so\n"
+			"                                       could compare.  Coverage is partial by nature.\n"
+			"    \"agree\": n,                      (numeric) advertised protocol == observed on the wire\n"
+			"    \"disagree\": n,                   (numeric) they differ\n"
+			"    \"crosses_floor\": n,              (numeric) THE NUMBER THAT MATTERS.  Disagreements where\n"
+			"                                       one side is >= min_voting_protocol_version and the other\n"
+			"                                       is not -- i.e. this node's voted-consensus DENOMINATOR\n"
+			"                                       disagrees with observable reality.  Should be 0.\n"
+			"    \"detail\": [ ... ]                (array) per-masternode breakdown of the disagreements\n"
 			"  }\n"
 			"}\n"
+			"\nNOTE on version_drift: a masternode entry's protocol version is stamped by whichever\n"
+			"wallet last ran 'masternode start' for it (the collateral holder), using THAT wallet's\n"
+			"version -- not the version of the daemon actually running at that address.  It can\n"
+			"therefore be wrong in either direction.  This section MEASURES the discrepancy; it does\n"
+			"not and must not correct it (the value is inside a signed broadcast).\n"
 			"\nExamples:\n"
 			+ HelpExampleCli("getdeploymentstatus", "")
 			+ HelpExampleRpc("getdeploymentstatus", "")
@@ -1627,7 +1649,8 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	// -- peers ---------------------------------------------------------------
 	// Rollout-progress signal.  Partial by nature: our own connections only.
 	int peersTotal = 0;
-	int peersCapable = 0;
+	int peersCapable = 0;   // >= MIN_VOTING_PROTOCOL_VERSION -- can take part in voted consensus
+	int peersAtBuild = 0;   // >= PROTOCOL_VERSION -- running this exact build (adoption metric)
 
 	{
 		LOCK(cs_vNodes);
@@ -1648,9 +1671,30 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 
 			peersTotal++;
 
-			if (pnode->nVersion >= PROTOCOL_VERSION)
+			// v2.0.0.9 FINDING-2026-015: this counted >= PROTOCOL_VERSION and
+			// labelled everything else "cannot activate".  That is the WRONG
+			// FLOOR and it understates readiness badly.
+			//
+			// version.h:63-74 is explicit: MIN_VOTING_PROTOCOL_VERSION stays at
+			// 62058 precisely because "the v2.0.0.8 fleet is M1Q queue-capable
+			// and must keep counting".  A 2.0.0.8 peer CAN participate in voted
+			// consensus.  Measuring against PROTOCOL_VERSION measured "peers
+			// running MY build" while calling it consensus capability.
+			//
+			// Observed on mainnet 2026-08-08: 2 of 13 by the old measure,
+			// 9 of 13 by the correct one -- the difference between "nowhere near
+			// ready" and "mostly ready" on a number used to judge rollout.
+			//
+			// The old figure is still worth having as an UPGRADE-ADOPTION metric,
+			// so it is kept separately as at_current_build rather than deleted.
+			if (pnode->nVersion >= MIN_VOTING_PROTOCOL_VERSION)
 			{
 				peersCapable++;
+			}
+
+			if (pnode->nVersion >= PROTOCOL_VERSION)
+			{
+				peersAtBuild++;
 			}
 		}
 	}
@@ -1661,7 +1705,129 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	peers.push_back(json_spirit::Pair("pre_consensus", peersTotal - peersCapable));
 	peers.push_back(json_spirit::Pair("consensus_capable_share",
 		peersTotal > 0 ? ((double)peersCapable / (double)peersTotal) : -1.0));
+
+	// Upgrade adoption, kept distinct from capability on purpose: "how many
+	// peers run MY build" is a useful rollout number, but it is NOT the same
+	// question as "how many peers can participate", and conflating the two is
+	// what produced the misleading 2-of-13 reading.
+	peers.push_back(json_spirit::Pair("at_current_build", peersAtBuild));
+	peers.push_back(json_spirit::Pair("at_current_build_share",
+		peersTotal > 0 ? ((double)peersAtBuild / (double)peersTotal) : -1.0));
 	result.push_back(json_spirit::Pair("peers", peers));
+
+	// -- version_drift (FINDING-2026-013 / FINDING-2026-014) -----------------
+	//
+	// PURELY DIAGNOSTIC.  Reads nothing that consensus reads and writes
+	// nothing.  It exists to answer a question that is currently unanswerable:
+	// HOW DIVERGENT IS THIS FLEET?
+	//
+	// WHY IT IS NEEDED.  A masternode entry's protocolVersion is stamped by
+	// whichever wallet last ran CActiveMasternode::Register() -- the holder of
+	// the collateral -- using ITS OWN compile-time PROTOCOL_VERSION
+	// (cactivemasternode.cpp:466/494/507).  It therefore describes the
+	// CONTROLLER, not the daemon actually serving that address, and can be
+	// wrong in either direction.  Observed on mainnet 2026-08-08: entries
+	// reading 62055 for 2.0.0.8 hosts, and 62059 for a host that has never run
+	// 2.0.0.9.
+	//
+	// That value is one of the two terms in CountVotingEligible()
+	// (cmasternodeman.cpp:257), i.e. the voted-consensus DENOMINATOR.  The
+	// other term, IsVotingEligible(), is pure committed chain state and is
+	// identical on every node; this one is gossip and is not.  See
+	// FINDING-2026-014.
+	//
+	// >>> THIS BLOCK DELIBERATELY DOES NOT CORRECT ANYTHING. <<<  The observed
+	// version is node-local: acting on it would make the denominator MORE
+	// divergent, and protocolVersion is inside the signed dsee that dseg
+	// relays alongside mn.sig, so a locally-altered value would fail signature
+	// verification at every peer.  MEASURE ONLY.
+	//
+	// Coverage is necessarily partial -- we can only observe masternodes this
+	// node currently has a connection to.  `observed` reports how many that is,
+	// so a small sample is visible as a small sample rather than mistaken for a
+	// clean bill of health.
+	int driftObserved = 0;
+	int driftAgree    = 0;
+	int driftDisagree = 0;
+	json_spirit::Array driftDetail;
+
+	{
+		// Snapshot the list via the public accessor -- vMasternodes and cs are
+		// PRIVATE members of CMasternodeMan (cmasternodeman.h:25-30), so they
+		// cannot be touched directly from here.
+		//
+		// NOTE: GetFullMasternodeVector() does NOT take the manager lock -- it
+		// calls Check() and returns the vector BY VALUE (cmasternodeman.cpp:597).
+		// The copy is the snapshot.  This matches how the other callers in this
+		// file already use it (:1115, :1358), and the comment at :1357 states the
+		// intent: snapshot rather than hold cs while building JSON.
+		//
+		// Only cs_vNodes is held below, and only while reading nVersion.
+		std::vector<CMasternode> mnSnapshot = mnodeman.GetFullMasternodeVector();
+
+		LOCK(cs_vNodes);
+
+		for(CMasternode& mn : mnSnapshot)
+		{
+			CNode *pnode = FindNode((CService)mn.addr);
+
+			if (pnode == NULL || pnode->nVersion == 0)
+			{
+				continue;   // not connected, or handshake incomplete
+			}
+
+			driftObserved++;
+
+			if (pnode->nVersion == mn.protocolVersion)
+			{
+				driftAgree++;
+				continue;
+			}
+
+			driftDisagree++;
+
+			json_spirit::Object d;
+
+			d.push_back(json_spirit::Pair("address", mn.addr.ToString()));
+			d.push_back(json_spirit::Pair("advertised", (int64_t)mn.protocolVersion));
+			d.push_back(json_spirit::Pair("observed", (int64_t)pnode->nVersion));
+
+			// Which side of the denominator floor each value falls on.  This is
+			// the field that matters: a disagreement that does not cross the
+			// floor is cosmetic, one that DOES changes this node's denominator.
+			bool advIn = (mn.protocolVersion >= MIN_VOTING_PROTOCOL_VERSION);
+			bool obsIn = (pnode->nVersion      >= MIN_VOTING_PROTOCOL_VERSION);
+
+			d.push_back(json_spirit::Pair("advertised_counts", advIn));
+			d.push_back(json_spirit::Pair("observed_would_count", obsIn));
+			d.push_back(json_spirit::Pair("crosses_floor", advIn != obsIn));
+
+			driftDetail.push_back(d);
+		}
+	}
+
+	int driftCrossing = 0;
+
+	for(const json_spirit::Value &v : driftDetail)
+	{
+		if (json_spirit::find_value(v.get_obj(), "crosses_floor").get_bool())
+		{
+			driftCrossing++;
+		}
+	}
+
+	json_spirit::Object drift;
+
+	drift.push_back(json_spirit::Pair("observed", driftObserved));
+	drift.push_back(json_spirit::Pair("agree", driftAgree));
+	drift.push_back(json_spirit::Pair("disagree", driftDisagree));
+
+	// The headline number.  Non-zero means this node's voted-consensus
+	// denominator disagrees with observable reality for that many masternodes.
+	drift.push_back(json_spirit::Pair("crosses_floor", driftCrossing));
+	drift.push_back(json_spirit::Pair("detail", driftDetail));
+
+	result.push_back(json_spirit::Pair("version_drift", drift));
 
 	// -- masternodes (the SAFETY signal) -------------------------------------
 	// Measure eligibility for the height the queues actually cover (tip +

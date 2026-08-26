@@ -154,8 +154,31 @@ void RemoveWatchOnlyDialog::populateTable()
         QHBoxLayout *checkLayout = new QHBoxLayout(checkContainer);
         QCheckBox *checkBox = new QCheckBox(checkContainer);
         checkBox->setChecked(false);
+        // v2.0.0.9 Qt6: QCheckBox::stateChanged(int) is DEPRECATED in Qt 6.7
+        // in favour of checkStateChanged(Qt::CheckState).  The replacement does
+        // not exist in Qt5 or in Qt 6.0-6.6, so a straight rename would break
+        // both -- it needs a version guard.
+        //
+        // Note the two signals carry DIFFERENT payloads (int vs Qt::CheckState).
+        // That costs nothing here because onSelectionChanged() takes no
+        // arguments and discards the state anyway -- it just calls
+        // updateSelectionLabel().  Qt permits connecting a signal to a slot with
+        // FEWER parameters, so both branches bind cleanly.
+        //
+        // The other 8 stateChanged connections in this codebase
+        // (sendcoinsdialog.cpp) are STRING-based SIGNAL(stateChanged(int)).
+        // They do NOT warn, because string-based connects resolve at runtime and
+        // the signal still EXISTS in Qt6 -- deprecated is not removed.  They are
+        // deliberately left alone: they work, and converting them would mean
+        // touching 8 working call sites to silence nothing.  Revisit if Qt7
+        // actually removes the signal.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        connect(checkBox, &QCheckBox::checkStateChanged,
+                this, &RemoveWatchOnlyDialog::onSelectionChanged);
+#else
         connect(checkBox, &QCheckBox::stateChanged,
                 this, &RemoveWatchOnlyDialog::onSelectionChanged);
+#endif
         checkLayout->addWidget(checkBox);
         checkLayout->setAlignment(Qt::AlignCenter);
         checkLayout->setContentsMargins(0, 0, 0, 0);

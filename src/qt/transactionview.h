@@ -17,7 +17,9 @@ class QItemSelectionModel;
 class QLineEdit;
 class QMenu;
 class QModelIndex;
-class QSignalMapper;
+// v2.0.0.9 Qt6: QSignalMapper forward-decl removed.  The only user was inside
+// an already commented-out third-party-tx-URL block (transactionview.cpp ~261)
+// and `mapperThirdPartyTxUrls` was never declared or allocated -- dead code.
 class QTableView;
 class QTabBar;
 QT_END_NAMESPACE

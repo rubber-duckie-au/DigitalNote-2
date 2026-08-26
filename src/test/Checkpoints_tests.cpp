@@ -5,8 +5,9 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/foreach.hpp>
 
-#include "../checkpoints.h"
-#include "../util.h"
+#include "uint/uint256.h"
+#include "checkpoints.h"
+#include "util.h"
 
 using namespace std;
 

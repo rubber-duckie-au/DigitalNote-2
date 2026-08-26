@@ -108,11 +108,22 @@ QSize FlowLayout::sizeHint() const
 QSize FlowLayout::minimumSize() const
 {
     QSize size;
-    QLayoutItem *item;
-    foreach (item, itemList)
+    // v2.0.0.9 Qt6: `foreach (item, itemList)` used a PRE-DECLARED variable,
+    // which a range-for cannot express.  Folding the declaration into the loop
+    // is behaviour-preserving here -- verified that `item` is not referenced
+    // after the loop in this function.
+    for (QLayoutItem *item : itemList)
         size = size.expandedTo(item->minimumSize());
 
-    size += QSize(2*margin(), 2*margin());
+    // v2.0.0.9 Qt6: QLayout::margin() was deprecated in Qt 5.13 and REMOVED in
+    // Qt6.  contentsMargins() is the replacement and is available on both.
+    // margin() returned a SINGLE value, so `2*margin()` assumed all four sides
+    // were equal -- true here, since the constructors call
+    // setContentsMargins(margin, margin, margin, margin) (lines 10 and 16).
+    // Summing the opposing pairs is equivalent and correct even if the margins
+    // ever differ.
+    const QMargins mrg = contentsMargins();
+    size += QSize(mrg.left() + mrg.right(), mrg.top() + mrg.bottom());
     return size;
 }
 //! [8]
@@ -129,8 +140,9 @@ int FlowLayout::doLayout(const QRect &rect, bool testOnly) const
 //! [9]
 
 //! [10]
-    QLayoutItem *item;
-    foreach (item, itemList) {
+    // v2.0.0.9 Qt6: pre-declared loop variable folded into the range-for.
+    // Verified `item` is not referenced after the loop in this function.
+    for (QLayoutItem *item : itemList) {
         QWidget *wid = item->widget();
         int spaceX = horizontalSpacing();
         if (spaceX == -1)

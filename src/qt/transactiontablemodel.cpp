@@ -146,7 +146,7 @@ public:
                     {
                         parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex+toInsert.size()-1);
                         int insert_idx = lowerIndex;
-                        foreach(const TransactionRecord &rec, toInsert)
+                        for (const TransactionRecord &rec : toInsert)
                         {
                             cachedWallet.insert(insert_idx, rec);
                             insert_idx += 1;
@@ -179,7 +179,7 @@ public:
                 if (parent->walletModel != nullptr && !collateralCandidates.empty())
                 {
                     typedef std::pair<QString, int> CandidatePair;
-                    foreach (const CandidatePair &c, collateralCandidates)
+                    for (const CandidatePair &c : collateralCandidates)
                     {
                         parent->walletModel->emitCollateralCandidate(
                             c.first, c.second);
@@ -621,7 +621,7 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
     case TypeRole:
         return rec->type;
     case DateRole:
-        return QDateTime::fromTime_t(static_cast<uint>(rec->time));
+        return QDateTime::fromSecsSinceEpoch(static_cast<uint>(rec->time));
     case WatchonlyRole:
         return rec->involvesWatchAddress;
     case WatchonlyDecorationRole:

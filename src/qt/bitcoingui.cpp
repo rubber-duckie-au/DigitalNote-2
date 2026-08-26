@@ -10,6 +10,16 @@
 #include <cmath>
 #include <iostream>
 
+// v2.0.0.9 Qt6: Qt6 builds with QT_LEAN_HEADERS=1 and no longer pulls these
+// in transitively via QtWidgets convenience headers, so they must be explicit.
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QCloseEvent>
+#include <QDropEvent>
+#include <QStandardPaths>
+#include <QActionGroup>
 #include <QApplication>
 #include <QMenuBar>
 #include <QMenu>
@@ -315,6 +325,10 @@ DigitalNoteGUI::~DigitalNoteGUI()
     delete rpcConsole;
 }
 
+// v2.0.0.9 Qt6: Qt::operator+(Modifier, Key) is deprecated in Qt6 in favour of
+// operator|.  Both Modifier and Key are plain enums whose values are disjoint
+// bit ranges, so `|` produces the identical value and compiles unchanged on
+// Qt5 -- no version guard needed.
 void DigitalNoteGUI::createActions()
 {
     QActionGroup *tabGroup = new QActionGroup(this);
@@ -322,47 +336,55 @@ void DigitalNoteGUI::createActions()
     overviewAction = new QAction(QIcon(":/icons/overview"), tr("&Dashboard"), this);
     overviewAction->setToolTip(tr("Show general overview of wallet"));
     overviewAction->setCheckable(true);
-    overviewAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
+    overviewAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_1));
     tabGroup->addAction(overviewAction);
 
     receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive"), this);
     receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving payments"));
     receiveCoinsAction->setCheckable(true);
-    receiveCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
+    receiveCoinsAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_2));
     tabGroup->addAction(receiveCoinsAction);
 
     sendCoinsAction = new QAction(QIcon(":/icons/send-sidebar"), tr("&Send"), this);
     sendCoinsAction->setToolTip(tr("Send coins to a DigitalNote address"));
     sendCoinsAction->setCheckable(true);
-    sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_3));
+    sendCoinsAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_3));
     tabGroup->addAction(sendCoinsAction);
 
     historyAction = new QAction(QIcon(":/icons/history"), tr("&Transactions"), this);
     historyAction->setToolTip(tr("Browse transaction history"));
     historyAction->setCheckable(true);
-    historyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_4));
+    historyAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_4));
     tabGroup->addAction(historyAction);
 
     addressBookAction = new QAction(QIcon(":/icons/address-book-sidebar"), tr("&Addresses"), this);
     addressBookAction->setToolTip(tr("Edit the list of stored addresses and labels"));
     addressBookAction->setCheckable(true);
-    addressBookAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
+    addressBookAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_5));
     tabGroup->addAction(addressBookAction);
 
     masternodeManagerAction = new QAction(QIcon(":/icons/mnodes"), tr("&Masternodes"), this);
     masternodeManagerAction->setToolTip(tr("Show Master Nodes status and configure your nodes."));
     masternodeManagerAction->setCheckable(true);
+    // v2.0.0.9 TODO 3.32: Masternodes is the 6th toolbar entry but had NO
+    // shortcut, while Block Explorer (8th) held Alt+6.  Numbers now follow
+    // toolbar position.  Messages was already correct at Alt+7.
+    masternodeManagerAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_6));
     tabGroup->addAction(masternodeManagerAction);
 
     messageAction = new QAction(QIcon(":/icons/message"), tr("&Messages"), this);
     messageAction->setToolTip(tr("View and Send Encrypted messages"));
-    messageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
+    messageAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_7));
     messageAction->setCheckable(true);
     tabGroup->addAction(messageAction);
 
     blockAction = new QAction(QIcon(":/icons/block"), tr("&Block Explorer"), this);
     blockAction->setToolTip(tr("Explore the BlockChain"));
-    blockAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+    // v2.0.0.9 TODO 3.32: was Alt+6, which belonged to Masternodes by position.
+    // Block Explorer is the 8th toolbar entry.  THIS IS THE ONLY EXISTING
+    // BINDING THAT CHANGES -- worth a release-note line, since anyone with the
+    // muscle memory will land on Masternodes instead.
+    blockAction->setShortcut(QKeySequence(Qt::ALT | Qt::Key_8));
     blockAction->setCheckable(true);
     tabGroup->addAction(blockAction);
 
@@ -387,7 +409,7 @@ void DigitalNoteGUI::createActions()
 
     quitAction = new QAction(QIcon(":icons/quit"), tr("E&xit"), this);
     quitAction->setToolTip(tr("Quit application"));
-    quitAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q));
+    quitAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
     quitAction->setMenuRole(QAction::QuitRole);
     aboutAction = new QAction(QIcon(":/icons/bitcoin"), tr("&About DigitalNote"), this);
     aboutAction->setToolTip(tr("Show information about DigitalNote"));
@@ -579,7 +601,7 @@ void DigitalNoteGUI::createToolBars()
 
     addToolBar(Qt::LeftToolBarArea, toolbar);
 
-    foreach(QAction *action, toolbar->actions()) {
+    for (QAction *action : toolbar->actions()) {
         toolbar->widgetForAction(action)->setFixedWidth(142);
     }
 }
@@ -1374,7 +1396,7 @@ void DigitalNoteGUI::dropEvent(QDropEvent *event)
     {
         int nValidUrisFound = 0;
         QList<QUrl> uris = event->mimeData()->urls();
-        foreach(const QUrl &uri, uris)
+        for (const QUrl &uri : uris)
         {
             if (sendCoinsPage->handleURI(uri.toString()))
                 nValidUrisFound++;

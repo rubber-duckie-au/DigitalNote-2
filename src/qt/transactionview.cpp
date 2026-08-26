@@ -1,5 +1,11 @@
 #include "compat.h"
 
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QAction>
+#include <QResizeEvent>
 #include <QComboBox>
 #include <QDateTimeEdit>
 #include <QDesktopServices>
@@ -12,7 +18,6 @@
 #include <QPoint>
 #include <QScrollBar>
 #include <QSettings>
-#include <QSignalMapper>
 #include <QTableView>
 #include <QTabBar>
 #include <QUrl>
@@ -248,7 +253,7 @@ void TransactionView::setModel(WalletModel *model)
         /*if (model->getOptionsModel())
         {
             // Add third party transaction URLs to context menu
-            QStringList listUrls = model->getOptionsModel()->getThirdPartyTxUrls().split("|", QString::SkipEmptyParts);
+            QStringList listUrls = model->getOptionsModel()->getThirdPartyTxUrls().split("|", Qt::SkipEmptyParts);
             for (int i = 0; i < listUrls.size(); ++i)
             {
                 QString host = QUrl(listUrls[i].trimmed(), QUrl::StrictMode).host();
@@ -564,7 +569,7 @@ void TransactionView::computeSum()
         return;
     QModelIndexList selection = transactionView->selectionModel()->selectedRows();
 
-    foreach (QModelIndex index, selection){
+    for (QModelIndex index : selection){
         amount += index.data(TransactionTableModel::AmountRole).toLongLong();
     }
     QString strAmount(DigitalNoteUnits::formatWithUnit(nDisplayUnit, amount, true, DigitalNoteUnits::separatorAlways));

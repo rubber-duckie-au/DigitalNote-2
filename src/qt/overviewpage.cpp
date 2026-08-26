@@ -308,7 +308,7 @@ void TxViewDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option
 	bool confirmed = index.data(TransactionTableModel::ConfirmedRole).toBool();
 	QVariant value = index.data(Qt::ForegroundRole);
 	QColor foreground = option.palette.color(QPalette::Text);
-	if(value.canConvert(QMetaType::QColor))
+	if(value.canConvert<QColor>())
 	{
 		foreground = qvariant_cast<QColor>(value);
 	}

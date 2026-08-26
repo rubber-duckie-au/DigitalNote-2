@@ -23,6 +23,10 @@
 
 #include "mrichtextedit.h"
 #include <QApplication>
+// v2.0.0.9 Qt6: QRegExp was REMOVED from qtbase in Qt6.  The auto-linker
+// patterns here are the same ones chatcomposer.cpp uses and are already
+// PCRE-compatible, so this is a straight type swap.
+#include <QRegularExpression>
 #include <QClipboard>
 #include <QMimeData>
 #include <QFontDatabase>
@@ -106,15 +110,15 @@ MRichTextEdit::MRichTextEdit(QWidget *parent) : QWidget(parent) {
 
     // link
 
-    f_link->setShortcut(Qt::CTRL + Qt::Key_L);
+    f_link->setShortcut(Qt::CTRL | Qt::Key_L);
 
     connect(f_link, SIGNAL(clicked(bool)), this, SLOT(textLink(bool)));
 
     // bold, italic & underline
 
-    f_bold->setShortcut(Qt::CTRL + Qt::Key_B);
-    f_italic->setShortcut(Qt::CTRL + Qt::Key_I);
-    f_underline->setShortcut(Qt::CTRL + Qt::Key_U);
+    f_bold->setShortcut(Qt::CTRL | Qt::Key_B);
+    f_italic->setShortcut(Qt::CTRL | Qt::Key_I);
+    f_underline->setShortcut(Qt::CTRL | Qt::Key_U);
 
     connect(f_bold, SIGNAL(clicked()), this, SLOT(textBold()));
     connect(f_italic, SIGNAL(clicked()), this, SLOT(textItalic()));
@@ -123,16 +127,16 @@ MRichTextEdit::MRichTextEdit(QWidget *parent) : QWidget(parent) {
 
     // lists
 
-    f_list_bullet->setShortcut(Qt::CTRL + Qt::Key_Minus);
-    f_list_ordered->setShortcut(Qt::CTRL + Qt::Key_Equal);
+    f_list_bullet->setShortcut(Qt::CTRL | Qt::Key_Minus);
+    f_list_ordered->setShortcut(Qt::CTRL | Qt::Key_Equal);
 
     connect(f_list_bullet, SIGNAL(clicked(bool)), this, SLOT(listBullet(bool)));
     connect(f_list_ordered, SIGNAL(clicked(bool)), this, SLOT(listOrdered(bool)));
 
     // indentation
 
-    f_indent_dec->setShortcut(Qt::CTRL + Qt::Key_Comma);
-    f_indent_inc->setShortcut(Qt::CTRL + Qt::Key_Period);
+    f_indent_dec->setShortcut(Qt::CTRL | Qt::Key_Comma);
+    f_indent_inc->setShortcut(Qt::CTRL | Qt::Key_Period);
 
     connect(f_indent_inc, SIGNAL(clicked()), this, SLOT(increaseIndentation()));
     connect(f_indent_dec, SIGNAL(clicked()), this, SLOT(decreaseIndentation()));
@@ -140,11 +144,23 @@ MRichTextEdit::MRichTextEdit(QWidget *parent) : QWidget(parent) {
     // font size
 
     QFontDatabase db;
-    foreach(int size, db.standardSizes())
+    for (int size : db.standardSizes())
         f_fontsize->addItem(QString::number(size));
 
+    // v2.0.0.9 Qt6: QComboBox::activated(const QString&) was REMOVED in Qt6 --
+    // only activated(int) survives, and the string form is now
+    // textActivated(const QString&).  A string-based connect to a missing
+    // signal fails at RUNTIME with "No such signal
+    // QComboBox::activated(QString)", so the font-size combo silently stopped
+    // working.  textActivated() does not exist in Qt5, so this needs a guard
+    // rather than a rename.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    connect(f_fontsize, SIGNAL(textActivated(QString)),
+            this, SLOT(textSize(QString)));
+#else
     connect(f_fontsize, SIGNAL(activated(QString)),
             this, SLOT(textSize(QString)));
+#endif
     f_fontsize->setCurrentIndex(f_fontsize->findText(QString::number(QApplication::font()
                                                                    .pointSize())));
 
@@ -264,7 +280,14 @@ void MRichTextEdit::textStyle(int index) {
         }
     if (index == ParagraphMonospace) {
         fmt = cursor.charFormat();
+        // v2.0.0.9 Qt6: QTextCharFormat::setFontFamily() is deprecated in
+        // favour of setFontFamilies(QStringList).  setFontFamilies does NOT
+        // exist in Qt5, so this needs a version guard rather than a rename.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 1, 0)
+        fmt.setFontFamilies(QStringList() << "Monospace");
+#else
         fmt.setFontFamily("Monospace");
+#endif
         fmt.setFontStyleHint(QFont::Monospace);
         fmt.setFontFixedPitch(true);
         }
@@ -423,9 +446,9 @@ void MRichTextEdit::slotClipboardDataChanged() {
 QString MRichTextEdit::toHtml() const {
     QString s = f_textedit->toHtml();
     // convert emails to links
-    s = s.replace(QRegExp("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)([a-zA-Z\\d]+@[a-zA-Z\\d]+\\.[a-zA-Z]+)"), "\\1<a href=\"mailto:\\2\">\\2</a>");
+    s = s.replace(QRegularExpression("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)([a-zA-Z\\d]+@[a-zA-Z\\d]+\\.[a-zA-Z]+)"), "\\1<a href=\"mailto:\\2\">\\2</a>");
     // convert links
-    s = s.replace(QRegExp("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)((?:https?|ftp|file)://[^\\s'\"<>]+)"), "\\1<a href=\"\\2\">\\2</a>");
+    s = s.replace(QRegularExpression("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)((?:https?|ftp|file)://[^\\s'\"<>]+)"), "\\1<a href=\"\\2\">\\2</a>");
     // see also: Utils::linkify()
     return s;
 }

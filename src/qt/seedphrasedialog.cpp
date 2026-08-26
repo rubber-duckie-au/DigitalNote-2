@@ -136,9 +136,37 @@ void SeedPhraseDialog::setupUi()
     seedLayout->addWidget(wordGrid);
 
     // Placeholder shown before reveal
-    auto *placeholderLabel = new QLabel(tr("Your recovery phrase is a 24-word backup of your wallet password.\n\n"
-           "If you forget your password, enter these words in Settings \u2192 Unlock Wallet \u2192 Forgot password?\n\n"
-           "Note: This backs up your password only, not your keys. Keep your wallet.dat file backed up separately."));
+    // v2.0.0.9 TODO 3.37: rewritten.  The previous wording was factually wrong
+    // and contradicted RecoveryPhraseUpgradeDialog, which describes the same
+    // feature correctly.  It said:
+    //
+    //   "Your recovery phrase is a 24-word backup of your wallet password.
+    //    ... Note: This backs up your password only, not your keys."
+    //
+    // Three problems:
+    //   1. It is NOT derived from the password.  BIP39Passphrase::
+    //      mnemonicFromVMasterKey() derives it from the vMasterKey via PBKDF2.
+    //      There is ONE vMasterKey with TWO independent envelopes in
+    //      mapMasterKeys -- one opened by the password, one by the phrase.
+    //      Two keys to the same lock, not a copy of one key.  The old text also
+    //      implied changing the password changes the phrase; it does not.  Only
+    //      RotateMnemonicMasterKey() does, by generating a fresh vMasterKey.
+    //   2. "backs up your password only, not your keys" is confusing -- the
+    //      phrase DOES give access to the keys, it just does not CONTAIN them.
+    //   3. The dangerous gap: anyone who has used BIP39 elsewhere assumes 24
+    //      words means full wallet recovery.  This is a JBOK wallet -- keys are
+    //      random, not seed-derived -- so the phrase can UNLOCK wallet.dat but
+    //      can never RECONSTRUCT it.  Lose the file, keep the phrase, and you
+    //      have nothing.  That was buried in a trailing "Note:".
+    //
+    // The closing sentence deliberately matches RecoveryPhraseUpgradeDialog
+    // word-for-word so the two dialogs agree on the point that loses coins.
+    auto *placeholderLabel = new QLabel(tr(
+           "This is NOT a wallet recovery phrase \u2014 it cannot restore your coins on another computer.\n\n"
+           "It is a second way to unlock THIS wallet if you forget your password. "
+           "Enter the words in Settings \u2192 Unlock Wallet \u2192 Forgot password?\n\n"
+           "Your wallet.dat file remains the only backup of your funds. "
+           "Losing it means losing your coins, even if you have the phrase."));
     placeholderLabel->setObjectName("placeholderLabel");
     placeholderLabel->setAlignment(Qt::AlignCenter);
     placeholderLabel->setStyleSheet("color:#888; font-size:10pt;");

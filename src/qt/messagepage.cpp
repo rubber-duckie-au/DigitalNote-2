@@ -1,3 +1,8 @@
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QAction>
 #include <QBoxLayout>
 #include <QSizePolicy>
 #include <QSortFilterProxyModel>
@@ -121,6 +126,20 @@ MessagePage::MessagePage(QWidget *parent) :
 
     // Show Messages
     ui->listConversation->setItemDelegate(msgdelegate);
+
+    // v2.0.0.9: never scroll the conversation horizontally.
+    //
+    // ConversationBubbleDelegate::sizeHint() returns QSize(viewportWidth, h) --
+    // the FULL viewport width -- so the item is always exactly as wide as the
+    // view.  Anything that narrows the viewport by even a pixel (a stylesheet
+    // border, a vertical scrollbar appearing) makes the hint wider than the
+    // viewport, which raises a horizontal scrollbar and clips the right-aligned
+    // "sent" bubbles.  Adding a 1px frame border was enough to trigger it.
+    //
+    // Bubbles wrap to a percentage of the width, so horizontal scrolling has no
+    // purpose here at all.  Turning it off removes the whole failure mode rather
+    // than tuning geometry against it.
+    ui->listConversation->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     ui->listConversation->setIconSize(QSize(DECORATION_SIZE, DECORATION_SIZE));
     ui->listConversation->setMinimumHeight(NUM_ITEMS * (DECORATION_SIZE + 2));
     ui->listConversation->setAttribute(Qt::WA_MacShowFocusRect, false);

@@ -1,5 +1,8 @@
 #include "compat.h"
 
+// v2.0.0.9 Qt6: lean headers -- no longer arrives transitively.
+#include <QStandardPaths>
+#include <QRegularExpression>
 #include <QApplication>
 
 #include "guiutil.h"
@@ -70,7 +73,7 @@ QString dateTimeStr(const QDateTime &date)
 
 QString dateTimeStr(qint64 nTime)
 {
-    return dateTimeStr(QDateTime::fromTime_t((qint32)nTime));
+    return dateTimeStr(QDateTime::fromSecsSinceEpoch((qint32)nTime));
 }
 
 QFont bitcoinAddressFont()
@@ -238,11 +241,19 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
     QString result = QDir::toNativeSeparators(QFileDialog::getSaveFileName(parent, caption, myDir, filter, &selectedFilter));
 
     /* Extract first suffix from filter pattern "Description (*.foo)" or "Description (*.foo *.bar ...) */
-    QRegExp filter_re(".* \\(\\*\\.(.*)[ \\)]");
+    // v2.0.0.9 Qt6: QRegExp -> QRegularExpression.
+    //
+    // NOT a drop-in.  QRegExp::exactMatch() anchored the WHOLE subject
+    // implicitly; QRegularExpression does not, so the pattern is wrapped with
+    // anchoredPattern() to preserve the exact-match semantics.  Without that
+    // wrap this would start matching filters it previously rejected.
+    // cap(1) -> captured(1).
+    QRegularExpression filter_re(QRegularExpression::anchoredPattern(".* \\(\\*\\.(.*)[ \\)]"));
     QString selectedSuffix;
-    if(filter_re.exactMatch(selectedFilter))
+    QRegularExpressionMatch filter_m = filter_re.match(selectedFilter);
+    if(filter_m.hasMatch())
     {
-        selectedSuffix = filter_re.cap(1);
+        selectedSuffix = filter_m.captured(1);
     }
 
     /* Add suffix if needed */
@@ -740,15 +751,33 @@ int scaledFontPoints(int basePoints)
 
 void applyDefaultFont(QApplication *app)
 {
-    // Attempt to load the bundled Inter font; fall back to system sans-serif.
-    int id = QFontDatabase::addApplicationFont(
-        QStringLiteral(":/fonts/Inter-Regular.ttf"));
-
-    QString family;
-    if (id >= 0 && !QFontDatabase::applicationFontFamilies(id).isEmpty())
-        family = QFontDatabase::applicationFontFamilies(id).at(0);
-    else
-        family = app->font().family();
+    // v2.0.0.9 TODO 3.34: the bundled-Inter path was REMOVED, not repaired.
+    //
+    // This used to call
+    //     QFontDatabase::addApplicationFont(":/fonts/Inter-Regular.ttf")
+    // and fall back to the platform font if it failed.  Inter is NOT shipped --
+    // bitcoin.qrc contains exactly one font (res/fonts/RobotoMono-Bold.ttf,
+    // aliased "monospace") and res/fonts/ holds only that file.  So the call
+    // returned -1 on EVERY run, on Qt5 and Qt6 alike, and the fallback was the
+    // only path ever taken.  The wallet has never used the font its code asked
+    // for.  Code that fails silently on every startup is worse than no code, so
+    // it is gone rather than left failing.
+    //
+    // We now take the platform default EXPLICITLY.  Deliberately NOT hardcoding
+    // a family: the right font differs per platform -- Segoe UI on Windows 11,
+    // MS Shell Dlg 2 on Windows 10, the system UI font on macOS, whatever
+    // fontconfig resolves on Linux.  Pinning any one of those would simply move
+    // the fallback problem to the other platforms.
+    //
+    // Consequence to be aware of: the family therefore still tracks the toolkit
+    // default, which is why Qt5 rendered MS Shell Dlg 2 and Qt6 renders Segoe UI
+    // on the same machine.  Both are CORRECT for their platform.  If a single
+    // consistent brand font is ever wanted, ship it in bitcoin.qrc and set it
+    // here -- do not reinstate a load that can fail silently.
+    //
+    // The point SIZE is still overridden below (10pt), which is the app's own
+    // choice and unrelated to the family.
+    const QString family = app->font().family();
 
     QFont f(family);
     // 10pt at 96 DPI ~= 13px - comfortable at 1080p, scales cleanly to 4K.

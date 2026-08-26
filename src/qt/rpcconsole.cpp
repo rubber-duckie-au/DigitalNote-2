@@ -1,5 +1,11 @@
 #include "compat.h"
 
+// v2.0.0.9 Qt6: explicit includes.  Qt6 builds with QT_LEAN_HEADERS=1 and
+// dropped many transitive includes Qt5 provided for free; QAction also MOVED
+// from QtWidgets to QtGui in Qt6.  Naming them is harmless on Qt5 and required
+// on Qt6.
+#include <QAction>
+#include <QResizeEvent>
 #include <QClipboard>
 #include <QTime>
 #include <QThread>
@@ -7,7 +13,6 @@
 #include <QMenu>
 #include <QUrl>
 #include <QScrollBar>
-#include <QSignalMapper>
 #include <QStringList>
 #include <openssl/crypto.h>
 
@@ -81,7 +86,7 @@ bool parseCommandLine(std::vector<std::string> &args, const std::string &strComm
         STATE_ESCAPE_DOUBLEQUOTED
     } state = STATE_EATING_SPACES;
     std::string curarg;
-    foreach(char ch, strCommand)
+    for (char ch : strCommand)
     {
         switch(state)
         {
@@ -261,13 +266,21 @@ bool RPCConsole::eventFilter(QObject* obj, QEvent *event)
         case Qt::Key_PageDown:
             if(obj == ui->lineEdit)
             {
-                QApplication::postEvent(ui->messagesWidget, new QKeyEvent(*keyevt));
+                // v2.0.0.9 Qt6: QEvent copy constructors are PROTECTED in Qt6 (public in
+                // Qt5), specifically to prevent slicing.  `new QKeyEvent(*keyevt)` no longer
+                // compiles.  Rebuilding from the source event's fields is valid on BOTH Qt5
+                // and Qt6, unlike QEvent::clone() which is Qt6-only.
+                QApplication::postEvent(ui->messagesWidget,
+                    new QKeyEvent(keyevt->type(), keyevt->key(), keyevt->modifiers(),
+                                  keyevt->text(), keyevt->isAutoRepeat(), keyevt->count()));
                 return true;
             }
             break;
         case Qt::Key_Enter:
             if (obj == autoCompleter->popup()) {
-                QApplication::postEvent(ui->lineEdit, new QKeyEvent(*keyevt));
+                QApplication::postEvent(ui->lineEdit,
+                    new QKeyEvent(keyevt->type(), keyevt->key(), keyevt->modifiers(),
+                                  keyevt->text(), keyevt->isAutoRepeat(), keyevt->count()));
                 return true;
             }
             break;
@@ -280,7 +293,9 @@ bool RPCConsole::eventFilter(QObject* obj, QEvent *event)
                   ((mod & Qt::ShiftModifier) && key == Qt::Key_Insert)))
             {
                 ui->lineEdit->setFocus();
-                QApplication::postEvent(ui->lineEdit, new QKeyEvent(*keyevt));
+                QApplication::postEvent(ui->lineEdit,
+                    new QKeyEvent(keyevt->type(), keyevt->key(), keyevt->modifiers(),
+                                  keyevt->text(), keyevt->isAutoRepeat(), keyevt->count()));
                 return true;
             }
         }
@@ -335,16 +350,19 @@ void RPCConsole::setClientModel(ClientModel *model)
         // Add a signal mapping to allow dynamic context menu arguments.
         // We need to use int (instead of int64_t), because signal mapper only supports
         // int or objects, which is okay because max bantime (1 year) is < int_max.
-        QSignalMapper* signalMapper = new QSignalMapper(this);
-        signalMapper->setMapping(banAction1h, 60*60);
-        signalMapper->setMapping(banAction24h, 60*60*24);
-        signalMapper->setMapping(banAction7d, 60*60*24*7);
-        signalMapper->setMapping(banAction365d, 60*60*24*365);
-        connect(banAction1h, SIGNAL(triggered()), signalMapper, SLOT(map()));
-        connect(banAction24h, SIGNAL(triggered()), signalMapper, SLOT(map()));
-        connect(banAction7d, SIGNAL(triggered()), signalMapper, SLOT(map()));
-        connect(banAction365d, SIGNAL(triggered()), signalMapper, SLOT(map()));
-        connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(banSelectedNode(int)));
+        // v2.0.0.9 Qt6: QSignalMapper was deprecated in Qt5.10 and its
+        // mapped(int) signal REMOVED in Qt6.  Replaced with direct lambda
+        // connects, which is what the Qt docs recommend and is also clearer:
+        // the ban duration is now visible at the connect site instead of
+        // being registered separately via setMapping().
+        //
+        // NOTE the int cast is no longer needed for its own sake, but the
+        // banSelectedNode(int) slot signature is unchanged, so the values
+        // stay int -- see the comment above about int vs int64_t.
+        connect(banAction1h,   &QAction::triggered, this, [this]{ banSelectedNode(60*60); });
+        connect(banAction24h,  &QAction::triggered, this, [this]{ banSelectedNode(60*60*24); });
+        connect(banAction7d,   &QAction::triggered, this, [this]{ banSelectedNode(60*60*24*7); });
+        connect(banAction365d, &QAction::triggered, this, [this]{ banSelectedNode(60*60*24*365); });
 
         // peer table context menu signals
         connect(ui->peerWidget, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(showPeersTableContextMenu(const QPoint&)));

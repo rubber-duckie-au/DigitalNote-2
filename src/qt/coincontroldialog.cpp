@@ -198,7 +198,21 @@ void CoinControlDialog::buttonSelectAllClicked()
     CoinControlDialog::updateLabels(model, this);
     clock_t end = clock();
     double t = double(end - begin) / CLOCKS_PER_SEC;
-    LogPrintf("CoinControlDialog::buttonSelectAllClicked(CoinControlDialog::updateLabels) - Time elapsed: %f \n", t);
+    // v2.0.0.9 TODO 3.36: gated.  This was an UNCONDITIONAL LogPrintf in a
+    // per-item hot path -- viewItemChanged() calls updateLabels() once per child,
+    // so a single "(un)select all" over a 576-output wallet emitted ~576 timing
+    // lines, nearly all reporting 0.000000.  Same defect class as the vote
+    // tracker spam fixed in TODO 4.4: unconditional logging in a path that runs
+    // per item rather than per event.
+    //
+    // Gated behind -debug=selectcoins (the existing category for coin selection)
+    // AND suppressed when the measurement is trivial: a timing log that says
+    // 0.000000 several hundred times carries no information.  A slow pass still
+    // reports, which is the only case the timer was ever useful for.
+    if (t >= 0.001 && LogAcceptCategory("selectcoins"))
+    {
+        LogPrintf("CoinControlDialog::buttonSelectAllClicked(updateLabels) - Time elapsed: %f \n", t);
+    }
 }
 
 // Toggle lock state
@@ -524,7 +538,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     const int listSize = CoinControlDialog::payAmounts.size();
     clock_t begin = clock();
     //for (int i = 0; i < listSize; ++i)
-    foreach(const qint64 &amount, CoinControlDialog::payAmounts)
+    for (const qint64 &amount : CoinControlDialog::payAmounts)
     {
     	//qint64 amount = CoinControlDialog::payAmounts.at(i);
         nPayAmount += amount;
@@ -698,7 +712,21 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 
     clock_t end = clock();
     double t = double(end - begin) / CLOCKS_PER_SEC;
-    LogPrintf("CoinControlDialog::updateLabels() - Time elapsed: %f \n", t);
+    // v2.0.0.9 TODO 3.36: gated.  This was an UNCONDITIONAL LogPrintf in a
+    // per-item hot path -- viewItemChanged() calls updateLabels() once per child,
+    // so a single "(un)select all" over a 576-output wallet emitted ~576 timing
+    // lines, nearly all reporting 0.000000.  Same defect class as the vote
+    // tracker spam fixed in TODO 4.4: unconditional logging in a path that runs
+    // per item rather than per event.
+    //
+    // Gated behind -debug=selectcoins (the existing category for coin selection)
+    // AND suppressed when the measurement is trivial: a timing log that says
+    // 0.000000 several hundred times carries no information.  A slow pass still
+    // reports, which is the only case the timer was ever useful for.
+    if (t >= 0.001 && LogAcceptCategory("selectcoins"))
+    {
+        LogPrintf("CoinControlDialog::updateLabels() - Time elapsed: %f \n", t);
+    }
 }
 
 void CoinControlDialog::updateView()
@@ -713,7 +741,29 @@ void CoinControlDialog::updateView()
     ui->treeWidget->setEnabled(false); // performance, otherwise updateLabels would be called for every checked checkbox
     ui->treeWidget->setAlternatingRowColors(!treeMode);
     QFlags<Qt::ItemFlag> flgCheckbox=Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsUserCheckable;
-    QFlags<Qt::ItemFlag> flgTristate=Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsUserCheckable | Qt::ItemIsTristate;    
+    QFlags<Qt::ItemFlag> flgTristate=Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsUserCheckable |
+		// v2.0.0.9 Qt6: Qt::ItemIsTristate was renamed to Qt::ItemIsAutoTristate
+		// in Qt 5.6 and the old spelling REMOVED in Qt6.  Both spellings share the
+		// SAME value (32), so this is a true rename with identical behaviour.
+		//
+		// >>> DO NOT "correct" THIS TO ItemIsUserTristate. <<<  That is a DIFFERENT
+		// flag (value 256) with different semantics, and substituting it was a real
+		// regression in the first Qt6 pass:
+		//
+		//   ItemIsAutoTristate - the parent's check state is derived AUTOMATICALLY
+		//                        from its children (all checked / none checked /
+		//                        partial).  This is what coin control needs: ticking
+		//                        an address ticks its outputs, and ticking outputs
+		//                        updates the address row.
+		//   ItemIsUserTristate - the USER may cycle a parent through three states
+		//                        manually, with NO parent/child linkage at all.
+		//
+		// The symptom of getting this wrong is subtle and easy to miss: the parent
+		// checkbox still cycles through all three states, so it LOOKS functional,
+		// but selecting a parent no longer selects its child outputs and child
+		// selections no longer roll up.  Coin control silently stops controlling
+		// coins.
+		Qt::ItemIsAutoTristate;    
 
     int nDisplayUnit = model->getOptionsModel()->getDisplayUnit();
 
@@ -863,5 +913,12 @@ void CoinControlDialog::updateView()
     ui->treeWidget->setEnabled(true);
     clock_t end = clock();
     double t = double(end - begin) / CLOCKS_PER_SEC;
-    LogPrintf("CoinControlDialog::updateView - Time elapsed: %f \n", t);
+    // v2.0.0.9 TODO 3.36: gated.  updateView() rebuilds the whole tree and runs
+    // ONCE per dialog open, not per item, so it is not spam -- but it is still
+    // developer timing output that belongs behind a category rather than in
+    // every user's debug.log.
+    if (LogAcceptCategory("selectcoins"))
+    {
+        LogPrintf("CoinControlDialog::updateView - Time elapsed: %f \n", t);
+    }
 }

@@ -115,9 +115,9 @@ QDateTime ClientModel::getLastBlockDate() const
 {
     LOCK(cs_main);
     if (pindexBest)
-        return QDateTime::fromTime_t(pindexBest->GetBlockTime());
+        return QDateTime::fromSecsSinceEpoch(pindexBest->GetBlockTime());
     else
-        return QDateTime::fromTime_t(Params().GenesisBlock().nTime); // Genesis block's time of current network
+        return QDateTime::fromSecsSinceEpoch(Params().GenesisBlock().nTime); // Genesis block's time of current network
 }
 
 
@@ -240,7 +240,7 @@ QString ClientModel::clientName() const
 
 QString ClientModel::formatClientStartupTime() const
 {
-    return QDateTime::fromTime_t(nClientStartupTime).toString();
+    return QDateTime::fromSecsSinceEpoch(nClientStartupTime).toString();
 }
 
 QString ClientModel::getConfigFileContent() const

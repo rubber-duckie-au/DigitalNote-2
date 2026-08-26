@@ -235,8 +235,23 @@ void WalletModel::updateStatus()
 {
     EncryptionStatus newEncryptionStatus = getEncryptionStatus();
  
-    LogPrintf("WalletModel::updateStatus: cached=%d new=%d\n",
-              (int)cachedEncryptionStatus, (int)newEncryptionStatus);
+    // v2.0.0.9 TODO 3.36: gated AND de-duplicated.
+    //
+    // This was an unconditional LogPrintf on a POLLED path.  updateStatus() is
+    // driven by pollTimer at MODEL_UPDATE_DELAY = 250 ms (guiconstants.h:5), so
+    // it emitted 4 lines PER SECOND -- roughly 14,400 an hour, for the life of
+    // the process, on every user's wallet.  The overwhelming majority report an
+    // unchanged status.
+    //
+    // Only the TRANSITION matters, and the transition itself is already logged
+    // separately a few lines below.  This line now fires only when the status
+    // actually changes, so a wallet sitting idle produces nothing at all while
+    // every real lock/unlock is still recorded.
+    if (newEncryptionStatus != cachedEncryptionStatus)
+    {
+        LogPrintf("WalletModel::updateStatus: cached=%d new=%d\n",
+                  (int)cachedEncryptionStatus, (int)newEncryptionStatus);
+    }
         // Detect any transition INTO Unlocked state, regardless of where we
         // came from.  This handles three scenarios:
         //   - User just typed their password to unlock (Locked -> Unlocked)
@@ -415,7 +430,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
     int nAddresses = 0;
 
     // Pre-check input data for validity
-    foreach(const SendCoinsRecipient &rcp, recipients)
+    for (const SendCoinsRecipient &rcp : recipients)
     {
         if(!validateAddress(rcp.address))
         {
@@ -506,7 +521,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
 
         // Sendmany
         std::vector<std::pair<CScript, int64_t> > vecSend;
-        foreach(const SendCoinsRecipient &rcp, recipients)
+        for (const SendCoinsRecipient &rcp : recipients)
         {
             std::string sAddr = rcp.address.toStdString();
 
@@ -611,7 +626,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
     }
 
     // Add addresses / update labels that we've sent to to the address book
-    foreach(const SendCoinsRecipient &rcp, recipients)
+    for (const SendCoinsRecipient &rcp : recipients)
     {
         std::string strAddress = rcp.address.toStdString();
         CTxDestination dest = CDigitalNoteAddress(strAddress).Get();
