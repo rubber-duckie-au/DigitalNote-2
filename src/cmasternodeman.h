@@ -244,31 +244,11 @@ public:
 	// never holds mnodeman.cs directly.
 	std::vector<CMnPaymentSnapshotEntry> GetQueuePaymentSnapshot() const;
 
-	// Same selection semantics as FindOldestNotInVec, but uses chain-derived
-	// lastPaidHeight instead of local nLastPaid.  Deterministic across nodes
-	// with the same chain state.
-	//
-	// nReferenceHeight is the upper bound on "recently paid" -- payments at
-	// heights > nReferenceHeight are ignored (reorg-protection).  Callers
-	// should pass (currentHeight - REORG_DEPTH_BUFFER) for vote production.
-	//
-	// Tie-breaking: when multiple MNs share the same lastPaidHeight, pick
-	// the one with the lowest vin.prevout (grind-resistant per PhaseB B3.3).
-	//
-	// NOT YET CALLED FROM SELECTION PATH -- that wiring lands in M5.
-	//
-	// v2.0.0.8 Fix C: fChainDerivedEligibility selects the candidate-pool
-	// eligibility predicate.  When true (the vote path -- BroadcastVote),
-	// candidates are filtered by the deterministic, chain-derived
-	// CMasternode::IsVotingEligible(nReferenceHeight) so two nodes
-	// computing a vote for the same height pick the same candidate set
-	// regardless of differing wall-clock liveness views.  When false
-	// (default -- legacy / non-consensus callers), the original
-	// IsEnabled() liveness filter is used.
-	CMasternode* FindOldestNotInVecChainDerived(const std::vector<CTxIn>& vVins,
-												int nMinimumAge,
-												int nReferenceHeight,
-												bool fChainDerivedEligibility = false);
+	// FINDING-2026-008: FindOldestNotInVecChainDerived() was DELETED 2026-08-07.
+	// Vestigial scaffolding from the reverted PB-INFLIGHT / PB-16 experiment --
+	// zero callers; all six live payee-selection sites use FindOldestNotInVec.
+	// Chain-derived eligibility shipped via CMasternode::IsVotingEligible()
+	// instead.  Rationale preserved in cmasternodevotetracker.cpp.
 
 	//
 	// Relay Masternode Messages
@@ -277,6 +257,11 @@ public:
 	void RelayMasternodeEntry(const CTxIn vin, const CService addr, const std::vector<unsigned char> vchSig, const int64_t nNow, const CPubKey pubkey,
 			const CPubKey pubkey2, const int count, const int current, const int64_t lastUpdated, const int protocolVersion, CScript donationAddress, int donationPercentage);
 	void RelayMasternodeEntryPing(const CTxIn vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
+
+	// v2.0.0.9 FINDING-2026-013: relay a masternode's self-attested protocol
+	// version.  Advisory telemetry only -- see CActiveMasternode::Mnver().
+	void RelayMasternodeVersion(const CTxIn vin, const int nVersion, const int64_t nNow,
+		const std::vector<unsigned char> vchSig);
 
 	void Remove(CTxIn vin);
 

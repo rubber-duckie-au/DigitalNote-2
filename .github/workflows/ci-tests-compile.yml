@@ -1,0 +1,150 @@
+name: CI - Test Suite (compile gate)
+
+# =============================================================================
+# ISOLATED BY DESIGN.
+#
+# This workflow is deliberately SEPARATE from ci-linux-x64.yml and the rest of
+# the build matrix.  It does not clone DigitalNote-Builder, does not build Qt,
+# OpenSSL or Boost from source, and does not touch the release pipeline.  It
+# cannot break the existing build process, which is why it is a new file rather
+# than a change to the existing workflow.
+#
+# It is intended to run on the v2.0.0.9-tests branch first, so the mechanism can
+# be proven before it goes anywhere near master.
+#
+# WHAT THIS GATES TODAY: that every test file which currently compiles still
+# compiles.  That is a real regression gate -- the suite rotted in the first
+# place because the source tree moved (key.h -> ckey.h, uint256.h ->
+# uint/uint256.h, crypto/sha256.h -> crypto/common/sha256.h, and so on) and
+# nothing ever noticed.  This notices.
+#
+# WHAT THIS DOES NOT DO YET: link or execute the tests.  Per TODO 12.A.2 step 4,
+# the per-test source lists cannot satisfy the link graph -- util.cpp is not a
+# leaf and drags chainparams, hash, the sync layer and the build-generated
+# CLIENT_BUILD symbol.  The fix is a dncore static library.  Until that lands,
+# a build/ctest step here would be permanently red, and a permanently-red step
+# that everyone learns to ignore is worse than no step at all.
+#
+# WHEN STEP 4 LANDS: add a cmake --build + ctest job below.  Do not repurpose
+# this one -- keep the compile gate as its own fast signal.
+# =============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to compile-check (blank = the branch selected above)"
+        required: false
+        type: choice
+        options:
+          - ""
+          - v2.0.0.9-tests
+          - 2.0.0.9-testing
+          - master
+        default: ""
+  push:
+    branches:
+      - v2.0.0.9-tests
+
+jobs:
+
+  test-suite-compile-gate:
+    name: Test suite - compile gate (Linux x64)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          submodules: false
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            g++ cmake libboost-test-dev libssl-dev
+          echo "g++    : $(g++ --version | head -1)"
+          echo "cmake  : $(cmake --version | head -1)"
+          echo "boost  : $(grep BOOST_LIB_VERSION /usr/include/boost/version.hpp | awk '{print $NF}')"
+          echo "openssl: $(openssl version)"
+
+      # The CMake test project must at minimum CONFIGURE.  Before 2026-07-28 it
+      # could not configure from any directory -- it carried two contradictory
+      # path assumptions and aborted at the generate step.  Guard that.
+      - name: CMake configure (must succeed)
+        run: |
+          cmake -S test -B build/test -DCMAKE_BUILD_TYPE=Debug
+          echo "configure OK"
+
+      - name: Compile-check every test translation unit
+        id: compile
+        run: |
+          set -uo pipefail
+
+          INC="-Isrc -Isrc/leveldb/include -Isrc/secp256k1/include -Isrc/bip39/include"
+          FLAGS="-fsyntax-only -std=c++17 -DBOOST_TEST_DYN_LINK -DBOOST_TEST_MODULE=cigate"
+
+          # Files expected to compile.  A regression in ANY of these fails the
+          # job.  When a test is repaired, ADD IT HERE in the same commit --
+          # that is what stops the suite rotting again.
+          EXPECTED="\
+          allocator_tests amount_tests base32_tests base64_tests bignum_tests \
+          getarg_tests hash_tests hmac_tests key_tests mruset_tests \
+          netbase_tests serialize_tests spork_tests uint160_tests \
+          uint256_tests util_tests version_tests"
+
+          # Known-unrepaired.  Reported, never fatal.  Shrink this list; do not
+          # grow it.  See TODO 12.A.2 step 3.
+          KNOWN_BAD="\
+          Checkpoints_tests accounting_tests base58_tests script_tests \
+          sigopcount_tests transaction_tests wallet_tests"
+
+          fail=0
+          echo "## Test suite compile gate" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Expected | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+
+          for t in $EXPECTED; do
+            f="src/test/$t.cpp"
+            if [ ! -f "$f" ]; then
+              echo "::error::$f is in the EXPECTED list but does not exist"
+              echo "| $t | compile | MISSING |" >> $GITHUB_STEP_SUMMARY
+              fail=1
+              continue
+            fi
+            if g++ $FLAGS $INC "$f" 2> /tmp/err_$t.txt; then
+              echo "PASS  $t"
+              echo "| $t | compile | pass |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "::error file=$f::$t no longer compiles"
+              head -20 /tmp/err_$t.txt
+              echo "| $t | compile | **FAIL** |" >> $GITHUB_STEP_SUMMARY
+              fail=1
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Known-unrepaired (informational)" >> $GITHUB_STEP_SUMMARY
+          for t in $KNOWN_BAD; do
+            f="src/test/$t.cpp"
+            [ -f "$f" ] || continue
+            if g++ $FLAGS $INC "$f" 2>/dev/null; then
+              # Good news, but it means the lists are stale.
+              echo "::warning file=$f::$t now compiles -- move it to EXPECTED"
+              echo "- $t: now compiles, promote it" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- $t: still unrepaired" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          exit $fail
+
+      - name: Report suite coverage
+        if: always()
+        run: |
+          TOTAL=$(ls src/test/*.cpp | wc -l)
+          echo "Test translation units in tree: $TOTAL"
+          echo "Compiling (expected set): 17"
+          echo "See TODO 12.A.2 for the repair plan and 12.A.4 for the functional harness."

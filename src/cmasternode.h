@@ -50,6 +50,31 @@ public:
 	bool unitTest;
 	bool allowFreeTx;
 	int protocolVersion;
+
+	// v2.0.0.9 FINDING-2026-013: version ATTESTED BY THE DAEMON ITSELF.
+	//
+	// protocolVersion above is stamped by whichever wallet last ran
+	// 'masternode start' -- the collateral holder -- using THAT wallet's
+	// compile-time PROTOCOL_VERSION.  It describes the CONTROLLER, not the
+	// daemon running at this address, and on mainnet was observed wrong in both
+	// directions.  Worse, it is a point-in-time stamp: upgrading a remote daemon
+	// without re-running 'masternode start' leaves it stale indefinitely.
+	//
+	// These two fields carry the version the masternode reports about ITSELF,
+	// signed with its own masternodeprivkey and refreshed on the ping cadence.
+	//
+	// DELIBERATELY NOT SERIALISED.  They are ephemeral -- refreshed at least
+	// every MASTERNODE_PING_SECONDS -- so persisting them would only preserve
+	// stale data across restarts, and adding fields to the CMasternode
+	// serialisation would change the masternode.dat format for no benefit.
+	//
+	// DELIBERATELY NOT USED BY CONSENSUS.  CountVotingEligible() still reads
+	// protocolVersion.  Wiring these in would be a consensus change requiring
+	// its own activation and soak (FINDING-2026-014) -- keeping them advisory
+	// is what makes this shippable without one.
+	int nAttestedVersion;    // 0 = never attested
+	int64_t nAttestedTime;   // sigTime of the attestation, for freshness/anti-replay
+
 	int64_t nLastDsq; //the dsq count from the last dsq broadcast of this node
 	CScript donationAddress;
 	int donationPercentage;

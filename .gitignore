@@ -34,3 +34,32 @@ src/leveldb-2.11/build
 qdbusxml2cpp_wrapper.bat
 uic_wrapper.bat
 digitalnote-qt_plugin_import.cpp
+
+## v2.0.0.9: vendored build residue.
+##
+## src/secp256k1 and src/leveldb are VENDORED SOURCE.  Building them in-tree
+## (./autogen.sh && ./configure && make, or leveldb's build_detect_platform)
+## scatters generated files through those directories.  55 such files reached
+## the repo this way and were removed 2026-08-25.
+##
+## NOTE the existing "!src/leveldb/Makefile" negation above: leveldb SHIPS a
+## Makefile as source and it must stay tracked.  secp256k1's Makefile is
+## GENERATED, so it is correctly caught by the "Makefile" rule.
+src/secp256k1/configure
+src/secp256k1/config.log
+src/secp256k1/config.status
+src/secp256k1/libtool
+src/secp256k1/aclocal.m4
+src/secp256k1/Makefile.in
+src/secp256k1/autom4te.cache/
+src/secp256k1/build-aux/
+src/secp256k1/src/libsecp256k1-config.h
+src/secp256k1/src/basic-config.h
+src/secp256k1/src/stamp-h1
+src/leveldb/build_config.mk
+*.lo
+*.la
+*.lai
+.libs/
+.deps/
+*~

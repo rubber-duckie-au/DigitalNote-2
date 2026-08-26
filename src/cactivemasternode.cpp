@@ -197,6 +197,18 @@ void CActiveMasternode::ManageStatus()
 	{
 		LogPrintf("CActiveMasternode::ManageStatus() - Error on Ping: %s\n", errorMessage.c_str());
 	}
+
+	// v2.0.0.9 FINDING-2026-013: attest our own protocol version on the same
+	// cadence as the ping, so the value can never be stale by more than
+	// MASTERNODE_PING_SECONDS.  Failure is non-fatal -- it is advisory
+	// telemetry, and a masternode that cannot attest must still ping.
+	std::string verErrorMessage;
+
+	if(!Mnver(verErrorMessage))
+	{
+		LogPrint("masternode", "CActiveMasternode::ManageStatus() - Error on version attestation: %s\n",
+			verErrorMessage.c_str());
+	}
 }
 
 // Send stop dseep to network for remote masternode
@@ -322,6 +334,89 @@ bool CActiveMasternode::Dseep(std::string& errorMessage)
 	}
 
 	return Dseep(vin, service, keyMasternode, pubKeyMasternode, errorMessage, false);
+}
+
+// v2.0.0.9 FINDING-2026-013: attest THIS daemon's own protocol version.
+//
+// WHY THIS EXISTS.  A masternode entry's protocolVersion is stamped by whichever
+// wallet last ran 'masternode start' -- the collateral holder -- using THAT
+// wallet's compile-time PROTOCOL_VERSION (see Register() below).  It therefore
+// describes the CONTROLLER, not the daemon actually serving the address, and it
+// is a point-in-time stamp: upgrading a remote daemon without re-running
+// 'masternode start' leaves the advertised value stale indefinitely.
+//
+// The practical consequence is that fleet-version telemetry cannot be trusted.
+// Ship a critical masternode fix, bump the protocol version, and a week later
+// every entry may read "upgraded" simply because operators restarted their
+// CONTROLLERS -- while the vulnerable daemons keep running.  It fails in the
+// reassuring direction, which is the worst way for a safety signal to fail.
+//
+// The fix is for the entity that KNOWS the version to be the one that SIGNS it.
+// This broadcast carries (vin, PROTOCOL_VERSION, sigTime) signed with
+// masternodeprivkey -- the same key Dseep() already uses -- so it needs no new
+// key material and cannot be forged or altered in relay.
+//
+// >>> WHY A SEPARATE MESSAGE RATHER THAN EXTENDING dseep. <<<
+// dseep's signature covers (service, sigTime, stop).  Adding a SIGNED field
+// would make every existing node fail to verify pings from upgraded
+// masternodes -- they would appear dead fleet-wide.  Adding an UNSIGNED
+// trailing field would leave the value forgeable by any relay.  A new message
+// avoids both, and main.cpp:3904 ("Ignore unknown commands for extensibility")
+// means older nodes simply drop it: no compatibility break, no activation.
+//
+// ADVISORY ONLY.  The receiving side stores this in nAttestedVersion, which
+// nothing in consensus reads -- CountVotingEligible() still uses
+// protocolVersion.  Changing that is FINDING-2026-014 and needs its own soak.
+bool CActiveMasternode::Mnver(std::string& errorMessage)
+{
+	// Same guard and key-acquisition path as Dseep(std::string&) -- this runs on
+	// the same cadence and has the same prerequisites.  vin and service are class
+	// members already populated by ManageStatus().
+	if(status != MASTERNODE_IS_CAPABLE && status != MASTERNODE_REMOTELY_ENABLED)
+	{
+		errorMessage = "masternode is not in a running status";
+
+		return false;
+	}
+
+	CPubKey pubKeyMasternode;
+	CKey keyMasternode;
+
+	if(!mnEngineSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubKeyMasternode))
+	{
+		LogPrintf("CActiveMasternode::Mnver() - Error upon calling SetKey: %s\n", errorMessage.c_str());
+
+		return false;
+	}
+
+	int64_t sigTime = GetAdjustedTime();
+
+	// The vin is bound into the signed message so an attestation cannot be
+	// replayed against a different masternode.  sigTime gives the receiver an
+	// anti-replay ordering, exactly as dseep does.
+	std::string strMessage = vin.ToString() +
+							 boost::lexical_cast<std::string>(PROTOCOL_VERSION) +
+							 boost::lexical_cast<std::string>(sigTime);
+
+	std::vector<unsigned char> vchSig;
+
+	if(!mnEngineSigner.SignMessage(strMessage, errorMessage, vchSig, keyMasternode))
+	{
+		LogPrintf("CActiveMasternode::Mnver() - Sign message failed: %s\n", errorMessage.c_str());
+
+		return false;
+	}
+
+	if(!mnEngineSigner.VerifyMessage(pubKeyMasternode, vchSig, strMessage, errorMessage))
+	{
+		LogPrintf("CActiveMasternode::Mnver() - Verify message failed: %s\n", errorMessage.c_str());
+
+		return false;
+	}
+
+	mnodeman.RelayMasternodeVersion(vin, PROTOCOL_VERSION, sigTime, vchSig);
+
+	return true;
 }
 
 bool CActiveMasternode::Dseep(CTxIn vin, CService service, CKey keyMasternode, CPubKey pubKeyMasternode,

@@ -27,6 +27,10 @@ public:
 	void ManageStatus();
 	bool Dseep(std::string& errorMessage);
 	bool Dseep(CTxIn vin, CService service, CKey key, CPubKey pubKey, std::string &retErrorMessage, bool stop);
+
+	// v2.0.0.9 FINDING-2026-013: broadcast this daemon's OWN protocol version,
+	// signed with masternodeprivkey.  See CActiveMasternode::Mnver().
+	bool Mnver(std::string& errorMessage);
 	bool StopMasterNode(std::string& errorMessage);																		// stop main masternode
 	bool StopMasterNode(const std::string &strService, const std::string &strKeyMasternode, std::string& errorMessage); // stop remote masternode
 	// v2.0.0.8 PB-13 fix: stop a specific remote masternode by full identity

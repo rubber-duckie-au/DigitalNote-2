@@ -51,6 +51,54 @@ struct EquivocationRecord
  */
 class CMasternodeVoteTracker
 {
+private:
+	// v2.0.0.9 TODO 2.1-followup: LOG-ONLY change-detection state.
+	//
+	// GetCanonicalWinnerFromQueues() is POLLED, not event-driven: the staker
+	// loop in miner.cpp calls it once per second (MilliSleep(1000) at
+	// miner.cpp:1024/1032), and cblock.cpp calls it per validated block.  Every
+	// successful call logged, so a healthy chain produced ~60 identical lines a
+	// minute -- all reporting the same height, queue-height, position and
+	// voter count.
+	//
+	// This holds a signature of the last line emitted from the polled sites so
+	// an unchanged outcome is not re-logged.  Every genuine TRANSITION still
+	// prints exactly once.
+	//
+	// >>> STRICTLY DIAGNOSTIC.  This member is never read by, and never
+	// >>> influences, the value GetCanonicalWinnerFromQueues() returns.  It
+	// >>> cannot affect consensus.  Do not make it do anything else.
+	//
+	// Protected by the LOCK2(cs_main, cs) the polled accessors already take.
+	std::string strLastPollLogged;
+	int64_t nLastPollLogTime;
+
+	// HEARTBEAT.  De-duplication alone would remove the property that made a
+	// stall visible: with a line every second, consensus going quiet was
+	// obvious; with dedup, silence becomes the NORMAL state and "healthy and
+	// unchanged" is indistinguishable from "stopped computing".
+	//
+	// That matters because the no-consensus path (the final `return false`,
+	// reached when no queue-height clears) logs NOTHING -- before or after this
+	// change.  A stall is therefore signalled by absence, and absence is only
+	// readable against a known cadence.
+	//
+	// Re-emitting an unchanged result every 5 minutes keeps the volume trivial
+	// (~12/hour instead of ~3,600/hour) while preserving "the last line is
+	// recent, so this node is still resolving consensus".
+	static const int64_t POLL_LOG_HEARTBEAT_SECS = 300;
+
+	// Time floor for the no-consensus report.  Deliberately NOT a change
+	// signature: cblock.cpp:188/354 call this during VALIDATION, so nTargetHeight
+	// increments every block and a signature would treat every call as "changed"
+	// -- flooding worst during a resync, exactly when it is least wanted.  A pure
+	// time floor is immune to block rate.
+	//
+	// 60s rather than the 300s success heartbeat: failure is the interesting
+	// state and warrants tighter resolution.
+	int64_t nLastNoConsensusLogTime;
+	static const int64_t NO_CONSENSUS_LOG_SECS = 60;
+
 public:
 	mutable CCriticalSection cs;
 

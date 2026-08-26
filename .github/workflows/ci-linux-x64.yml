@@ -107,7 +107,7 @@ jobs:
 
 # ── Job 2: Build daemon + wallet ──────────────────────────────────────────────
   build-and-test-linux-x64:
-    name: Linux x64 — Build + Full Test Suite
+    name: Linux x64 — Build
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     needs: libs-linux-x64

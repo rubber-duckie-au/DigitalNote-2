@@ -296,3 +296,143 @@ json_spirit::Value spork(const json_spirit::Array& params, bool fHelp)
 	);
 }
 
+// v2.0.0.9 TODO 3.9: listdebugcategories -- debug-category discoverability.
+//
+// Closes the last operator-experience gap left by v2.0.0.8's CW14 work.  CW14
+// made -debug=all and -debug=1 behave as wildcards and documented the alias
+// forms in --help; what remained was that an operator had no way to ask a
+// RUNNING node which categories exist or which are currently in force.
+//
+// Mirrors the intent of Bitcoin Core's `logging` RPC.  Read-only: it reports
+// state, it does not change it.  No consensus surface.
+//
+// The `unknown_requested` field is the operationally useful part.  Category
+// names are matched by exact string against the LogPrint("category", ...) call
+// sites, so a plausible-looking typo -- -debug=masternodes for masternode, or
+// -debug=network for net -- silently produces no output at all, with fDebug
+// still true.  That failure is invisible today; listing the unmatched names
+// makes it obvious.
+//
+// >>> MAINTENANCE: vDebugCategories below is a HARDCODED list and cannot be
+// >>> derived at runtime (the categories are string literals at their call
+// >>> sites).  WHEN YOU ADD A NEW LogPrint("newcat", ...) CATEGORY ANYWHERE,
+// >>> ADD IT HERE TOO.  The list was derived on 2026-07-28 by:
+// >>>     grep -rhoE 'LogPrint\("[a-z0-9-]+"' --include=*.cpp --include=*.h src/
+// >>> Re-run that to audit for drift.
+json_spirit::Value listdebugcategories(const json_spirit::Array& params, bool fHelp)
+{
+	if (fHelp || params.size() != 0)
+	{
+		throw std::runtime_error(
+			"listdebugcategories\n"
+			"\nLists the debug logging categories this build knows about, and which\n"
+			"are currently active on this node.  Read-only; does not change logging.\n"
+			"\nCategories are selected with -debug=<category> (repeatable).  The forms\n"
+			"-debug, -debug=all and -debug=1 enable every category.\n"
+			"\nResult:\n"
+			"{\n"
+			"  \"debug_enabled\": bool,        (boolean) true if any -debug form is in force\n"
+			"  \"wildcard\": bool,             (boolean) true if all categories are enabled\n"
+			"  \"active\": [ \"cat\", ... ],     (array) categories currently producing output\n"
+			"  \"known\": [ \"cat\", ... ],      (array) every category this build supports\n"
+			"  \"unknown_requested\": [ ... ]  (array) -debug values matching no known category\n"
+			"}\n"
+			"\nExamples:\n"
+			+ HelpExampleCli("listdebugcategories", "")
+			+ HelpExampleRpc("listdebugcategories", "")
+		);
+	}
+
+	// Every category appearing in a LogPrint() call site.  See the maintenance
+	// note above before editing.
+	static const char* vDebugCategories[] = {
+		"addrman",
+		"alert",
+		"checkblock",
+		"coinage",
+		"coinstake",
+		"creation",
+		"db",
+		"init",
+		"instantx",
+		"lock",
+		"masternode",
+		"mempool",
+		"mnengine",
+		"net",
+		"rand",
+		"retarget",
+		"rpc",
+		"selectcoins",
+		"smsg",
+		"stakemodifier",
+		"webwallet"
+	};
+	const size_t nKnown = sizeof(vDebugCategories) / sizeof(vDebugCategories[0]);
+
+	std::set<std::string> setKnown;
+
+	for (size_t i = 0; i < nKnown; i++)
+	{
+		setKnown.insert(std::string(vDebugCategories[i]));
+	}
+
+	// What the operator actually asked for on the command line / config file.
+	const std::vector<std::string>& vRequested = mapMultiArgs["-debug"];
+	std::set<std::string> setRequested(vRequested.begin(), vRequested.end());
+
+	// Wildcard forms, matching LogAcceptCategory() in util.cpp exactly:
+	//   -debug      -> ""      (legacy)
+	//   -debug=all  -> "all"   (CW14)
+	//   -debug=1    -> "1"     (CW14)
+	// Keep this in lockstep with util.cpp; if a new alias is added there it
+	// must be added here or this RPC will misreport.
+	bool fWildcard = setRequested.count(std::string("")) > 0 ||
+	                 setRequested.count(std::string("all")) > 0 ||
+	                 setRequested.count(std::string("1")) > 0;
+
+	json_spirit::Array arrKnown;
+	json_spirit::Array arrActive;
+
+	for (size_t i = 0; i < nKnown; i++)
+	{
+		const std::string strCategory(vDebugCategories[i]);
+
+		arrKnown.push_back(strCategory);
+
+		// A category is active only if debugging is on at all.  fDebug is set
+		// in init.cpp from the presence of -debug; without it LogAcceptCategory
+		// short-circuits and nothing is emitted regardless of category.
+		if (fDebug && (fWildcard || setRequested.count(strCategory) > 0))
+		{
+			arrActive.push_back(strCategory);
+		}
+	}
+
+	// Requested values that match no known category AND are not a wildcard
+	// alias.  These are almost always typos and produce silent no-ops today.
+	json_spirit::Array arrUnknown;
+
+	for (std::set<std::string>::const_iterator it = setRequested.begin(); it != setRequested.end(); ++it)
+	{
+		if (it->empty() || *it == "all" || *it == "1")
+		{
+			continue;
+		}
+
+		if (setKnown.count(*it) == 0)
+		{
+			arrUnknown.push_back(*it);
+		}
+	}
+
+	json_spirit::Object objResult;
+
+	objResult.push_back(json_spirit::Pair("debug_enabled", fDebug));
+	objResult.push_back(json_spirit::Pair("wildcard", fWildcard));
+	objResult.push_back(json_spirit::Pair("active", arrActive));
+	objResult.push_back(json_spirit::Pair("known", arrKnown));
+	objResult.push_back(json_spirit::Pair("unknown_requested", arrUnknown));
+
+	return objResult;
+}

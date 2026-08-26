@@ -174,6 +174,7 @@ extern json_spirit::Value masternodelist(const json_spirit::Array& params, bool 
 extern json_spirit::Value getmnlastpaid(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value listdebugcategories(const json_spirit::Array& params, bool fHelp); // v2.0.0.9 TODO 3.9
 extern json_spirit::Value listequivocators(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value clearequivocator(const json_spirit::Array& params, bool fHelp);
 

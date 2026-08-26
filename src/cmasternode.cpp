@@ -40,6 +40,8 @@ CMasternode::CMasternode()
 	unitTest = false;
 	allowFreeTx = true;
 	protocolVersion = MIN_PEER_PROTO_VERSION;
+	nAttestedVersion = 0;   // v2.0.0.9: 0 = never attested
+	nAttestedTime = 0;
 	nLastDsq = 0;
 	donationAddress = CScript();
 	donationPercentage = 0;
@@ -71,6 +73,8 @@ CMasternode::CMasternode(const CMasternode& other)
 	unitTest = other.unitTest;
 	allowFreeTx = other.allowFreeTx;
 	protocolVersion = other.protocolVersion;
+	nAttestedVersion = other.nAttestedVersion;
+	nAttestedTime = other.nAttestedTime;
 	nLastDsq = other.nLastDsq;
 	donationAddress = other.donationAddress;
 	donationPercentage = other.donationPercentage;
@@ -102,6 +106,8 @@ CMasternode::CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std:
 	unitTest = false;
 	allowFreeTx = true;
 	protocolVersion = protocolVersionIn;
+	nAttestedVersion = 0;   // v2.0.0.9: not attested until the MN says so
+	nAttestedTime = 0;
 	nLastDsq = 0;
 	donationAddress = newDonationAddress;
 	donationPercentage = newDonationPercentage;
@@ -132,6 +138,8 @@ void CMasternode::swap(CMasternode& first, CMasternode& second) // nothrow
 	std::swap(first.unitTest, second.unitTest);
 	std::swap(first.allowFreeTx, second.allowFreeTx);
 	std::swap(first.protocolVersion, second.protocolVersion);
+	std::swap(first.nAttestedVersion, second.nAttestedVersion);
+	std::swap(first.nAttestedTime, second.nAttestedTime);
 	std::swap(first.nLastDsq, second.nLastDsq);
 	std::swap(first.donationAddress, second.donationAddress);
 	std::swap(first.donationPercentage, second.donationPercentage);

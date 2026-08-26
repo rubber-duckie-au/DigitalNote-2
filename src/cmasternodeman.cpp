@@ -932,6 +932,90 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 								  pmn->donationPercentage != donationPercentage ||
 								  pmn->pubkey2 != pubkey2);
 
+			// v2.0.0.9 TODO 2.1 (CW3): conflicting-dsee diagnostic.
+			//
+			// WHY.  Section 2.2 -- chain-wide equivocation enforcement -- is
+			// deferred indefinitely, because block validity must never depend on
+			// node-local state (that is the FINDING-2026-009 class).  The
+			// consequence of NOT enforcing is that when a conflict does occur the
+			// node absorbs it silently: the dsee is either applied or dropped, and
+			// nothing in the log says WHICH field disagreed or WHO sent it.
+			//
+			// That is the gap this closes.  With no enforcement, good diagnostics
+			// are the only way an operator distinguishes a misconfigured node
+			// broadcasting under another node's vin from an actual spoof attempt.
+			// The two look identical from the outside; they differ only in the
+			// detail printed here.
+			//
+			// Diagnostic ONLY.  No behaviour change: `fieldsChanged` and
+			// `acceptable` are computed exactly as before and neither is modified.
+			//
+			// Gated behind -debug=masternode in the accepted case (routine churn --
+			// operators change ports and donation splits), but logged
+			// UNCONDITIONALLY when a field conflict is REJECTED.  A rejected
+			// conflict is the interesting one: it means someone signed a
+			// competing dsee for a vin we already track, and it is exactly the
+			// signal that would otherwise be invisible.
+			if (fieldsChanged)
+			{
+				std::string strConflicts;
+
+				if (pmn->protocolVersion != protocolVersion)
+				{
+					strConflicts += strprintf(" protocol(%d->%d)", pmn->protocolVersion, protocolVersion);
+				}
+
+				if (pmn->addr != addr)
+				{
+					strConflicts += strprintf(" addr(%s->%s)", pmn->addr.ToString(), addr.ToString());
+				}
+
+				if (pmn->donationAddress != donationAddress)
+				{
+					strConflicts += strprintf(" donationAddress(%s->%s)",
+						pmn->donationAddress.ToString(), donationAddress.ToString());
+				}
+
+				if (pmn->donationPercentage != donationPercentage)
+				{
+					strConflicts += strprintf(" donationPct(%d->%d)",
+						pmn->donationPercentage, donationPercentage);
+				}
+
+				if (pmn->pubkey2 != pubkey2)
+				{
+					strConflicts += " pubkey2(CHANGED)";
+				}
+
+				// Why the broadcast would be refused, if it is.  Mirrors the
+				// `acceptable` terms above -- keep in lockstep if those change.
+				std::string strReject;
+
+				if (pmn->pubkey != pubkey)
+				{
+					// The serious one: a different collateral key claiming this vin.
+					strReject += " pubkey-mismatch";
+				}
+
+				if (pmn->sigTime >= sigTime)
+				{
+					strReject += strprintf(" not-newer(cached=%d,incoming=%d)", pmn->sigTime, sigTime);
+				}
+
+				if (strReject.empty())
+				{
+					LogPrint("masternode",
+						"CW3 dsee-conflict ACCEPTED vin=%s peer=%s changed:%s\n",
+						vin.prevout.ToStringShort(), pfrom->addr.ToString(), strConflicts);
+				}
+				else
+				{
+					LogPrintf(
+						"CW3 dsee-conflict REJECTED vin=%s peer=%s changed:%s reason:%s\n",
+						vin.prevout.ToStringShort(), pfrom->addr.ToString(), strConflicts, strReject);
+				}
+			}
+
 			// Anti-replay is the primary defense: only accept newer sigTime.
 			// Anti-spoof: pubkey must match what we have cached.
 			// Anti-flood: rate-limit IDENTICAL dsees (no field change) via
@@ -1114,6 +1198,28 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 			// if it matches our masternodeprivkey, then we've been remotely activated
 			if(pubkey2 == activeMasternode.pubKeyMasternode && protocolVersion >= MIN_PEER_PROTO_VERSION)
 			{
+				// v2.0.0.9 FINDING-2026-013: this is the ONE place in the codebase
+				// where BOTH versions are known at once -- `protocolVersion` arrived
+				// over the wire from the CONTROLLER that started us, and
+				// PROTOCOL_VERSION is our own compile-time constant.
+				//
+				// Historically this comparison was strict and STOPPED the masternode
+				// on any mismatch; v2.0.0.7 relaxed it to >= MIN_PEER_PROTO_VERSION
+				// because lockstep controller/daemon upgrades are not workable.  That
+				// was the right call, but it also meant the daemon stopped SAYING
+				// anything about a mismatch it can plainly see.
+				//
+				// Warn, do not act.  The operator learns that the version other nodes
+				// advertise for them is not the version they are running.
+				if(protocolVersion != PROTOCOL_VERSION)
+				{
+					LogPrintf("dsee - NOTE: this masternode was started by a wallet running protocol %d, "
+						"but this daemon is %d.  The network will advertise %d for us until we are "
+						"restarted from a matching wallet.  See 'mnver' attestations for the real "
+						"fleet versions.\n",
+						protocolVersion, PROTOCOL_VERSION, protocolVersion);
+				}
+
 				activeMasternode.EnableHotColdMasterNode(vin, addr);
 			}
 
@@ -1355,6 +1461,111 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 			return;
 		}
 	}
+	else if (strCommand == "mnver") //v2.0.0.9: masternode self-attested protocol version
+	{
+		// FINDING-2026-013.  A masternode reports ITS OWN protocol version,
+		// signed with masternodeprivkey.
+		//
+		// WHY THIS MESSAGE EXISTS.  mn.protocolVersion is stamped by whichever
+		// wallet last ran 'masternode start' -- the collateral holder -- using
+		// THAT wallet's PROTOCOL_VERSION.  It describes the CONTROLLER, not the
+		// daemon at this address, and never refreshes unless the operator
+		// re-runs start.  Fleet-version telemetry built on it is therefore
+		// unsound, and it fails in the REASSURING direction: entries read
+		// "upgraded" when only controllers were restarted.
+		//
+		// >>> ADVISORY ONLY.  nAttestedVersion is NOT read by consensus. <<<
+		// CountVotingEligible() still uses protocolVersion.  Wiring this in
+		// would be a consensus change needing its own activation and soak
+		// (FINDING-2026-014).  Keeping it advisory is what lets this ship
+		// without one.  DO NOT quietly promote it.
+		CTxIn vin;
+		int nVersion = 0;
+		int64_t sigTime = 0;
+		std::vector<unsigned char> vchSig;
+
+		vRecv >> vin >> nVersion >> sigTime >> vchSig;
+
+		// Same clock-skew window dseep uses: reject anything implausibly far
+		// ahead of or behind our adjusted time.
+		if (sigTime > GetAdjustedTime() + 60 * 60)
+		{
+			LogPrint("masternode", "mnver - Signature rejected, too far into the future %s\n",
+				vin.ToString());
+
+			return;
+		}
+
+		if (sigTime <= GetAdjustedTime() - 60 * 60)
+		{
+			LogPrint("masternode", "mnver - Signature rejected, too far into the past %s\n",
+				vin.ToString());
+
+			return;
+		}
+
+		CMasternode* pmn = this->Find(vin);
+
+		if (pmn == NULL)
+		{
+			// Unknown masternode.  Deliberately NOT asking for it here: an
+			// unauthenticated stranger must not be able to make us fan out
+			// dseg requests.  It will arrive via the normal dsee path.
+			return;
+		}
+
+		// Anti-replay: only ever move forward.  Also makes a flood of repeated
+		// attestations cheap to drop.
+		if (sigTime <= pmn->nAttestedTime)
+		{
+			return;
+		}
+
+		// Sanity-bound the claim before doing signature work.
+		if (nVersion < MIN_PEER_PROTO_VERSION || nVersion > 99999999)
+		{
+			LogPrint("masternode", "mnver - implausible version %d from %s\n",
+				nVersion, vin.ToString());
+
+			return;
+		}
+
+		// Bound to the vin so an attestation cannot be replayed against a
+		// different masternode.  Verified against pubkey2 -- the masternode's
+		// own key -- exactly as dseep does.
+		std::string strMessage = vin.ToString() +
+								 boost::lexical_cast<std::string>(nVersion) +
+								 boost::lexical_cast<std::string>(sigTime);
+
+		std::string errorMessage = "";
+
+		if (!mnEngineSigner.VerifyMessage(pmn->pubkey2, vchSig, strMessage, errorMessage))
+		{
+			LogPrintf("mnver - WARNING - could not verify version attestation for %s: %s\n",
+				vin.ToString(), errorMessage);
+
+			return;
+		}
+
+		bool fChanged = (pmn->nAttestedVersion != nVersion);
+
+		pmn->nAttestedVersion = nVersion;
+		pmn->nAttestedTime = sigTime;
+
+		// Log only on CHANGE.  This arrives once a minute per masternode; an
+		// unconditional line here would be the TODO 3.36 defect all over again.
+		if (fChanged)
+		{
+			LogPrintf("mnver - %s attests protocol %d (dsee-advertised: %d)%s\n",
+				vin.ToString(), nVersion, pmn->protocolVersion,
+				(nVersion != pmn->protocolVersion) ? "  <-- MISMATCH" : "");
+		}
+
+		// Relay onward so the attestation reaches the whole network, the same
+		// way dseep propagates.
+		mnodeman.RelayMasternodeVersion(vin, nVersion, sigTime, vchSig);
+	}
+
 	else if (strCommand == "dseg") //Get masternode list or specific entry
 	{
 		CTxIn vin;
@@ -1450,6 +1661,23 @@ void CMasternodeMan::RelayMasternodeEntryPing(const CTxIn vin, const std::vector
 	for(CNode* pnode : vNodes)
 	{
 		pnode->PushMessage("dseep", vin, vchSig, nNow, stop);
+	}
+}
+
+// v2.0.0.9 FINDING-2026-013: relay a self-attested masternode version.
+//
+// Mirrors RelayMasternodeEntryPing above.  Older nodes ignore the unknown
+// "mnver" command (main.cpp:3904, "Ignore unknown commands for extensibility"),
+// so this is safe to broadcast unconditionally -- no protocol gate, no
+// activation, no compatibility break.
+void CMasternodeMan::RelayMasternodeVersion(const CTxIn vin, const int nVersion, const int64_t nNow,
+	const std::vector<unsigned char> vchSig)
+{
+	LOCK(cs_vNodes);
+
+	for(CNode* pnode : vNodes)
+	{
+		pnode->PushMessage("mnver", vin, nVersion, nNow, vchSig);
 	}
 }
 
@@ -2227,202 +2455,14 @@ void CMasternodeMan::PopulateLastPaidHeightCache()
 	}
 }
 
-CMasternode* CMasternodeMan::FindOldestNotInVecChainDerived(const std::vector<CTxIn>& vVins,
-															int nMinimumAge,
-															int nReferenceHeight,
-															bool fChainDerivedEligibility)
-{
-	// v2.0.0.8 PB-INFLIGHT REVERTED.
-	//
-	// PB-INFLIGHT (added 2026-05-21) folded voteTracker.GetConsensusCommittedHeights()
-	// into the paidHeight comparison below, intending to stop an MN being
-	// re-nominated for successive heights in the VOTE_LOOKAHEAD window
-	// before its voted block connected.  It has been removed in full --
-	// the fetch here and the fold in the loop -- for two reasons:
-	//
-	// 1. It was a fix for a non-problem.  The "payee streaks under slow
-	//    blocks" PB-INFLIGHT targeted were an artefact of the 2026-05-21
-	//    testnet, which at that time had a duplicate-masternode-identity
-	//    fault (two daemons equivocating as one vin) corrupting the vote
-	//    data the diagnosis rested on.  On a correctly-configured fleet,
-	//    BroadcastVote logs show flawless rotation through block gaps of
-	//    8-11 minutes (testnet heights 827-888, 2026-05-23/24): the
-	//    candidate function rotates cleanly on mapLastPaidHeight alone.
-	//    The cache being ~VOTE_LOOKAHEAD behind the voted height is not
-	//    a bug -- it is simply the lookahead, and it is harmless.
-	//
-	// 2. It was itself a consensus-correctness bug.  GetConsensusCommittedHeights
-	//    iterates the vote tracker's mapVotes -- node-local, in-flight
-	//    tally state that legitimately differs between nodes that have
-	//    received votes in a different order or at a different time.
-	//    Folding it into paidHeight made the vote a node-local function
-	//    sees diverge: geographically separated masternode clusters
-	//    computed different winners from byte-identical mapLastPaidHeight
-	//    caches (confirmed testnet heights 880/883, 2026-05-24 -- a
-	//    stable 5/2 split along the network boundary).  A consensus
-	//    input must be a pure function of the chain, never of node-local
-	//    tally state -- the same principle the Fix C / IsVotingEligible
-	//    work in this file already enforces.
-	//
-	// With PB-INFLIGHT removed -- and, as of Spec B, the PB-16
-	// activation clamp removed too -- this function is a pure function
-	// of (vMasternodes, mapLastPaidHeight, per-MN collateral confirm
-	// heights) -- all chain-derived and identical on every synced node.
-	// GetConsensusCommittedHeights has been removed from the vote
-	// tracker as it now has no caller.
-
-	LOCK(cs);
-
-	CMasternode* pOldestMasternode = NULL;
-	int nOldestPaidHeight = INT_MAX;
-	COutPoint outBestTiebreak;
-
-	// v2.0.0.8 Spec B: the PB-16 pre-activation lastpaid clamp has been
-	// REMOVED.  PB-16 normalised every pre-activation lastpaid value to
-	// activationHeight - 1, intending to neutralise arbitrary legacy
-	// values.  But collapsing multiple MNs to one identical paidHeight
-	// made them TIE, and the smallest-vin tiebreak then froze selection
-	// on one MN until it was paid (~VOTE_LOOKAHEAD blocks later) -- a
-	// payee streak.  Proven on testnet: a PoS stall straddling the
-	// activation height left several MNs last-paid below activation at
-	// once; on resume they all clamped to the same value and the chain
-	// produced clean period-10 payee streaks (heights ~1596-1757),
-	// cleared only by a restart (which rebuilds mapLastPaidHeight from
-	// the real chain, all-distinct).
-	//
-	// The clamp is not needed.  mapLastPaidHeight stores block HEIGHTS,
-	// which do not go stale with wall-clock time -- only with block
-	// progression -- so last-paid ORDER is correct in every epoch with
-	// no normalisation.  The arbitrary-legacy-value concern PB-16 cited
-	// self-heals: the genuinely longest-ago-paid MN wins, is paid, and
-	// within one rotation cycle (~fleet size) the legacy spread is
-	// flushed -- harmless, no streak.
-	//
-	// Never-paid MNs (no mapLastPaidHeight entry) are handled below by
-	// the collateral confirmation height, NOT by paidHeight 0 -- see the
-	// lookup block.  This keeps the selector a pure function of
-	// (vMasternodes, mapLastPaidHeight, collateral confirm heights) --
-	// all chain-derived, identical on every synced node.
-
-	for (CMasternode& mn : vMasternodes)
-	{
-		mn.Check();
-
-		// v2.0.0.8 Fix C: candidate-pool eligibility predicate.
-		//
-		// Vote path (fChainDerivedEligibility == true): use the
-		// deterministic, chain-derived IsVotingEligible(nReferenceHeight).
-		// Every node computing a vote for the same height then sees the
-		// SAME candidate pool, so FindOldestNotInVecChainDerived returns
-		// the same MN -- a precondition for the vote bucket to agree on a
-		// payee and reach consensus.  IsEnabled() must NOT be used here:
-		// it depends on wall-clock ping freshness and differs node to
-		// node, so it would reintroduce per-node payee divergence.
-		//
-		// Legacy path (fChainDerivedEligibility == false, the default):
-		// keep the original IsEnabled() liveness filter unchanged.
-		if (fChainDerivedEligibility)
-		{
-			if (!mn.IsVotingEligible(nReferenceHeight))
-			{
-				continue;
-			}
-		}
-		else
-		{
-			if (!mn.IsEnabled())
-			{
-				continue;
-			}
-		}
-
-		if (mn.GetMasternodeInputAge() < nMinimumAge)
-		{
-			continue;
-		}
-
-		bool found = false;
-		for (const CTxIn& vin : vVins)
-		{
-			if (mn.vin.prevout == vin.prevout)
-			{
-				found = true;
-				break;
-			}
-		}
-
-		if (found)
-		{
-			continue;
-		}
-
-		// Chain-derived last-paid lookup (v2.0.0.8 Spec B).
-		// - Cache entry present: use the real last-paid height as-is.
-		//   This includes entries above nReferenceHeight (the reorg-risk
-		//   zone); OnBlockDisconnected rolls the cache back on reorg, so
-		//   votes from an about-to-be-orphaned segment self-correct.
-		// - No cache entry: the MN has never been paid in the scanned
-		//   range.  Rank it by its COLLATERAL CONFIRMATION HEIGHT, not by
-		//   0.  Rationale: a never-paid MN's fair queue position is "when
-		//   it joined the chain".  Using 0 would make every never-paid MN
-		//   tie at 0 and let the smallest-vin tiebreak freeze on one of
-		//   them -- the very tie-collapse bug PB-16 caused.  Confirmation
-		//   height is unique per MN, chain-derived, identical on every
-		//   node, and orders newcomers correctly behind earlier joiners
-		//   and ahead of nobody unfairly.  A flapping MN that loses its
-		//   cache entry keeps its original confirm height, so rejoining
-		//   does not jump the queue.
-		//
-		// If the collateral cannot be resolved on this node
-		// (GetCollateralConfirmedHeight() < 0) the MN would already have
-		// failed IsVotingEligible above on the vote path and been
-		// skipped; on the legacy path treat it as paidHeight 0 (oldest)
-		// -- it cannot poison consensus because the legacy path does not
-		// feed enforcement.
-		int paidHeight;
-		std::map<COutPoint, int>::const_iterator it = mapLastPaidHeight.find(mn.vin.prevout);
-
-		if (it != mapLastPaidHeight.end())
-		{
-			paidHeight = it->second;
-		}
-		else
-		{
-			int nConfirmed = mn.GetCollateralConfirmedHeight();
-			paidHeight = (nConfirmed >= 0) ? nConfirmed : 0;
-		}
-
-		// NB: the PB-16 pre-activation clamp that previously sat here has
-		// been removed -- see the function-head comment.  No clamp: the
-		// real (or confirm-height-derived) value is used directly.
-
-		// Pick the MN with the smallest paidHeight (longest-ago paid).
-		// Tie-break on lowest vin.prevout for determinism + grind-resistance.
-		bool better = false;
-
-		if (pOldestMasternode == NULL)
-		{
-			better = true;
-		}
-		else if (paidHeight < nOldestPaidHeight)
-		{
-			better = true;
-		}
-		else if (paidHeight == nOldestPaidHeight && mn.vin.prevout < outBestTiebreak)
-		{
-			better = true;
-		}
-
-		if (better)
-		{
-			pOldestMasternode = &mn;
-			nOldestPaidHeight = paidHeight;
-			outBestTiebreak = mn.vin.prevout;
-		}
-	}
-
-	return pOldestMasternode;
-}
+// FINDING-2026-008: CMasternodeMan::FindOldestNotInVecChainDerived() was
+// DELETED 2026-08-07.  Vestigial scaffolding from the reverted PB-INFLIGHT /
+// PB-16 experiment: zero callers, and all six live payee-selection sites use
+// the legacy 2-arg FindOldestNotInVec.  The capability it was built to host --
+// deterministic, chain-derived eligibility -- shipped instead via
+// CMasternode::IsVotingEligible(nReferenceHeight).  Its PB-INFLIGHT revert
+// note was relocated verbatim to cmasternodevotetracker.cpp, above
+// ProcessMessageMasternodeVote().
 
 // ===========================================================================
 

@@ -63,6 +63,7 @@ static const CRPCCommand vRPCCommands[] =
 	{ "getmnlastpaid",          &getmnlastpaid,          true,      false,      false },
 	{ "getvoteinfo",            &getvoteinfo,            true,      false,      false },
 	{ "getdeploymentstatus",    &getdeploymentstatus,    true,      false,      false },
+	{ "listdebugcategories",    &listdebugcategories,    true,      true,       false },
 	{ "listequivocators",       &listequivocators,       true,      false,      false },
 	{ "clearequivocator",       &clearequivocator,       true,      false,      false },
 

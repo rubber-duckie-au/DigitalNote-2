@@ -50,6 +50,7 @@ CMasternodeVoteTracker voteTracker;
 
 CMasternodeVoteTracker::CMasternodeVoteTracker()
 {
+	nLastPollLogTime = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +74,7 @@ void CMasternodeVoteTracker::OnFreshDsee(const COutPoint &voterVin)
 
 	if (it->second.count >= MAX_EQUIVOCATIONS_PER_SESSION)
 	{
-		if (fDebug)
+		if (LogAcceptCategory("masternode"))
 		{
 			LogPrintf("CMasternodeVoteTracker::OnFreshDsee -- voter %s exceeded %d "
 					  "equivocations; ignoring fresh dsee (Path A disabled)\n",
@@ -174,7 +175,7 @@ void CMasternodeVoteTracker::SyncQueues(CNode *pnode)
 	{
 		pnode->PushMessage("inv", vInv);
 
-		if (fDebug)
+		if (LogAcceptCategory("masternode"))
 		{
 			LogPrintf("CMasternodeVoteTracker::SyncQueues -- pushed %u queue invs to peer %d\n",
 					  (unsigned)vInv.size(), pnode->GetId());
@@ -195,7 +196,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 	// also checks, but ProcessQueue must be safe if called from elsewhere).
 	if (q.nQueueHeight > currentTip + REORG_DEPTH_BUFFER)
 	{
-		if (fDebug)
+		if (LogAcceptCategory("masternode"))
 		{
 			LogPrintf("CMasternodeVoteTracker::ProcessQueue -- reject: nQueueHeight %d "
 					  "exceeds tip %d + reorg buffer\n",
@@ -206,7 +207,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 
 	if (q.nQueueHeight < currentTip - VOTE_PAST_HORIZON)
 	{
-		if (fDebug)
+		if (LogAcceptCategory("masternode"))
 		{
 			LogPrintf("CMasternodeVoteTracker::ProcessQueue -- reject: nQueueHeight %d "
 					  "below tip %d - past horizon %d\n",
@@ -226,7 +227,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 	}
 	if (q.nTimeSigned < now - VOTE_TIME_WINDOW_SECONDS)
 	{
-		if (fDebug)
+		if (LogAcceptCategory("masternode"))
 		{
 			LogPrintf("CMasternodeVoteTracker::ProcessQueue -- reject: nTimeSigned %d "
 					  "is %d seconds in the past\n",
@@ -253,7 +254,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 	// per-height vote path, keyed on voterVin -- M1Q decision Q-C).
 	if (mapEquivocators.count(voterOutpoint))
 	{
-		if (fDebug)
+		if (LogAcceptCategory("masternode"))
 		{
 			LogPrintf("CMasternodeVoteTracker::ProcessQueue -- reject: voter %s "
 					  "is equivocator (count %d)\n",
@@ -311,7 +312,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
  			// See v208-Issue3-equivocation-falsepositive-SPEC.md.
  			if (q.nTimeSigned > existing->second.nTimeSigned)
  			{
- 				if (fDebug)
+ 				if (LogAcceptCategory("masternode"))
  				{
  					LogPrintf("CMasternodeVoteTracker::ProcessQueue -- replacing queue "
  							  "from %s at nQueueHeight %d (newer nTimeSigned %lld > %lld)\n",
@@ -328,7 +329,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
  			}
  
  			// Same or older nTimeSigned -- drop as stale/replay.
- 			if (fDebug)
+ 			if (LogAcceptCategory("masternode"))
  			{
  				LogPrintf("CMasternodeVoteTracker::ProcessQueue -- dropping stale queue "
  						  "from %s at nQueueHeight %d (nTimeSigned %lld <= cached %lld)\n",
@@ -345,7 +346,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 	mapQueues[q.nQueueHeight][voterOutpoint] = q;
 	mapQueuesByHash[q.GetHash()] = q;
 
-	if (fDebug)
+	if (LogAcceptCategory("masternode"))
 	{
 		LogPrintf("CMasternodeVoteTracker::ProcessQueue -- recorded queue from %s "
 				  "for nQueueHeight %d\n",
@@ -398,14 +399,34 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 
 	if (eligibleVoters < MIN_ENABLED_FOR_CONSENSUS)
 	{
-		if (fDebug)
+		// v2.0.0.9: category-gated and de-duplicated.  This is a POLLED path
+		// (staker loop, ~1/sec), so an unchanged outcome must not re-log.
+		if (LogAcceptCategory("masternode"))
 		{
-			LogPrintf("CMasternodeVoteTracker::GetCanonicalWinnerFromQueues -- below floor: "
-					  "only %d eligible voters (< %d)\n",
-					  eligibleVoters, MIN_ENABLED_FOR_CONSENSUS);
+			std::string strSig = strprintf("floor:%d:%d", eligibleVoters, MIN_ENABLED_FOR_CONSENSUS);
+			int64_t nNow = GetTime();
+
+			if (strSig != strLastPollLogged ||
+				nNow - nLastPollLogTime >= POLL_LOG_HEARTBEAT_SECS)
+			{
+				strLastPollLogged = strSig;
+				nLastPollLogTime = nNow;
+
+				LogPrintf("CMasternodeVoteTracker::GetCanonicalWinnerFromQueues -- below floor: "
+						  "only %d eligible voters (< %d)\n",
+						  eligibleVoters, MIN_ENABLED_FOR_CONSENSUS);
+			}
 		}
 		return false;
 	}
+
+	// v2.0.0.9: diagnostic accumulators for the no-consensus report at the end
+	// of this function.  LOG-ONLY -- none of these is read by the consensus
+	// decision, and none affects the value returned.
+	int nQueueHeightsSeen = 0;	// queue-heights in the window that had queues
+	int nVotesExamined    = 0;	// total per-position votes tallied
+	int nBestSeen         = 0;	// highest single-payee tally reached
+	int nAmbiguousSeen    = 0;	// positions where more than one payee cleared
 
 	// Walk in-flight queue-heights newest-first.  The newest queue covering
 	// nTargetHeight reflects the most recent chain state; older queues are
@@ -420,6 +441,8 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 			continue;
 		}
 
+		nQueueHeightsSeen++;	// diagnostic only
+
 		int position = nTargetHeight - 1 - qh;   // 0 .. VOTE_QUEUE_LENGTH-1
 
 		// Tally per-payee at this position across all voters at this qh.
@@ -433,6 +456,7 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 			if (position >= 0 && position < (int)q.vPayeeQueue.size())
 			{
 				tallyByPayee[q.vPayeeQueue[position]].insert(vit->first);
+				nVotesExamined++;	// diagnostic only
 			}
 		}
 
@@ -448,6 +472,14 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 			 pit != tallyByPayee.end(); ++pit)
 		{
 			int voteCount = (int)pit->second.size();
+
+			// Diagnostic only, and deliberately BEFORE the threshold test so
+			// near-misses are captured -- a payee sitting just under the bar is
+			// the most informative number in the no-consensus report.
+			if (voteCount > nBestSeen)
+			{
+				nBestSeen = voteCount;
+			}
 
 			bool clearsThreshold =
 				((int64_t)voteCount * VOTED_CONSENSUS_THRESHOLD_DENOMINATOR >=
@@ -471,11 +503,32 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 		{
 			payeeOut = bestPayee;
 
-			if (fDebug)
+			// v2.0.0.9: category-gated and de-duplicated.  Previously this
+			// logged on EVERY poll -- roughly once a second from the staker
+			// loop -- restating an unchanged result.  Now it prints once per
+			// genuine transition.  The payee is part of the signature even
+			// though it is not printed: a payee change with identical counts
+			// is exactly the event worth seeing.
+			if (LogAcceptCategory("masternode"))
 			{
-				LogPrintf("CMasternodeVoteTracker::GetCanonicalWinnerFromQueues -- height %d: "
-						  "consensus from queue-height %d position %d (%d/%d voters)\n",
-						  nTargetHeight, qh, position, nBestVotes, eligibleVoters);
+				std::string strSig = strprintf("ok:%d:%d:%d:%d:%d:%s",
+					nTargetHeight, qh, position, nBestVotes, eligibleVoters,
+					bestPayee.ToString(true));
+
+				int64_t nNow = GetTime();
+
+				// Re-log on CHANGE, or every POLL_LOG_HEARTBEAT_SECS so the
+				// absence of output stays meaningful during a stall.
+				if (strSig != strLastPollLogged ||
+					nNow - nLastPollLogTime >= POLL_LOG_HEARTBEAT_SECS)
+				{
+					strLastPollLogged = strSig;
+					nLastPollLogTime = nNow;
+
+					LogPrintf("CMasternodeVoteTracker::GetCanonicalWinnerFromQueues -- height %d: "
+							  "consensus from queue-height %d position %d (%d/%d voters)\n",
+							  nTargetHeight, qh, position, nBestVotes, eligibleVoters);
+				}
 			}
 
 			return true;
@@ -483,9 +536,14 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 
 		if (nClearingCount > 1)
 		{
+			nAmbiguousSeen++;	// diagnostic only
+
 			// Ambiguous at this queue-height's position.  Do not name a
 			// winner from it; try the next older queue-height.
-			if (fDebug)
+			// v2.0.0.9: category-gated but deliberately NOT de-duplicated.
+			// An ambiguous queue-height is rare and is a genuine anomaly
+			// signal; suppressing repeats would hide a persistent split.
+			if (LogAcceptCategory("masternode"))
 			{
 				LogPrintf("CMasternodeVoteTracker::GetCanonicalWinnerFromQueues -- height %d: "
 						  "queue-height %d position %d AMBIGUOUS (%d payees cleared), "
@@ -494,6 +552,50 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 			}
 		}
 		// nClearingCount == 0: no consensus at this queue-height; try older.
+	}
+
+	// v2.0.0.9: no-consensus diagnostic -- the stall-visible counterpart to the
+	// success log above.  Previously this path returned SILENTLY, so a stall was
+	// signalled only by the absence of success lines, and absence is only
+	// readable against a known cadence.
+	//
+	// Reports WHY, not merely THAT.  "best payee 3/8 needs 6" separates
+	// "queues are not arriving" (FINDING-2026-012 deadlock) from "queues arrive
+	// but the fleet disagrees" -- different faults, different fixes, and
+	// otherwise indistinguishable from the log.
+	//
+	// >>> DELIBERATELY NOT gated on IsInitialBlockDownload().  That would be a
+	// >>> TODO section 9.5 instance: a sync-state check gating the mechanism that
+	// >>> reports a stall.  Note main.cpp:1674 returns true only while the chain
+	// >>> is ACTIVELY ADVANCING (GetTime() - nLastUpdate < 15) AND the tip is 8h
+	// >>> old -- so during a stall it would flip false after 15s and the log
+	// >>> would fire anyway.  It happens to work, by accident of that
+	// >>> arithmetic, and would break silently if anyone touched it.  The time
+	// >>> floor below handles resync noise on its own.  Do not add the gate.
+	//
+	// LOG-ONLY: nothing in this block is read by, or influences, the false
+	// returned immediately below.
+	if (LogAcceptCategory("masternode"))
+	{
+		int64_t nNow = GetTime();
+
+		if (nNow - nLastNoConsensusLogTime >= NO_CONSENSUS_LOG_SECS)
+		{
+			nLastNoConsensusLogTime = nNow;
+
+			// Ceiling division so this matches the >= threshold test exactly.
+			// An off-by-one here would make the log actively misleading, which
+			// is worse than no log at all.
+			int nNeeded = (int)(((int64_t)eligibleVoters * VOTED_CONSENSUS_THRESHOLD_NUMERATOR
+					+ VOTED_CONSENSUS_THRESHOLD_DENOMINATOR - 1)
+					/ VOTED_CONSENSUS_THRESHOLD_DENOMINATOR);
+
+			LogPrintf("CMasternodeVoteTracker::GetCanonicalWinnerFromQueues -- height %d: "
+					  "NO CONSENSUS (%d/%d queue-heights had queues, %d votes examined, "
+					  "best payee %d/%d needs %d, %d ambiguous)\n",
+					  nTargetHeight, nQueueHeightsSeen, VOTE_QUEUE_LENGTH, nVotesExamined,
+					  nBestSeen, eligibleVoters, nNeeded, nAmbiguousSeen);
+		}
 	}
 
 	return false;
@@ -709,14 +811,61 @@ CMasternodeVoteTracker::GetQueueVoterActivity() const
 	return activity;
 }
 
-// v2.0.0.8 PB-INFLIGHT REVERTED: GetConsensusCommittedHeights() removed.
-// It iterated mapVotes (node-local, in-flight tally state) and was folded
-// into FindOldestNotInVecChainDerived's payee selection -- making the
-// vote a node casts depend on node-local state, which caused
-// geographically separated masternode clusters to compute different
-// winners (testnet 5/2 split, 2026-05-24).  The streak problem it was
-// meant to fix did not exist on a correctly-configured fleet.  See the
-// revert note in CMasternodeMan::FindOldestNotInVecChainDerived.
+// ---------------------------------------------------------------------------
+// v2.0.0.8 PB-INFLIGHT REVERT NOTE
+//
+// RELOCATED HERE 2026-08-07 (FINDING-2026-008).  This note previously lived
+// inside CMasternodeMan::FindOldestNotInVecChainDerived(), which has now been
+// deleted as vestigial scaffolding -- it had zero callers, all six live
+// payee-selection sites use the legacy 2-arg FindOldestNotInVec, and the sound
+// principle it embodied (deterministic chain-derived eligibility) shipped
+// instead via CMasternode::IsVotingEligible().
+//
+// The note is preserved verbatim because it is the clearest in-source
+// statement of the rule that node-local state must never influence a consensus
+// decision -- the FINDING-2026-009 / TODO 9.5 defect class.  This file is its
+// natural home: GetConsensusCommittedHeights() lived here, and it was the fold
+// of THIS tracker's in-flight state into payee selection that caused the fork.
+// ---------------------------------------------------------------------------
+//
+	// v2.0.0.8 PB-INFLIGHT REVERTED.
+	//
+	// PB-INFLIGHT (added 2026-05-21) folded voteTracker.GetConsensusCommittedHeights()
+	// into the paidHeight comparison below, intending to stop an MN being
+	// re-nominated for successive heights in the VOTE_LOOKAHEAD window
+	// before its voted block connected.  It has been removed in full --
+	// the fetch here and the fold in the loop -- for two reasons:
+	//
+	// 1. It was a fix for a non-problem.  The "payee streaks under slow
+	//    blocks" PB-INFLIGHT targeted were an artefact of the 2026-05-21
+	//    testnet, which at that time had a duplicate-masternode-identity
+	//    fault (two daemons equivocating as one vin) corrupting the vote
+	//    data the diagnosis rested on.  On a correctly-configured fleet,
+	//    BroadcastVote logs show flawless rotation through block gaps of
+	//    8-11 minutes (testnet heights 827-888, 2026-05-23/24): the
+	//    candidate function rotates cleanly on mapLastPaidHeight alone.
+	//    The cache being ~VOTE_LOOKAHEAD behind the voted height is not
+	//    a bug -- it is simply the lookahead, and it is harmless.
+	//
+	// 2. It was itself a consensus-correctness bug.  GetConsensusCommittedHeights
+	//    iterates the vote tracker's mapVotes -- node-local, in-flight
+	//    tally state that legitimately differs between nodes that have
+	//    received votes in a different order or at a different time.
+	//    Folding it into paidHeight made the vote a node-local function
+	//    sees diverge: geographically separated masternode clusters
+	//    computed different winners from byte-identical mapLastPaidHeight
+	//    caches (confirmed testnet heights 880/883, 2026-05-24 -- a
+	//    stable 5/2 split along the network boundary).  A consensus
+	//    input must be a pure function of the chain, never of node-local
+	//    tally state -- the same principle the Fix C / IsVotingEligible
+	//    work in this file already enforces.
+	//
+	// With PB-INFLIGHT removed -- and, as of Spec B, the PB-16
+	// activation clamp removed too -- this function is a pure function
+	// of (vMasternodes, mapLastPaidHeight, per-MN collateral confirm
+	// heights) -- all chain-derived and identical on every synced node.
+	// GetConsensusCommittedHeights has been removed from the vote
+	// tracker as it now has no caller.
 
 void ProcessMessageMasternodeVote(CNode *pfrom, std::string &strCommand, CDataStream &vRecv)
 {
@@ -798,7 +947,7 @@ void ProcessMessageMasternodeVote(CNode *pfrom, std::string &strCommand, CDataSt
 			if (q.nQueueHeight > currentTip + REORG_DEPTH_BUFFER ||
 				q.nQueueHeight < currentTip - VOTE_PAST_HORIZON)
 			{
-				if (fDebug)
+				if (LogAcceptCategory("masternode"))
 				{
 					LogPrintf("mnvotequeue -- nQueueHeight %d outside window (tip %d), "
 							  "not relaying or recording\n",
@@ -837,7 +986,7 @@ void ProcessMessageMasternodeVote(CNode *pfrom, std::string &strCommand, CDataSt
 				}
 			}
 
-			if (fDebug)
+			if (LogAcceptCategory("masternode"))
 			{
 				LogPrintf("mnvotequeue -- unknown voter %s at nQueueHeight %d, relayed; "
 						  "asking for dsee\n",

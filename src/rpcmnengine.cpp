@@ -1746,9 +1746,12 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	// node currently has a connection to.  `observed` reports how many that is,
 	// so a small sample is visible as a small sample rather than mistaken for a
 	// clean bill of health.
-	int driftObserved = 0;
-	int driftAgree    = 0;
-	int driftDisagree = 0;
+	size_t mnSnapshotSize = 0;
+	int driftObserved  = 0;   // we hold a live connection -- partial coverage
+	int driftAgree     = 0;
+	int driftDisagree  = 0;
+	int driftAttested  = 0;   // masternode has SIGNED a version claim -- no connection needed
+	int driftAttestDis = 0;   // ...and it disagrees with the dsee-advertised value
 	json_spirit::Array driftDetail;
 
 	{
@@ -1764,33 +1767,79 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 		//
 		// Only cs_vNodes is held below, and only while reading nVersion.
 		std::vector<CMasternode> mnSnapshot = mnodeman.GetFullMasternodeVector();
+		mnSnapshotSize = mnSnapshot.size();
 
 		LOCK(cs_vNodes);
 
+		// Every masternode is evaluated, not only the connected ones.
+		//
+		// There are TWO independent sources of truth here and they have very
+		// different coverage:
+		//   observed  -- the P2P handshake version.  Requires a live connection to
+		//                that masternode, so coverage is partial and varies by node.
+		//   attested  -- the masternode's OWN signed mnver claim.  Propagates by
+		//                relay, so it needs NO direct connection and coverage
+		//                approaches the whole fleet once mnver is deployed.
+		//
+		// An earlier version of this block gated `attested` behind the connection
+		// check, which threw away exactly the advantage mnver exists to provide.
 		for(CMasternode& mn : mnSnapshot)
 		{
 			CNode *pnode = FindNode((CService)mn.addr);
 
-			if (pnode == NULL || pnode->nVersion == 0)
+			bool fHaveObserved = (pnode != NULL && pnode->nVersion != 0);
+			bool fHaveAttested = (mn.nAttestedVersion != 0);
+
+			if (fHaveObserved)
 			{
-				continue;   // not connected, or handshake incomplete
+				driftObserved++;
+
+				if (pnode->nVersion == mn.protocolVersion)
+				{
+					driftAgree++;
+				}
+				else
+				{
+					driftDisagree++;
+				}
 			}
 
-			driftObserved++;
-
-			if (pnode->nVersion == mn.protocolVersion)
+			if (fHaveAttested)
 			{
-				driftAgree++;
+				driftAttested++;
+
+				if (mn.nAttestedVersion != mn.protocolVersion)
+				{
+					driftAttestDis++;
+				}
+			}
+
+			// Detail only for masternodes where SOME source disagrees with the
+			// advertised value -- a fleet in agreement produces an empty array.
+			bool fObservedDisagrees = fHaveObserved && (pnode->nVersion != mn.protocolVersion);
+			bool fAttestedDisagrees = fHaveAttested && (mn.nAttestedVersion != mn.protocolVersion);
+
+			if (!fObservedDisagrees && !fAttestedDisagrees)
+			{
 				continue;
 			}
-
-			driftDisagree++;
 
 			json_spirit::Object d;
 
 			d.push_back(json_spirit::Pair("address", mn.addr.ToString()));
 			d.push_back(json_spirit::Pair("advertised", (int64_t)mn.protocolVersion));
-			d.push_back(json_spirit::Pair("observed", (int64_t)pnode->nVersion));
+
+			// 0 = no live connection, so no observed value for this masternode.
+			d.push_back(json_spirit::Pair("observed",
+				fHaveObserved ? (int64_t)pnode->nVersion : (int64_t)0));
+
+			// v2.0.0.9 FINDING-2026-013: the masternode's OWN signed claim.
+			// 0 = it has not attested -- either the daemon predates mnver, or we
+			// have not received one yet.  A fleet-wide 0 after upgrade would itself
+			// be the finding.
+			d.push_back(json_spirit::Pair("attested", (int64_t)mn.nAttestedVersion));
+			d.push_back(json_spirit::Pair("attested_age_secs",
+				mn.nAttestedTime > 0 ? (int64_t)(GetAdjustedTime() - mn.nAttestedTime) : (int64_t)-1));
 
 			// Which side of the denominator floor each value falls on.  This is
 			// the field that matters: a disagreement that does not cross the
@@ -1818,9 +1867,20 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 
 	json_spirit::Object drift;
 
+	// Two coverage figures, kept separate because they answer different
+	// questions.  `observed` depends on OUR connections; `attested` does not.
+	drift.push_back(json_spirit::Pair("total_masternodes", (int)mnSnapshotSize));
 	drift.push_back(json_spirit::Pair("observed", driftObserved));
 	drift.push_back(json_spirit::Pair("agree", driftAgree));
 	drift.push_back(json_spirit::Pair("disagree", driftDisagree));
+
+	// THE FLEET-VERSION ANSWER.  attested/total is the coverage of the signed
+	// claims; attested_disagree is how many masternodes are advertising a
+	// version that is not what they say they are running.
+	drift.push_back(json_spirit::Pair("attested", driftAttested));
+	drift.push_back(json_spirit::Pair("attested_disagree", driftAttestDis));
+	drift.push_back(json_spirit::Pair("attested_share",
+		mnSnapshotSize > 0 ? ((double)driftAttested / (double)mnSnapshotSize) : -1.0));
 
 	// The headline number.  Non-zero means this node's voted-consensus
 	// denominator disagrees with observable reality for that many masternodes.
