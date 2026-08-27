@@ -114,6 +114,24 @@ jobs:
         if: steps.libs-cache.outputs.cache-hit != 'true'
         working-directory: ${{ env.BUILDER }}/linux/x64
         run: |
+          # v2.0.0.9 Qt6: neutralise the runner's BROKEN clang-14 cmake config.
+          #
+          # The GitHub Ubuntu images ship /usr/lib/cmake/clang-14 and
+          # /usr/lib/llvm-14/lib/cmake/clang, but NOT the static libraries those
+          # files declare.  qttools' configure.cmake calls
+          # qt_find_package(WrapLibClang) -> find_package(Clang), which FINDS
+          # the config, includes ClangTargets.cmake, and aborts:
+          #     The imported target "clangBasic" references the file
+          #     "/usr/lib/llvm-14/lib/libclangBasic.a" but this file does not exist
+          #
+          # Note this happens BEFORE FEATURE_qdoc is consulted, so disabling the
+          # feature cannot prevent it -- the search itself has to fail cleanly.
+          # Removing the config directories makes find_package return not-found,
+          # which is the correct outcome: we never build qdoc.
+          #
+          # Harmless if the paths are absent; clang itself is untouched, only the
+          # incomplete CMake package files.
+          sudo rm -rf /usr/lib/cmake/clang-14 /usr/lib/llvm-14/lib/cmake/clang || true
           mkdir -p temp libs
           CPUS=$(nproc)
           echo ">>> [1/7] BerkeleyDB..."

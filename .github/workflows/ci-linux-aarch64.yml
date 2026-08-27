@@ -48,6 +48,34 @@ env:
   # Multiarch package list — the aarch64 cross-compile needs arm64-side
   # versions of every dev library Qt's configure probes for. apt's :arm64
   # suffix selects the foreign arch package after dpkg --add-architecture.
+  # v2.0.0.9 Qt6: HOST-ARCH (amd64) build dependencies.
+  #
+  # Qt6 cross-compilation builds Qt TWICE: a HOST x86_64 Qt6 for its tools
+  # (moc/rcc/uic/lrelease), then the aarch64 target against it.  The host build
+  # links the Qt Linguist GUI, which needs xkbcommon.
+  #
+  # This is the only job that runs `dpkg --add-architecture arm64`, so
+  # /usr/lib/aarch64-linux-gnu/ is populated.  With no amd64 libxkbcommon
+  # installed, the HOST link found the arm64 one and failed:
+  #     /usr/bin/ld: /usr/lib/aarch64-linux-gnu/libxkbcommon.so:
+  #                  error adding symbols: file in wrong format
+  #
+  # ci-linux-x64.yml has always installed these, which is why it never hit it.
+  #
+  # NOTE: the fix is NOT -DFEATURE_linguist=OFF -- in Qt6 that also removes
+  # lrelease/lupdate/lconvert.  See compile/qt6_tools.sh.
+  HOST_DEV_PACKAGES: >-
+    libfreetype6-dev
+    libfontconfig1-dev
+    libx11-dev
+    libxcb1-dev
+    libxext-dev
+    libxfixes-dev
+    libxi-dev
+    libxrender-dev
+    libxkbcommon-dev
+    libxkbcommon-x11-dev
+
   AARCH64_DEV_PACKAGES: >-
     libfreetype-dev:arm64
     libfontconfig1-dev:arm64
@@ -285,6 +313,9 @@ jobs:
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             crossbuild-essential-arm64
+          # Host-arch (amd64) libs for the STAGE 1 host Qt6 build -- see
+          # HOST_DEV_PACKAGES at the top of this file for why.
+          sudo apt-get install -y ${{ env.HOST_DEV_PACKAGES }}
           # arm64 multiarch dev libs Qt configure probes for. The :arm64
           # suffix selects the foreign-arch package version. apt installs
           # these to /usr/lib/aarch64-linux-gnu/ where the cross-toolchain's
@@ -327,6 +358,24 @@ jobs:
         if: steps.qt-cache.outputs.cache-hit != 'true'
         working-directory: ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64
         run: |
+          # v2.0.0.9 Qt6: neutralise the runner's BROKEN clang-14 cmake config.
+          #
+          # The GitHub Ubuntu images ship /usr/lib/cmake/clang-14 and
+          # /usr/lib/llvm-14/lib/cmake/clang, but NOT the static libraries those
+          # files declare.  qttools' configure.cmake calls
+          # qt_find_package(WrapLibClang) -> find_package(Clang), which FINDS
+          # the config, includes ClangTargets.cmake, and aborts:
+          #     The imported target "clangBasic" references the file
+          #     "/usr/lib/llvm-14/lib/libclangBasic.a" but this file does not exist
+          #
+          # Note this happens BEFORE FEATURE_qdoc is consulted, so disabling the
+          # feature cannot prevent it -- the search itself has to fail cleanly.
+          # Removing the config directories makes find_package return not-found,
+          # which is the correct outcome: we never build qdoc.
+          #
+          # Harmless if the paths are absent; clang itself is untouched, only the
+          # incomplete CMake package files.
+          sudo rm -rf /usr/lib/cmake/clang-14 /usr/lib/llvm-14/lib/cmake/clang || true
           mkdir -p temp libs
           echo "Compiling Qt for aarch64 — this takes 1-3 hours"
           # PKG_CONFIG_LIBDIR points pkg-config at the arm64 multiarch
