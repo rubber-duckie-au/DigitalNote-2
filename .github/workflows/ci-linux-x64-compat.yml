@@ -24,6 +24,12 @@ on:
           - master
           - 2.0.0.7-testing
           - 2.0.0.8-testing
+          - 2.0.0.9-testing
+        default: ""
+      builder_repo:
+        description: "Builder repo URL (blank = repo variable, else production)"
+        required: false
+        type: string
         default: ""
   workflow_call:
     inputs:
@@ -34,6 +40,22 @@ on:
         default: ""
 
 env:
+  # v2.0.0.9: Builder repo is a VARIABLE, not hardcoded at each clone.
+  #
+  # Previously every clone used the literal URL -- even in the workflows
+  # that already declared BUILDER_REPO -- so the variable existed but did
+  # nothing, and pointing a test run at a fork meant editing several lines
+  # in several files.
+  #
+  # Resolution order:
+  #   1. the builder_repo workflow_dispatch input, if supplied
+  #   2. the BUILDER_REPO repository variable
+  #      (Settings -> Secrets and variables -> Actions -> Variables)
+  #   3. the production repo
+  #
+  # (2) is the one that matters for a fork: set it once on the test repo
+  # and every workflow follows, with nothing to remember to revert.
+  BUILDER_REPO: ${{ inputs.builder_repo || vars.BUILDER_REPO || 'https://github.com/DigitalNoteXDN/DigitalNote-Builder.git' }}
   JOBS: 4
   # Absolute path inside the container — actions/cache does NOT allow ..
   BUILDER: /__w/DigitalNote-2/DigitalNote-Builder
@@ -86,6 +108,7 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
+            cmake ninja-build \
             ca-certificates curl git sudo
 
       - uses: actions/checkout@v4
@@ -95,7 +118,7 @@ jobs:
 
       - name: Clone DigitalNote-Builder
         run: |
-          git clone https://github.com/rubber-duckie-au/DigitalNote-Builder.git \
+          git clone ${{ env.BUILDER_REPO }} \
             ${{ env.BUILDER }}
           mkdir -p ${{ env.BUILDER }}/linux/x64/libs
 
@@ -130,7 +153,11 @@ jobs:
           $WGET https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz
           $WGET "http://miniupnp.free.fr/files/download.php?file=miniupnpc-2.2.8.tar.gz" -O miniupnpc-2.2.8.tar.gz
           $WGET https://github.com/fukuchi/libqrencode/archive/refs/tags/v4.1.1.tar.gz
-          $WGET https://download.qt.io/archive/qt/5.15/5.15.7/single/qt-everywhere-opensource-src-5.15.7.tar.xz
+          # v2.0.0.9 Qt6: qtbase + qttools instead of qt-everywhere.
+          # qttools is REQUIRED -- it provides lrelease, and the .qm files it
+          # generates are gitignored build artifacts.
+          $WGET https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtbase-everywhere-src-6.8.3.tar.xz
+          $WGET https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qttools-everywhere-src-6.8.3.tar.xz
 
       - name: Compile all libraries
         if: steps.libs-cache.outputs.cache-hit != 'true'
@@ -144,13 +171,15 @@ jobs:
           echo ">>> [4/7] libevent..."       && ../../compile/libevent.sh "" "-j $CPUS"
           echo ">>> [5/7] miniupnpc..."      && ../../compile/miniupnpc.sh "libminiupnpc.a" "-j $CPUS"
           echo ">>> [6/7] qrencode..."       && ../../compile/qrencode.sh "" "-j $CPUS"
-          echo ">>> [7/7] Qt 5.15.7..."      && ../../compile/qt.sh "-bundled-xcb-xinput -fontconfig -system-freetype" "-j $CPUS"
+          echo ">>> [7/7] Qt 6.8.3 (qtbase + qttools)..." \
+            && ../../compile/qt6.sh       "" "-j $CPUS" \
+            && ../../compile/qt6_tools.sh "" "-j $CPUS"
           echo ">>> All libraries compiled"
           ls libs/
 
       - name: Verify qmake
         run: |
-          QMAKE="${{ env.BUILDER }}/linux/x64/libs/qt-5.15.7/bin/qmake"
+          QMAKE="${{ env.BUILDER }}/linux/x64/libs/qt-6.8.3/bin/qmake"
           [ -f "$QMAKE" ] || { echo "ERROR: qmake not found"; exit 1; }
           echo "Qt: $($QMAKE --version)"
 
@@ -182,7 +211,7 @@ jobs:
 
       - name: Clone DigitalNote-Builder
         run: |
-          git clone https://github.com/rubber-duckie-au/DigitalNote-Builder.git \
+          git clone ${{ env.BUILDER_REPO }} \
             ${{ env.BUILDER }}
           mkdir -p ${{ env.BUILDER }}/linux/x64/libs
 
@@ -204,7 +233,7 @@ jobs:
 
       - name: Verify qmake
         run: |
-          QMAKE="${{ env.BUILDER }}/linux/x64/libs/qt-5.15.7/bin/qmake"
+          QMAKE="${{ env.BUILDER }}/linux/x64/libs/qt-6.8.3/bin/qmake"
           [ -f "$QMAKE" ] || { echo "ERROR: qmake not found after cache restore"; exit 1; }
           echo "Qt: $($QMAKE --version)"
 
@@ -227,7 +256,7 @@ jobs:
       - name: Compile daemon (DigitalNoted) — static libstdc++/libgcc
         working-directory: ${{ env.BUILDER }}/linux/x64
         run: |
-          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          export PATH="$PWD/libs/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           # Static libstdc++/libgcc is now unconditional on Linux (set in
@@ -242,7 +271,7 @@ jobs:
       - name: Compile Qt wallet (DigitalNote-qt) — static libstdc++/libgcc
         working-directory: ${{ env.BUILDER }}/linux/x64
         run: |
-          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          export PATH="$PWD/libs/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           qmake DigitalNote.app.pro \

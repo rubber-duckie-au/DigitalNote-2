@@ -1752,6 +1752,7 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	int driftDisagree  = 0;
 	int driftAttested  = 0;   // masternode has SIGNED a version claim -- no connection needed
 	int driftAttestDis = 0;   // ...and it disagrees with the dsee-advertised value
+	int driftCrossing  = 0;   // a disagreement that CROSSES the eligibility floor
 	json_spirit::Array driftDetail;
 
 	{
@@ -1849,19 +1850,23 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 
 			d.push_back(json_spirit::Pair("advertised_counts", advIn));
 			d.push_back(json_spirit::Pair("observed_would_count", obsIn));
-			d.push_back(json_spirit::Pair("crosses_floor", advIn != obsIn));
+			bool fCrosses = (advIn != obsIn);
+
+			if (fCrosses)
+			{
+				// Counted HERE, where the value is already known.
+				//
+				// This used to be tallied afterwards by walking driftDetail and
+				// calling json_spirit::find_value() -- which does not compile:
+				// this tree's json_spirit provides find_value() as a free
+				// function in json_spirit_utils.h, NOT inside the namespace.
+				// Re-parsing JSON we had just written was the wrong shape anyway.
+				driftCrossing++;
+			}
+
+			d.push_back(json_spirit::Pair("crosses_floor", fCrosses));
 
 			driftDetail.push_back(d);
-		}
-	}
-
-	int driftCrossing = 0;
-
-	for(const json_spirit::Value &v : driftDetail)
-	{
-		if (json_spirit::find_value(v.get_obj(), "crosses_floor").get_bool())
-		{
-			driftCrossing++;
 		}
 	}
 

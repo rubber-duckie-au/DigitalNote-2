@@ -12,6 +12,12 @@ on:
           - master
           - 2.0.0.7-testing
           - 2.0.0.8-testing
+          - 2.0.0.9-testing
+        default: ""
+      builder_repo:
+        description: "Builder repo URL (blank = repo variable, else production)"
+        required: false
+        type: string
         default: ""
   workflow_call:      # called by release.yml on tag push
     inputs:
@@ -22,10 +28,23 @@ on:
         default: ""
 
 env:
-  BUILDER_REPO: https://github.com/rubber-duckie-au/DigitalNote-Builder.git
+  # v2.0.0.9: Builder repo is a VARIABLE, not hardcoded at each clone.
+  #
+  # Previously every clone used the literal URL -- even in the workflows
+  # that already declared BUILDER_REPO -- so the variable existed but did
+  # nothing, and pointing a test run at a fork meant editing several lines
+  # in several files.
+  #
+  # Resolution order:
+  #   1. the builder_repo workflow_dispatch input, if supplied
+  #   2. the BUILDER_REPO repository variable
+  #      (Settings -> Secrets and variables -> Actions -> Variables)
+  #   3. the production repo
+  #
+  # (2) is the one that matters for a fork: set it once on the test repo
+  # and every workflow follows, with nothing to remember to revert.
+  BUILDER_REPO: ${{ inputs.builder_repo || vars.BUILDER_REPO || 'https://github.com/DigitalNoteXDN/DigitalNote-Builder.git' }}
   JOBS: 4
-  # Pre-built Qt 5.15.7 static for MinGW64 — published to GitHub Releases.
-  QT_RELEASE_URL_X64: https://github.com/rubber-duckie-au/DigitalNote-Builder/releases/download/qt-static-5.15.7-mingw64/qt-5.15.7-static-mingw64.tar.gz
 
 jobs:
   build-windows-x64:
@@ -57,6 +76,9 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-gcc-libs
             mingw-w64-x86_64-make
+            # v2.0.0.9 Qt6: REQUIRED -- Qt6 builds with CMake, not ./configure.
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
             mingw-w64-x86_64-pcre2
             mingw-w64-x86_64-gmp
             mingw-w64-x86_64-double-conversion
@@ -77,43 +99,51 @@ jobs:
         run: |
           cd ~
           if [ ! -d DigitalNote-Builder ]; then
-            git clone https://github.com/rubber-duckie-au/DigitalNote-Builder.git
+            git clone ${{ env.BUILDER_REPO }}
           else
             cd DigitalNote-Builder && git pull origin master
           fi
           mkdir -p ~/DigitalNote-Builder/windows/x64/temp
           mkdir -p ~/DigitalNote-Builder/windows/x64/libs
 
-      # ── 4. Qt — cached then downloaded from GitHub Release ─────────────────
-      - name: Cache Qt 5.15.7 static build
+      # -- 4. Qt6: built IN-JOB (no prebuilt release asset) ------------------
+      #
+      # v2.0.0.9: this previously ran `gh release download
+      # qt-static-5.15.7-mingw64` against the Builder repo.  No Qt6 asset
+      # exists, and keeping one in step with the source tree is its own
+      # maintenance burden, so Qt6 is built here -- self-contained, and the
+      # version tracks the Builder scripts rather than the last upload.
+      #
+      # ~20-25 min on a cache MISS only.  The key is pinned to the Qt version,
+      # so bumping Qt invalidates it automatically.  Never reuse a key across
+      # versions: a Qt5 tree restored into a Qt6 build fails at link with
+      # errors that point nowhere near the cause.
+      - name: Cache Qt 6.8.3 static build
         id: cache-qt
         uses: actions/cache@v4
         with:
-          path: ~/DigitalNote-Builder/windows/x64/libs/qt-5.15.7
-          key: qt-5.15.7-static-mingw64-v1
+          path: ~/DigitalNote-Builder/windows/x64/libs/qt-6.8.3
+          key: qt-6.8.3-static-mingw64-v1
           save-always: true
 
-      - name: Download pre-built Qt 5.15.7 (PowerShell)
+      - name: Download Qt6 sources
         if: steps.cache-qt.outputs.cache-hit != 'true'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          Write-Host "Downloading pre-built Qt 5.15.7..."
-          gh release download qt-static-5.15.7-mingw64 `
-            --repo rubber-duckie-au/DigitalNote-Builder `
-            --pattern "qt-5.15.7-static-mingw64.tar.gz" `
-            --output "C:\\qt-prebuilt.tar.gz"
-          Write-Host "Download complete: $((Get-Item C:\qt-prebuilt.tar.gz).Length) bytes"
+          mkdir -p ~/DigitalNote-Builder/download
+          cd ~/DigitalNote-Builder/download
+          wget -q https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtbase-everywhere-src-6.8.3.tar.xz
+          wget -q https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qttools-everywhere-src-6.8.3.tar.xz
+          ls -lh qtbase-everywhere-src-6.8.3.tar.xz qttools-everywhere-src-6.8.3.tar.xz
 
-      - name: Extract Qt 5.15.7
+      - name: Build static Qt6 (qtbase + qttools)
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
-          tar -xzf /c/qt-prebuilt.tar.gz \
-              -C ~/DigitalNote-Builder/windows/x64/
-          rm /c/qt-prebuilt.tar.gz
-          echo "Qt ready:"
-          ls ~/DigitalNote-Builder/windows/x64/libs/qt-5.15.7/bin/
+          cd ~/DigitalNote-Builder/windows/x64
+          mkdir -p temp libs
+          bash ../../compile/qt6.sh       "-G Ninja" "-j ${{ env.JOBS }}"
+          bash ../../compile/qt6_tools.sh "-G Ninja" "-j ${{ env.JOBS }}"
+          echo "Qt6 ready:"
+          ls ~/DigitalNote-Builder/windows/x64/libs/qt-6.8.3/bin/
 
       # ── 5. Cache compiled libraries ────────────────────────────────────────
       - name: Cache compiled libraries
@@ -185,7 +215,7 @@ jobs:
       - name: Compile daemon (digitalnoted.exe)
         run: |
           cd ~/DigitalNote-Builder/windows/x64
-          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          export PATH="$PWD/libs/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           qmake DigitalNote.daemon.pro \
@@ -201,7 +231,7 @@ jobs:
       - name: Compile Qt wallet (DigitalNote-qt.exe)
         run: |
           cd ~/DigitalNote-Builder/windows/x64
-          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          export PATH="$PWD/libs/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           qmake DigitalNote.app.pro \

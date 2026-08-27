@@ -12,6 +12,12 @@ on:
           - master
           - 2.0.0.7-testing
           - 2.0.0.8-testing
+          - 2.0.0.9-testing
+        default: ""
+      builder_repo:
+        description: "Builder repo URL (blank = repo variable, else production)"
+        required: false
+        type: string
         default: ""
   workflow_call:      # called by release.yml on tag push
     inputs:
@@ -22,7 +28,22 @@ on:
         default: ""
 
 env:
-  BUILDER_REPO: https://github.com/rubber-duckie-au/DigitalNote-Builder.git
+  # v2.0.0.9: Builder repo is a VARIABLE, not hardcoded at each clone.
+  #
+  # Previously every clone used the literal URL -- even in the workflows
+  # that already declared BUILDER_REPO -- so the variable existed but did
+  # nothing, and pointing a test run at a fork meant editing several lines
+  # in several files.
+  #
+  # Resolution order:
+  #   1. the builder_repo workflow_dispatch input, if supplied
+  #   2. the BUILDER_REPO repository variable
+  #      (Settings -> Secrets and variables -> Actions -> Variables)
+  #   3. the production repo
+  #
+  # (2) is the one that matters for a fork: set it once on the test repo
+  # and every workflow follows, with nothing to remember to revert.
+  BUILDER_REPO: ${{ inputs.builder_repo || vars.BUILDER_REPO || 'https://github.com/DigitalNoteXDN/DigitalNote-Builder.git' }}
   JOBS: 4
   # Multiarch package list — the aarch64 cross-compile needs arm64-side
   # versions of every dev library Qt's configure probes for. apt's :arm64
@@ -127,6 +148,7 @@ jobs:
           sudo dpkg --add-architecture arm64
           sudo apt-get update
           sudo apt-get install -y \
+            cmake ninja-build \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             crossbuild-essential-arm64 qemu-user-static
           sudo bash ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64/update.sh \
@@ -143,7 +165,7 @@ jobs:
           for attempt in 1 2 3; do
             rm -rf DigitalNote-Builder
             if git clone --depth 1 \
-                 https://github.com/rubber-duckie-au/DigitalNote-Builder.git; then
+                 ${{ env.BUILDER_REPO }}; then
               break
             fi
             echo "Clone attempt $attempt failed; sleeping 10s before retry..."
@@ -207,9 +229,13 @@ jobs:
         uses: actions/cache@v4
         id: qt-cache
         with:
-          path: ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64/libs/qt-5.15.7
-          key: linux-aarch64-qt-5.15.7-v2
-          restore-keys: linux-aarch64-qt-5.15.7-
+          # v2.0.0.9 Qt6: BOTH prefixes cached.  libs-host/ is the x86_64 host
+          # Qt6 from stage 1; without it every run rebuilds it.
+          path: |
+            ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64/libs/qt-6.8.3
+            ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64/libs-host/qt-6.8.3
+          key: linux-aarch64-qt-6.8.3-v1
+          restore-keys: linux-aarch64-qt-6.8.3-
 
       - name: Install cross-compile toolchain + Qt deps (host + arm64 multiarch)
         if: steps.qt-cache.outputs.cache-hit != 'true'
@@ -272,7 +298,7 @@ jobs:
           for attempt in 1 2 3; do
             rm -rf DigitalNote-Builder
             if git clone --depth 1 \
-                 https://github.com/rubber-duckie-au/DigitalNote-Builder.git; then
+                 ${{ env.BUILDER_REPO }}; then
               break
             fi
             echo "Clone attempt $attempt failed; sleeping 10s before retry..."
@@ -285,8 +311,13 @@ jobs:
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p ${{ runner.workspace }}/DigitalNote-Builder/download
-          wget -q https://download.qt.io/archive/qt/5.15/5.15.7/single/qt-everywhere-opensource-src-5.15.7.tar.xz \
-            -O ${{ runner.workspace }}/DigitalNote-Builder/download/qt-everywhere-opensource-src-5.15.7.tar.xz
+          # v2.0.0.9 Qt6: qtbase + qttools instead of qt-everywhere.
+          # qttools is REQUIRED -- it provides lrelease, and the .qm files it
+          # generates are gitignored build artifacts.
+          wget -q https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtbase-everywhere-src-6.8.3.tar.xz \
+            -O ${{ runner.workspace }}/DigitalNote-Builder/download/qtbase-everywhere-src-6.8.3.tar.xz
+          wget -q https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qttools-everywhere-src-6.8.3.tar.xz \
+            -O ${{ runner.workspace }}/DigitalNote-Builder/download/qttools-everywhere-src-6.8.3.tar.xz
 
       - name: Compile Qt (cross-compile aarch64)
         if: steps.qt-cache.outputs.cache-hit != 'true'
@@ -299,7 +330,21 @@ jobs:
           # avoids accidental path rewriting on this same-rootfs setup.
           export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
           export PKG_CONFIG_SYSROOT_DIR=/
-          ../../compile/qt.sh "-platform linux-g++ -xplatform linux-aarch64-gnu-g++ -bundled-xcb-xinput -fontconfig -system-freetype" ""
+          # v2.0.0.9 Qt6 CROSS-COMPILE -- TWO builds, unavoidably.
+          #
+          # Qt5 cross-compiled in ONE call via -platform/-xplatform.  Qt6 cannot:
+          # the TARGET build RUNS host tools (moc/rcc/uic) that cannot execute on
+          # aarch64, so a HOST Qt6 must exist first and be named via QT_HOST_PATH.
+          #
+          # Stage 1 installs to a SEPARATE prefix so the target build can never link
+          # host binaries by accident.  lrelease also comes from stage 1 -- a
+          # cross-built lrelease will not run on the runner.
+          QT_HOST_PREFIX="$PWD/libs-host/qt-6.8.3"
+
+          QT_PREFIX_OVERRIDE="$QT_HOST_PREFIX" ../../compile/qt6.sh       "" ""
+          QT_PREFIX_OVERRIDE="$QT_HOST_PREFIX" ../../compile/qt6_tools.sh "" ""
+
+          ../../compile/qt6.sh "-DQT_HOST_PATH=$QT_HOST_PREFIX -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY" ""
 
 # ── Job 3: Build + Test aarch64 ───────────────────────────────────────────────
   build-linux-aarch64:
@@ -329,7 +374,7 @@ jobs:
           for attempt in 1 2 3; do
             rm -rf DigitalNote-Builder
             if git clone --depth 1 \
-                 https://github.com/rubber-duckie-au/DigitalNote-Builder.git; then
+                 ${{ env.BUILDER_REPO }}; then
               break
             fi
             echo "Clone attempt $attempt failed; sleeping 10s before retry..."
@@ -355,9 +400,13 @@ jobs:
       - name: Restore Qt from cache
         uses: actions/cache@v4
         with:
-          path: ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64/libs/qt-5.15.7
-          key: linux-aarch64-qt-5.15.7-v2
-          restore-keys: linux-aarch64-qt-5.15.7-
+          # v2.0.0.9 Qt6: BOTH prefixes cached.  libs-host/ is the x86_64 host
+          # Qt6 from stage 1; without it every run rebuilds it.
+          path: |
+            ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64/libs/qt-6.8.3
+            ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64/libs-host/qt-6.8.3
+          key: linux-aarch64-qt-6.8.3-v1
+          restore-keys: linux-aarch64-qt-6.8.3-
 
       - name: Install cross-compile toolchain + arm64 runtime libs
         run: |
@@ -423,7 +472,11 @@ jobs:
       - name: Compile daemon (aarch64)
         working-directory: ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64
         run: |
-          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          # v2.0.0.9 Qt6 cross-build: HOST prefix, not the target one.
+          # libs/qt-6.8.3 holds aarch64 binaries that cannot execute here;
+          # pointing PATH at it gives "cannot execute binary file" from
+          # lrelease, which reads like a corrupt download.
+          export PATH="$PWD/libs-host/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           # TARGET_ARCH=aarch64 lets config.pri pick the cross-compiled
@@ -439,7 +492,11 @@ jobs:
       - name: Compile Qt wallet (aarch64)
         working-directory: ${{ runner.workspace }}/DigitalNote-Builder/linux/aarch64
         run: |
-          export PATH="$PWD/libs/qt-5.15.7/bin:$PATH"
+          # v2.0.0.9 Qt6 cross-build: HOST prefix, not the target one.
+          # libs/qt-6.8.3 holds aarch64 binaries that cannot execute here;
+          # pointing PATH at it gives "cannot execute binary file" from
+          # lrelease, which reads like a corrupt download.
+          export PATH="$PWD/libs-host/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           qmake DigitalNote.app.pro \
