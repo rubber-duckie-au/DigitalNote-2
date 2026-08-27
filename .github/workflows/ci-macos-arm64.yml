@@ -203,8 +203,8 @@ jobs:
           # v2.0.0.9 Qt6.  -DFEATURE_framework=OFF: macOS Qt6 builds FRAMEWORKS
           # by default even when static, changing the layout the .pri files
           # expect.  qttools provides lrelease.
-          bash ../../compile/qt6.sh       "-DCMAKE_OSX_ARCHITECTURES=arm64 -DFEATURE_framework=OFF" "-j $CPUS"
-          bash ../../compile/qt6_tools.sh "-DCMAKE_OSX_ARCHITECTURES=arm64 -DFEATURE_framework=OFF" "-j $CPUS"
+          bash ../../compile/qt6.sh "-G Ninja -DCMAKE_OSX_ARCHITECTURES=arm64 -DFEATURE_framework=OFF" "-j $CPUS"
+          bash ../../compile/qt6_tools.sh "-G Ninja -DCMAKE_OSX_ARCHITECTURES=arm64 -DFEATURE_framework=OFF" "-j $CPUS"
 
   build-macos-arm64:
     name: macOS arm64 (Apple Silicon) — Build + Test

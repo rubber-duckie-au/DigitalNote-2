@@ -205,8 +205,8 @@ jobs:
           # v2.0.0.9 Qt6.  -DFEATURE_framework=OFF: macOS Qt6 builds FRAMEWORKS
           # by default even when static, changing the layout the .pri files
           # expect.  qttools provides lrelease.
-          bash ../../compile/qt6.sh       "-DFEATURE_framework=OFF" "-j $CPUS"
-          bash ../../compile/qt6_tools.sh "-DFEATURE_framework=OFF" "-j $CPUS"
+          bash ../../compile/qt6.sh "-G Ninja -DFEATURE_framework=OFF" "-j $CPUS"
+          bash ../../compile/qt6_tools.sh "-G Ninja -DFEATURE_framework=OFF" "-j $CPUS"
 
   build-macos-x64:
     name: macOS x64 (Intel) — Build + Test

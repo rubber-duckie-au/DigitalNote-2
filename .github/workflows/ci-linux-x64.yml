@@ -159,8 +159,8 @@ jobs:
           # right after it, and only the later qmake check caught it.
           # Separate lines let set -e do its job.
           echo ">>> [7/7] Qt 6.8.3 (qtbase + qttools)..."
-          bash ../../compile/qt6.sh       "" "-j $CPUS"
-          bash ../../compile/qt6_tools.sh "" "-j $CPUS"
+          bash ../../compile/qt6.sh "-G Ninja" "-j $CPUS"
+          bash ../../compile/qt6_tools.sh "-G Ninja" "-j $CPUS"
           echo ">>> All libraries compiled"
           ls libs/
 

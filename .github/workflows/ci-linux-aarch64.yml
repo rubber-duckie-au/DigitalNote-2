@@ -435,22 +435,20 @@ jobs:
               "-G Ninja -DCMAKE_IGNORE_PATH=/usr/lib/aarch64-linux-gnu" ""
 
 
+          # CROSS SETTINGS -- multiarch, NOT a sysroot.
+          #
+          # >>> NO COMMENTS INSIDE THE COMMAND BELOW. <<<  A "#" line between
+          # backslash continuations TRUNCATES the command: everything after it runs
+          # as a separate statement.  That is exactly what happened on 2026-08-27 --
+          # the PKG_CONFIG_LIBDIR pinning was severed from the qt6.sh call, so the
+          # TARGET build configured with HOST pkg-config paths and OpenGL detection
+          # failed.  bash -n does NOT catch this.
+          #
+          # CMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu with MODE_LIBRARY=ONLY was
+          # also wrong and has been removed: on Ubuntu multiarch the arm64 libraries
+          # live in /usr/lib/aarch64-linux-gnu/, not under /usr/aarch64-linux-gnu.
+          # CMAKE_LIBRARY_ARCHITECTURE is the multiarch-native lever instead.
           PKG_CONFIG_LIBDIR="$TARGET_PKG_CONFIG" PKG_CONFIG_SYSROOT_DIR=/ \
-            # CROSS SETTINGS -- multiarch, NOT a sysroot.
-            #
-            # CMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu with MODE_LIBRARY=ONLY was
-            # WRONG and broke this build: on Ubuntu multiarch the arm64 libraries live
-            # in /usr/lib/aarch64-linux-gnu/, not under /usr/aarch64-linux-gnu.  ONLY
-            # restricted find_library to a directory that does not contain them, and
-            # OpenGL was simply the first probe to hard-error rather than degrade:
-            #     ERROR: The OpenGL functionality tests failed!
-            #
-            # CMAKE_LIBRARY_ARCHITECTURE is the multiarch-native lever -- it makes
-            # CMake search /usr/lib/<triple>/ directly.  Combined with the arm64
-            # PKG_CONFIG_LIBDIR above, that is how Ubuntu cross-builds are meant to
-            # resolve libraries.  INPUT_opengl=no is repeated here explicitly: qt6.sh
-            # already passes it, but EXTRA_CMAKE lands last on the command line and
-            # restating it removes any doubt about precedence.
             bash ../../compile/qt6.sh "-G Ninja -DQT_HOST_PATH=$QT_HOST_PREFIX \
               -DCMAKE_SYSTEM_NAME=Linux \
               -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
