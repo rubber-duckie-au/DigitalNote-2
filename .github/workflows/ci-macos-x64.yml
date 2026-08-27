@@ -142,7 +142,7 @@ jobs:
           bash ../../compile/gmp.sh "--with-pic" "-j $CPUS"
 
   libs-qt-macos-x64:
-    name: Compile Qt 5.15.7 — macOS x64 (up to 6hrs)
+    name: Compile Qt 6.8.3 — macOS x64 (up to 6hrs)
     runs-on: macos-15-intel
     timeout-minutes: 360
 

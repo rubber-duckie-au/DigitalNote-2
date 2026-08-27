@@ -190,15 +190,27 @@ jobs:
           export TARGET_OS=NATIVE_WINDOWS
           J="${{ env.JOBS }}"
 
-          echo "=== BerkeleyDB ===" && ../../compile/berkeleydb.sh "build_windows" "--enable-mingw" "-j $J"
-          echo "=== Boost ===" && ../../compile/boost.sh "toolset=gcc address-model=64 -j $J"
+          # v2.0.0.9: unchained from && and routed through bash.
+          # set -e is suppressed inside an && list, so a failing build was
+          # swallowed and the step still exited 0.  bash also removes the
+          # dependency on an executable bit the Windows checkout does not keep.
+          echo "=== BerkeleyDB ==="
+          bash ../../compile/berkeleydb.sh "build_windows" "--enable-mingw" "-j $J"
+          echo "=== Boost ==="
+          bash ../../compile/boost.sh "toolset=gcc address-model=64 -j $J"
           echo "=== GMP ===" && bash gmp.sh
-          echo "=== LevelDB ===" && ../../compile/leveldb.sh "-j $J"
-          echo "=== libevent ===" && ../../compile/libevent.sh "" "-j $J"
-          echo "=== miniupnpc ===" && ../../compile/miniupnpc.sh "libminiupnpc.a" "-j $J"
-          echo "=== OpenSSL ===" && ../../compile/openssl.sh "mingw64" "-j $J"
-          echo "=== qrencode ===" && ../../compile/qrencode.sh "" "-j $J"
-          echo "=== secp256k1 ===" && ../../compile/secp256k1.sh "" "-j $J"
+          echo "=== LevelDB ==="
+          bash ../../compile/leveldb.sh "-j $J"
+          echo "=== libevent ==="
+          bash ../../compile/libevent.sh "" "-j $J"
+          echo "=== miniupnpc ==="
+          bash ../../compile/miniupnpc.sh "libminiupnpc.a" "-j $J"
+          echo "=== OpenSSL ==="
+          bash ../../compile/openssl.sh "mingw64" "-j $J"
+          echo "=== qrencode ==="
+          bash ../../compile/qrencode.sh "" "-j $J"
+          echo "=== secp256k1 ==="
+          bash ../../compile/secp256k1.sh "" "-j $J"
           echo "=== All libraries built ==="
 
       # ── 8. Link source tree ────────────────────────────────────────────────

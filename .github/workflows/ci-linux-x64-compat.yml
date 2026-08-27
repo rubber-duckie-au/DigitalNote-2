@@ -165,15 +165,33 @@ jobs:
         run: |
           mkdir -p temp libs
           CPUS=$(nproc)
-          echo ">>> [1/7] BerkeleyDB..."    && ../../compile/berkeleydb.sh "build_unix" "" "-j $CPUS"
-          echo ">>> [2/7] Boost..."          && ../../compile/boost.sh "address-model=64 toolset=gcc -j $CPUS"
-          echo ">>> [3/7] OpenSSL..."        && ../../compile/openssl.sh "linux-x86_64" "-j $CPUS"
-          echo ">>> [4/7] libevent..."       && ../../compile/libevent.sh "" "-j $CPUS"
-          echo ">>> [5/7] miniupnpc..."      && ../../compile/miniupnpc.sh "libminiupnpc.a" "-j $CPUS"
-          echo ">>> [6/7] qrencode..."       && ../../compile/qrencode.sh "" "-j $CPUS"
-          echo ">>> [7/7] Qt 6.8.3 (qtbase + qttools)..." \
-            && ../../compile/qt6.sh       "" "-j $CPUS" \
-            && ../../compile/qt6_tools.sh "" "-j $CPUS"
+          echo ">>> [1/7] BerkeleyDB..."
+          # v2.0.0.9: invoked via `bash` deliberately, not `./`.  The repo is
+          # edited on Windows where the executable bit is not preserved, and a
+          # 664 qt6.sh caused a permission-denied failure on 2026-08-27.  Going
+          # through bash removes the dependency on the mode entirely.
+          bash ../../compile/berkeleydb.sh "build_unix" "" "-j $CPUS"
+          echo ">>> [2/7] Boost..."
+          bash ../../compile/boost.sh "address-model=64 toolset=gcc -j $CPUS"
+          echo ">>> [3/7] OpenSSL..."
+          bash ../../compile/openssl.sh "linux-x86_64" "-j $CPUS"
+          echo ">>> [4/7] libevent..."
+          bash ../../compile/libevent.sh "" "-j $CPUS"
+          echo ">>> [5/7] miniupnpc..."
+          bash ../../compile/miniupnpc.sh "libminiupnpc.a" "-j $CPUS"
+          echo ">>> [6/7] qrencode..."
+          bash ../../compile/qrencode.sh "" "-j $CPUS"
+          # v2.0.0.9: NOT chained with &&.
+          #
+          # GitHub runs `run: |` under `bash -e`, but set -e is SUPPRESSED for
+          # commands inside an && list.  `echo "..." && build.sh` therefore
+          # swallowed a failing build.sh and the step exited 0 -- the Qt6
+          # permission error on 2026-08-27 printed "All libraries compiled"
+          # right after it, and only the later qmake check caught it.
+          # Separate lines let set -e do its job.
+          echo ">>> [7/7] Qt 6.8.3 (qtbase + qttools)..."
+          bash ../../compile/qt6.sh       "" "-j $CPUS"
+          bash ../../compile/qt6_tools.sh "" "-j $CPUS"
           echo ">>> All libraries compiled"
           ls libs/
 
