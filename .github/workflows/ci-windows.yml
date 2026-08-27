@@ -76,7 +76,6 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-gcc-libs
             mingw-w64-x86_64-make
-            # v2.0.0.9 Qt6: REQUIRED -- Qt6 builds with CMake, not ./configure.
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-ninja
             mingw-w64-x86_64-pcre2
