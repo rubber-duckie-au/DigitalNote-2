@@ -378,11 +378,24 @@ jobs:
           sudo rm -rf /usr/lib/cmake/clang-14 /usr/lib/llvm-14/lib/cmake/clang || true
           mkdir -p temp libs
           echo "Compiling Qt for aarch64 — this takes 1-3 hours"
-          # PKG_CONFIG_LIBDIR points pkg-config at the arm64 multiarch
-          # paths so configure tests succeed. PKG_CONFIG_SYSROOT_DIR=/
-          # avoids accidental path rewriting on this same-rootfs setup.
-          export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          export PKG_CONFIG_SYSROOT_DIR=/
+          # v2.0.0.9 Qt6: pkg-config paths are set PER STAGE, not exported for the
+          # whole step.
+          #
+          # Under Qt5 there was ONE build, so a step-level
+          #     export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
+          # was correct.  Qt6 builds TWICE, and that export applied to the HOST
+          # x86_64 build too -- explicitly telling it to use arm64 pkg-config.  The
+          # host qtbase then resolved an arm64 libxkbcommon, baked the path into its
+          # exported CMake targets, and qttools died linking it:
+          #     /usr/bin/ld: /usr/lib/aarch64-linux-gnu/libxkbcommon.so:
+          #                  error adding symbols: file in wrong format
+          #
+          # Installing amd64 dev packages did NOT help -- the export named the arm64
+          # path outright, so having both present changed nothing.
+          #
+          # PKG_CONFIG_SYSROOT_DIR=/ avoids path rewriting on this same-rootfs setup.
+          HOST_PKG_CONFIG="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+          TARGET_PKG_CONFIG="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
           # v2.0.0.9 Qt6 CROSS-COMPILE -- TWO builds, unavoidably.
           #
           # Qt5 cross-compiled in ONE call via -platform/-xplatform.  Qt6 cannot:
@@ -394,10 +407,36 @@ jobs:
           # cross-built lrelease will not run on the runner.
           QT_HOST_PREFIX="$PWD/libs-host/qt-6.8.3"
 
-          QT_PREFIX_OVERRIDE="$QT_HOST_PREFIX" bash ../../compile/qt6.sh       "" ""
-          QT_PREFIX_OVERRIDE="$QT_HOST_PREFIX" bash ../../compile/qt6_tools.sh "" ""
+          # v2.0.0.9: STAGE 1 must be pinned to HOST-ARCH library paths.
+          #
+          # `dpkg --add-architecture arm64` makes /usr/lib/aarch64-linux-gnu
+          # visible to pkg-config and CMake.  Stage 2 already pins
+          # PKG_CONFIG_LIBDIR to the arm64 paths -- stage 1 pinned NOTHING and
+          # inherited the multiarch default, so the HOST x86_64 qtbase resolved
+          # an arm64 libxkbcommon and baked that path into its exported CMake
+          # targets.  qttools then linked it and died:
+          #     /usr/bin/ld: /usr/lib/aarch64-linux-gnu/libxkbcommon.so:
+          #                  error adding symbols: file in wrong format
+          #
+          # Installing the amd64 dev packages (HOST_DEV_PACKAGES) was necessary
+          # but NOT sufficient: both architectures were then present and the
+          # wrong one still won.  The paths have to be pinned explicitly, which
+          # makes stage 1 symmetric with stage 2.
+          #
+          # CMAKE_IGNORE_PATH is belt-and-braces for anything resolved by
+          # find_library rather than pkg-config.
 
-          bash ../../compile/qt6.sh "-DQT_HOST_PATH=$QT_HOST_PREFIX -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY" ""
+          PKG_CONFIG_LIBDIR="$HOST_PKG_CONFIG" PKG_CONFIG_SYSROOT_DIR=/ \
+            QT_PREFIX_OVERRIDE="$QT_HOST_PREFIX" bash ../../compile/qt6.sh \
+              "-DCMAKE_IGNORE_PATH=/usr/lib/aarch64-linux-gnu" ""
+
+          PKG_CONFIG_LIBDIR="$HOST_PKG_CONFIG" PKG_CONFIG_SYSROOT_DIR=/ \
+            QT_PREFIX_OVERRIDE="$QT_HOST_PREFIX" bash ../../compile/qt6_tools.sh \
+              "-DCMAKE_IGNORE_PATH=/usr/lib/aarch64-linux-gnu" ""
+
+
+          PKG_CONFIG_LIBDIR="$TARGET_PKG_CONFIG" PKG_CONFIG_SYSROOT_DIR=/ \
+            bash ../../compile/qt6.sh "-DQT_HOST_PATH=$QT_HOST_PREFIX -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY" ""
 
 # ── Job 3: Build + Test aarch64 ───────────────────────────────────────────────
   build-linux-aarch64:
