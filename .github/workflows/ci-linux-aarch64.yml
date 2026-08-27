@@ -436,7 +436,28 @@ jobs:
 
 
           PKG_CONFIG_LIBDIR="$TARGET_PKG_CONFIG" PKG_CONFIG_SYSROOT_DIR=/ \
-            bash ../../compile/qt6.sh "-DQT_HOST_PATH=$QT_HOST_PREFIX -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY" ""
+            # CROSS SETTINGS -- multiarch, NOT a sysroot.
+            #
+            # CMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu with MODE_LIBRARY=ONLY was
+            # WRONG and broke this build: on Ubuntu multiarch the arm64 libraries live
+            # in /usr/lib/aarch64-linux-gnu/, not under /usr/aarch64-linux-gnu.  ONLY
+            # restricted find_library to a directory that does not contain them, and
+            # OpenGL was simply the first probe to hard-error rather than degrade:
+            #     ERROR: The OpenGL functionality tests failed!
+            #
+            # CMAKE_LIBRARY_ARCHITECTURE is the multiarch-native lever -- it makes
+            # CMake search /usr/lib/<triple>/ directly.  Combined with the arm64
+            # PKG_CONFIG_LIBDIR above, that is how Ubuntu cross-builds are meant to
+            # resolve libraries.  INPUT_opengl=no is repeated here explicitly: qt6.sh
+            # already passes it, but EXTRA_CMAKE lands last on the command line and
+            # restating it removes any doubt about precedence.
+            bash ../../compile/qt6.sh "-DQT_HOST_PATH=$QT_HOST_PREFIX \
+              -DCMAKE_SYSTEM_NAME=Linux \
+              -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+              -DCMAKE_LIBRARY_ARCHITECTURE=aarch64-linux-gnu \
+              -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+              -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+              -DINPUT_opengl=no" ""
 
 # ── Job 3: Build + Test aarch64 ───────────────────────────────────────────────
   build-linux-aarch64:
