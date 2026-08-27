@@ -108,8 +108,28 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-            cmake ninja-build \
-            ca-certificates curl git sudo
+            ninja-build \
+            ca-certificates curl git sudo wget
+
+          # v2.0.0.9 Qt6: CMake from KITWARE, not apt.
+          #
+          # This job runs in an ubuntu:20.04 container to produce the glibc 2.31+
+          # compat build.  Its apt cmake is 3.16.3 and Qt6 requires 3.21+:
+          #     CMake 3.21 or higher is required.  You are running version 3.16.3
+          #
+          # Qt offers -DQT_FORCE_MIN_CMAKE_VERSION_FOR_BUILDING_QT=3.16 to bypass
+          # the check, but its own message says "not officially supported, use at
+          # your own risk" -- not a promise worth making for a release binary.
+          #
+          # The Kitware tarball is a self-contained static binary, so it does NOT
+          # raise the glibc floor this job exists to hold.
+          CMAKE_VER=3.31.6
+          wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VER}/cmake-${CMAKE_VER}-linux-x86_64.tar.gz" -O /tmp/cmake.tar.gz
+          mkdir -p /opt/cmake
+          tar -xzf /tmp/cmake.tar.gz -C /opt/cmake --strip-components=1
+          ln -sf /opt/cmake/bin/cmake /usr/local/bin/cmake
+          ln -sf /opt/cmake/bin/ctest /usr/local/bin/ctest
+          cmake --version
 
       - uses: actions/checkout@v4
         with:
