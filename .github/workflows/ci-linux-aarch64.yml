@@ -448,14 +448,23 @@ jobs:
           # also wrong and has been removed: on Ubuntu multiarch the arm64 libraries
           # live in /usr/lib/aarch64-linux-gnu/, not under /usr/aarch64-linux-gnu.
           # CMAKE_LIBRARY_ARCHITECTURE is the multiarch-native lever instead.
+          # It is arguably redundant -- CMake derives the triple from the cross
+          # compiler on Linux -- but it is kept: it states the intent explicitly
+          # and costs nothing.
+          #
+          # -DINPUT_opengl=no WAS restated here and has been REMOVED.  qt6.sh
+          # already passes it (compile/qt6.sh:237).  I added it while wrongly
+          # suspecting an argument-precedence problem; the real cause was a stale
+          # build/ directory carrying host-resolved features into the target
+          # configure.  Duplicating a flag to paper over a misdiagnosis is how
+          # config rots, so it goes.
           PKG_CONFIG_LIBDIR="$TARGET_PKG_CONFIG" PKG_CONFIG_SYSROOT_DIR=/ \
             bash ../../compile/qt6.sh "-G Ninja -DQT_HOST_PATH=$QT_HOST_PREFIX \
               -DCMAKE_SYSTEM_NAME=Linux \
               -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
               -DCMAKE_LIBRARY_ARCHITECTURE=aarch64-linux-gnu \
               -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-              -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-              -DINPUT_opengl=no" ""
+              -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++" ""
 
 # ── Job 3: Build + Test aarch64 ───────────────────────────────────────────────
   build-linux-aarch64:
@@ -587,7 +596,28 @@ jobs:
           # libs/qt-6.8.3 holds aarch64 binaries that cannot execute here;
           # pointing PATH at it gives "cannot execute binary file" from
           # lrelease, which reads like a corrupt download.
-          export PATH="$PWD/libs-host/qt-6.8.3/bin:$PATH"
+          # Qt6 cross-build PATH: TARGET first, HOST second.
+          #
+          # Both prefixes are needed and neither alone works:
+          #
+          #   libs/qt-6.8.3/bin       qmake, qmake6, qtpaths  -- and NOTHING else.
+          #                           This qmake reports TARGET include/lib paths,
+          #                           which is what the wallet must compile against.
+          #   libs-host/qt-6.8.3/bin  lrelease, lupdate, lconvert, qdbus*  -- the
+          #                           tools that must EXECUTE on this runner.
+          #
+          # Host-only (the previous setting) made qmake emit HOST library paths, so
+          # the aarch64 link pulled x86_64 objects and failed with:
+          #     ld: .../libs-host/qt-6.8.3/lib/.../qrc_qpdf_init.cpp.o:
+          #         Relocations in generic ELF (EM: 62)
+          #
+          # Target-only would fail differently: the target prefix has no lrelease,
+          # and .qm files are gitignored build artifacts.
+          #
+          # Ordering resolves it without any per-tool wiring: qmake comes from the
+          # target because it is first; lrelease comes from the host because it is
+          # the only prefix that has one.
+          export PATH="$PWD/libs/qt-6.8.3/bin:$PWD/libs-host/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           # TARGET_ARCH=aarch64 lets config.pri pick the cross-compiled
@@ -607,7 +637,28 @@ jobs:
           # libs/qt-6.8.3 holds aarch64 binaries that cannot execute here;
           # pointing PATH at it gives "cannot execute binary file" from
           # lrelease, which reads like a corrupt download.
-          export PATH="$PWD/libs-host/qt-6.8.3/bin:$PATH"
+          # Qt6 cross-build PATH: TARGET first, HOST second.
+          #
+          # Both prefixes are needed and neither alone works:
+          #
+          #   libs/qt-6.8.3/bin       qmake, qmake6, qtpaths  -- and NOTHING else.
+          #                           This qmake reports TARGET include/lib paths,
+          #                           which is what the wallet must compile against.
+          #   libs-host/qt-6.8.3/bin  lrelease, lupdate, lconvert, qdbus*  -- the
+          #                           tools that must EXECUTE on this runner.
+          #
+          # Host-only (the previous setting) made qmake emit HOST library paths, so
+          # the aarch64 link pulled x86_64 objects and failed with:
+          #     ld: .../libs-host/qt-6.8.3/lib/.../qrc_qpdf_init.cpp.o:
+          #         Relocations in generic ELF (EM: 62)
+          #
+          # Target-only would fail differently: the target prefix has no lrelease,
+          # and .qm files are gitignored build artifacts.
+          #
+          # Ordering resolves it without any per-tool wiring: qmake comes from the
+          # target because it is first; lrelease comes from the host because it is
+          # the only prefix that has one.
+          export PATH="$PWD/libs/qt-6.8.3/bin:$PWD/libs-host/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
           qmake DigitalNote.app.pro \
