@@ -51,6 +51,10 @@
 #include "guiconstants.h"
 #include "init.h"
 #include "util.h"
+// v2.0.0.9: SelectParamsFromCommandLine() -- the network is selected here,
+// immediately after ParseParameters().  bitcoind.cpp already included this;
+// the Qt entry point did not.
+#include "chainparams.h"
 
 #include <cctype>
 
