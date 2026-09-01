@@ -241,13 +241,27 @@ jobs:
           # set -e is suppressed inside an && list, so a failing build was
           # swallowed and the step still exited 0.  bash also removes the
           # dependency on an executable bit the Windows checkout does not keep.
+          # v2.0.0.9: LevelDB and secp256k1 are NOT built here.
+          #
+          # Both are VENDORED -- compile/leveldb.sh and secp256k1.sh cd into
+          # DigitalNote-2/src/... and build INSIDE THE CHECKOUT, producing
+          # src/leveldb/libleveldb.a and src/secp256k1/.libs/libsecp256k1.a.
+          #
+          # This job has its own checkout; the build job has a different one on
+          # a different runner, and the caches cover libs/ (external libraries)
+          # only.  Building them here left the build job linking against files
+          # that did not exist:
+          #     ld: cannot find .../src/leveldb/libleveldb.a
+          #
+          # They now build in the BUILD job, next to the source they belong to.
+          # Windows is the only platform that needs this: leveldb.pri builds
+          # them via PRE_TARGETDEPS everywhere else and prints
+          # "You need to compile leveldb yourself with msys2." on win32.
           echo "=== BerkeleyDB ==="
           bash ../../compile/berkeleydb.sh "build_windows" "--enable-mingw" "-j $J"
           echo "=== Boost ==="
           bash ../../compile/boost.sh "toolset=gcc address-model=64 -j $J"
           echo "=== GMP ===" && bash gmp.sh
-          echo "=== LevelDB ==="
-          bash ../../compile/leveldb.sh "-j $J"
           echo "=== libevent ==="
           bash ../../compile/libevent.sh "" "-j $J"
           echo "=== miniupnpc ==="
@@ -256,8 +270,6 @@ jobs:
           bash ../../compile/openssl.sh "mingw64" "-j $J"
           echo "=== qrencode ==="
           bash ../../compile/qrencode.sh "" "-j $J"
-          echo "=== secp256k1 ==="
-          bash ../../compile/secp256k1.sh "" "-j $J"
           echo "=== All libraries built ==="
 
       # ── 8. Link source tree ────────────────────────────────────────────────
@@ -383,6 +395,28 @@ jobs:
       # Windows-style commands (del, copy, *.bat invocations) for things
       # like build.h regeneration. mingw32-make runs them via cmd.exe;
       # MSYS2 'make' runs them via /bin/sh, which has no 'del' and fails.
+      # v2.0.0.9: vendored libs build HERE, not in the libs job.
+      #
+      # compile/leveldb.sh and secp256k1.sh cd into DigitalNote-2/src/... and
+      # build inside the CHECKOUT.  The libs job has a different checkout on a
+      # different runner and the caches cover libs/ only, so building them there
+      # produced nothing this job could link against.
+      #
+      # Only Windows needs this step: leveldb.pri builds them via PRE_TARGETDEPS
+      # on every other platform and tells win32 to compile them by hand.
+      - name: Compile vendored libs (LevelDB + secp256k1)
+        run: |
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          cd "$BUILDER"/windows/x64
+          echo "=== LevelDB ==="
+          bash ../../compile/leveldb.sh "-j ${{ env.JOBS }}"
+          echo "=== secp256k1 ==="
+          bash ../../compile/secp256k1.sh "" "-j ${{ env.JOBS }}"
+          echo "=== vendored libs built ==="
+          ls -l DigitalNote-2/src/leveldb/libleveldb.a \
+                DigitalNote-2/src/leveldb/libmemenv.a \
+                DigitalNote-2/src/secp256k1/.libs/libsecp256k1.a
+      
       - name: Compile daemon (digitalnoted.exe)
         run: |
           # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
