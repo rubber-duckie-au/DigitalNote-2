@@ -408,14 +408,47 @@ jobs:
         run: |
           BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
           cd "$BUILDER"/windows/x64
+
+          # REQUIRED.  leveldb's build_detect_platform falls back to `uname -s`,
+          # which on MSYS2 MinGW64 returns MINGW64_NT-... -- not a case it knows.
+          # It then prints "Unknown platform!", emits no source list, and `ar`
+          # creates an EMPTY 8-byte libleveldb.a.  The link later fails with
+          # hundreds of undefined leveldb:: symbols rather than a missing file,
+          # which points nowhere near the cause.
+          #
+          # windows/x64/compile_libs.sh:18 exports this for the same reason.
+          export TARGET_OS=NATIVE_WINDOWS
+
           echo "=== LevelDB ==="
           bash ../../compile/leveldb.sh "-j ${{ env.JOBS }}"
           echo "=== secp256k1 ==="
           bash ../../compile/secp256k1.sh "" "-j ${{ env.JOBS }}"
           echo "=== vendored libs built ==="
-          ls -l DigitalNote-2/src/leveldb/libleveldb.a \
-                DigitalNote-2/src/leveldb/libmemenv.a \
-                DigitalNote-2/src/secp256k1/.libs/libsecp256k1.a
+          # FAIL LOUDLY on an empty archive.
+          #
+          # "ar -rs libleveldb.a" with no objects succeeds and writes an 8-byte
+          # archive (just the "!<arch>" header).  The build then gets all the
+          # way to link before failing with hundreds of undefined leveldb::
+          # symbols -- a diagnostic that points at txdb-leveldb.cpp rather than
+          # at the library that was never built.  Catch it here instead.
+          for a in DigitalNote-2/src/leveldb/libleveldb.a \
+                   DigitalNote-2/src/leveldb/libmemenv.a \
+                   DigitalNote-2/src/secp256k1/.libs/libsecp256k1.a
+          do
+            if [ ! -f "$a" ]; then
+              echo "ERROR: $a was not produced."
+              exit 1
+            fi
+            sz=$(stat -c %s "$a")
+            n=$(ar t "$a" 2>/dev/null | wc -l)
+            printf '    %-52s %9s bytes  %s members\n' "$a" "$sz" "$n"
+            if [ "$n" -eq 0 ]; then
+              echo "ERROR: $a contains no object files -- the build produced nothing."
+              echo "       Check for 'Unknown platform!' above: leveldb needs"
+              echo "       TARGET_OS=NATIVE_WINDOWS on MSYS2."
+              exit 1
+            fi
+          done
       
       - name: Compile daemon (digitalnoted.exe)
         run: |
