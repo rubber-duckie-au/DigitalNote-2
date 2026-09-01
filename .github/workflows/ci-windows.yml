@@ -47,8 +47,18 @@ env:
   JOBS: 4
 
 jobs:
-  build-windows-x64:
-    name: Windows x64 — Build + Test (MSYS2 MinGW64)
+  # v2.0.0.9: Windows split into libs + build, matching every other platform.
+  #
+  # It was ONE job doing Qt6, the libraries, the daemon and the wallet.  That
+  # meant a red mark could not distinguish "libraries broke" from "the wallet
+  # broke" -- which is exactly what made the recent Windows failures harder to
+  # read than the Linux ones -- and Windows could not parallelise its libs
+  # against anything.
+  #
+  # Both jobs repeat the setup (checkout, MSYS2, Builder clone) because they run
+  # on separate runners.  MSYS2 setup is ~1 min; the caches make the rest cheap.
+  libs-windows-x64:
+    name: Compile libraries — Windows x64 (MSYS2 MinGW64)
     runs-on: windows-2022
     timeout-minutes: 180
 
@@ -213,6 +223,104 @@ jobs:
           echo "=== All libraries built ==="
 
       # ── 8. Link source tree ────────────────────────────────────────────────
+
+  build-and-test-windows-x64:
+    name: Windows x64 — Build + Test (MSYS2 MinGW64)
+    runs-on: windows-2022
+    timeout-minutes: 90
+    needs: libs-windows-x64
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout DigitalNote-2
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          submodules: false
+
+      # ── 2. MSYS2 MinGW64 ───────────────────────────────────────────────────
+      - name: Set up MSYS2 MinGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            git
+            base-devel
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-gcc-libs
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pcre2
+            mingw-w64-x86_64-gmp
+            mingw-w64-x86_64-double-conversion
+            mingw-w64-x86_64-zstd
+            mingw-w64-x86_64-libwinpthread
+            mingw-w64-x86_64-md4c
+            perl
+            bzip2
+            libtool
+            make
+            autoconf
+            automake
+            automake-wrapper
+            pkg-config
+
+      # ── 3. Clone DigitalNote-Builder ───────────────────────────────────────
+      - name: Clone DigitalNote-Builder
+        run: |
+          cd ~
+          if [ ! -d DigitalNote-Builder ]; then
+            git clone ${{ env.BUILDER_REPO }}
+          else
+            cd DigitalNote-Builder && git pull origin master
+          fi
+          mkdir -p ~/DigitalNote-Builder/windows/x64/temp
+          mkdir -p ~/DigitalNote-Builder/windows/x64/libs
+
+      # -- 4. Qt6: built IN-JOB (no prebuilt release asset) ------------------
+      #
+      # v2.0.0.9: this previously ran `gh release download
+      # qt-static-5.15.7-mingw64` against the Builder repo.  No Qt6 asset
+      # exists, and keeping one in step with the source tree is its own
+      # maintenance burden, so Qt6 is built here -- self-contained, and the
+      # version tracks the Builder scripts rather than the last upload.
+      #
+      # ~20-25 min on a cache MISS only.  The key is pinned to the Qt version,
+      # so bumping Qt invalidates it automatically.  Never reuse a key across
+      # versions: a Qt5 tree restored into a Qt6 build fails at link with
+      # errors that point nowhere near the cause.
+      # Restore-only: the libs job built and saved these.  A miss here means
+      # the libs job did not save, and the build below will fail on missing
+      # headers rather than silently rebuilding.
+      - name: Restore Qt 6.8.3 from cache
+        id: cache-qt
+        uses: actions/cache@v4
+        with:
+          path: ~/DigitalNote-Builder/windows/x64/libs/qt-6.8.3
+          key: qt-6.8.3-static-mingw64-v1
+          save-always: true
+
+      - name: Restore compiled libraries from cache
+        uses: actions/cache@v4
+        id: libs-cache
+        with:
+          path: |
+            ~/DigitalNote-Builder/windows/x64/libs/db-6.2.32.NC
+            ~/DigitalNote-Builder/windows/x64/libs/boost_1_91_0
+            ~/DigitalNote-Builder/windows/x64/libs/openssl-3.5.7
+            ~/DigitalNote-Builder/windows/x64/libs/libevent-2.1.12-stable
+            ~/DigitalNote-Builder/windows/x64/libs/miniupnpc-2.2.8
+            ~/DigitalNote-Builder/windows/x64/libs/qrencode-4.1.1
+          key: windows-x64-libs-v10-${{ hashFiles('DigitalNote_config.pri', 'include/libs.pri', 'include/libs/bip39.pri') }}
+          save-always: true
+
+      # ── 6. Download source archives ────────────────────────────────────────
       - name: Link source tree into Builder
         run: |
           MSYS_WORKSPACE=$(cygpath -u '${{ github.workspace }}')

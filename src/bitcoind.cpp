@@ -47,6 +47,41 @@ bool AppInit(int argc, char* argv[])
 		//
 		// If Qt is used, parameters/bitcoin.conf are parsed in qt/bitcoin.cpp's main()
 		ParseParameters(argc, argv);
+
+		// v2.0.0.9: select the network HERE, from the command line only.
+		//
+		// WHY THIS IS THE RIGHT PLACE.  Params() defaults to MAINNET at static-init
+		// (chainparams.cpp:19) -- SelectParams does not establish the network, it
+		// CORRECTS a default that is already silently in force.  Until it runs,
+		// anything asking Params() gets "mainnet" with no warning.
+		//
+		// That matters most for logging.  LogPrintStr -> call_once(DebugPrintInit)
+		// -> GetDataDir() -> Params(), and DebugPrintInit fopen()s debug.log ONCE.
+		// A single LogPrintf before the network is selected binds debug.log to the
+		// MAINNET directory for the whole process, whatever -testnet says.  The
+		// path cache self-corrects; an already-open file handle does not.
+		//
+		// BEFORE ReadConfigFile, deliberately.  GetNetworkConfigDir() (util.cpp:1575)
+		// picks which conf to read using GetBoolArg("-testnet") straight from
+		// mapArgs, and ReadConfigFile then INJECTS conf entries back into mapArgs
+		// (util.cpp:1809).  Selecting AFTER the read means SelectParams sees those
+		// injected values while GetNetworkConfigDir did not -- so a testnet=1 line
+		// in the MAINNET conf would load the mainnet conf and then select testnet.
+		// Running first makes both read the same inputs at the same instant.
+		//
+		// CONSEQUENCE, and it is intended: the network is chosen by the -testnet /
+		// -regtest COMMAND-LINE switch only.  A testnet= line in a conf file is
+		// REDUNDANT and does nothing -- which is already what util.cpp:1571-1574
+		// documents, and is now actually true.
+		//
+		// Takes no locks and runs single-threaded: GetBoolArg is a mapArgs read and
+		// SelectParams assigns a pointer.  No thread exists this early.
+		if (!SelectParamsFromCommandLine())
+		{
+			fprintf(stderr, "Error: invalid combination of -regtest and -testnet.\n");
+			return false;
+		}
+
 		
 		if (!boost::filesystem::is_directory(GetDataDir(false)))
 		{
@@ -93,13 +128,14 @@ bool AppInit(int argc, char* argv[])
 		
 		if (fCommandLine)
 		{
-			if (!SelectParamsFromCommandLine())
-			{
-				fprintf(stderr, "Error: invalid combination of -regtest and -testnet.\n");
-				
-				return false;
-			}
-			
+			// v2.0.0.9: the SelectParamsFromCommandLine() that was here is REMOVED.
+			// It is now done once, immediately after ParseParameters() above.
+			//
+			// Leaving it would have been worse than redundant: by this point
+			// ReadConfigFile() has injected conf entries into mapArgs
+			// (util.cpp:1809), so a testnet= line in the MAINNET conf would
+			// re-select TESTNET here and the RPC client would talk to the wrong
+			// network -- the exact inconsistency the earlier placement prevents.
 			int ret = CommandLineRPC(argc, argv);
 			
 			exit(ret);

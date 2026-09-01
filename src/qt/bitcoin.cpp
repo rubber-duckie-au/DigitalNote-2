@@ -263,35 +263,27 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     // ---------------------------------------------------------------------
-    // GUI DIAGNOSTIC (capture) + STYLE PIN
+    // v2.0.0.9 Qt6: PIN THE WIDGET STYLE.
     //
-    // >>> DO NOT CALL LogPrintf() HERE. <<<
-    // LogPrintStr() -> boost::call_once(DebugPrintInit) -> GetDataDir(), and
-    // this point is BEFORE ReadConfigFile() (line ~378).  The first LogPrintf
-    // in the process permanently binds debug.log to whatever GetDataDir()
-    // returns at that moment -- so logging here would either be silently
-    // dropped or, worse, pin the log file to the wrong directory for the whole
-    // run.  That is why the first attempt produced no output on Qt5.
+    // >>> DO NOT ADD LogPrintf() ANYWHERE IN THIS FUNCTION. <<<
     //
-    // The style pin MUST stay here (before any widget exists); only the
-    // reporting is deferred.  Values are captured now and logged after the
-    // datadir and config are established.
+    // A GUI diagnostic block lived here and was REMOVED 2026-08-28 because it
+    // put debug.log in the WRONG DIRECTORY on testnet.
+    //
+    // LogPrintStr -> boost::call_once(DebugPrintInit) -> GetDataDir(), and
+    // GetDataDir resolves nNet = Params().NetworkID() AND CACHES IT
+    // (util.cpp:1500-1516).  The network is not selected until
+    // SelectParamsFromCommandLine() in AppInit2 (init.cpp:476), which runs
+    // LATER than anything in this file.  So the FIRST LogPrintf here binds
+    // debug.log to the MAINNET directory for the whole process, whatever
+    // -testnet says.
+    //
+    // Moving the calls after ReadConfigFile() was NOT sufficient -- that is
+    // the wrong boundary.  SelectParams is the one that matters.
+    //
+    // If this diagnostic is wanted again, emit it from AppInit2 AFTER
+    // SelectParamsFromCommandLine(), never from here.
     // ---------------------------------------------------------------------
-    QString diagDefaultStyle = QApplication::style()
-                                 ? QApplication::style()->objectName() : "(none)";
-    QString diagStyles       = QStyleFactory::keys().join(", ");
-    QString diagPinned       = "(not pinned - Qt5 uses the platform default)";
-    QString diagDefaultFont  = app.font().family();
-    int     diagDefaultPt    = app.font().pointSize();
-    qreal   diagLogicalDpi   = 0, diagPhysicalDpi = 0, diagDpr = 0;
-
-    if (QScreen *scr = QGuiApplication::primaryScreen())
-    {
-        diagLogicalDpi  = scr->logicalDotsPerInch();
-        diagPhysicalDpi = scr->physicalDotsPerInch();
-        diagDpr         = scr->devicePixelRatio();
-    }
-
     // v2.0.0.9 Qt6: PIN THE WIDGET STYLE.
     //
     // This application has NEVER called QApplication::setStyle(), so it has
@@ -316,7 +308,6 @@ int main(int argc, char *argv[])
             if (available.contains(want, Qt::CaseInsensitive))
             {
                 QApplication::setStyle(QStyleFactory::create(want));
-                diagPinned = want;
                 break;
             }
         }
@@ -326,9 +317,6 @@ int main(int argc, char *argv[])
     GUIUtil::applyDefaultFont(&app);
 
     // Captured AFTER applyDefaultFont: what the UI actually uses.
-    const QString diagResolvedFont = app.font().family();
-    const int     diagResolvedPt   = app.font().pointSize();
-    const int     diagResolvedPx   = app.font().pixelSize();
 
     // Do this early as we don't want to bother initializing if we are just calling IPC
     // ... but do it after creating app, so QCoreApplication::arguments is initialized:
@@ -348,6 +336,42 @@ int main(int argc, char *argv[])
     // Command-line options take precedence:
     ParseParameters(argc, argv);
 
+    // v2.0.0.9: select the network HERE, from the command line only.
+    //
+    // WHY THIS IS THE RIGHT PLACE.  Params() defaults to MAINNET at static-init
+    // (chainparams.cpp:19) -- SelectParams does not establish the network, it
+    // CORRECTS a default that is already silently in force.  Until it runs,
+    // anything asking Params() gets "mainnet" with no warning.
+    //
+    // That matters most for logging.  LogPrintStr -> call_once(DebugPrintInit)
+    // -> GetDataDir() -> Params(), and DebugPrintInit fopen()s debug.log ONCE.
+    // A single LogPrintf before the network is selected binds debug.log to the
+    // MAINNET directory for the whole process, whatever -testnet says.  The
+    // path cache self-corrects; an already-open file handle does not.
+    //
+    // BEFORE ReadConfigFile, deliberately.  GetNetworkConfigDir() (util.cpp:1575)
+    // picks which conf to read using GetBoolArg("-testnet") straight from
+    // mapArgs, and ReadConfigFile then INJECTS conf entries back into mapArgs
+    // (util.cpp:1809).  Selecting AFTER the read means SelectParams sees those
+    // injected values while GetNetworkConfigDir did not -- so a testnet=1 line
+    // in the MAINNET conf would load the mainnet conf and then select testnet.
+    // Running first makes both read the same inputs at the same instant.
+    //
+    // CONSEQUENCE, and it is intended: the network is chosen by the -testnet /
+    // -regtest COMMAND-LINE switch only.  A testnet= line in a conf file is
+    // REDUNDANT and does nothing -- which is already what util.cpp:1571-1574
+    // documents, and is now actually true.
+    //
+    // Takes no locks and runs single-threaded: GetBoolArg is a mapArgs read and
+    // SelectParams assigns a pointer.  No thread exists this early.
+    if (!SelectParamsFromCommandLine())
+    {
+    	QMessageBox::critical(0, "DigitalNote",
+    		"Error: invalid combination of -regtest and -testnet.");
+    	return 1;
+    }
+
+
     // ... then bitcoin.conf:
     if (!boost::filesystem::is_directory(GetDataDir(false)))
     {
@@ -365,32 +389,6 @@ int main(int argc, char *argv[])
 
     ReadConfigFile(mapArgs, mapMultiArgs);
 
-    // ---------------------------------------------------------------------
-    // GUI DIAGNOSTIC (emit).  Safe here: the datadir is established, so the
-    // first LogPrintf binds debug.log to the correct location.
-    //
-    // Compare these lines between a Qt5 and a Qt6 build.  Three questions:
-    //   1. which style did each Qt choose by default?
-    //   2. did logicalDpi change?  (scaledFontPoints() scales by dpi/96, so a
-    //      shift here means fonts are sized differently)
-    //   3. what font is actually resolved?
-    //
-    // >>> KNOWN BUG, PRE-DATES Qt6 <<<  guiutil.cpp:756 loads
-    // ":/fonts/Inter-Regular.ttf", but bitcoin.qrc ships only
-    // res/fonts/RobotoMono-Bold.ttf (alias "monospace").  Inter is NOT in the
-    // resources, so addApplicationFont() returns -1 on EVERY run and the family
-    // falls back to the platform default -- which differs between Qt5 and Qt6.
-    // If resolvedFont is not "Inter", that is this bug, not the migration.
-    // ---------------------------------------------------------------------
-    LogPrintf("GUI: qt=%s platformDefaultStyle=%s stylePinned=%s\n",
-              qVersion(), qPrintable(diagDefaultStyle), qPrintable(diagPinned));
-    LogPrintf("GUI: stylesAvailable=[%s]\n", qPrintable(diagStyles));
-    LogPrintf("GUI: logicalDpi=%.1f physicalDpi=%.1f devicePixelRatio=%.2f\n",
-              diagLogicalDpi, diagPhysicalDpi, diagDpr);
-    LogPrintf("GUI: platformDefaultFont='%s' pointSize=%d\n",
-              qPrintable(diagDefaultFont), diagDefaultPt);
-    LogPrintf("GUI: resolvedFont='%s' pointSize=%d pixelSize=%d\n",
-              qPrintable(diagResolvedFont), diagResolvedPt, diagResolvedPx);
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)

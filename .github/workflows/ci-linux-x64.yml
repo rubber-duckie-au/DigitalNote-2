@@ -175,7 +175,19 @@ jobs:
     name: Linux x64 — Build
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    needs: libs-linux-x64
+    # v2.0.0.9: gate the build on LINT as well as libs.
+    #
+    # Previously lint had no dependents, so the wallet build started the moment
+    # libs finished and raced lint to completion -- a lint failure surfaced only
+    # after the build had already run.
+    #
+    # Note the edge direction: making LINT depend on libs would not help, since
+    # build depends on libs too and the two would simply start together.  The
+    # edge that expresses "do not build unless lint passed" is this one.
+    #
+    # Costs almost nothing: lint has no dependencies of its own, so it starts
+    # immediately and runs in parallel with the libs job.
+    needs: [ libs-linux-x64, lint ]
 
     steps:
       - uses: actions/checkout@v4
