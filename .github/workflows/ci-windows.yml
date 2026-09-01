@@ -106,14 +106,22 @@ jobs:
       # ── 3. Clone DigitalNote-Builder ───────────────────────────────────────
       - name: Clone DigitalNote-Builder
         run: |
-          cd ~
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          cd "$(dirname "$BUILDER")"
           if [ ! -d DigitalNote-Builder ]; then
             git clone ${{ env.BUILDER_REPO }}
           else
             cd DigitalNote-Builder && git pull origin master
           fi
-          mkdir -p ~/DigitalNote-Builder/windows/x64/temp
-          mkdir -p ~/DigitalNote-Builder/windows/x64/libs
+          mkdir -p "$BUILDER"/windows/x64/temp
+          mkdir -p "$BUILDER"/windows/x64/libs
 
       # -- 4. Qt6: built IN-JOB (no prebuilt release asset) ------------------
       #
@@ -131,15 +139,22 @@ jobs:
         id: cache-qt
         uses: actions/cache@v4
         with:
-          path: ~/DigitalNote-Builder/windows/x64/libs/qt-6.8.3
+          path: ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/qt-6.8.3
           key: qt-6.8.3-static-mingw64-v1
-          save-always: true
 
       - name: Download Qt6 sources
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
-          mkdir -p ~/DigitalNote-Builder/download
-          cd ~/DigitalNote-Builder/download
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          mkdir -p "$BUILDER"/download
+          cd "$BUILDER"/download
           wget -q https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtbase-everywhere-src-6.8.3.tar.xz
           wget -q https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qttools-everywhere-src-6.8.3.tar.xz
           ls -lh qtbase-everywhere-src-6.8.3.tar.xz qttools-everywhere-src-6.8.3.tar.xz
@@ -147,12 +162,20 @@ jobs:
       - name: Build static Qt6 (qtbase + qttools)
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
-          cd ~/DigitalNote-Builder/windows/x64
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          cd "$BUILDER"/windows/x64
           mkdir -p temp libs
           bash ../../compile/qt6.sh       "-G Ninja" "-j ${{ env.JOBS }}"
           bash ../../compile/qt6_tools.sh "-G Ninja" "-j ${{ env.JOBS }}"
           echo "Qt6 ready:"
-          ls ~/DigitalNote-Builder/windows/x64/libs/qt-6.8.3/bin/
+          ls "$BUILDER"/windows/x64/libs/qt-6.8.3/bin/
 
       # ── 5. Cache compiled libraries ────────────────────────────────────────
       - name: Cache compiled libraries
@@ -160,21 +183,28 @@ jobs:
         id: libs-cache
         with:
           path: |
-            ~/DigitalNote-Builder/windows/x64/libs/db-6.2.32.NC
-            ~/DigitalNote-Builder/windows/x64/libs/boost_1_91_0
-            ~/DigitalNote-Builder/windows/x64/libs/openssl-3.5.7
-            ~/DigitalNote-Builder/windows/x64/libs/libevent-2.1.12-stable
-            ~/DigitalNote-Builder/windows/x64/libs/miniupnpc-2.2.8
-            ~/DigitalNote-Builder/windows/x64/libs/qrencode-4.1.1
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/db-6.2.32.NC
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/boost_1_91_0
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/openssl-3.5.7
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/libevent-2.1.12-stable
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/miniupnpc-2.2.8
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/qrencode-4.1.1
           key: windows-x64-libs-v10-${{ hashFiles('DigitalNote_config.pri', 'include/libs.pri', 'include/libs/bip39.pri') }}
-          save-always: true
 
       # ── 6. Download source archives ────────────────────────────────────────
       - name: Download library source archives
         if: steps.libs-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p ~/DigitalNote-Builder/download
-          cd ~/DigitalNote-Builder/download
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          mkdir -p "$BUILDER"/download
+          cd "$BUILDER"/download
           wget -q https://archives.boost.io/release/1.91.0/source/boost_1_91_0.tar.gz
           wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz
           wget -q http://download.oracle.com/berkeley-db/db-6.2.32.NC.tar.gz
@@ -183,7 +213,7 @@ jobs:
             -O miniupnpc-2.2.8.tar.gz
           wget -q https://github.com/fukuchi/libqrencode/archive/refs/tags/v4.1.1.tar.gz
           echo "Downloads complete:"
-          ls -lh ~/DigitalNote-Builder/download/
+          ls -lh "$BUILDER"/download/
 
       # ── 7. Compile static libraries ────────────────────────────────────────
       # BIP39 is now compiled directly into the wallet via bip39.pri
@@ -191,11 +221,19 @@ jobs:
       - name: Compile static libraries
         if: steps.libs-cache.outputs.cache-hit != 'true'
         run: |
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
           MSYS_WORKSPACE=$(cygpath -u '${{ github.workspace }}')
-          mkdir -p ~/DigitalNote-Builder/download
-          ln -sfn "$MSYS_WORKSPACE" ~/DigitalNote-Builder/windows/x64/DigitalNote-2
+          mkdir -p "$BUILDER"/download
+          ln -sfn "$MSYS_WORKSPACE" "$BUILDER"/windows/x64/DigitalNote-2
 
-          cd ~/DigitalNote-Builder/windows/x64
+          cd "$BUILDER"/windows/x64
           export TARGET_OS=NATIVE_WINDOWS
           J="${{ env.JOBS }}"
 
@@ -274,14 +312,22 @@ jobs:
       # ── 3. Clone DigitalNote-Builder ───────────────────────────────────────
       - name: Clone DigitalNote-Builder
         run: |
-          cd ~
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          cd "$(dirname "$BUILDER")"
           if [ ! -d DigitalNote-Builder ]; then
             git clone ${{ env.BUILDER_REPO }}
           else
             cd DigitalNote-Builder && git pull origin master
           fi
-          mkdir -p ~/DigitalNote-Builder/windows/x64/temp
-          mkdir -p ~/DigitalNote-Builder/windows/x64/libs
+          mkdir -p "$BUILDER"/windows/x64/temp
+          mkdir -p "$BUILDER"/windows/x64/libs
 
       # -- 4. Qt6: built IN-JOB (no prebuilt release asset) ------------------
       #
@@ -300,31 +346,37 @@ jobs:
       # headers rather than silently rebuilding.
       - name: Restore Qt 6.8.3 from cache
         id: cache-qt
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
-          path: ~/DigitalNote-Builder/windows/x64/libs/qt-6.8.3
+          path: ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/qt-6.8.3
           key: qt-6.8.3-static-mingw64-v1
-          save-always: true
 
       - name: Restore compiled libraries from cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         id: libs-cache
         with:
           path: |
-            ~/DigitalNote-Builder/windows/x64/libs/db-6.2.32.NC
-            ~/DigitalNote-Builder/windows/x64/libs/boost_1_91_0
-            ~/DigitalNote-Builder/windows/x64/libs/openssl-3.5.7
-            ~/DigitalNote-Builder/windows/x64/libs/libevent-2.1.12-stable
-            ~/DigitalNote-Builder/windows/x64/libs/miniupnpc-2.2.8
-            ~/DigitalNote-Builder/windows/x64/libs/qrencode-4.1.1
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/db-6.2.32.NC
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/boost_1_91_0
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/openssl-3.5.7
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/libevent-2.1.12-stable
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/miniupnpc-2.2.8
+            ${{ runner.workspace }}/DigitalNote-Builder/windows/x64/libs/qrencode-4.1.1
           key: windows-x64-libs-v10-${{ hashFiles('DigitalNote_config.pri', 'include/libs.pri', 'include/libs/bip39.pri') }}
-          save-always: true
 
       # ── 6. Download source archives ────────────────────────────────────────
       - name: Link source tree into Builder
         run: |
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
           MSYS_WORKSPACE=$(cygpath -u '${{ github.workspace }}')
-          ln -sfn "$MSYS_WORKSPACE" ~/DigitalNote-Builder/windows/x64/DigitalNote-2
+          ln -sfn "$MSYS_WORKSPACE" "$BUILDER"/windows/x64/DigitalNote-2
 
       # ── 9. Compile daemon ──────────────────────────────────────────────────
       # NB: use mingw32-make, not make. qmake's win32 generator emits
@@ -333,7 +385,15 @@ jobs:
       # MSYS2 'make' runs them via /bin/sh, which has no 'del' and fails.
       - name: Compile daemon (digitalnoted.exe)
         run: |
-          cd ~/DigitalNote-Builder/windows/x64
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          cd "$BUILDER"/windows/x64
           export PATH="$PWD/libs/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
@@ -349,7 +409,15 @@ jobs:
       # See note on step 9 — mingw32-make is required for Windows-style rules.
       - name: Compile Qt wallet (DigitalNote-qt.exe)
         run: |
-          cd ~/DigitalNote-Builder/windows/x64
+          # v2.0.0.9: the Builder lives OUTSIDE the MSYS2 home so that
+          # actions/cache (which runs in Node context, where ~ is
+          # C:\Users\runneradmin) and MSYS2 (where ~ is
+          # D:\a\_temp\msys64\home\runneradmin) agree on one location.
+          # They did NOT before, so every Windows cache silently failed:
+          #   Path Validation Error: Path(s) specified in the action for
+          #   caching do(es) not exist, hence no cache is being saved.
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          cd "$BUILDER"/windows/x64
           export PATH="$PWD/libs/qt-6.8.3/bin:$PATH"
           cd DigitalNote-2
           rm -rf build Makefile
@@ -437,7 +505,7 @@ jobs:
       # ── 14. Collect and upload binaries ───────────────────────────────────
       # NB: We run this step in MSYS2 bash, NOT pwsh, even though the rest of
       # collect-and-upload looks Windows-y. Reason: the build steps run under
-      # MSYS2 and write to ~/DigitalNote-Builder/... where ~ resolves to
+      # MSYS2 and write to "$BUILDER"/... where ~ resolves to
       # D:\a\_temp\msys64\home\runneradmin\. PowerShell's $env:USERPROFILE
       # resolves to C:\Users\runneradmin\ — a completely different directory
       # that doesn't exist. Staying in MSYS2 bash here keeps paths consistent.
