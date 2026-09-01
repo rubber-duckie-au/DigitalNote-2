@@ -554,12 +554,13 @@ jobs:
           echo "  MIN_PEER_PROTO_VERSION = $MIN_PEER"
       - name: Assert daemon was built
         run: |
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
           # NOTE: DigitalNoted has no --version flag — the source-header
           # checks above prove the build is at version 2.0.0.7. This step
           # is just a sanity check that the binary actually exists.
           # The build writes to MSYS2 home, not github.workspace — same
           # path the Collect step uses below.
-          SRC="$HOME/DigitalNote-Builder/windows/x64/DigitalNote-2"
+          SRC="$BUILDER/windows/x64/DigitalNote-2"
           DAEMON=$(find "$SRC" -iname 'DigitalNoted.exe' -type f | head -1)
           if [ -z "$DAEMON" ]; then
             echo "ERROR: DigitalNoted.exe not found under $SRC"
@@ -581,7 +582,8 @@ jobs:
       # filesystem and needs backslash paths).
       - name: Collect Windows executables
         run: |
-          SRC="$HOME/DigitalNote-Builder/windows/x64/DigitalNote-2"
+          BUILDER="$(cygpath -u '${{ runner.workspace }}')/DigitalNote-Builder"
+          SRC="$BUILDER/windows/x64/DigitalNote-2"
           DST="$(cygpath -u '${{ github.workspace }}')/artifacts"
           mkdir -p "$DST"
           # Copy every .exe produced by either build (daemon + Qt wallet)
