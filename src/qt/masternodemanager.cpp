@@ -45,6 +45,9 @@
 #include "cmasternodeconfigentry.h"
 #include "masternodeconfig.h"
 #include "masternode_extern.h"
+// v2.0.0.9 A7: MASTERNODE_PING_SECONDS, for the attested-version freshness
+// test below.  cmasternode.h does not pull this in transitively.
+#include "masternode.h"
 #include "mnengine_extern.h"
 #include "walletdb.h"
 #include "init.h"
@@ -500,7 +503,36 @@ void MasternodeManager::updateNodeList()
 		std::map<std::string, int>::const_iterator itObs =
 			mapObservedVersions.find(mn.addr.ToString());
 
-		if (mn.nAttestedVersion != 0)
+		// v2.0.0.9 A7: an attestation is trusted only while it is FRESH.
+		//
+		// mnver self-corrects on UPGRADE -- the daemon re-broadcasts every
+		// MASTERNODE_PING_SECONDS, so a new version propagates in about a minute.
+		// DOWNGRADE is the gap: a node rolled back to a build without mnver keeps
+		// sending dseep but stops sending mnver, so its entry stays alive
+		// (CheckAndRemove never fires) while nAttestedVersion keeps a value that
+		// daemon no longer runs.
+		//
+		// dseep has NEVER carried a version field -- it is
+		// (vin, vchSig, sigTime, stop) on every build -- so its CONTENTS cannot
+		// distinguish this.  The usable signal is TIMING: dseep still arriving
+		// while mnver has stopped.  Both clocks advance on the same cadence
+		// (dseep -> lastTimeSeen, mnver -> nAttestedTime), so comparing them needs
+		// no wall-clock constant and survives any change to MASTERNODE_PING_SECONDS.
+		// Two intervals of slack: one missed broadcast is ordinary packet loss.
+		//
+		// Falling back is CORRECT, not a degradation -- a masternode that is not
+		// attesting is pre-2.0.0.9 or downgraded, so observed-then-advertised is the
+		// best evidence available for it.
+		//
+		// >>> KEEP IN STEP WITH rpcmnengine.cpp getdeploymentstatus. <<<  If only
+		// one of them expires stale attestations, this tab and version_drift will
+		// report different fleet versions.
+		bool fAttestedFresh =
+			(mn.nAttestedVersion != 0) &&
+			(mn.nAttestedTime > 0) &&
+			((mn.lastTimeSeen - mn.nAttestedTime) <= (2 * MASTERNODE_PING_SECONDS));
+		
+		if (fAttestedFresh)
 		{
 			nShown = mn.nAttestedVersion;
 			strSource = QObject::tr("signed by the masternode itself");

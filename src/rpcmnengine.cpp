@@ -1789,7 +1789,24 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			CNode *pnode = FindNode((CService)mn.addr);
 
 			bool fHaveObserved = (pnode != NULL && pnode->nVersion != 0);
-			bool fHaveAttested = (mn.nAttestedVersion != 0);
+			// v2.0.0.9 A7: only a FRESH attestation counts.
+			//
+			// Identical test to the one in qt/masternodemanager.cpp.  A masternode
+			// rolled back to a build without mnver keeps sending dseep but stops
+			// sending mnver, so its entry survives CheckAndRemove while
+			// nAttestedVersion holds a version it no longer runs.  dseep carries no
+			// version field on any build, so the signal is TIMING: dseep still
+			// arriving (lastTimeSeen advancing) while mnver has stopped
+			// (nAttestedTime frozen).  Two ping intervals of slack absorbs one
+			// dropped broadcast.
+			//
+			// >>> KEEP IN STEP WITH qt/masternodemanager.cpp. <<<  If the two
+			// disagree, the Masternodes tab and version_drift will report different
+			// fleet versions and neither will be obviously wrong.
+			bool fHaveAttested =
+				(mn.nAttestedVersion != 0) &&
+				(mn.nAttestedTime > 0) &&
+				((mn.lastTimeSeen - mn.nAttestedTime) <= (2 * MASTERNODE_PING_SECONDS));
 
 			if (fHaveObserved)
 			{
@@ -1838,7 +1855,15 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			// 0 = it has not attested -- either the daemon predates mnver, or we
 			// have not received one yet.  A fleet-wide 0 after upgrade would itself
 			// be the finding.
+			//
+			// A7: this is the RAW last-seen claim, reported even when stale, because
+			// seeing the stale value next to attested_age_secs is what lets an
+			// operator diagnose a downgraded node.  attested_fresh says whether the
+			// SUMMARY counters above actually counted it -- without that flag, a
+			// stale entry would show a version here while being absent from the
+			// attested/attested_share totals, with nothing to explain the gap.
 			d.push_back(json_spirit::Pair("attested", (int64_t)mn.nAttestedVersion));
+			d.push_back(json_spirit::Pair("attested_fresh", fHaveAttested));
 			d.push_back(json_spirit::Pair("attested_age_secs",
 				mn.nAttestedTime > 0 ? (int64_t)(GetAdjustedTime() - mn.nAttestedTime) : (int64_t)-1));
 
