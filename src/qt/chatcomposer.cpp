@@ -768,7 +768,29 @@ QString ChatComposer::messageHtml() const
 	// >>> tags are not double-wrapped, before calling the migration done. <<<
 	s = s.replace(QRegularExpression("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)([a-zA-Z\\d]+@[a-zA-Z\\d]+\\.[a-zA-Z]+)"),
 	              "\\1<a href=\"mailto:\\2\">\\2</a>");
-	s = s.replace(QRegularExpression("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)((?:https?|ftp|file)://[^\\s'\"<>]+)"),
+	// v2.0.0.9 A2: SCHEME ALLOW-LIST -- http and https ONLY.
+	//
+	// This previously matched (?:https?|ftp|file).  A message arrives from an
+	// arbitrary sender, so anything auto-linked here is attacker-chosen text:
+	//
+	//   file://   points at the RECIPIENT's own filesystem.  A crafted
+	//             file:///... would render as a clickable local path.
+	//   ftp://    an obsolete scheme with no transport security whose handler
+	//             is whatever the OS has registered, if anything.
+	//
+	// Nothing is clickable today (ConversationBubbleDelegate has no mouse
+	// handling), so this is not currently exploitable -- but the anchors are
+	// already being generated and stored, and the moment click handling is
+	// added they become live. Restricting the scheme now means that change
+	// cannot silently inherit the exposure.
+	//
+	// Dropped schemes still render as ordinary text; nothing is hidden from the
+	// reader, it simply is not made into a link.
+	//
+	// >>> DO NOT WIDEN THIS WITHOUT A CONFIRMATION GATE. <<<  See TODO A4:
+	// making links clickable requires a warning before navigation, because even
+	// an https link from a stranger is a phishing vector.
+	s = s.replace(QRegularExpression("(<[^a][^>]+>(?:<span[^>]+>)?|\\s)((?:https?)://[^\\s'\"<>]+)"),
 	              "\\1<a href=\"\\2\">\\2</a>");
 
 	return s;
