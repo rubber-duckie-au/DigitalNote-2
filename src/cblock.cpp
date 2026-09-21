@@ -1686,9 +1686,13 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 							//
 							// GATE.  Using GetEffectiveVotedConsensusActivationHeight()
 							// gives us:
-							//   - Pre-spork on mainnet (floor = INT_MAX): never
-							//     fires, matching v2.0.0.6 effective behaviour
-							//     byte-for-byte
+							//   - On mainnet (floor = VOTED_CONSENSUS_ACTIVATION_HEIGHT,
+							//     1,480,000 as of v2.0.0.9): never fires below that
+							//     height, matching v2.0.0.6 effective behaviour
+							//     byte-for-byte.  (Corrected 2026-09-22: this used to
+							//     say the floor was INT_MAX, which it no longer is.
+							//     The gate always read the live resolver, so behaviour
+							//     was right -- only the comment was stale.)
 							//   - On testnet (floor = 2000): fires from height
 							//     2000 onwards, the same height at which
 							//     voted-consensus also activates

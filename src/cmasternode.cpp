@@ -302,7 +302,44 @@ void CMasternode::Disable()
 
 bool CMasternode::IsEnabled()
 {
-	return isPortOpen && activeState == MASTERNODE_ENABLED;
+	// v2.0.0.9 W-12 / W-13: enabled means the masternode is ALIVE -- nothing else.
+	//
+	// This was:   return isPortOpen && activeState == MASTERNODE_ENABLED;
+	//
+	// isPortOpen was set by the RECEIVING node doing a blocking CheckNode()
+	// connect to the masternode's announced address, in the dsee update path.
+	// That measured THIS node's connectivity, not the masternode's: an
+	// IPv4-only node can never connect to an IPv6 address, so every IPv6
+	// masternode that changed address was marked disabled by every IPv4-only
+	// node -- not relayed, not served in dseg, not paid.  It stranded 5 IPv6
+	// masternodes during the 2026-09-21 host migration while all 15 IPv4 ones
+	// moved cleanly.
+	//
+	// Liveness is already established by signed dseep pings (activeState goes
+	// EXPIRED without them).  And the check was trivially bypassed anyway: the
+	// NEW-ENTRY path never ran CheckNode and isPortOpen defaults to true, so any
+	// masternode could dodge it by letting its entry expire and re-registering.
+	// It stopped honest IPv6 nodes while never stopping a dishonest one.  Real
+	// proof-of-service is v3 work (DIP3-style PoSe), not a receiver-local probe.
+	//
+	// WHY HERE and not only at the CheckNode call: isPortOpen is PERSISTED in
+	// mncache.dat and this was its only semantic reader.  Deleting the check
+	// alone would have left every entry cached as false by an older build --
+	// exactly the stranded IPv6 masternodes -- disabled forever, since nothing
+	// would ever write true to it again.  Not reading it is the complete fix.
+	//
+	// W-13 falls out of this: Status() reports activeState, and IsEnabled() is
+	// now activeState too, so RPC ("ENABLED") and the GUI (IsEnabled) can no
+	// longer disagree.
+	//
+	// isPortOpen itself is RETAINED and still serialised, so mncache.dat stays
+	// format-compatible with older builds.  It is simply no longer consulted.
+	//
+	// Validation never read this (verified): pre-activation the weak payee
+	// check does not fire; post-activation IsPayeeAValidMasternode and the vote
+	// snapshot are chain-derived.  So nodes on either side of this change still
+	// accept each other's blocks -- a mixed fleet cannot split over it.
+	return activeState == MASTERNODE_ENABLED;
 }
 
 // v2.0.0.8 voted-consensus determinism fix.

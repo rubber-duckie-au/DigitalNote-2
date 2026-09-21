@@ -1039,13 +1039,28 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 				// v208-Issue1-OnFreshDsee-wiring-SPEC.md.
 				voteTracker.OnFreshDsee(vin.prevout);
 
-				if (!CheckNode((CAddress)addr))
+				// v2.0.0.9 W-12: NO connect probe here any more.
+				//
+				// This ran CheckNode() -- a BLOCKING outbound connect to the announced
+				// address, inside the message handler, once per update received -- and set
+				// isPortOpen from the result.  That measured the RECEIVER's connectivity: an
+				// IPv4-only node cannot reach an IPv6 address, so it disabled every IPv6
+				// masternode that changed address and stopped relaying the change.  See
+				// IsEnabled() in cmasternode.cpp for the full reasoning.
+				//
+				// It was also a stall vector: anyone could announce unreachable addresses
+				// and hold the message thread for a connect timeout each.
+				//
+				// isPortOpen is written true so the persisted field stays sane for any
+				// future reader; IsEnabled() no longer consults it.
+				pmn->isPortOpen = true;
+				
+				// Still offer the masternode to addrman as a peer candidate, as before --
+				// but gated on IsReachable() (does this node have a route to that address
+				// FAMILY at all?), which is non-blocking.  Keeps the original "only add
+				// peers we can route to" intent without the per-message connect.
+				if (IsReachable(addr))
 				{
-					pmn->isPortOpen = false;
-				}
-				else
-				{
-					pmn->isPortOpen = true;
 					addrman.Add(CAddress(addr), pfrom->addr, 2*60*60); // use this as a peer
 				}
 
@@ -1058,6 +1073,44 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 				pmn->sig = vchSig;
 				pmn->protocolVersion = protocolVersion;
 				pmn->addr = addr;
+
+				// v2.0.0.9 W-14: if this update is for OUR OWN masternode, adopt the
+				// announced address as our signing service.
+				//
+				// A cold node takes its service from the first dsee it receives for itself
+				// (EnableHotColdMasterNode, new-entry path) and previously NEVER refreshed
+				// it: once REMOTELY_ENABLED, later updates for itself take this update path,
+				// which changed the list entry but not activeMasternode.service.  After a
+				// host move -- or if that first dsee came from a peer still holding the old
+				// address -- the node kept signing dseep with the OLD address.  dseep is
+				// verified against the RECEIVER's stored addr, so every node holding the
+				// correct address rejected every ping ("Could not verify masternode address
+				// signature") and the entry expired network-wide while its address was
+				// correct everywhere.  Only a restart recovered it.
+				//
+				// The announcement is authoritative: its collateral-key signature was
+				// verified above, and pubkey2 is our operator key.
+				//
+				// vin is matched as well as pubkey2, DELIBERATELY.  An operator who reuses
+				// one masternodeprivkey across several masternodes shares a pubkey2 between
+				// them; on pubkey2 alone an update for masternode A would rewrite the
+				// service of the daemon running B, and break B's pings instead.
+				//
+				// Threading: EnableHotColdMasterNode already writes activeMasternode.service
+				// from this same handler without a lock; this adds a write under identical
+				// conditions, not a new race.
+				if (fMasterNode &&
+					activeMasternode.status == MASTERNODE_REMOTELY_ENABLED &&
+					pubkey2 == activeMasternode.pubKeyMasternode &&
+					vin == activeMasternode.vin &&
+					(CService)addr != activeMasternode.service)
+				{
+					LogPrintf("dsee - our own masternode address changed %s -> %s; "
+						"signing future pings with the new address\n",
+						activeMasternode.service.ToString().c_str(),
+						addr.ToString().c_str());
+					activeMasternode.service = addr;
+				}
 				pmn->donationAddress = donationAddress;
 				pmn->donationPercentage = donationPercentage;
 				pmn->Check();
