@@ -1802,8 +1802,38 @@ void ListTransactions(const CWalletTx& wtx, const std::string& strAccount, int n
 				}
 				else
 				{
-					entry.push_back(json_spirit::Pair("amount", ValueFromAmount(-nFee)));
-					stop = true; // only one coinstake output
+					// v2.0.0.9 W-1: a coinstake's amount is THIS WALLET's net --
+					// its own outputs minus its own inputs -- and nothing else.
+					//
+					// This previously reported -nFee, where GetAmounts() computes
+					// nFee = GetDebit() - GetValueOut().  GetValueOut() sums EVERY
+					// output in the transaction, including the masternode and devops
+					// payments that belong to other people.  That was wrong both ways:
+					//
+					//   masternode owner, did not stake   reported 0     (nDebit == 0
+					//                                                   so nFee == 0)
+					//                                     correct  150
+					//   staker                            reported reward + MN + devops
+					//                                     correct  reward
+					//
+					// ~1/3 of masternode income was invisible here (PoS blocks carry
+					// the MN payment in the coinstake), and stakers were over-credited
+					// with payments that went to someone else.
+					//
+					// >>> DO NOT use CWalletTx::GetCredit(filter) here. <<<  It returns
+					// 0 for any IMMATURE coinbase/coinstake (cwallettx.cpp:366), so
+					// GetCredit - GetDebit would report a recent stake as MINUS ITS
+					// WHOLE STAKE AMOUNT.  CWallet::GetCredit(const CTransaction&)
+					// sums owned outputs with no maturity gate, which is what an
+					// accounting figure needs; maturity is already conveyed by the
+					// category ("immature" / "generate") set above.
+					//
+					// ONE entry per coinstake, deliberately (stop = true): nNet already
+					// aggregates every output this wallet owns, so emitting one entry
+					// per output would double-count.
+					CAmount nNet = pwalletMain->GetCredit(wtx, filter) - wtx.GetDebit(filter);
+					entry.push_back(json_spirit::Pair("amount", ValueFromAmount(nNet)));
+					stop = true;
 				}
 				
 				if (fLong) // TODO: reference this again

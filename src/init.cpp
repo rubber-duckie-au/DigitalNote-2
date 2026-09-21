@@ -1,4 +1,10 @@
 #include "compat.h"
+#ifndef WIN32
+// v2.0.0.9 W-10: FD_SETSIZE, for the -maxconnections clamp.  POSIX guarantees it
+// in <sys/select.h>; compat.h defines it for WIN32 but on POSIX only gets it
+// transitively.  Stated explicitly rather than relied on.
+#include <sys/select.h>
+#endif
 
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/thread.hpp>
@@ -252,7 +258,7 @@ std::string HelpMessage()
 	std::string strUsage = ui_translate("Options:") + "\n";
 
 	strUsage += "  -?                     " + ui_translate("This help message") + "\n";
-	strUsage += "  -conf=<file>           " + ui_translate("Specify configuration file (default: DigitalNote.conf)") + "\n";
+	strUsage += "  -conf=<file>           " + ui_translate("Specify configuration file (default: DigitalNote.conf). A relative path is resolved inside the network data directory (e.g. testnet/); an absolute path is used as-is") + "\n";
 	strUsage += "  -pid=<file>            " + ui_translate("Specify pid file (default: DigitalNoted.pid)") + "\n";
 	strUsage += "  -datadir=<dir>         " + ui_translate("Specify data directory") + "\n";
 	strUsage += "  -wallet=<dir>          " + ui_translate("Specify wallet file (within data directory)") + "\n";
@@ -303,7 +309,7 @@ std::string HelpMessage()
 	}
 #endif
 
-	strUsage += "  -testnet               " + ui_translate("Use the test network") + "\n";
+	strUsage += "  -testnet               " + ui_translate("Use the test network. Must be given on the command line: testnet= in a configuration file does NOT select the network") + "\n";
 	strUsage += "  -debug=<category>      " + ui_translate("Output debugging information (default: 0, supplying <category> is optional)") + "\n";
 	strUsage +=                               ui_translate("If <category> is not supplied, output all debugging information.") + "\n";
 	strUsage +=                               ui_translate("Equivalent ways to enable all categories: -debug, -debug=all, -debug=1") + "\n";
@@ -491,6 +497,47 @@ bool AppInit2(boost::thread_group& threadGroup)
 		{
 			LogPrintf("AppInit2 : parameter interaction: -bind set -> setting -listen=1\n");
 		}
+	}
+
+	// v2.0.0.9 W-10: -maxconnections, read HERE and clamped.
+	//
+	// nMaxConnections used to be initialised by GetArg() at FILE SCOPE in
+	// net.cpp -- a static initialiser that ran before mapArgs existed, so the
+	// option was silently ignored and every node ran at 125.  It is now set
+	// here, after parameters are parsed.
+	//
+	// >>> THE CLAMP IS NOT OPTIONAL. <<<  The peer loop uses select(), which
+	// cannot address a descriptor >= FD_SETSIZE; doing so writes past the end
+	// of an fd_set on the stack.  While the option was ignored that could not
+	// happen.  The moment it is honoured, an operator setting it high enough
+	// gets memory corruption rather than an error -- so fixing the static-init
+	// bug and adding this clamp MUST land together.
+	//
+	// Descriptors are allocated lowest-first, so reserving
+	// MIN_CORE_FILEDESCRIPTORS for everything that is not a peer socket, plus
+	// one per listen socket and MAX_ADDNODE_CONNECTIONS for the separate addnode
+	// budget (W-11), keeps every peer socket below FD_SETSIZE.  Same arithmetic
+	// Bitcoin Core uses.
+	//
+	// Not ported: Bitcoin's RaiseFileDescriptorLimit().  Exceeding the process
+	// rlimit makes socket()/accept() fail cleanly with EMFILE, which is a
+	// refused connection, not corruption -- and the default of 125 is far below
+	// any realistic rlimit.
+	{
+		int nBind = std::max((int)mapMultiArgs["-bind"].size(), 1);
+		int nUserMaxConnections = std::max((int)GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS), 0);
+		int nFDLimit = (int)FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS - MAX_ADDNODE_CONNECTIONS;
+
+		nMaxConnections = std::max(std::min(nUserMaxConnections, nFDLimit), 0);
+
+		if (nMaxConnections < nUserMaxConnections)
+		{
+			InitWarning(strprintf(ui_translate("Reducing -maxconnections from %d to %d, because of system limitations."),
+				nUserMaxConnections, nMaxConnections));
+		}
+
+		LogPrintf("AppInit2 : -maxconnections %d (requested %d, FD_SETSIZE %d, %d bind)\n",
+			nMaxConnections, nUserMaxConnections, (int)FD_SETSIZE, nBind);
 	}
 
 	// Process masternode config

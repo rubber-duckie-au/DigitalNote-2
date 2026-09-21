@@ -105,6 +105,26 @@ static const size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 static const unsigned int MAX_ADDR_TO_SEND = 1000;
 
 extern int nBestHeight;
+// v2.0.0.9 W-10 / W-11: connection-budget constants, shared with init.cpp.
+//
+// DEFAULT_MAX_PEER_CONNECTIONS -- the -maxconnections default.  nMaxConnections
+//   is initialised to this at static-init and set from -maxconnections in
+//   AppInit2, once mapArgs is populated.  See the note on nMaxConnections in
+//   net.cpp for why it can no longer call GetArg() at file scope.
+//
+// MIN_CORE_FILEDESCRIPTORS -- descriptors reserved for everything that is not a
+//   peer socket (LevelDB, block files, wallet, listen sockets, stdio).  select()
+//   cannot address a descriptor >= FD_SETSIZE; descriptors are allocated
+//   lowest-first, so reserving the low numbers for core keeps peer sockets
+//   below the limit.  Same value Bitcoin Core uses.
+//
+// MAX_ADDNODE_CONNECTIONS -- -addnode peers now have their OWN budget (semAddnode)
+//   rather than drawing from the 12 outbound permits.  Same value Bitcoin Core
+//   adopted when it made the same change in 0.13.
+static const int DEFAULT_MAX_PEER_CONNECTIONS = 125;
+static const int MIN_CORE_FILEDESCRIPTORS = 150;
+static const int MAX_ADDNODE_CONNECTIONS = 8;
+
 extern bool fDiscover;
 extern uint64_t nLocalServices;
 extern uint64_t nLocalHostNonce;
@@ -127,6 +147,7 @@ extern CNode* pnodeSync;
 extern std::vector<SOCKET> vhListenSocket;
 extern std::list<CNode*> vNodesDisconnected;
 extern CSemaphore *semOutbound;
+extern CSemaphore *semAddnode;   // v2.0.0.9 W-11: separate -addnode budget
 extern CNode* pnodeLocalHost;
 
 /** Subversion as sent to the P2P network in `version` messages */

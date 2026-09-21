@@ -157,7 +157,10 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 			"  stop         - Stop masternode configured in DigitalNote.conf\n"
 			"  stop-alias   - Stop single masternode by assigned alias configured in masternode.conf\n"
 			"  stop-many    - Stop all masternodes configured in masternode.conf\n"
-			"  winners      - Print list of masternode winners\n"
+			"  winners      - Print list of masternode winners.  A height with no\n"
+			"                 winner shows \"pre-activation\" (voted consensus not yet\n"
+			"                 active; each producer chooses from its own list) or\n"
+			"                 \"unresolved\" (active, but no voted winner available)\n"
 			"  vote-many    - Vote on a DigitalNote initiative\n"
 			"  vote         - Vote on a DigitalNote initiative\n"
 			"  gen-config   - Generate masternode.conf of current running session.\n"
@@ -697,7 +700,35 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 			}
 			else
 			{
-				obj.push_back(json_spirit::Pair(boost::lexical_cast<std::string>(nHeight), ""));
+				// v2.0.0.9 W-3: say WHY there is no winner, instead of "".
+				//
+				// An empty string was indistinguishable from "broken".  Pre-
+				// activation that is the normal case for EVERY height, because
+				// GetEnforcedPayee() only returns a payee once voted consensus
+				// resolves -- so operators saw 30 blank rows and reasonably
+				// concluded the RPC was faulty.
+				//
+				//   "pre-activation"  below the voted-consensus activation height.
+				//                     Each block producer picks the payee from its
+				//                     own masternode list, so there is no single
+				//                     network-wide answer to report.
+				//   "unresolved"      at/after activation, but no voted winner is
+				//                     available for this height: votes not yet in
+				//                     (future heights), queue already pruned (past
+				//                     heights), or the fleet is below the consensus
+				//                     floor.  Deliberately NOT more specific -- this
+				//                     RPC cannot tell those apart, and a confident
+				//                     wrong label is worse than an honest vague one.
+				//
+				// Neither string can be mistaken for an address or a vin.
+				//
+				// >>> OUTPUT CONTRACT CHANGE. <<<  Anything that treated "any
+				// non-empty value" as an address will now see these markers.  Noted
+				// in the v2.0.0.9 release-notes Upgrade Notes.
+				const char* strReason =
+					(nHeight < GetEffectiveVotedConsensusActivationHeight())
+					? "pre-activation" : "unresolved";
+				obj.push_back(json_spirit::Pair(boost::lexical_cast<std::string>(nHeight), strReason));
 			}
 		}
 

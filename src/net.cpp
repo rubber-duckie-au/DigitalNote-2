@@ -73,7 +73,25 @@ uint64_t nLocalHostNonce = 0;
 std::vector<SOCKET> vhListenSocket;
 CAddrMan addrman;
 std::string strSubVersion;
-int nMaxConnections = GetArg("-maxconnections", 125);
+// v2.0.0.9 W-10: a PLAIN DEFAULT, not GetArg().
+//
+// This was:   int nMaxConnections = GetArg("-maxconnections", 125);
+//
+// At FILE SCOPE that is a static initialiser.  It runs before main(), before
+// ParseParameters() has populated mapArgs -- so GetArg() found nothing and
+// returned the default, and -maxconnections was SILENTLY IGNORED from both the
+// command line and the conf, for every release.  It was also a cross-TU
+// static-initialisation-order dependency on mapArgs in util.cpp, which is
+// undefined behaviour in its own right.
+//
+// Same class of bug as debug.log binding to the mainnet directory (fixed
+// 2026-09-01): a global computed at static-init from state not yet ready.
+//
+// The real value is now assigned in AppInit2 (init.cpp), AFTER parameters are
+// parsed, and clamped to what select() can address.  >>> DO NOT restore a
+// GetArg() here. <<<  Fixing the static-init bug WITHOUT that clamp would turn
+// a harmless bug into memory corruption -- see the note at the assignment.
+int nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 
 std::vector<CNode*> vNodes;
 CCriticalSection cs_vNodes;
@@ -95,6 +113,19 @@ NodeId nLastNodeId = 0;
 CCriticalSection cs_nLastNodeId;
 
 CSemaphore *semOutbound = NULL;
+// v2.0.0.9 W-11: -addnode connections draw from their OWN budget.
+//
+// ThreadOpenAddedConnections used to take grants from semOutbound -- the same
+// 12 permits as addrman-selected peers.  A long -addnode list of instantly
+// reachable peers (e.g. sibling daemons on one host) filled every slot, so the
+// node never made an organic outbound connection and peer diversity collapsed
+// to whatever the operator listed.  And because -addnode BYPASSES both the
+// non-default-port and one-per-netgroup filters, nothing limited that.
+//
+// Bitcoin Core made the same change in 0.13.  Addnode connections are now
+// ADDITIVE: up to MAX_OUTBOUND_CONNECTIONS organic plus MAX_ADDNODE_CONNECTIONS
+// added.  The FD budget in AppInit2 reserves room for them.
+CSemaphore *semAddnode = NULL;
 
 // Signals for message handling
 static CNodeSignals g_net_signals;
@@ -1732,7 +1763,7 @@ void ThreadOpenAddedConnections()
 			for(std::string& strAddNode : lAddresses)
 			{
 				CAddress addr;
-				CSemaphoreGrant grant(*semOutbound);
+				CSemaphoreGrant grant(*semAddnode);   // v2.0.0.9 W-11: own budget, see net.cpp semAddnode
 				
 				OpenNetworkConnection(addr, &grant, strAddNode.c_str());
 				
@@ -1802,7 +1833,7 @@ void ThreadOpenAddedConnections()
 		
 		for(std::vector<CService>& vserv : lservAddressesToAdd)
 		{
-			CSemaphoreGrant grant(*semOutbound);
+			CSemaphoreGrant grant(*semAddnode);   // v2.0.0.9 W-11: own budget, see net.cpp semAddnode
 			
 			OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
 			
@@ -2269,6 +2300,12 @@ void StartNode(boost::thread_group& threadGroup)
 		semOutbound = new CSemaphore(nMaxOutbound);
 	}
 
+	if (semAddnode == NULL)
+	{
+		// v2.0.0.9 W-11: separate budget for -addnode peers.
+		semAddnode = new CSemaphore(MAX_ADDNODE_CONNECTIONS);
+	}
+
 	if (pnodeLocalHost == NULL)
 	{
 		pnodeLocalHost = new CNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), nLocalServices));
@@ -2359,6 +2396,19 @@ bool StopNode()
 		for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
 		{
 			semOutbound->post();
+		}
+	}
+
+	// v2.0.0.9 W-11: unblock ThreadOpenAddedConnections too.
+	//
+	// It now waits on semAddnode, not semOutbound.  Without these posts a thread
+	// blocked acquiring an addnode grant never wakes, and shutdown HANGS waiting
+	// for it to join.  Mirrors the semOutbound loop above.
+	if (semAddnode)
+	{
+		for (int i=0; i<MAX_ADDNODE_CONNECTIONS; i++)
+		{
+			semAddnode->post();
 		}
 	}
 
