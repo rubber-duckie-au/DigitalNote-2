@@ -357,6 +357,25 @@ static void RPCAcceptHandler(boost::shared_ptr<boost::asio::basic_socket_accepto
 	}
 }
 
+// v2.0.0.9 W-16: is this -rpcallowip entry unable to match anything but loopback?
+//
+// Entries are glob patterns, matched by WildcardMatch() against
+// address.to_string() in ClientAllowed().  An entry counts as loopback-only iff
+// it is exactly "::1" or begins with the literal "127." -- any IPv4 string with
+// that prefix is in 127.0.0.0/8.
+//
+// >>> DELIBERATELY CONSERVATIVE. <<<  Everything else is treated as REMOTE,
+// including patterns that might happen to match only loopback ("127*",
+// "0:0:0:0:0:0:0:1", "?27.0.0.1").  The two ways to be wrong are not equal:
+//   - calling a remote entry loopback would bind RPC to loopback and SILENTLY
+//     CUT OFF an operator's monitoring host;
+//   - calling a loopback entry remote merely keeps today's any-interface bind.
+// So when in doubt, answer "remote".
+static bool IsLoopbackOnlyAllowEntry(const std::string& strAllow)
+{
+	return strAllow == "::1" || strAllow.compare(0, 4, "127.") == 0;
+}
+
 void StartRPCThreads()
 {
 	strRPCUserColonPass = mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"];
@@ -457,7 +476,43 @@ void StartRPCThreads()
 	}
 
 	// Try a dual IPv6/IPv4 socket, falling back to separate IPv4 and IPv6 sockets
-	const bool loopback = !mapArgs.count("-rpcallowip");
+	// v2.0.0.9 W-16: bind loopback unless the allow-list actually grants a
+	// REMOTE address.
+	//
+	// This was:   const bool loopback = !mapArgs.count("-rpcallowip");
+	//
+	// ANY -rpcallowip value -- including 127.0.0.1 -- switched the listener to
+	// the any-address on both families.  The default-config writer and the Qt
+	// masternode template both emitted rpcallowip=127.0.0.1, so every node set up
+	// the standard way had RPC listening on its public interfaces.  Observed on a
+	// 20-node host: every RPC port listening on *, with no firewall in front.
+	// The allow-list check and the password still stood behind it -- exposed,
+	// not open -- but it handed the RPC/HTTP parser to the internet for nothing.
+	//
+	// And the line was never needed: ClientAllowed() accepts 127.0.0.0/8 and ::1
+	// unconditionally, before the allow-list is consulted.
+	//
+	// STRICTLY SAFE: an allow-list containing only loopback entries already
+	// REJECTS every remote client in ClientAllowed().  Binding loopback in that
+	// case removes nothing usable -- a remote caller goes from "TCP connect, then
+	// 403" to "connection refused".  Any list with a remote entry binds exactly
+	// as before, so deliberate remote-RPC setups are untouched.
+	//
+	// There is still no -rpcbind option; adding one is separate work.
+	bool loopback = true;
+
+	for (const std::string& strAllow : mapMultiArgs["-rpcallowip"])
+	{
+		if (!IsLoopbackOnlyAllowEntry(strAllow))
+		{
+			loopback = false;
+			break;
+		}
+	}
+
+	LogPrintf("StartRPCThreads : RPC listening on %s (-rpcallowip entries: %u)\n",
+		loopback ? "loopback only" : "all interfaces",
+		(unsigned int)mapMultiArgs["-rpcallowip"].size());
 	boost::asio::ip::address bindAddress = loopback ? boost::asio::ip::address_v6::loopback() : boost::asio::ip::address_v6::any();
 	boost::asio::ip::tcp::endpoint endpoint(bindAddress, GetArg("-rpcport", Params().RPCPort()));
 	boost::system::error_code v6_only_error;

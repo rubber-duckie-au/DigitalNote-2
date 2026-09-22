@@ -1715,7 +1715,10 @@ void GenerateDefaultConfigFile()
 	stream << "rpcuser=DigitalNoterpc\n";
 	stream << "rpcpassword=" << strRpcPassword << "\n";
 	stream << "rpcport=" << nRPCPort << "\n";
-	stream << "rpcallowip=127.0.0.1\n";
+	// v2.0.0.9 W-16: no rpcallowip line.  ClientAllowed() accepts loopback
+	// unconditionally, so it was never needed -- and until v2.0.0.9 its mere
+	// presence switched RPC to listen on every interface.  Its absence is what
+	// keeps RPC on loopback.  Add an entry here only to grant a REMOTE host.
 	stream << "rpcworkqueue=64\n";
 	stream << "\n";
 	stream << "#externalip=\n";
