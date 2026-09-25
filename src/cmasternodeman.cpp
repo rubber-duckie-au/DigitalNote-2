@@ -1664,6 +1664,124 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 		mnodeman.RelayMasternodeVersion(vin, nVersion, sigTime, vchSig);
 	}
 
+	else if (strCommand == "dsegk") //Get the entries for one operator key
+	{
+		// v2.0.0.9 W-15 option B: targeted self-lookup by operator key.
+		//
+		// WHY.  A cold masternode reaches status 9 only by RECEIVING its own dsee;
+		// loading mncache.dat does not do it.  After a restart its only route was the
+		// FULL-list dseg, which is rate limited per IP for 3 hours -- so on a host
+		// running several cold masternodes the first to restart consumed the
+		// allowance and the rest sat at status 2 until an operator ran start-alias.
+		//
+		// This asks for one specific operator key instead.  The reply is a single
+		// entry, so it can be answered far more freely than the whole roster.
+		//
+		// BACKWARD COMPATIBLE: older nodes ignore unknown commands (main.cpp), the
+		// same mechanism mnver already proved in the field.  A requester simply gets
+		// no answer from them and falls back to existing behaviour.
+		//
+		// SCOPE, so nobody expects more of it: this only helps while the entry still
+		// EXISTS on peers.  After MASTERNODE_REMOVAL_SECONDS without pings
+		// CheckAndRemove erases it network-wide and no lookup can bring it back --
+		// start-alias from the collateral wallet remains the only route after a long
+		// outage.  Its value is the SHORT restart: a reboot, an upgrade, a crash.
+		CPubKey pubkeyWanted;
+	
+		vRecv >> pubkeyWanted;
+	
+		if(!pubkeyWanted.IsValid())
+		{
+			LogPrintf("dsegk - invalid pubkey from %s\n", pfrom->addr.ToString().c_str());
+	
+			Misbehaving(pfrom->GetId(), 20);
+	
+			return;
+		}
+	
+		// Rate limit: one answer per (peer IP, key) per window, and a cap on how many
+		// DISTINCT keys one IP may probe -- otherwise enumerating random keys would be
+		// a free roster scan.
+		{
+			LOCK(cs);
+	
+			int64_t nNow = GetTime();
+			CKeyID keyWanted = pubkeyWanted.GetID();
+			std::pair<CNetAddr, CKeyID> askKey((CNetAddr)pfrom->addr, keyWanted);
+	
+			// drop expired entries, and count what this IP still has live
+			int nLiveForPeer = 0;
+			std::map<std::pair<CNetAddr, CKeyID>, int64_t>::iterator it =
+				mAskedUsForMasternodeKey.begin();
+	
+			while(it != mAskedUsForMasternodeKey.end())
+			{
+				if(it->second < nNow)
+				{
+					mAskedUsForMasternodeKey.erase(it++);
+	
+					continue;
+				}
+	
+				if(it->first.first == (CNetAddr)pfrom->addr)
+				{
+					nLiveForPeer++;
+				}
+	
+				++it;
+			}
+	
+			if(mAskedUsForMasternodeKey.count(askKey) > 0)
+			{
+				LogPrintf("dsegk - %s already asked for this key recently\n",
+						  pfrom->addr.ToString().c_str());
+	
+				return;
+			}
+	
+			if(nLiveForPeer >= DSEGK_MAX_KEYS_PER_PEER)
+			{
+				LogPrintf("dsegk - %s has probed %d keys this window; ignoring\n",
+						  pfrom->addr.ToString().c_str(), nLiveForPeer);
+	
+				return;
+			}
+	
+			mAskedUsForMasternodeKey[askKey] = nNow + DSEGK_ASK_AGAIN_SECONDS;
+		}
+	
+		int count = this->size();
+		int i = 0;
+		int nSent = 0;
+	
+		{
+			LOCK(cs);
+	
+			for(CMasternode& mn : vMasternodes)
+			{
+				if(mn.pubkey2 != pubkeyWanted)
+				{
+					i++;
+	
+					continue;
+				}
+	
+				pfrom->PushMessage("dsee", mn.vin, mn.addr, mn.sig, mn.sigTime, mn.pubkey, mn.pubkey2, count, i, mn.lastTimeSeen, mn.protocolVersion, mn.donationAddress, mn.donationPercentage);
+	
+				i++;
+				nSent++;
+	
+				if(nSent >= DSEGK_MAX_REPLIES)
+				{
+					break;
+				}
+			}
+		}
+	
+		LogPrintf("dsegk - Sent %d masternode entries to %s\n", nSent,
+				  pfrom->addr.ToString().c_str());
+	}
+	
 	else if (strCommand == "dseg") //Get masternode list or specific entry
 	{
 		CTxIn vin;

@@ -125,6 +125,16 @@ class uint256;
 // generous value is safe here.  Measure on testnet before treating 200 as final.
 #define ROSTER_COMPLETENESS_WINDOW						200
 
+// v2.0.0.9 W-15 option B: targeted self-lookup ("dsegk").
+//
+// One answer per (peer IP, requested key) per window, and at most
+// DSEGK_MAX_KEYS_PER_PEER distinct keys per IP per window so that scanning
+// random keys stays bounded.  Generous compared with the full-list limit because
+// the reply is one entry, not the whole roster.
+#define DSEGK_ASK_AGAIN_SECONDS							(5*60)
+#define DSEGK_MAX_KEYS_PER_PEER							64
+#define DSEGK_MAX_REPLIES								10
+
 // v2.0.0.9 blindness guard: how long a demonstrably-short roster DELAYS the
 // rescue before it is allowed anyway.
 //

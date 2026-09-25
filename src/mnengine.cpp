@@ -84,6 +84,50 @@ void ThreadCheckMNenginePool()
 		// order to break the stall.
 		mnEnginePool.RefreshPeerHeightEstimate();
 		mnodeman.RefreshRosterCompleteness();
+
+		// v2.0.0.9 W-15 option B: a cold masternode that is not yet enabled asks its
+		// peers for ITS OWN entry, by operator key.
+		//
+		// A cold node reaches MASTERNODE_REMOTELY_ENABLED only by receiving its own
+		// dsee.  Its previous route was the full-list dseg, rate limited per IP for 3
+		// hours -- so on a host running several cold masternodes only the first to
+		// restart got an answer and the others waited for an operator.
+		//
+		// OUTSIDE the IsBlockchainSynced() gate below, deliberately: ManageStatus()
+		// sits inside it and does not run at all on a node restarted during a stall,
+		// which is exactly when this is needed.
+		//
+		// Hot masternodes never come here -- they find their own collateral locally and
+		// self-register to status 1.
+		if(fMasterNode &&
+			activeMasternode.status != MASTERNODE_REMOTELY_ENABLED &&
+			activeMasternode.pubKeyMasternode.IsValid() &&
+			mnEnginePool.IsMasternodeListSyncable())
+		{
+			static int64_t nLastSelfLookup = 0;
+		
+			int64_t nNow = GetTime();
+		
+			if(nNow - nLastSelfLookup >= DSEGK_ASK_AGAIN_SECONDS)
+			{
+				nLastSelfLookup = nNow;
+		
+				LOCK(cs_vNodes);
+		
+				for(CNode* pnode : vNodes)
+				{
+					if(pnode == NULL || pnode->fDisconnect || !pnode->fSuccessfullyConnected)
+					{
+						continue;
+					}
+		
+					pnode->PushMessage("dsegk", activeMasternode.pubKeyMasternode);
+				}
+		
+				LogPrintf("ThreadCheckMNenginePool -- not enabled yet; asked peers for our own "
+						  "masternode entry by operator key\n");
+			}
+		}
 		
 		// Ask ONE peer for the full list, once, after we are caught up.
 		//

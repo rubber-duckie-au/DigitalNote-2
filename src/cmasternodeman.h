@@ -108,6 +108,21 @@ private:
 	// departed masternode would look like evidence of blindness forever.
 	std::set<CScript> setEverKnownPayees;
 
+	// v2.0.0.9 W-15 option B: rate limit for the targeted "dsegk" self-lookup.
+	//
+	// Keyed by (peer IP, requested operator key).
+	//
+	// NOT BY IP ALONE -- that is the very bug W-15 is about: twenty co-hosted cold
+	// masternodes share one address and each asks for a DIFFERENT key, so a per-IP
+	// limit starves all but the first.
+	//
+	// NOT BY CService EITHER -- an inbound peer's port comes from accept() and is
+	// EPHEMERAL (net.cpp:1090), so a per-port key never matches twice and the limit
+	// would not exist at all.
+	//
+	// DELIBERATELY NOT SERIALISED: purely transient, so mncache.dat is unchanged.
+	std::map<std::pair<CNetAddr, CKeyID>, int64_t> mAskedUsForMasternodeKey;
+
 	// v2.0.0.8 PB-6: VESTIGIAL.  Formerly bounded RecomputeLastPaidHeight's
 	// backward walk, but that bound was the PB-6 bug -- it is set to where
 	// the startup scan terminated (a shallow recent height), which made
