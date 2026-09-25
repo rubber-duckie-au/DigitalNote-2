@@ -6,6 +6,7 @@
 #include <map>
 #include <set>   // v2.0.0.9: setEverKnownPayees (blindness guard)
 
+#include "ckeyid.h"   // v2.0.0.9 W-15 B: CKeyID in mAskedUsForMasternodeKey
 #include "types/ccriticalsection.h"
 #include "types/ctxdestination.h"
 #include "cmnqueuesnapshot.h"
