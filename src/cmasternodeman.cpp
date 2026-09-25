@@ -1,3 +1,4 @@
+#include <atomic>   // v2.0.0.9: fRosterIncomplete (lock-free producer read)
 #include "compat.h"
 
 #include <boost/lexical_cast.hpp>
@@ -2348,11 +2349,37 @@ void CMasternodeMan::RecomputeLastPaidHeight(CMasternode* mn)
 // for the whole scan window.  Sizing a quorum from it would make consensus
 // impossible for weeks after a large shutdown.  It answers only the narrow
 // question "am I seeing everything?", which it can answer soundly.
+// >>> LOCK ORDER -- WHY THIS IS SPLIT IN TWO. <<<
+//
+// The scan below takes cs (mnodeman).  It must NEVER run while cs_main is held,
+// because GetQueuePaymentSnapshot() holds cs and then reaches cs_main through
+// GetCollateralConfirmedHeight() -> GetTransaction() -- an existing
+// cs -> cs_main edge.  ShouldMintRescueBlock() is called from CreateNewBlock()
+// with LOCK2(cs_main, mempool.cs) already held (miner.cpp:250, still open at
+// :598), so calling the scan from there would close the cycle:
+//
+//     staker thread : holds cs_main, wants cs
+//     masternode    : holds cs,      wants cs_main
+//
+// That is the 2026-05-31 ABBA wedge pattern.  So the SCAN runs in
+// ThreadCheckMNenginePool, which holds no locks, and publishes a flag; the
+// PRODUCER only reads the flag.  Blindness changes over minutes, so a once-per-
+// second refresh is far finer than needed.
+static std::atomic<bool> fRosterIncomplete(false);
+
 bool CMasternodeMan::IsRosterLikelyIncomplete()
+{
+	// Lock-free by design -- see the note above.  Safe to call with cs_main held.
+	return fRosterIncomplete.load();
+}
+
+void CMasternodeMan::RefreshRosterCompleteness()
 {
 	if (pindexBest == NULL)
 	{
-		return false;
+		fRosterIncomplete.store(false);
+
+		return;
 	}
 
 	int nWindowStart = pindexBest->nHeight - ROSTER_COMPLETENESS_WINDOW;
@@ -2372,14 +2399,19 @@ bool CMasternodeMan::IsRosterLikelyIncomplete()
 			continue;   // we have held this one; if it is gone now, that is fine
 		}
 
-		LogPrintf("CMasternodeMan::IsRosterLikelyIncomplete -- chain paid a masternode "
-				  "at height %d that we have never held an entry for; our list of %d "
-				  "is incomplete\n", it->second, (int)vMasternodes.size());
+		if (!fRosterIncomplete.load())
+		{
+			LogPrintf("CMasternodeMan::RefreshRosterCompleteness -- chain paid a masternode "
+					  "at height %d that we have never held an entry for; our list of %d "
+					  "is incomplete\n", it->second, (int)vMasternodes.size());
+		}
 
-		return true;
+		fRosterIncomplete.store(true);
+
+		return;
 	}
 
-	return false;
+	fRosterIncomplete.store(false);
 }
 
 void CMasternodeMan::PopulateLastPaidHeightCache()

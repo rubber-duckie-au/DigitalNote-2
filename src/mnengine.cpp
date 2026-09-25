@@ -14,6 +14,7 @@
 #include "creservekey.h"
 #include "net/cnode.h"
 #include "net.h"
+#include "thread.h"   // v2.0.0.9 W-17: LOCK(cs_vNodes) for the list request
 #include "chashwriter.h"
 #include "ckey.h"
 #include "cinv.h"
@@ -82,6 +83,7 @@ void ThreadCheckMNenginePool()
 		// which is precisely when FINDING-2026-011 needs the masternode list in
 		// order to break the stall.
 		mnEnginePool.RefreshPeerHeightEstimate();
+		mnodeman.RefreshRosterCompleteness();
 		
 		// Ask ONE peer for the full list, once, after we are caught up.
 		//

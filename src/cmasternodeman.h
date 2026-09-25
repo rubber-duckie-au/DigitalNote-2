@@ -249,6 +249,11 @@ public:
 	// why this DELAYS the rescue rather than vetoing it.
 	bool IsRosterLikelyIncomplete();
 
+	// Runs the cs-taking scan and publishes the flag IsRosterLikelyIncomplete()
+	// reads.  Call ONLY from a thread holding no locks (ThreadCheckMNenginePool)
+	// -- see the LOCK ORDER note on the implementation.
+	void RefreshRosterCompleteness();
+
 	// Return cached lastPaidHeight for an MN.  Returns 0 if not found in the
 	// cache (which means "never paid in our scanned range" -- treated as
 	// longest-ago-paid by FindOldestNotInVecChainDerived).
