@@ -22,6 +22,39 @@
 
 #include "cmnenginesigner.h"
 
+// v2.0.0.9 W-17: same lookup, but it says WHY it failed.
+//
+// GetTransaction() returning false means the collateral is not in the chain we
+// have -- which during sync is the normal case and tells us nothing about the
+// peer that sent the announcement.  Only a transaction we CAN read, that does
+// not pay the claimed key, is evidence against the sender.
+CMNengineSigner::VinPubkeyResult CMNengineSigner::CheckVinPubkeyAssociation(CTxIn& vin, CPubKey& pubkey)
+{
+	CScript payee2;
+	CTransaction txVin;
+	uint256 hash;
+
+	payee2 = GetScriptForDestination(pubkey.GetID());
+
+	if(!GetTransaction(vin.prevout.hash, txVin, hash))
+	{
+		return VINPUBKEY_TX_NOT_FOUND;
+	}
+
+	for(CTxOut out : txVin.vout)
+	{
+		if(out.nValue == MasternodeCollateral(pindexBest->nHeight)*COIN)
+		{
+			if(out.scriptPubKey == payee2)
+			{
+				return VINPUBKEY_MATCH;
+			}
+		}
+	}
+
+	return VINPUBKEY_MISMATCH;
+}
+
 bool CMNengineSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey)
 {
 	CScript payee2;

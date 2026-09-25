@@ -337,7 +337,34 @@ bool ShouldMintRescueBlock(const CBlockIndex* pindexPrev, int nBlockHeight, int6
 	}
 
 	// 2. Committed: the chain really has been stalled.
-	if ((nBlockTime - pindexPrev->GetMedianTimePast()) < RESCUE_STALL_SECS)
+	//
+	// v2.0.0.9 3.48b: measured against the PREVIOUS BLOCK TIME, not its median.
+	//
+	// This was:  (nBlockTime - pindexPrev->GetMedianTimePast())
+	//
+	// GetMedianTimePast() is the median of the last 11 block times
+	// (cblockindex.h:43), so it sits ~5 blocks BEHIND the tip -- about 14.5 min at
+	// testnet's observed 174s spacing, and worse as spacing slows (25 min at 300s).
+	// Measuring "time since the last block" against a lagging median OVER-REPORTS
+	// the stall by that margin: the effective threshold was ~15 min, not 30.
+	//
+	// Observed on testnet 2026-09-23: rescue blocks 36601-36605 were minted 48s to
+	// 2.7 min apart while this test reported 32-36 min "stalled", because the median
+	// still straddled an earlier gap.  One long gap holds the gate open for several
+	// later blocks and the regime self-sustains at the boundary.  Predicted, then
+	// confirmed twice: 36606 could not arrive before 03:27:52, 36607 before 03:48:08.
+	//
+	// pindexPrev->GetBlockTime() is equally COMMITTED -- it is in the header of the
+	// block we build on -- so validation stays reproducible from the chain alone.
+	// It is simply the honest measure of "how long since the last block".
+	//
+	// >>> THIS MATTERS MORE THAN IT LOOKS. <<<  This predicate is the ONLY thing
+	// separating "defer, because another node can produce" from "rescue, because
+	// nobody can".  Deferring costs the producer one lottery ticket and costs the
+	// network nothing; a rescue block permanently diverts a masternode payment.
+	// The whole trade-off rests on this number being truthful.  See
+	// DESIGN-roster-trust-and-deferral.md.
+	if ((nBlockTime - pindexPrev->GetBlockTime()) < RESCUE_STALL_SECS)
 	{
 		return false;
 	}
@@ -347,6 +374,63 @@ bool ShouldMintRescueBlock(const CBlockIndex* pindexPrev, int nBlockHeight, int6
 	if (!IsRescueObservationWindowElapsed())
 	{
 		return false;
+	}
+
+	// 3b. Node-local: is our masternode roster demonstrably SHORT?
+	//
+	// The rescue exists to break a network-wide stall -- but a node with an
+	// incomplete roster cannot tell a network-wide stall from its own blindness.
+	// On 2026-09-22 one did not: it saw 4 of 7 masternodes, concluded "below
+	// floor", and minted 13 devops blocks in an hour while the fleet was healthy.
+	// Every other node accepted them.
+	//
+	// So: if committed chain history shows masternodes we have never held an entry
+	// for, DELAY -- the periodic list request in ThreadCheckMNenginePool has a
+	// chance to fill the gap.
+	//
+	// >>> DELAY, NEVER VETO. <<<  If the masternodes we are missing are genuinely
+	// gone we will never learn them, and a veto would never clear: that is
+	// FINDING-2026-011, where the node needed the list to break the stall and
+	// refused to build the list because the chain was stalled.  After
+	// ROSTER_BLIND_RESCUE_DELAY_SECS we proceed regardless.
+	//
+	// The timer is set ONCE per blind episode and is not pushed forward by
+	// arriving entries -- a resetting timer is the same deadlock wearing a hat.
+	//
+	// Deferring is cheap when this is a false alarm: another node produces the
+	// block, it still pays a masternode, and we lose only our own lottery ticket.
+	// Minting a wrong rescue block is a permanent, network-wide loss.  That
+	// asymmetry is why the delay is worth its cost.  See
+	// DESIGN-roster-trust-and-deferral.md.
+	{
+		static int64_t nBlindSince = 0;
+	
+		if (mnodeman.IsRosterLikelyIncomplete())
+		{
+			int64_t nNow = GetTime();
+	
+			if (nBlindSince == 0)
+			{
+				nBlindSince = nNow;
+			}
+	
+			if ((nNow - nBlindSince) < ROSTER_BLIND_RESCUE_DELAY_SECS)
+			{
+				LogPrintf("ShouldMintRescueBlock -- roster looks incomplete; delaying the "
+						  "rescue for up to %ds while we refresh (%ds elapsed)\n",
+						  (int)ROSTER_BLIND_RESCUE_DELAY_SECS, (int)(nNow - nBlindSince));
+	
+				return false;
+			}
+	
+			LogPrintf("ShouldMintRescueBlock -- roster still looks incomplete after %ds; "
+					  "proceeding anyway so the chain is not held hostage to our own "
+					  "blindness\n", (int)ROSTER_BLIND_RESCUE_DELAY_SECS);
+		}
+		else
+		{
+			nBlindSince = 0;   // episode over; the next one gets its own single delay
+		}
 	}
 
 	// 4. Node-local: after all of the above, still no winner anywhere we can see.

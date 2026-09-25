@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <map>
+#include <set>   // v2.0.0.9: setEverKnownPayees (blindness guard)
 
 #include "types/ccriticalsection.h"
 #include "types/ctxdestination.h"
@@ -94,6 +95,18 @@ private:
 	// as mapLastPaidHeight.
 	// ----------------------------------------------------------------------
 	std::map<CScript, int> mapHistoricalPayees;
+
+	// v2.0.0.9 blindness guard: every masternode payee script this node has EVER
+	// held an entry for, this process.
+	//
+	// DELIBERATELY NOT SERIALISED.  A restarted node starts with this empty and
+	// therefore considers itself blind until it has refreshed its list -- which
+	// is exactly right, and it avoids changing the mncache.dat format.
+	//
+	// It is what lets IsRosterLikelyIncomplete() tell "a masternode I never knew
+	// about" from "one I knew about that has since gone away" -- without it, every
+	// departed masternode would look like evidence of blindness forever.
+	std::set<CScript> setEverKnownPayees;
 
 	// v2.0.0.8 PB-6: VESTIGIAL.  Formerly bounded RecomputeLastPaidHeight's
 	// backward walk, but that bound was the PB-6 bug -- it is set to where
@@ -230,6 +243,11 @@ public:
 	// MAX_LASTPAID_SCAN_DEPTH blocks, recording the most recent payment for
 	// each enabled MN.  Stops early if all enabled MNs are accounted for.
 	void PopulateLastPaidHeightCache();
+
+	// v2.0.0.9 blindness guard: does committed chain history show masternode
+	// payees that we have never held an entry for?  See the implementation for
+	// why this DELAYS the rescue rather than vetoing it.
+	bool IsRosterLikelyIncomplete();
 
 	// Return cached lastPaidHeight for an MN.  Returns 0 if not found in the
 	// cache (which means "never paid in our scanned range" -- treated as

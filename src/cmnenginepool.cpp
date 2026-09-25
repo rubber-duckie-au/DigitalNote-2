@@ -1,3 +1,5 @@
+#include <atomic>      // v2.0.0.9 W-17: nPeerHeightEstimate
+#include <algorithm>   // v2.0.0.9 W-17: std::sort for the median
 #include <random>
 #include <openssl/rand.h>
 #include <boost/lexical_cast.hpp>
@@ -7,6 +9,7 @@
 #include "chainparams.h"
 #include "util.h"
 #include "net.h"
+#include "masternode.h"   // v2.0.0.9 W-17: PEER_HEIGHT_TOLERANCE
 #include "cwallet.h"
 #include "thread.h"
 #include "cblockindex.h"
@@ -267,6 +270,74 @@ bool CMNenginePool::IsBlockchainSynced()
 // 1-hour tip-age test.  Same principle as the v2.0.0.9 rescue fix: a stalled
 // chain must not be treated as "not synced", because that blocks the mechanisms
 // that end the stall.
+// v2.0.0.9 W-17: median starting height of our peers, refreshed periodically.
+//
+// -1 means "not measured yet", which IsBehindPeers() treats as BEHIND: at
+// startup we genuinely do not know, and the safe answer is to assume we are
+// still catching up.  It costs at most one tick of ThreadCheckMNenginePool.
+static std::atomic<int> nPeerHeightEstimate(-1);
+
+void CMNenginePool::RefreshPeerHeightEstimate()
+{
+	std::vector<int> vHeights;
+
+	{
+		LOCK(cs_vNodes);
+
+		for(CNode* pnode : vNodes)
+		{
+			// Same filter the sync-peer selection uses (net.cpp StartSync): only
+			// fully connected, non-throwaway peers report a meaningful height.
+			if (pnode == NULL || pnode->fClient || pnode->fOneShot ||
+				pnode->fDisconnect || !pnode->fSuccessfullyConnected)
+			{
+				continue;
+			}
+
+			if (pnode->nStartingHeight < 0)
+			{
+				continue;   // version not received yet
+			}
+
+			vHeights.push_back(pnode->nStartingHeight);
+		}
+	}
+
+	if (vHeights.empty())
+	{
+		// No usable peers.  We cannot receive gossip either, so the answer does
+		// not matter -- but report "not behind" so a node with no peers does not
+		// sit in a permanent behind state once peers return and before the next
+		// tick.
+		nPeerHeightEstimate.store(-1);
+
+		return;
+	}
+
+	// MEDIAN, deliberately, not max: one peer lying about a huge height must not
+	// be able to declare us behind and switch off masternode gossip.
+	std::sort(vHeights.begin(), vHeights.end());
+
+	nPeerHeightEstimate.store(vHeights[vHeights.size() / 2]);
+}
+
+bool CMNenginePool::IsBehindPeers()
+{
+	int nEstimate = nPeerHeightEstimate.load();
+
+	if (nEstimate < 0)
+	{
+		// Not measured yet.  Treat as behind -- see the note on the atomic above.
+		return true;
+	}
+
+	// PEER_HEIGHT_TOLERANCE mirrors the 144-block slack net.cpp StartSync allows
+	// when judging whether a peer is usefully ahead.  nStartingHeight is fixed at
+	// connection time, so on long-lived connections it UNDER-reports peers, which
+	// errs toward "not behind" -- the W-17 part 1 penalty split covers that.
+	return (nBestHeight + PEER_HEIGHT_TOLERANCE) < nEstimate;
+}
+
 bool CMNenginePool::IsMasternodeListSyncable()
 {
 	if (fImporting || fReindex)
@@ -288,6 +359,31 @@ bool CMNenginePool::IsMasternodeListSyncable()
 
 	// Genuinely behind our peers -> still catching up, do not trust MN gossip yet.
 	if (pindexBest->nHeight < Checkpoints::GetTotalBlocksEstimate())
+	{
+		return false;
+	}
+
+	// v2.0.0.9 W-17: are we simply BEHIND our peers?
+	//
+	// The checkpoint test above is the only "still syncing" check this function
+	// had, and its own comment claimed it returns false during genuine initial
+	// sync.  It does not: mapCheckpointsTestnet is EMPTY, so on testnet the test
+	// is "height < 0" and never fires -- a node at height 0 was "syncable".  On
+	// mainnet the last checkpoint is 1,000,000 against a ~1.21M tip, so a fresh
+	// node starts trusting masternode gossip ~214,000 blocks before it has the
+	// collateral transactions to verify it.
+	//
+	// Consequence (W-17): the node asked for the masternode list at height 0,
+	// could not find any collateral, and BANNED the peers that answered.
+	//
+	// IsBehindPeers() reads a periodically refreshed atomic -- no locks, so no
+	// new nesting under the cs_main we already hold here.
+	//
+	// >>> This must NOT re-break FINDING-2026-011. <<<  During a stall our peers
+	// are stalled at the same height too, so the median equals our own height and
+	// we stay syncable -- which is exactly what that finding requires.  It only
+	// reports behind when peers genuinely have chain we do not.
+	if (IsBehindPeers())
 	{
 		return false;
 	}

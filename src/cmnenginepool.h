@@ -92,6 +92,18 @@ public:
 	bool IsBlockchainSynced();
 	// FINDING-2026-011: stall-tolerant check for the masternode-gossip gate.
 	bool IsMasternodeListSyncable();
+	// v2.0.0.9 W-17: how far behind our peers do we look?
+	//
+	// RefreshPeerHeightEstimate() walks vNodes under cs_vNodes ONLY -- it is
+	// called from ThreadCheckMNenginePool, which holds no locks, so it adds NO
+	// new lock nesting.  (Taking cs_vNodes inside IsMasternodeListSyncable,
+	// which holds cs_main, would create a cs_main -> cs_vNodes edge, and this
+	// project has already had one ABBA wedge -- see cblock.cpp LOCK ORDER.)
+	//
+	// IsBehindPeers() just reads the published estimate, so it is lock-free and
+	// safe to call from anywhere, including the message handler.
+	static void RefreshPeerHeightEstimate();
+	static bool IsBehindPeers();
 	void Check();
 	void CheckFinalTransaction();
 	/// Charge fees to bad actors (Charge clients a fee if they're abusive)

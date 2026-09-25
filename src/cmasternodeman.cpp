@@ -67,6 +67,10 @@ bool CMasternodeMan::Add(CMasternode &mn)
 		
 		vMasternodes.push_back(mn);
 
+		// v2.0.0.9 blindness guard: remember that we have held this payee, so a
+		// masternode that later goes away is not mistaken for one we never knew.
+		setEverKnownPayees.insert(GetScriptForDestination(mn.pubkey.GetID()));
+
 		// v2.0.0.8 M3 patch 4: populate this newly-added MN's cache entry
 		// from chain history.  Without this, MNs that join via dsee after the
 		// startup PopulateLastPaidHeightCache run stay at paidHeight=0 forever
@@ -1143,12 +1147,52 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
 		// make sure the vout that was signed is related to the transaction that spawned the masternode
 		//  - this is expensive, so it's only done once per masternode
-		if(!mnEngineSigner.IsVinAssociatedWithPubkey(vin, pubkey))
+		// v2.0.0.9 W-17: penalise only what we can actually check.
+		//
+		// This was a single boolean: false -> Misbehaving(pfrom, 100), an instant ban.
+		// But the boolean is false BOTH when the collateral transaction is missing
+		// from OUR chain and when it is present and wrong.  A syncing node cannot read
+		// collateral it has not reached, so it banned every peer that answered its
+		// list request -- and the gate above let it ask from height 0 on testnet
+		// (empty checkpoint map) and ~214,000 blocks early on mainnet.
+		//
+		// The fleet seed hit exactly this: one reachable peer, banned in the same
+		// second, and the sync never started.
+		//
+		//   not found + behind peers -> 0    normal while syncing; drop it quietly
+		//   not found + caught up    -> 20   a vin that does not exist is suspicious,
+		//                                    but a reorg or a race can also cause it;
+		//                                    five of them still reach the ban score
+		//   found + mismatched       -> 100  the peer is demonstrably wrong
+		CMNengineSigner::VinPubkeyResult vinCheck =
+			mnEngineSigner.CheckVinPubkeyAssociation(vin, pubkey);
+		
+		if(vinCheck == CMNengineSigner::VINPUBKEY_MISMATCH)
 		{
 			LogPrintf("dsee - Got mismatched pubkey and vin\n");
-			
+		
 			Misbehaving(pfrom->GetId(), 100);
-			
+		
+			return;
+		}
+		
+		if(vinCheck == CMNengineSigner::VINPUBKEY_TX_NOT_FOUND)
+		{
+			if(mnEnginePool.IsBehindPeers())
+			{
+				LogPrintf("dsee - collateral tx %s not in our chain yet and we are behind "
+						  "our peers; ignoring this entry without penalty\n",
+						  vin.prevout.hash.ToString().substr(0,10).c_str());
+			}
+			else
+			{
+				LogPrintf("dsee - collateral tx %s not found while we appear synced; "
+						  "applying a reduced penalty\n",
+						  vin.prevout.hash.ToString().substr(0,10).c_str());
+		
+				Misbehaving(pfrom->GetId(), 20);
+			}
+		
 			return;
 		}
 
@@ -2273,6 +2317,69 @@ void CMasternodeMan::RecomputeLastPaidHeight(CMasternode* mn)
 
 	LogPrintf("CMasternodeMan::RecomputeLastPaidHeight -- MN %s not found within %d blocks\n",
 			  mn->vin.prevout.ToString(), MAX_LASTPAID_SCAN_DEPTH);
+}
+
+// v2.0.0.9 blindness guard: does the chain know masternodes that we do not?
+//
+// WHY THIS EXISTS.  vMasternodes has exactly one insertion point -- gossip.
+// Every ENTRY in it is chain-verified, but the SET is not: a node can verify
+// everything it knows about and has no way to know what it is missing.
+// CountVotingEligible() counts that set, so a short roster produces a false
+// "below floor", and the rescue then turns that private error into a public,
+// final payment.
+//
+// Observed 2026-09-22: a node logged "below floor: only 4 eligible voters" with
+// a fully healthy 7-masternode fleet and minted 13 devops blocks in ~60 minutes.
+// 1,300 XDN diverted from masternodes, and every other node accepted it, because
+// validation is deliberately permissive here (FINDING-2026-009).
+//
+// mapHistoricalPayees is COMMITTED chain data -- payees recorded as blocks
+// became the tip.  A payee in there provably existed.  If it is recent, and we
+// have never held an entry for it, our roster is demonstrably short.
+//
+// >>> THIS MUST NEVER VETO THE RESCUE, ONLY DELAY IT. <<<  A veto is
+// FINDING-2026-011 returning: if the masternodes we are missing are genuinely
+// GONE, we will never learn them, the condition never clears, and the chain
+// dies.  The caller applies a bounded delay and then proceeds regardless.
+//
+// Note what this does NOT do: it is not a roster, and not a denominator.  Chain
+// history cannot supply either, because DEPARTURE IS NOT A CHAIN EVENT -- a
+// masternode that switches off keeps its collateral and lingers in chain history
+// for the whole scan window.  Sizing a quorum from it would make consensus
+// impossible for weeks after a large shutdown.  It answers only the narrow
+// question "am I seeing everything?", which it can answer soundly.
+bool CMasternodeMan::IsRosterLikelyIncomplete()
+{
+	if (pindexBest == NULL)
+	{
+		return false;
+	}
+
+	int nWindowStart = pindexBest->nHeight - ROSTER_COMPLETENESS_WINDOW;
+
+	LOCK(cs);
+
+	for(std::map<CScript, int>::const_iterator it = mapHistoricalPayees.begin();
+		it != mapHistoricalPayees.end(); ++it)
+	{
+		if (it->second < nWindowStart)
+		{
+			continue;   // too old to say anything about the fleet as it is now
+		}
+
+		if (setEverKnownPayees.count(it->first) > 0)
+		{
+			continue;   // we have held this one; if it is gone now, that is fine
+		}
+
+		LogPrintf("CMasternodeMan::IsRosterLikelyIncomplete -- chain paid a masternode "
+				  "at height %d that we have never held an entry for; our list of %d "
+				  "is incomplete\n", it->second, (int)vMasternodes.size());
+
+		return true;
+	}
+
+	return false;
 }
 
 void CMasternodeMan::PopulateLastPaidHeightCache()

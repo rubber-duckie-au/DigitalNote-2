@@ -108,6 +108,34 @@ class uint256;
 #define VOTE_TIME_WINDOW_SECONDS						(30 * 60)
 #define REORG_DEPTH_BUFFER								10
 #define MIN_ENABLED_FOR_CONSENSUS						5
+
+// v2.0.0.9 W-17: slack when judging whether our peers are ahead of us.
+// Mirrors the 144-block allowance net.cpp StartSync() uses for the same
+// judgement.  CNode::nStartingHeight is fixed at connection time, so on
+// long-lived connections it under-reports peers; the slack keeps a node that is
+// merely a few blocks behind from being treated as un-synced.
+#define PEER_HEIGHT_TOLERANCE							144
+
+// v2.0.0.9 blindness guard: how far back to look for masternode payees we have
+// never held an entry for.
+//
+// Wants to cover two or three full payment rotations, so that every live
+// masternode has had a turn.  It does NOT have to be tuned against departed
+// masternodes -- setEverKnownPayees already filters those out -- which is why a
+// generous value is safe here.  Measure on testnet before treating 200 as final.
+#define ROSTER_COMPLETENESS_WINDOW						200
+
+// v2.0.0.9 blindness guard: how long a demonstrably-short roster DELAYS the
+// rescue before it is allowed anyway.
+//
+// Long enough for a dseg round trip and the resulting gossip to land; short
+// enough that it does not materially extend a genuine stall (30 -> 40 min).
+//
+// >>> IT MUST NOT RESET WHILE THE NODE IS STILL BLIND. <<<  A timer pushed
+// forward by each newly-arriving entry would let a node receiving a slow trickle
+// of gossip defer for ever, which is FINDING-2026-011 through the back door.
+// One delay, once per blind episode.
+#define ROSTER_BLIND_RESCUE_DELAY_SECS					(10*60)
 #define VOTED_CONSENSUS_THRESHOLD_NUMERATOR				3
 #define VOTED_CONSENSUS_THRESHOLD_DENOMINATOR			5
 #define MAX_EQUIVOCATIONS_PER_SESSION					3

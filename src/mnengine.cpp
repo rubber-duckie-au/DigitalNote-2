@@ -73,6 +73,48 @@ void ThreadCheckMNenginePool()
 		// try to sync from all available nodes, one step at a time
 		//masternodeSync.Process();
 		
+		// v2.0.0.9 W-17: peer-height refresh and the masternode-list request run
+		// OUTSIDE the IsBlockchainSynced() gate below.
+		//
+		// >>> DO NOT MOVE THESE INSIDE IT. <<<  IsBlockchainSynced() only latches
+		// true after it has seen a tip less than an hour old, so a node restarted
+		// DURING A STALL never latches, and nothing inside that gate ever runs --
+		// which is precisely when FINDING-2026-011 needs the masternode list in
+		// order to break the stall.
+		mnEnginePool.RefreshPeerHeightEstimate();
+		
+		// Ask ONE peer for the full list, once, after we are caught up.
+		//
+		// DsegUpdate has exactly one other call site (main.cpp, on connect), so a
+		// node whose connections were all made while it was still behind -- or that
+		// went blind after connecting -- never asked again and fell back to the slow
+		// per-entry AskForMN path.  DsegUpdate keeps its own per-peer 3-hour guard,
+		// so this cannot spam.
+		static bool fAskedForListAfterSync = false;
+		
+		if (!fAskedForListAfterSync && mnEnginePool.IsMasternodeListSyncable())
+		{
+			LOCK(cs_vNodes);
+		
+			for(CNode* pnode : vNodes)
+			{
+				if (pnode == NULL || pnode->fClient || pnode->fOneShot ||
+					pnode->fDisconnect || !pnode->fSuccessfullyConnected)
+				{
+					continue;
+				}
+		
+				LogPrintf("ThreadCheckMNenginePool -- requesting masternode list from %s "
+						  "now that we are synced\n", pnode->addr.ToString().c_str());
+		
+				mnodeman.DsegUpdate(pnode);
+		
+				fAskedForListAfterSync = true;
+		
+				break;
+			}
+		}
+		
 		if(mnEnginePool.IsBlockchainSynced())
 		{
 			c++;
