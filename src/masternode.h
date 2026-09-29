@@ -125,6 +125,14 @@ class uint256;
 // generous value is safe here.  Measure on testnet before treating 200 as final.
 #define ROSTER_COMPLETENESS_WINDOW						200
 
+// v2.0.0.9: how often a node may re-ask peers for the full masternode list
+// while its roster still looks short.
+//
+// DsegUpdate() keeps its own 3-hour guard PER PEER, so a retry only actually
+// reaches peers not yet asked -- which is the point: it picks up newly connected
+// peers rather than nagging the same one.
+#define ROSTER_LIST_RETRY_SECS							(2*60)
+
 // v2.0.0.9 W-15 option B: targeted self-lookup ("dsegk").
 //
 // One answer per (peer IP, requested key) per window, and at most

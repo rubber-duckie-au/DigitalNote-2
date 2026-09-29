@@ -136,28 +136,67 @@ void ThreadCheckMNenginePool()
 		// went blind after connecting -- never asked again and fell back to the slow
 		// per-entry AskForMN path.  DsegUpdate keeps its own per-peer 3-hour guard,
 		// so this cannot spam.
-		static bool fAskedForListAfterSync = false;
+		// Ask peers for the full list -- once we are synced, and AGAIN while our roster
+		// still looks short.
+		//
+		// The first version asked exactly once per process and set the flag when the
+		// request was SENT, not when it was answered.  If that peer was an older build,
+		// was rate limited, or replied partially, the node never asked again and limped
+		// along on the slow per-entry AskForMN path.
+		//
+		// It also left the blindness guard in ShouldMintRescueBlock() with nothing to
+		// wait FOR: that guard delays the rescue so a refresh can happen, and no
+		// refresh was being attempted.  This closes that loop.
+		//
+		// DsegUpdate() self-guards per peer for 3 hours, so looping every peer is cheap
+		// and naturally reaches only those not yet asked -- picking up newly connected
+		// peers rather than nagging the same one.
+		static int64_t nLastListRequest = 0;
+		static bool    fAskedForListAfterSync = false;
 		
-		if (!fAskedForListAfterSync && mnEnginePool.IsMasternodeListSyncable())
+		if (mnEnginePool.IsMasternodeListSyncable())
 		{
-			LOCK(cs_vNodes);
+			int64_t nNow = GetTime();
+			bool fWantList = !fAskedForListAfterSync || mnodeman.IsRosterLikelyIncomplete();
 		
-			for(CNode* pnode : vNodes)
+			if (fWantList && (nNow - nLastListRequest) >= ROSTER_LIST_RETRY_SECS)
 			{
-				if (pnode == NULL || pnode->fClient || pnode->fOneShot ||
-					pnode->fDisconnect || !pnode->fSuccessfullyConnected)
+				nLastListRequest = nNow;
+		
+				int nAsked = 0;
+		
 				{
-					continue;
+					LOCK(cs_vNodes);
+		
+					for(CNode* pnode : vNodes)
+					{
+						if (pnode == NULL || pnode->fClient || pnode->fOneShot ||
+							pnode->fDisconnect || !pnode->fSuccessfullyConnected)
+						{
+							continue;
+						}
+		
+						mnodeman.DsegUpdate(pnode);
+		
+						nAsked++;
+					}
 				}
 		
-				LogPrintf("ThreadCheckMNenginePool -- requesting masternode list from %s "
-						  "now that we are synced\n", pnode->addr.ToString().c_str());
+				if (nAsked > 0)
+				{
+					if (!fAskedForListAfterSync)
+					{
+						LogPrintf("ThreadCheckMNenginePool -- requesting masternode list from %d "
+								  "peer(s) now that we are synced\n", nAsked);
+					}
+					else
+					{
+						LogPrintf("ThreadCheckMNenginePool -- roster still looks short; re-asking "
+								  "%d peer(s) for the masternode list\n", nAsked);
+					}
 		
-				mnodeman.DsegUpdate(pnode);
-		
-				fAskedForListAfterSync = true;
-		
-				break;
+					fAskedForListAfterSync = true;
+				}
 			}
 		}
 		
