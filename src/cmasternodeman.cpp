@@ -1106,53 +1106,17 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 				// Threading: EnableHotColdMasterNode already writes activeMasternode.service
 				// from this same handler without a lock; this adds a write under identical
 				// conditions, not a new race.
-				if (fMasterNode && pubkey2 == activeMasternode.pubKeyMasternode)
+				if (fMasterNode &&
+					activeMasternode.status == MASTERNODE_REMOTELY_ENABLED &&
+					pubkey2 == activeMasternode.pubKeyMasternode &&
+					vin == activeMasternode.vin &&
+					(CService)addr != activeMasternode.service)
 				{
-					// >>> NEVER on a HOT masternode. <<<  EnableHotColdMasterNode()
-					// sets status = MASTERNODE_REMOTELY_ENABLED and OVERWRITES vin and
-					// service.  A hot node has status MASTERNODE_IS_CAPABLE (1), which
-					// is also != 9 -- so testing only against 9 would have converted a
-					// healthy hot masternode into cold mode the moment it received its
-					// own dsee, rebinding the vin and service it had derived from its
-					// own local collateral.
-					if (activeMasternode.status != MASTERNODE_IS_CAPABLE &&
-						activeMasternode.status != MASTERNODE_REMOTELY_ENABLED)
-					{
-						// v2.0.0.9 FIX (testnet R6, 2026-10-03): ENABLE from the UPDATE
-						// path too, not only from the new-entry path.
-						//
-						// EnableHotColdMasterNode() was reachable only where a dsee
-						// created a NEW entry.  But a restarted cold masternode loads
-						// mncache.dat at start-up (init.cpp), so it ALREADY HOLDS its own
-						// entry -- every dsee for itself therefore took the update path
-						// and nothing ever enabled it.
-						//
-						// That made W-15 option B look like it worked while achieving
-						// nothing: peers answered "dsegk - Sent 1 masternode entries",
-						// the node received exactly the entry it needed, discarded the
-						// opportunity, and asked again 5 minutes later -- observed
-						// repeating for over an hour on testnet.
-						//
-						// Matched on pubkey2 ALONE here, deliberately: a node that is not
-						// yet enabled has no activeMasternode.vin to compare against -- it
-						// is EnableHotColdMasterNode() that sets it.  This is the same
-						// basis the new-entry path has always used, including its
-						// operator-key-reuse caveat (TODO 3.51); it is not widened here.
-						LogPrintf("dsee - received our own masternode entry while not yet "
-							"enabled; enabling from the update path\n");
-
-						activeMasternode.EnableHotColdMasterNode(vin, addr);
-					}
-					else if (vin == activeMasternode.vin &&
-						(CService)addr != activeMasternode.service)
-					{
-						LogPrintf("dsee - our own masternode address changed %s -> %s; "
-							"signing future pings with the new address\n",
-							activeMasternode.service.ToString().c_str(),
-							addr.ToString().c_str());
-
-						activeMasternode.service = addr;
-					}
+					LogPrintf("dsee - our own masternode address changed %s -> %s; "
+						"signing future pings with the new address\n",
+						activeMasternode.service.ToString().c_str(),
+						addr.ToString().c_str());
+					activeMasternode.service = addr;
 				}
 				pmn->donationAddress = donationAddress;
 				pmn->donationPercentage = donationPercentage;

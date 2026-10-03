@@ -92,21 +92,57 @@ CMainParams::CMainParams()
 	base58Prefixes[CChainParams_Base58Type::EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
 	base58Prefixes[CChainParams_Base58Type::EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
 
-	vSeeds.push_back(CDNSSeedData("node0",  "103.164.54.203"));
-	vSeeds.push_back(CDNSSeedData("node1",  "192.241.147.56"));
+	// ---------------------------------------------------------------------
+	// DNS SEEDS.  Reachability tested 2026-10-03 (xdn-seedcheck.ps1, TCP 18092).
+	//
+	// >>> vSeeds CANNOT CARRY A PORT. <<<  net.cpp resolves the host only and
+	// hardcodes Params().GetDefaultPort():
+	//     if (LookupHost(seed.host.c_str(), vIPs))
+	//         CAddress addr = CAddress(CService(ip, Params().GetDefaultPort()));
+	// So on a host running several daemons, only the one on 18092 is reachable
+	// by seeding.  The rest must be found through addr relay, and the connect
+	// loop skips non-default ports for the first 50 tries (net.cpp:783).
+	//
+	// Lookups use AF_UNSPEC, so a name with AAAA records seeds IPv6 peers too --
+	// one name covers both families.
+	//
+	// PREFER NAMES OVER LITERAL IPs: a name is repointable by DNS edit and fixes
+	// seeding for wallets ALREADY INSTALLED.  A hardcoded IP only helps people
+	// who install a new build, which is how this list decayed to 2 live entries
+	// out of 15.
+	// ---------------------------------------------------------------------
+
+	// Explorer / bridge infrastructure -- preferred, repointable without a release.
+	vSeeds.push_back(CDNSSeedData("explorer-main",   "mainnet.xdn-explorer.com"));
+	vSeeds.push_back(CDNSSeedData("explorer",        "xdn-explorer.com"));
+	vSeeds.push_back(CDNSSeedData("explorer-bridge", "bridge.xdn-explorer.com"));
+
+	// Reserved placeholder names.  Currently NXDOMAIN by design: they ship in the
+	// client so that future infrastructure can be brought online by adding a DNS
+	// record alone, with no client release.  Moved from digitalnote.biz 2026-10-03.
+	vSeeds.push_back(CDNSSeedData("seed1",           "seed1n.digitalnote.org"));
+	vSeeds.push_back(CDNSSeedData("seed2",           "seed2n.digitalnote.org"));
+	vSeeds.push_back(CDNSSeedData("seed3",           "seed3n.digitalnote.org"));
+	vSeeds.push_back(CDNSSeedData("seed4",           "seed4n.digitalnote.org"));
+
+	// Literal IPs confirmed serving 18092 on 2026-10-03.
 	vSeeds.push_back(CDNSSeedData("node2",  "20.193.89.74"));
 	vSeeds.push_back(CDNSSeedData("node3",  "161.97.92.102"));
-	vSeeds.push_back(CDNSSeedData("node4",  "161.97.106.85"));
-	vSeeds.push_back(CDNSSeedData("node5",  "62.171.150.246"));
-	vSeeds.push_back(CDNSSeedData("node6",  "138.197.161.183"));
-	vSeeds.push_back(CDNSSeedData("node7",  "157.230.107.144"));
-	vSeeds.push_back(CDNSSeedData("node8",  "188.166.123.46"));
-	vSeeds.push_back(CDNSSeedData("node9",  "159.203.14.113"));
-	vSeeds.push_back(CDNSSeedData("node10", "199.175.54.187"));
-	vSeeds.push_back(CDNSSeedData("node11", "seed1n.digitalnote.biz"));
-	vSeeds.push_back(CDNSSeedData("node12", "seed2n.digitalnote.biz"));
-	vSeeds.push_back(CDNSSeedData("node13", "seed3n.digitalnote.biz"));
-	vSeeds.push_back(CDNSSeedData("node14", "seed4n.digitalnote.biz"));
+	vSeeds.push_back(CDNSSeedData("node5",  "217.76.63.68"));   // replaces 62.171.150.246
+
+	// RETIRED 2026-10-03 -- all failed a TCP connect to 18092.  Kept commented
+	// rather than deleted so the next person can see what was tried and when.
+	// "icmp up" means the machine answers but no XDN daemon is listening; those
+	// may only need the daemon restarting.
+	//   103.164.54.203    no icmp, port closed
+	//   192.241.147.56    icmp up,  port closed   <- host alive, daemon down?
+	//   161.97.106.85     icmp up,  port closed   <- host alive, daemon down?
+	//   62.171.150.246    icmp up,  port closed   <- migrated to 217.76.63.68
+	//   138.197.161.183   no icmp, port closed
+	//   157.230.107.144   icmp up,  port closed   <- host alive, daemon down?
+	//   188.166.123.46    icmp up,  port closed   <- host alive, daemon down?
+	//   159.203.14.113    no icmp, port closed
+	//   199.175.54.187    no icmp, port closed
 
 	convertSeed6(vFixedSeeds, pnSeed6_main, ARRAYLEN(pnSeed6_main));
 

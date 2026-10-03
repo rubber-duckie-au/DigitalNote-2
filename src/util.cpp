@@ -1725,51 +1725,62 @@ void GenerateDefaultConfigFile()
 	stream << "# add a second externalip line if also running IPv6\n";
 	stream << "\n";
 
-	// Addnodes.
+	// ---------------------------------------------------------------------
+	// ADDNODES.  Reachability tested 2026-10-03 (xdn-seedcheck.ps1).
 	//
-	// Mainnet: the original 2.0.0.7 addnode list, verbatim.  These are a
-	// starting set of mainnet peers; some may be stale and should be
-	// reviewed/pruned before a release.
+	// Unlike vSeeds, addnode DOES honour a port: it goes through
+	// Lookup()/SplitHostPort (netbase.cpp:183), whereas vSeeds uses LookupHost()
+	// and forces GetDefaultPort().  So this is the only place a host running
+	// several daemons can be reached on its non-default ports.
 	//
-	// Testnet: no addnodes.  A commented placeholder only -- testnet peer
-	// discovery is intended to be served by the testnet explorer once it
-	// is online, at which point its hostname becomes the testnet addnode
-	// (and ideally also goes into ctestnetparams.cpp vSeeds).
-	// Testnet: the testnet explorer is now online and serves as the
-	// testnet seed (see the matching vSeeds entries in
-	// ctestnetparams.cpp).  Hostname first (survives an IP change), with
-	// the literal IPv4 and IPv6 as direct fallbacks if DNS is down.  No
-	// port suffix -> the default testnet P2P port (28092) is used.
+	// >>> KEEP THIS LIST SHORT AND SPREAD ACROSS HOSTS. <<<
+	//
+	// MAX_ADDNODE_CONNECTIONS is 8 (net.h), and addnode BYPASSES both the
+	// non-default-port filter and the one-per-netgroup filter.  Listing twenty
+	// sibling daemons on one machine would spend every addnode slot on a single
+	// host and a single /64 -- which is precisely the W-11 failure we fixed this
+	// release (see the note at net.cpp:118).  Do not re-create it here.
+	//
+	// The conf only has to supply a NEW wallet's first peers.  Masternodes
+	// announce themselves and propagate by addr relay within minutes; they do not
+	// need listing, and listing them costs diversity.
+	//
+	// Names before literals: a name is repointable by DNS edit and so fixes
+	// bootstrapping for wallets already installed.
+	// ---------------------------------------------------------------------
 	if (fTestNet)
 	{
+		// The testnet explorer serves as the testnet seed (matching entries in
+		// ctestnetparams.cpp vSeeds).  Hostname first so an IP change needs no
+		// client release; literal v4 and v6 as direct fallbacks if DNS is down.
+		// No port suffix -> default testnet P2P port (28092).
 		stream << "addnode=testnet.xdn-explorer.com\n";
 		stream << "addnode=161.97.187.39\n";
 		stream << "addnode=[2a02:c207:2331:8636::1]\n";
 	}
 	else
 	{
-		stream << "addnode=103.164.54.203\n";
-		stream << "addnode=192.241.147.56\n";
+		// Repointable names -- preferred.
+		stream << "addnode=mainnet.xdn-explorer.com\n";
+		stream << "addnode=xdn-explorer.com\n";
+		stream << "addnode=bridge.xdn-explorer.com\n";
+		// Distinct hosts, each confirmed serving 18092 on 2026-10-03.
 		stream << "addnode=20.193.89.74\n";
 		stream << "addnode=161.97.92.102\n";
-		stream << "addnode=161.97.106.85:18060\n";
-		stream << "addnode=161.97.106.85:18061\n";
-		stream << "addnode=161.97.106.85:18062\n";
-		stream << "addnode=161.97.106.85:18063\n";
-		stream << "addnode=95.111.225.123:18063\n";
-		stream << "addnode=95.111.225.123:18092\n";
-		stream << "addnode=62.171.150.246:18060\n";
-		stream << "addnode=62.171.150.246:18062\n";
-		stream << "addnode=62.171.150.246:18064\n";
-		stream << "addnode=62.171.150.246:18066\n";
-		stream << "addnode=62.171.150.246:18068\n";
-		stream << "addnode=62.171.150.246:18070\n";
-		stream << "addnode=62.171.150.246:18072\n";
-		stream << "addnode=62.171.150.246:18093\n";
-		stream << "addnode=seed1n.digitalnote.biz\n";
-		stream << "addnode=seed2n.digitalnote.biz\n";
-		stream << "addnode=seed3n.digitalnote.biz\n";
-		stream << "addnode=seed4n.digitalnote.biz\n";
+		stream << "addnode=217.76.63.68\n";
+		// One IPv6 entry so a v6-capable wallet can bootstrap over v6 at all.
+		// Not verified from an IPv4-only tester; assumed live on operator report.
+		stream << "addnode=[2a02:c207:2359:5826::16]:18092\n";
+		// A single non-default port on the busiest host, as a fallback for when
+		// its 18092 daemon is down.  ONE, not fifteen -- see the note above.
+		stream << "addnode=217.76.63.68:18060\n";
+		//
+		// REMOVED 2026-10-03, all failed a TCP connect:
+		//   103.164.54.203, 192.241.147.56          (dead)
+		//   161.97.106.85:18060/61/62/63            (dead)
+		//   95.111.225.123:18063, :18092            (dead)
+		//   62.171.150.246:18060..18093 (8 entries) (migrated to 217.76.63.68)
+		//   seed1n..seed4n.digitalnote.biz          (NXDOMAIN; now .org, in vSeeds)
 	}
 	stream << "\n";
 	stream << "#masternode=1\n";

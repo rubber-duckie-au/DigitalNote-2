@@ -56,8 +56,26 @@ CTestNetParams::CTestNetParams()
 	// uses (cmainparams.cpp). Default testnet port 28092 is applied by the
 	// resolver; no port suffix needed here. IPv6 (2a02:c207:2331:8636::1)
 	// is reachable via the same hostname for v6-capable peers.
+	// Testnet is seeded by the explorer ALONE, deliberately -- it is the one
+	// testnet host whose availability we control and monitor.
+	//
+	// Name first: it carries both A and AAAA (added 2026-10-03), and lookups use
+	// AF_UNSPEC, so one entry serves both families and can be repointed by a DNS
+	// edit without a client release.  On non-Windows, AI_ADDRCONFIG means the AAAA
+	// is only returned to hosts that actually have IPv6, so a v4-only node is not
+	// handed an address it cannot use.
+	//
+	// The two literals are DNS-down fallbacks only, and are the same machine
+	// (vmi3318636, verified 2026-10-03: listening on 0.0.0.0:28092 and [::]:28092).
+	//
+	// NOTE: vSeeds cannot carry a port -- net.cpp forces GetDefaultPort().  The
+	// explorer must therefore serve 28092 for any of this to work.  It was
+	// firewalled off until 2026-10-03, which left testnet with NO usable seed:
+	// existing nodes only found each other through peers.dat, and a fresh node
+	// could not bootstrap at all.  Worth re-testing after any firewall change.
 	vSeeds.push_back(CDNSSeedData("xdn-explorer", "testnet.xdn-explorer.com"));
 	vSeeds.push_back(CDNSSeedData("xdn-explorer-ip4", "161.97.187.39"));
+	vSeeds.push_back(CDNSSeedData("xdn-explorer-ip6", "2a02:c207:2331:8636::1"));
 
 	base58Prefixes[CChainParams_Base58Type::PUBKEY_ADDRESS] = std::vector<unsigned char>(1,127);
 	base58Prefixes[CChainParams_Base58Type::SCRIPT_ADDRESS] = std::vector<unsigned char>(1,100);
