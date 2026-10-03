@@ -117,7 +117,18 @@ void ThreadCheckMNenginePool()
 		//
 		// Hot masternodes never come here -- they find their own collateral locally and
 		// self-register to status 1.
+		// >>> A HOT masternode must never ask. <<<  Its status is
+		// MASTERNODE_IS_CAPABLE (1), which is != MASTERNODE_REMOTELY_ENABLED (9),
+		// so testing only against 9 was true for hot nodes forever -- they asked
+		// every 5 minutes indefinitely and could never reach a state that stopped
+		// them.  Observed on testnet 2026-10-03: two hot masternodes on one host
+		// requesting from 02:37 to 05:23 without pause.
+		//
+		// A hot masternode finds its own collateral locally and self-registers; it
+		// has no use for its own dsee.  Only a node that is neither capable nor
+		// enabled is genuinely waiting for one.
 		if(fMasterNode &&
+			activeMasternode.status != MASTERNODE_IS_CAPABLE &&
 			activeMasternode.status != MASTERNODE_REMOTELY_ENABLED &&
 			activeMasternode.pubKeyMasternode.IsValid() &&
 			mnEnginePool.IsMasternodeListSyncable())

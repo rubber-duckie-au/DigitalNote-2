@@ -1108,7 +1108,15 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 				// conditions, not a new race.
 				if (fMasterNode && pubkey2 == activeMasternode.pubKeyMasternode)
 				{
-					if (activeMasternode.status != MASTERNODE_REMOTELY_ENABLED)
+					// >>> NEVER on a HOT masternode. <<<  EnableHotColdMasterNode()
+					// sets status = MASTERNODE_REMOTELY_ENABLED and OVERWRITES vin and
+					// service.  A hot node has status MASTERNODE_IS_CAPABLE (1), which
+					// is also != 9 -- so testing only against 9 would have converted a
+					// healthy hot masternode into cold mode the moment it received its
+					// own dsee, rebinding the vin and service it had derived from its
+					// own local collateral.
+					if (activeMasternode.status != MASTERNODE_IS_CAPABLE &&
+						activeMasternode.status != MASTERNODE_REMOTELY_ENABLED)
 					{
 						// v2.0.0.9 FIX (testnet R6, 2026-10-03): ENABLE from the UPDATE
 						// path too, not only from the new-entry path.
@@ -1324,7 +1332,14 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 			voteTracker.OnFreshDsee(vin.prevout);
 
 			// if it matches our masternodeprivkey, then we've been remotely activated
-			if(pubkey2 == activeMasternode.pubKeyMasternode && protocolVersion >= MIN_PEER_PROTO_VERSION)
+			// v2.0.0.9: a HOT masternode must not be converted to cold here either.
+			//
+			// EnableHotColdMasterNode() overwrites status, vin and service.  A hot node
+			// has already found its own collateral locally; adopting a dsee for itself
+			// would rebind it to remote-enabled mode for no benefit.  Pre-existing gap,
+			// guarded now so both the new-entry and update paths agree.
+			if(activeMasternode.status != MASTERNODE_IS_CAPABLE &&
+				pubkey2 == activeMasternode.pubKeyMasternode && protocolVersion >= MIN_PEER_PROTO_VERSION)
 			{
 				// v2.0.0.9 FINDING-2026-013: this is the ONE place in the codebase
 				// where BOTH versions are known at once -- `protocolVersion` arrived
