@@ -115,7 +115,25 @@ extern std::atomic<int64_t> nLastStakeLoopTime;
 extern std::atomic<bool> fLastStakeLoopProductive;
 
 // File-local freshness windows for the staking-icon state machine.
-static constexpr int64_t STAKE_LOOP_FRESHNESS_SECS_INITIAL = 30;
+//
+// >>> THESE MUST STAY ABOVE THE LONGEST SLEEP INSIDE ThreadStakeMiner. <<<
+//
+// nLastStakeLoopTime is stamped at the TOP of the staking loop (miner.cpp), so
+// its age is "how long the current iteration has been running", not "how long
+// since the thread was alive".  A healthy iteration that sleeps reports an age
+// equal to that sleep.
+//
+// The longest deliberate sleep in the loop is the Velocity minimum-spacing
+// wait, capped at 30 seconds (miner.cpp, nWaitSecs).  INITIAL was ALSO 30, and
+// the test is "loopAge > 30" -- so any node that waited out a full spacing
+// window reported "Staking thread not responding -- restart wallet", then
+// staked normally a moment later.  Guaranteed false positive, not an
+// occasional one; observed on testnet 2026-10-03.
+//
+// STAKE_LOOP_MAX_SLEEP_SECS mirrors that cap so the relationship is explicit:
+// if the miner's cap ever changes, this is the line to change with it.
+static constexpr int64_t STAKE_LOOP_MAX_SLEEP_SECS = 30;
+static constexpr int64_t STAKE_LOOP_FRESHNESS_SECS_INITIAL = 3 * STAKE_LOOP_MAX_SLEEP_SECS;
 static constexpr int64_t STAKE_LOOP_FRESHNESS_SECS_LATCHED = 5 * 60;
 bool fGUIunlock;
 
