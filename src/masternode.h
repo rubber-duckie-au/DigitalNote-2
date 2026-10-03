@@ -133,6 +133,11 @@ class uint256;
 // peers rather than nagging the same one.
 #define ROSTER_LIST_RETRY_SECS							(2*60)
 
+// v2.0.0.9: how often to recompute the roster-completeness flag.
+// The scan walks mapHistoricalPayees under mnodeman.cs; blindness changes over
+// minutes and only gates a 10-minute delay, so per-second was wasteful.
+#define ROSTER_REFRESH_SECONDS							30
+
 // v2.0.0.9 W-15 option B: targeted self-lookup ("dsegk").
 //
 // One answer per (peer IP, requested key) per window, and at most

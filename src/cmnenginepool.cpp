@@ -305,10 +305,16 @@ void CMNenginePool::RefreshPeerHeightEstimate()
 
 	if (vHeights.empty())
 	{
-		// No usable peers.  We cannot receive gossip either, so the answer does
-		// not matter -- but report "not behind" so a node with no peers does not
-		// sit in a permanent behind state once peers return and before the next
-		// tick.
+		// No usable peers -> store the "unknown" sentinel, which IsBehindPeers()
+		// treats as BEHIND.
+		//
+		// That is the safe answer: with no peers we cannot receive masternode
+		// gossip anyway, so refusing to act on the list we have costs nothing, and
+		// a node that has just lost every peer should not keep claiming it is
+		// up to date.  It self-corrects within one tick of a peer returning.
+		//
+		// (An earlier comment here claimed this reported "not behind" -- it never
+		// did; the comment was simply wrong about its own code.)
 		nPeerHeightEstimate.store(-1);
 
 		return;

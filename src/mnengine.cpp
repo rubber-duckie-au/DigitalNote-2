@@ -83,7 +83,25 @@ void ThreadCheckMNenginePool()
 		// which is precisely when FINDING-2026-011 needs the masternode list in
 		// order to break the stall.
 		mnEnginePool.RefreshPeerHeightEstimate();
-		mnodeman.RefreshRosterCompleteness();
+		// Throttled: this walks mapHistoricalPayees, which is bounded by ENTRIES
+		// (MAX_LASTPAID_SCAN_DEPTH = 50000 distinct payee scripts), under
+		// mnodeman.cs -- the same lock the dsee handler and payment selection need.
+		// Running it every second would hold that lock needlessly often for a value
+		// that changes over minutes, and which only gates a 10-minute delay.
+		//
+		// Timed off its OWN clock, not the loop counter c: c is only incremented
+		// inside the IsBlockchainSynced() gate below, so on a syncing node -- or one
+		// restarted during a stall, where that gate never latches -- c would stay 0,
+		// "c % N == 0" would be true every iteration, and the throttle would not
+		// exist in precisely the case this code was moved out of that gate to serve.
+		static int64_t nLastRosterRefresh = 0;
+
+		if(GetTime() - nLastRosterRefresh >= ROSTER_REFRESH_SECONDS)
+		{
+			nLastRosterRefresh = GetTime();
+
+			mnodeman.RefreshRosterCompleteness();
+		}
 
 		// v2.0.0.9 W-15 option B: a cold masternode that is not yet enabled asks its
 		// peers for ITS OWN entry, by operator key.

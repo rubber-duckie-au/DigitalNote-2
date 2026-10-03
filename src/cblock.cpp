@@ -403,22 +403,27 @@ bool ShouldMintRescueBlock(const CBlockIndex* pindexPrev, int nBlockHeight, int6
 	// asymmetry is why the delay is worth its cost.  See
 	// DESIGN-roster-trust-and-deferral.md.
 	{
-		static int64_t nBlindSince = 0;
+		// std::atomic, matching nRescueObservationStart above: ShouldMintRescueBlock()
+		// is called from the staker thread (miner.cpp, cwallet.cpp) AND from RPC
+		// threads (rpcmining, rpcmintblock), so a bare static int64_t here is a data
+		// race.  Benign on x86-64 in practice, but the file already has the right
+		// pattern two hundred lines up and there is no reason to differ.
+		static std::atomic<int64_t> nBlindSince(0);
 	
 		if (mnodeman.IsRosterLikelyIncomplete())
 		{
 			int64_t nNow = GetTime();
 	
-			if (nBlindSince == 0)
+			if (nBlindSince.load() == 0)
 			{
-				nBlindSince = nNow;
+				nBlindSince.store(nNow);
 			}
 	
-			if ((nNow - nBlindSince) < ROSTER_BLIND_RESCUE_DELAY_SECS)
+			if ((nNow - nBlindSince.load()) < ROSTER_BLIND_RESCUE_DELAY_SECS)
 			{
 				LogPrintf("ShouldMintRescueBlock -- roster looks incomplete; delaying the "
 						  "rescue for up to %ds while we refresh (%ds elapsed)\n",
-						  (int)ROSTER_BLIND_RESCUE_DELAY_SECS, (int)(nNow - nBlindSince));
+						  (int)ROSTER_BLIND_RESCUE_DELAY_SECS, (int)(nNow - nBlindSince.load()));
 	
 				return false;
 			}
@@ -429,7 +434,7 @@ bool ShouldMintRescueBlock(const CBlockIndex* pindexPrev, int nBlockHeight, int6
 		}
 		else
 		{
-			nBlindSince = 0;   // episode over; the next one gets its own single delay
+			nBlindSince.store(0);   // episode over; next one gets its own single delay
 		}
 	}
 

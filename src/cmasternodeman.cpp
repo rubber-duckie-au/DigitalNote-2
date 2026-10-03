@@ -4,6 +4,8 @@
 #include <boost/lexical_cast.hpp>
 
 #include "main.h"
+#include "cdigitalnoteaddress.h"   // v2.0.0.9: devops address in the blindness guard
+#include "fork.h"   // v2.0.0.9: getDevelopersAdressForHeight (blindness guard)
 #include "cblock.h"
 #include "cchainparams.h"
 #include "chainparams.h"
@@ -1104,17 +1106,45 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 				// Threading: EnableHotColdMasterNode already writes activeMasternode.service
 				// from this same handler without a lock; this adds a write under identical
 				// conditions, not a new race.
-				if (fMasterNode &&
-					activeMasternode.status == MASTERNODE_REMOTELY_ENABLED &&
-					pubkey2 == activeMasternode.pubKeyMasternode &&
-					vin == activeMasternode.vin &&
-					(CService)addr != activeMasternode.service)
+				if (fMasterNode && pubkey2 == activeMasternode.pubKeyMasternode)
 				{
-					LogPrintf("dsee - our own masternode address changed %s -> %s; "
-						"signing future pings with the new address\n",
-						activeMasternode.service.ToString().c_str(),
-						addr.ToString().c_str());
-					activeMasternode.service = addr;
+					if (activeMasternode.status != MASTERNODE_REMOTELY_ENABLED)
+					{
+						// v2.0.0.9 FIX (testnet R6, 2026-10-03): ENABLE from the UPDATE
+						// path too, not only from the new-entry path.
+						//
+						// EnableHotColdMasterNode() was reachable only where a dsee
+						// created a NEW entry.  But a restarted cold masternode loads
+						// mncache.dat at start-up (init.cpp), so it ALREADY HOLDS its own
+						// entry -- every dsee for itself therefore took the update path
+						// and nothing ever enabled it.
+						//
+						// That made W-15 option B look like it worked while achieving
+						// nothing: peers answered "dsegk - Sent 1 masternode entries",
+						// the node received exactly the entry it needed, discarded the
+						// opportunity, and asked again 5 minutes later -- observed
+						// repeating for over an hour on testnet.
+						//
+						// Matched on pubkey2 ALONE here, deliberately: a node that is not
+						// yet enabled has no activeMasternode.vin to compare against -- it
+						// is EnableHotColdMasterNode() that sets it.  This is the same
+						// basis the new-entry path has always used, including its
+						// operator-key-reuse caveat (TODO 3.51); it is not widened here.
+						LogPrintf("dsee - received our own masternode entry while not yet "
+							"enabled; enabling from the update path\n");
+
+						activeMasternode.EnableHotColdMasterNode(vin, addr);
+					}
+					else if (vin == activeMasternode.vin &&
+						(CService)addr != activeMasternode.service)
+					{
+						LogPrintf("dsee - our own masternode address changed %s -> %s; "
+							"signing future pings with the new address\n",
+							activeMasternode.service.ToString().c_str(),
+							addr.ToString().c_str());
+
+						activeMasternode.service = addr;
+					}
 				}
 				pmn->donationAddress = donationAddress;
 				pmn->donationPercentage = donationPercentage;
@@ -2500,6 +2530,45 @@ void CMasternodeMan::RefreshRosterCompleteness()
 		return;
 	}
 
+	// v2.0.0.9 FIX (testnet R6 phase 1, 2026-10-03): only meaningful once voted
+	// consensus is active.
+	//
+	// The guard exists solely to stop a blind node minting a rescue block, and
+	// ShouldMintRescueBlock() returns false below the activation height anyway.
+	// Computing it earlier is not just pointless, it is WRONG: before any
+	// masternode is registered the masternode slot pays devops, those payees are
+	// recorded by OnBlockAccepted() like any other, and setEverKnownPayees is
+	// empty -- so every block looked like a masternode we had never held and the
+	// detector latched on permanently.
+	//
+	// Observed: "roster still looks short" every 2 minutes from block 1 on a
+	// fresh chain with no masternodes yet registered.
+	if (pindexBest->nHeight < GetEffectiveVotedConsensusActivationHeight())
+	{
+		fRosterIncomplete.store(false);
+
+		return;
+	}
+
+	// The devops address is NEVER evidence of a masternode we are missing.
+	//
+	// OnBlockAccepted() records whatever occupies the masternode slot, and a
+	// RESCUE block puts devops there.  Without this, one rescue block would make
+	// the node consider itself blind for the whole completeness window -- adding
+	// the 10-minute delay to every subsequent rescue, which is the opposite of
+	// what this guard is for.
+	CScript devopsScript;
+
+	{
+		CDigitalNoteAddress devopsAddress(
+			getDevelopersAdressForHeight(pindexBest->nHeight, pindexBest->GetBlockTime()));
+
+		if (devopsAddress.IsValid())
+		{
+			devopsScript = GetScriptForDestination(devopsAddress.Get());
+		}
+	}
+
 	int nWindowStart = pindexBest->nHeight - ROSTER_COMPLETENESS_WINDOW;
 
 	LOCK(cs);
@@ -2515,6 +2584,11 @@ void CMasternodeMan::RefreshRosterCompleteness()
 		if (setEverKnownPayees.count(it->first) > 0)
 		{
 			continue;   // we have held this one; if it is gone now, that is fine
+		}
+
+		if (!devopsScript.empty() && it->first == devopsScript)
+		{
+			continue;   // devops in the masternode slot = a rescue block, not a peer we are missing
 		}
 
 		if (!fRosterIncomplete.load())
