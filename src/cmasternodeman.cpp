@@ -2500,6 +2500,52 @@ bool CMasternodeMan::IsRosterLikelyIncomplete()
 	return fRosterIncomplete.load();
 }
 
+// v2.0.0.9 FIX (R6 Phase 2, 2026-10-07): rebuild setEverKnownPayees from the
+// masternodes we already hold.
+//
+// >>> WHY THIS EXISTS AT ALL. <<<
+//
+// setEverKnownPayees was only ever populated in Add(), on the one path that
+// pushes into vMasternodes. But mncache.dat is restored by Unserialize(), which
+// does READWRITE(vMasternodes) DIRECTLY and never goes near Add(). So after any
+// restart the node held its full roster with an EMPTY ever-known set -- every
+// payee the chain showed looked like a masternode it had never held.
+//
+// It could not self-correct either: those masternodes are already in the list,
+// so their subsequent dsee messages take the UPDATE path, which never calls
+// Add(). The node stayed blind for the life of the process.
+//
+// Observed on BOTH testnet nodes at R6 Phase 2, 17 seconds after activation:
+//   "chain paid a masternode at height 1996 that we have never held an entry
+//    for; our list of 7 is incomplete"
+// while getdeploymentstatus reported 7 of 7 known and voting-eligible.
+//
+// The consequence is the inverse of the guard's purpose: a permanently blind
+// node would delay EVERY rescue by ROSTER_BLIND_RESCUE_DELAY_SECS, forever.
+//
+// The activation gate added earlier hid this -- below the activation height the
+// scan returns before testing anything, so R6 Phase 1 step 5 passed in silence
+// and looked like a clean bill of health. It was masking a second fault.
+//
+// Called after the cache load in init.cpp, and safe to call again at any time.
+void CMasternodeMan::RebuildEverKnownPayees()
+{
+	LOCK(cs);
+
+	int nAdded = 0;
+
+	for(CMasternode& mn : vMasternodes)
+	{
+		if (setEverKnownPayees.insert(GetScriptForDestination(mn.pubkey.GetID())).second)
+		{
+			nAdded++;
+		}
+	}
+
+	LogPrintf("CMasternodeMan::RebuildEverKnownPayees -- seeded %d payee(s) from %d "
+			  "cached masternode(s)\n", nAdded, (int)vMasternodes.size());
+}
+
 void CMasternodeMan::RefreshRosterCompleteness()
 {
 	if (pindexBest == NULL)

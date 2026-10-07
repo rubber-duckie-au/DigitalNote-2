@@ -270,6 +270,11 @@ public:
 	// -- see the LOCK ORDER note on the implementation.
 	void RefreshRosterCompleteness();
 
+	// Seed setEverKnownPayees from vMasternodes. REQUIRED after loading
+	// mncache.dat: Unserialize() restores vMasternodes directly and bypasses
+	// Add(), which is the only other place the set is populated.
+	void RebuildEverKnownPayees();
+
 	// Return cached lastPaidHeight for an MN.  Returns 0 if not found in the
 	// cache (which means "never paid in our scanned range" -- treated as
 	// longest-ago-paid by FindOldestNotInVecChainDerived).

@@ -1596,6 +1596,11 @@ bool AppInit2(boost::thread_group& threadGroup)
 	CMasternodeDB mndb;
 	CMasternodeDB::ReadResult readResult = mndb.Read(mnodeman);
 
+	// v2.0.0.9: the cache load bypasses Add(), so the blindness guard's
+	// ever-known payee set would otherwise start empty with a full roster --
+	// making the node permanently consider itself blind. Seed it here.
+	mnodeman.RebuildEverKnownPayees();
+
 	if (readResult == CMasternodeDB::FileError)
 	{
 		LogPrintf("Missing masternode cache file - mncache.dat, will try to recreate\n");
