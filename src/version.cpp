@@ -79,5 +79,12 @@ const std::string CLIENT_NAME("DigitalNoteoshi");
 	#endif // GIT_COMMIT_DATE
 #endif // BUILD_DATE
 
-const std::string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_SUFFIX);
+// v2.0.0.9 W-18: CLIENT_VERSION_CANDIDATE sits between the version numbers and
+// the suffix, so a candidate build reports e.g.
+//     v2.0.0.9-rc4-XDN-DigitalNote-Core
+// and the tagged build (candidate "") reports
+//     v2.0.0.9-XDN-DigitalNote-Core
+// exactly as before.  This is what makes getinfo -- and, once v2.0.0.9 ships,
+// the mnver attestation -- able to identify WHICH build produced a result.
+const std::string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_CANDIDATE CLIENT_VERSION_SUFFIX);
 const std::string CLIENT_DATE(BUILD_DATE);

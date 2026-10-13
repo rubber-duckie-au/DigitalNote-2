@@ -667,9 +667,27 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 		json_spirit::Object obj;
 		std::string strMode = "addr";
 
-		if (params.size() >= 1)
+		// v2.0.0.9 FIX (R6 Phase 2, 2026-10-07): read the mode from params[1].
+		//
+		// params[0] is the SUBCOMMAND here -- strCommand is taken from it at the
+		// top of this function. So `masternode winners` set strMode = "winners",
+		// which matches neither "addr" nor "vin", and the success branch below
+		// pushed NOTHING while the failure branch always pushed a row.
+		//
+		// Net effect: a height that RESOLVED printed nothing and a height that
+		// did not printed "unresolved" -- so the GAPS were the successes. Observed
+		// post-activation: heights 2001-2013 had resolved correctly and were
+		// simply absent from the output.
+		//
+		// Invisible before activation, because every height took the else branch
+		// and printed "pre-activation", which looked entirely correct. This path
+		// had never been exercised with a resolving winner until block 2000.
+		//
+		// (The standalone `masternodelist` RPC below DOES take its mode from
+		// params[0] -- that one is correct; only this subcommand was wrong.)
+		if (params.size() >= 2)
 		{
-			strMode = params[0].get_str();
+			strMode = params[1].get_str();
 		}
 		
 		for(int nHeight = pindexBest->nHeight-10; nHeight < pindexBest->nHeight+20; nHeight++)
@@ -682,7 +700,10 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 			// consensus rather than the legacy vWinning map.  Pre-
 			// activation behaviour unchanged (GetEnforcedPayee falls
 			// through to masternodePayments.GetBlockPayee).
-			if(GetEnforcedPayee(nHeight, payee, vin))
+			// fQuiet: this is a read-only display loop over 30 heights, not block
+			// production. Without it each call wrote up to 30 false "falling back
+			// to legacy" lines into debug.log.
+			if(GetEnforcedPayee(nHeight, payee, vin, true))
 			{
 				CTxDestination address1;
 				ExtractDestination(payee, address1);

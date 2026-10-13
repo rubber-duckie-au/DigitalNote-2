@@ -171,7 +171,7 @@ int GetEffectiveVotedConsensusActivationHeight()
 //      if the voting fleet has insufficient coverage at activation height
 //      (e.g. v2.0.0.7 holdouts, network partition).  See M4-design-notes.md
 //      S5 Option 1.
-bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut)
+bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut, bool fQuiet)
 {
 	int activationHeight = GetEffectiveVotedConsensusActivationHeight();
 
@@ -205,7 +205,7 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut)
 		// Activation height reached but no consensus -- fall through to
 		// legacy lookup (permissive).  Logged so operators can spot
 		// extended consensus failures.
-		if (fDebug)
+		if (fDebug && !fQuiet)
 		{
 			LogPrintf("GetEnforcedPayee -- height %d at/after activation %d "
 					  "but no consensus; falling back to legacy GetBlockPayee\n",
