@@ -133,6 +133,40 @@ class uint256;
 // peers rather than nagging the same one.
 #define ROSTER_LIST_RETRY_SECS							(2*60)
 
+// v2.0.0.9: stall-triggered queue rebroadcast.
+//
+// >>> WHY THIS EXISTS. <<<  BroadcastQueue() fires from exactly ONE place --
+// block connect (main.cpp).  That is correct for WHEN the data changes, since a
+// queue is a deterministic forward simulation from the tip and the tip is its
+// only input.  But it also made block connect the only DELIVERY opportunity,
+// and those are different concerns.
+//
+// The result was circular: no block -> no queue -> no canonical winner -> every
+// producer defers -> no block.  SyncQueues() cannot break it, because that path
+// only RELAYS queues a peer already holds; after a fleet-wide restart nobody
+// holds any.  The only exit was to wait out RESCUE_STALL_SECS and mint a
+// devops-paid rescue block -- diverting a masternode payment to recover from a
+// condition where every masternode was alive and able to produce a queue.
+//
+// Observed on testnet 2026-10-17: fleet restarted onto rc4 while the chain was
+// already at a standstill; 8/8 masternodes enabled and voting-eligible, and
+// "0/10 queue-heights had queues, 0 votes examined" for 15 minutes.
+//
+// So: if the chain has stalled and this masternode has no queue of its own
+// recorded at the current tip, rebroadcast ONE out of band.  BroadcastQueue()
+// GENERATES from the tip (GetQueuePaymentSnapshot + SimulateQueue), so it needs
+// no prior queue -- which is exactly what SyncQueues could not offer.
+//
+// Deliberately shorter than RESCUE_STALL_SECS and longer than a normal block:
+// the cheap, correct recovery is tried first, and the rescue stays as the
+// backstop for a genuine below-floor failure that no rebroadcast can fix.
+#define QUEUE_REBROADCAST_STALL_SECS					(8*60)
+
+// Rate limit per node. A long stall must not become a broadcast loop. Peers
+// already drop duplicates via AlreadyHaveQueue(), so this is about our own
+// outbound cost, not theirs.
+#define QUEUE_REBROADCAST_MIN_GAP_SECS					(2*60)
+
 // v2.0.0.9: how often to recompute the roster-completeness flag.
 // The scan walks mapHistoricalPayees under mnodeman.cs; blindness changes over
 // minutes and only gates a 10-minute delay, so per-second was wasteful.

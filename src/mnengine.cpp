@@ -24,6 +24,7 @@
 #include "cmasternode.h"
 #include "cmasternodeman.h"
 #include "cmasternodepayments.h"
+#include "cmasternodevotetracker.h"   // v2.0.0.9: voteTracker, for the stall-triggered queue rebroadcast
 #include "masternode.h"
 #include "masternodeman.h"
 #include "masternode_extern.h"
@@ -101,6 +102,60 @@ void ThreadCheckMNenginePool()
 			nLastRosterRefresh = GetTime();
 
 			mnodeman.RefreshRosterCompleteness();
+		}
+
+		// v2.0.0.9: stall-triggered queue rebroadcast.
+		//
+		// BroadcastQueue() normally fires only on block connect (main.cpp). That
+		// is right for WHEN a queue changes -- it is a forward simulation from the
+		// tip -- but it made block connect the only DELIVERY moment too, and the
+		// two are different concerns. The result was circular: no block -> no
+		// queue -> no canonical winner -> every producer defers -> no block.
+		//
+		// SyncQueues() cannot break that: it RELAYS queues a peer already holds,
+		// and after a fleet-wide restart nobody holds any. BroadcastQueue() by
+		// contrast GENERATES one, so it works from a standing start.
+		//
+		// Fires only when ALL of these hold, so it is silent in normal operation:
+		//   * we are an enabled masternode (hot or cold)
+		//   * the chain has stalled for QUEUE_REBROADCAST_STALL_SECS, measured
+		//     from the tip's own block time -- the same honest measure as 3.48b,
+		//     NOT GetMedianTimePast(), which lags ~15 min at testnet spacing
+		//   * we have not rebroadcast in the last QUEUE_REBROADCAST_MIN_GAP_SECS
+		//   * the tracker has NO queue from our own vin at the current tip
+		//
+		// That last condition makes it self-silencing: once our queue is recorded,
+		// from us or relayed from a peer, the condition stops being true.
+		//
+		// >>> LOCK ORDER. <<<  BroadcastQueue() -> GetQueuePaymentSnapshot() takes
+		// mnodeman.cs and reaches cs_main through GetCollateralConfirmedHeight().
+		// It MUST NOT be called from a thread already holding cs_main -- that is
+		// the ABBA fixed on 2026-10-07. ThreadCheckMNenginePool holds no locks
+		// here, which is why this lives in this thread and not in the staker loop.
+		if(fMasterNode &&
+			(activeMasternode.status == MASTERNODE_IS_CAPABLE ||
+			 activeMasternode.status == MASTERNODE_REMOTELY_ENABLED) &&
+			activeMasternode.vin != CTxIn() &&
+			pindexBest != NULL)
+		{
+			static int64_t nLastQueueRebroadcast = 0;
+
+			int64_t nNow = GetAdjustedTime();
+			int64_t nStall = nNow - pindexBest->GetBlockTime();
+
+			if(nStall >= QUEUE_REBROADCAST_STALL_SECS &&
+				(nNow - nLastQueueRebroadcast) >= QUEUE_REBROADCAST_MIN_GAP_SECS &&
+				!voteTracker.HaveQueueFromVoterAt(activeMasternode.vin.prevout,
+												  pindexBest->nHeight))
+			{
+				nLastQueueRebroadcast = nNow;
+
+				LogPrintf("ThreadCheckMNenginePool -- chain stalled %ds with no queue of "
+						  "our own at height %d; rebroadcasting out of band\n",
+						  (int)nStall, pindexBest->nHeight);
+
+				activeMasternode.BroadcastQueue(pindexBest->nHeight);
+			}
 		}
 
 		// v2.0.0.9 W-15 option B: a cold masternode that is not yet enabled asks its

@@ -128,6 +128,30 @@ bool CMasternodeVoteTracker::IsEquivocator(const COutPoint &voterVin) const
 // v208-M1Q-queue-based-voting-SPEC.md.
 // ===========================================================================
 
+// v2.0.0.9: does this voter already have a queue recorded at nQueueHeight?
+//
+// mapQueues is keyed height -> voter outpoint -> queue, so this is a direct
+// two-level lookup rather than a scan.
+//
+// Used by the stall-triggered rebroadcast in ThreadCheckMNenginePool: a
+// masternode resends only when its OWN queue is actually missing at the current
+// tip. That makes the rebroadcast self-silencing -- once the queue is recorded,
+// whether from this node or relayed from a peer, the condition stops being true.
+bool CMasternodeVoteTracker::HaveQueueFromVoterAt(const COutPoint &voter, int nQueueHeight) const
+{
+	LOCK(cs);
+
+	std::map<int, std::map<COutPoint, CMasternodeVoteQueue> >::const_iterator hIt =
+		mapQueues.find(nQueueHeight);
+
+	if (hIt == mapQueues.end())
+	{
+		return false;
+	}
+
+	return (hIt->second.find(voter) != hIt->second.end());
+}
+
 bool CMasternodeVoteTracker::AlreadyHaveQueue(const uint256 &hash) const
 {
 	LOCK(cs);

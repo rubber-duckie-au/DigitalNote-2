@@ -144,6 +144,11 @@ public:
 
 	// Inv-relay support (mirrors the vote equivalents):
 	bool AlreadyHaveQueue(const uint256 &hash) const;
+
+	// v2.0.0.9: has THIS voter already got a queue recorded at nQueueHeight?
+	// Used by the stall-triggered rebroadcast so a masternode resends only when
+	// its own queue is genuinely missing, rather than on a blind timer.
+	bool HaveQueueFromVoterAt(const COutPoint &voter, int nQueueHeight) const;
 	bool GetQueueByHash(const uint256 &hash, CMasternodeVoteQueue &queueOut) const;
 
 	// Peer sync (mirrors Sync for queues):

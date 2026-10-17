@@ -62,13 +62,13 @@ Specifications and General info
 -------------------
 DigitalNote uses 
 
-	* Secp256k1
-	* Leveldb
+	* secp256k1
+	* LevelDB
 	* Boost 1.91.0
-	* Berkeley DB 6.2.32
-	* GMP 6.2.1
+	* Berkeley DB 6.2.32 (NC)
+	* GMP 6.3.0
 	* libevent 2.1.12
-	* miniupnpc 2.2.4
+	* miniupnpc 2.2.8
 	* OpenSSL 3.5.7
 	* QRencode 4.1.1
 	* Qt 6.8.3
