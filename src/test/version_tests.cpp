@@ -57,7 +57,20 @@ BOOST_AUTO_TEST_CASE(ClientVersionComponentsAre_2_0_0_9)
 
 BOOST_AUTO_TEST_CASE(ClientVersionIsRelease)
 {
-	BOOST_CHECK(CLIENT_VERSION_IS_RELEASE);
+	// v2.0.0.9 W-18: this used to assert CLIENT_VERSION_IS_RELEASE == true, which
+	// pinned a flag that is SUPPOSED to vary between a release candidate and the
+	// tagged build.  It would have failed the moment the flag was set correctly.
+	//
+	// Assert the real invariant instead: a build is a release EXACTLY WHEN it
+	// carries no candidate tag.  sizeof("") == 1 (the NUL), so an empty
+	// CLIENT_VERSION_CANDIDATE means "this is the tagged build".
+	//
+	// This catches both mistakes that matter:
+	//   * tagging a release while an "rcN-" suffix is still in clientversion.h
+	//   * shipping a candidate that claims to be a release
+	const bool fHasCandidate = (sizeof(CLIENT_VERSION_CANDIDATE) > 1);
+
+	BOOST_CHECK_EQUAL(CLIENT_VERSION_IS_RELEASE, !fHasCandidate);
 }
 
 BOOST_AUTO_TEST_CASE(ComputedClientVersionEquals2000009)

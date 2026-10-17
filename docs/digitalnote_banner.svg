@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1600 300" width="1600" height="300" role="img" aria-label="DigitalNote — hybrid proof-of-work and proof-of-stake blockchain with masternodes">
+<title>DigitalNote (XDN)</title>
+<defs>
+ <linearGradient id="dnBg" x1="0" y1="0" x2="0" y2="1000" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#49C9FF"/><stop offset=".3" stop-color="#49C9FF"/><stop offset="1" stop-color="#624DAF"/></linearGradient>
+ <radialGradient id="bg" cx="50%" cy="34%" r="80%"><stop offset="0" stop-color="#101C33"/><stop offset=".55" stop-color="#0A1220"/><stop offset="1" stop-color="#05080F"/></radialGradient>
+ <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#49C9FF" stop-opacity=".28"/><stop offset=".45" stop-color="#6E5BD6" stop-opacity=".12"/><stop offset="1" stop-color="#6E5BD6" stop-opacity="0"/></radialGradient>
+ <linearGradient id="brdg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#49C9FF"/><stop offset="1" stop-color="#8A78E6"/></linearGradient>
+ <g id="dnLogo"><circle cx="500" cy="500" r="500" fill="url(#dnBg)"/>
+  <g fill="#fff" fill-opacity="0.55"><rect x="108" y="369" width="72" height="72"/><rect x="204" y="468" width="72" height="72"/><rect x="300" y="565" width="72" height="72"/></g>
+  <g fill="#fff"><rect x="204" y="369" width="72" height="72"/><rect x="300" y="369" width="72" height="72"/><rect x="300" y="468" width="72" height="72"/>
+  <path d="M 396 370 L 509 370 A 119 133 0 0 1 509 636 L 396 636 Z M 458 424 L 458 582 L 502 582 A 62 79 0 0 0 507 424 Z" fill-rule="evenodd"/>
+  <polygon points="656,371 671,371 876,628 876,636 859,636 656,382"/><polygon points="656,371 671,371 674,375 674,636 656,636"/>
+  <polygon points="858,371 876,371 876,636 859,636 858,635"/></g></g></defs>
+
+<rect width="1600" height="300" fill="url(#bg)"/>
+<ellipse cx="1180" cy="150" rx="430" ry="230" fill="url(#hubGlow)" opacity="0.5"/>
+
+<!-- masthead: same treatment as the ecosystem map -->
+<circle cx="100" cy="112" r="46" fill="none" stroke="#49C9FF" stroke-opacity="0.35" stroke-width="1.5"/>
+<use href="#dnLogo" xlink:href="#dnLogo" transform="translate(60,72) scale(0.08000)"/>
+
+<text x="176" y="100" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="38">
+<tspan font-weight="800" fill="#EAF2FF">Digital</tspan><tspan font-weight="300" fill="#49C9FF">Note</tspan>
+</text>
+<text x="178" y="134" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="16" font-weight="500" fill="#8FA6C8">Hybrid proof-of-work and proof-of-stake blockchain with masternodes</text>
+<text x="178" y="160" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="16" font-weight="500" fill="#8FA6C8">Staking, InstantTX, and encrypted peer-to-peer messaging</text>
+
+<!-- the one bold element: XDN and WXDN as a single coin in two forms -->
+<circle cx="1120" cy="150" r="62" fill="none" stroke="#49C9FF" stroke-opacity="0.35" stroke-width="1.5"/>
+<use href="#dnLogo" xlink:href="#dnLogo" transform="translate(1062,92) scale(0.11600)"/>
+<text x="1120" y="246" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="21" font-weight="800" fill="#EAF2FF" text-anchor="middle">XDN</text>
+<text x="1120" y="268" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="13" font-weight="500" fill="#8FA6C8" text-anchor="middle">Native coin</text>
+
+<text x="1290" y="146" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="22" font-weight="600" fill="#49C9FF" text-anchor="middle">&#8646;</text>
+<text x="1290" y="172" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="12" font-weight="500" fill="#8FA6C8" text-anchor="middle">1:1</text>
+
+<circle cx="1460" cy="150" r="62" fill="none" stroke="#8A78E6" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="5 4"/>
+<use href="#dnLogo" xlink:href="#dnLogo" transform="translate(1402,92) scale(0.11600)" opacity="0.5"/>
+<circle cx="1460" cy="150" r="58" fill="url(#brdg)" opacity="0.28"/>
+<text x="1460" y="246" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="21" font-weight="800" fill="#EAF2FF" text-anchor="middle">WXDN</text>
+<text x="1460" y="268" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="13" font-weight="500" fill="#8FA6C8" text-anchor="middle">Wrapped, multichain</text>
+
+<!-- quiet spec strip, left-aligned under the masthead -->
+<text x="178" y="214" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="13.5" font-weight="500" fill="#6E86A8">2 minute blocks</text>
+<text x="300" y="214" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="13.5" font-weight="500" fill="#6E86A8">Masternode collateral 2,000,000 XDN</text>
+<text x="620" y="214" font-family="Inter, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" font-size="13.5" font-weight="500" fill="#6E86A8">Desktop and mobile wallets</text>
+</svg>

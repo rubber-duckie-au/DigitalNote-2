@@ -1,12 +1,13 @@
 DigitalNote Daemon/QT-Wallet
 ============================================
 
+![DigitalNote — hybrid proof-of-work and proof-of-stake blockchain with masternodes](docs/digitalnote_banner.svg)
+
 DigitalNote (XDN) Hybrid PoW/PoS blockchain with Masternode Support.
 DigitalNote provides a lightweight blockchain with several avenues for passive income.
-DigitalNote (SatoshiCore) is the core of the DigitalNote ecosystem and was been developed from a bitcore base and
+DigitalNote (SatoshiCore) is the core of the DigitalNote ecosystem and was developed from a bitcore base and
 since morphing into its own unique blockchain system.
 
-![http://www.digitalnote.org](docs/digitalnote_logo.png)
 
 Official website: [► Digitalnote.org](http://www.digitalnote.org)
 White paper: [► WHITEPAPER](https://digitalnote.org/wp-content/uploads/2020/02/DigitalNote_Whitepaper.pdf).
@@ -19,6 +20,25 @@ Telegram: [► invite link](https://t.me/XDNDN)
 Discord: [► invite link](https://discord.gg/4dUquty)
 
 
+Current Release
+-------------------
+**v2.0.0.9** — Qt 6 migration, OpenSSL 3.x, Boost 1.91, and the voted-consensus
+masternode payment system.
+
+Release notes: [► docs/release-notes/v2.0.0.9.md](docs/release-notes/v2.0.0.9.md)
+
+Ecosystem overview: [► the full map](docs/digitalnote_ecosystem_2026.svg) — wallets,
+staking and masternodes, mining, the WXDN bridge, and encrypted messaging.
+
+Voted consensus activates on mainnet at block **1,480,000**. Until then the
+wallet behaves exactly as v2.0.0.8 did for payment selection — the machinery is
+present but inactive, and no masternode is dropped from eligibility by
+upgrading. v2.0.0.8 masternodes continue to count toward consensus.
+
+**This release is not mandatory**, and the network protocol remains compatible
+with v2.0.0.8 (protocol 62059; older clients still connect and sync).
+
+
 Official download
 -------------------
 github releases: [► DigitalNoteXDN/DigitalNote-2](https://github.com/DigitalNoteXDN/DigitalNote-2/releases)
@@ -28,6 +48,15 @@ Build instructions:
 -------------------
 DigitalNote Builder project: [► DigitalNoteXDN/DigitalNote-Builder](https://github.com/DigitalNoteXDN/DigitalNote-Builder)
 
+Per-platform notes in this repository:
+
+* Linux: [► docs/build-lnx.md](docs/build-lnx.md)
+* Windows: [► docs/build-msw.md](docs/build-msw.md)
+* macOS: [► docs/build-osx.md](docs/build-osx.md)
+* Unix (generic): [► docs/build-unix.md](docs/build-unix.md)
+
+Other topics: [► Tor](docs/tor.md) · [► SSL for RPC](docs/ssl.md) · [► Translation process](docs/translation_process.md)
+
 
 Specifications and General info
 -------------------
@@ -35,21 +64,24 @@ DigitalNote uses
 
 	* Secp256k1
 	* Leveldb
-	* Boost 1.80  
+	* Boost 1.91.0
 	* Berkeley DB 6.2.32
 	* GMP 6.2.1
 	* libevent 2.1.12
 	* miniupnpc 2.2.4
-	* Openssl 1.1.1s
+	* OpenSSL 3.5.7
 	* QRencode 4.1.1
-	* QT 5.15.7
+	* Qt 6.8.3
 
 General Specs
 
 	* Block Spacing: 2 Minutes
 	* Stake Minimum Age: 15 Confirmations (PoS-v3) | 30 Minutes (PoS-v2)
-	* Port: 18092
-	* RPC Port: 18094
+	* Masternode Collateral: 2,000,000 XDN
+	* Mainnet P2P Port: 18092
+	* Mainnet RPC Port: 18094
+	* Testnet P2P Port: 28092
+	* Testnet RPC Port: 28094
 
 
 License
@@ -63,7 +95,7 @@ Development Process
 -------------------
 
 The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/DigitalNoteXDN/DigitalNote-1) are created
+completely stable. [Tags](https://github.com/DigitalNoteXDN/DigitalNote-2/tags) are created
 regularly to indicate new official, stable release versions of DigitalNote [XDN].
 
 The Developer Team [Discord](https://discord.gg/4dUquty) should be used to discuss complicated or controversial changes before working
