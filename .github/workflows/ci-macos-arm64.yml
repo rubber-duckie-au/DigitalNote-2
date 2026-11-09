@@ -263,7 +263,9 @@ jobs:
         run: bash update.sh
 
       # ── Configure macOS SDK ────────────────────────────────────────────────
-      # On macos-14 runners with Xcode 15.4 + macOS 14.5 SDK, plain `clang`
+      # The macos-14 image was retired by GitHub 2026-11; plain "macos-15"
+      # is arm64, which is why the Intel workflow needs the explicit
+      # "macos-15-intel" label. With the runner's SDK, plain `clang`
       # invocations from leveldb's hand-rolled Makefile (and a few other
       # places that don't go through Qt) fail with:
       #   "fatal error: 'string' file not found"
