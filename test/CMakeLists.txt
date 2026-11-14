@@ -328,9 +328,21 @@ if(BUILD_TESTS_TIER_A)
 
   # amount.h -> types/camount.h.  NOTE: there is no amount.cpp in this fork;
   # types/camount.h is header-only.  Do not add an amount.cpp source.
+  # v2.0.0.9 FINDING-2026-016: amount_tests now exercises CTxOut::IsDust, so it
+  # needs ctxout.cpp and the script/key chain that CScript pulls in.  It lives
+  # here rather than transaction_tests.cpp because that suite is KNOWN_BAD --
+  # upstream primitives/ include paths that do not exist in this fork.
   add_boost_test(test_amount
     SOURCES  ${DN_TEST_SRC}/amount_tests.cpp
              ${DN_SRC}/util.cpp
+             ${DN_SRC}/ctxout.cpp
+             ${DN_SRC}/script.cpp
+             ${DN_SRC}/cscript.cpp
+             ${DN_SRC}/ckey.cpp
+             ${DN_SRC}/cpubkey.cpp
+             ${DN_SRC}/hash.cpp
+             ${DN_SRC}/uint/uint256.cpp
+    LIBS     secp256k1
     LABELS   "unit;tierB;amount"
   )
 

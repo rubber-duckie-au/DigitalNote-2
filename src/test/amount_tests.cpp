@@ -21,6 +21,8 @@
 #include "types/camount.h"        // CAmount, COIN, CENT
 #include "util.h"
 // main.h for MIN_TX_FEE, MIN_RELAY_TX_FEE, MAX_SINGLE_TX - include guard-safe
+#include "ctxout.h"        // v2.0.0.9 FINDING-2026-016: CTxOut::IsDust
+#include "script.h"        // CScript, OP_* -- flat in this fork, not script/script.h
 #include "main.h"
 
 BOOST_AUTO_TEST_SUITE(AmountTests)
@@ -115,6 +117,78 @@ BOOST_AUTO_TEST_CASE(AmountSubtractionIsCorrect)
     CAmount a = COIN;
     CAmount b = CENT;
     BOOST_CHECK_EQUAL(a - b, CAmount(99) * CENT);
+}
+
+// =====================================================================
+// FINDING-2026-016 -- CTxOut::IsDust overflow.
+//
+// IsDust used to compute (nValue * 1000) FIRST, which overflows signed
+// 64-bit above (2^63-1)/1000 = 9,223,372,036,854,775 units = 92,233,720
+// XDN.  The product wrapped NEGATIVE, the output was declared dust, and
+// CreateTransaction failed with "Transaction amount too small" -- for the
+// LARGEST sends the wallet can be asked to make.  Reported on rc3,
+// 2026-11-05.
+//
+// Upstream Bitcoin cannot reach this (21M supply at 1e8 units).  A single
+// XDN testnet reserve block pays 80,000,000 XDN.
+//
+// These pin BOTH ends: the dust boundary behaves as it always did, AND
+// large values are no longer misclassified.
+//
+// NOTE: these live here rather than in transaction_tests.cpp because that
+// suite is on the CI KNOWN_BAD list -- it still carries upstream
+// primitives/ include paths that do not exist in this fork, so it is not
+// compiled and a test added there would never run.
+// =====================================================================
+
+static CTxOut DustTestOut(int64_t nValue)
+{
+	CTxOut out;
+
+	out.nValue = nValue;
+	// Plain 25-byte P2PKH scriptPubKey, so GetSerializeSize matches the
+	// 34-byte txout the dust formula is written around.
+	out.scriptPubKey = CScript() << OP_DUP << OP_HASH160
+		<< std::vector<unsigned char>(20, 0x01) << OP_EQUALVERIFY << OP_CHECKSIG;
+
+	return out;
+}
+
+BOOST_AUTO_TEST_CASE(IsDustSmallValuesAreStillDust)
+{
+	BOOST_CHECK(DustTestOut(0).IsDust(MIN_RELAY_TX_FEE));
+	BOOST_CHECK(DustTestOut(1).IsDust(MIN_RELAY_TX_FEE));
+}
+
+BOOST_AUTO_TEST_CASE(IsDustBoundaryIsMonotonic)
+{
+	// Whatever the exact threshold, it must be ONE clean step: never dust
+	// above a value that was already not dust.
+	bool fSeenNonDust = false;
+
+	for (int64_t v = 0; v <= 20000; v++)
+	{
+		const bool fDust = DustTestOut(v).IsDust(MIN_RELAY_TX_FEE);
+
+		if (!fDust)
+		{
+			fSeenNonDust = true;
+		}
+
+		BOOST_CHECK(!(fDust && fSeenNonDust));
+	}
+
+	BOOST_CHECK(fSeenNonDust);
+}
+
+BOOST_AUTO_TEST_CASE(IsDustDoesNotOverflowOnLargeValues)
+{
+	// >>> THE REGRESSION. <<<  Every one of these was reported as dust by
+	// the original expression, because (nValue * 1000) wrapped negative.
+	BOOST_CHECK(!DustTestOut( 92233720LL * COIN).IsDust(MIN_RELAY_TX_FEE)); // just below
+	BOOST_CHECK(!DustTestOut(100000000LL * COIN).IsDust(MIN_RELAY_TX_FEE)); // just above
+	BOOST_CHECK(!DustTestOut(500000000LL * COIN).IsDust(MIN_RELAY_TX_FEE));
+	BOOST_CHECK(!DustTestOut(MAX_SINGLE_TX).IsDust(MIN_RELAY_TX_FEE));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
