@@ -127,11 +127,33 @@ void ThreadCheckMNenginePool()
 		// That last condition makes it self-silencing: once our queue is recorded,
 		// from us or relayed from a peer, the condition stops being true.
 		//
-		// >>> LOCK ORDER. <<<  BroadcastQueue() -> GetQueuePaymentSnapshot() takes
-		// mnodeman.cs and reaches cs_main through GetCollateralConfirmedHeight().
-		// It MUST NOT be called from a thread already holding cs_main -- that is
-		// the ABBA fixed on 2026-10-07. ThreadCheckMNenginePool holds no locks
-		// here, which is why this lives in this thread and not in the staker loop.
+		// >>> LOCK ORDER -- cs_main FIRST. <<<  (Corrected v2.0.0.9 rc7.)
+		//
+		// BroadcastQueue() -> GetQueuePaymentSnapshot() takes mnodeman.cs and then,
+		// per masternode, reaches cs_main through GetCollateralConfirmedHeight() ->
+		// GetTransaction() -- a BLOCKING lock.
+		//
+		// The canonical order in this tree is cs_main -> mnodeman.cs: block
+		// processing holds cs_main (main.cpp "block" handler -> ProcessBlock, which
+		// asserts it) and then takes mnodeman.cs in CheckBlock
+		// (IsPayeeAValidMasternode), SetBestChain (OnBlockAccepted),
+		// SetBestChainInner (OnBlockConnected) and ProcessBlock's own
+		// BroadcastQueue() call.
+		//
+		// This thread holds NO locks, so calling BroadcastQueue() bare takes
+		// mnodeman.cs first and cs_main second -- the REVERSE order.  A block
+		// arriving while the snapshot is in progress would then deadlock this
+		// thread against the message handler (each holding the lock the other
+		// wants): a silent wedge of the masternode.
+		//
+		// So take cs_main here first.  That reproduces exactly the lock context of
+		// the ProcessBlock call site (main.cpp), which runs on every block.  Everything
+		// BroadcastQueue() takes beneath it -- mnodeman.cs, voteTracker.cs,
+		// cs_vNodes -- already follows cs_main everywhere else in the tree.
+		//
+		// The earlier wording here ("MUST NOT be called from a thread already
+		// holding cs_main") had the rule backwards: holding cs_main is the SAFE
+		// order; calling without it is what creates the reversed edge.
 		if(fMasterNode &&
 			(activeMasternode.status == MASTERNODE_IS_CAPABLE ||
 			 activeMasternode.status == MASTERNODE_REMOTELY_ENABLED) &&
@@ -154,7 +176,11 @@ void ThreadCheckMNenginePool()
 						  "our own at height %d; rebroadcasting out of band\n",
 						  (int)nStall, pindexBest->nHeight);
 
-				activeMasternode.BroadcastQueue(pindexBest->nHeight);
+				{
+					LOCK(cs_main);   // cs_main FIRST -- see LOCK ORDER above
+
+					activeMasternode.BroadcastQueue(pindexBest->nHeight);
+				}
 			}
 		}
 
