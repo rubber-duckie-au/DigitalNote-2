@@ -1922,12 +1922,43 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			// Which side of the denominator floor each value falls on.  This is
 			// the field that matters: a disagreement that does not cross the
 			// floor is cosmetic, one that DOES changes this node's denominator.
+			//
+			// v2.0.0.9 rc7: >>> pnode IS NULL WHENEVER WE ARE NOT PEERED WITH THIS
+			// MASTERNODE. <<<  That is the normal case for most of the fleet, and it
+			// is exactly when an attested-only disagreement reaches this point (a
+			// daemon attesting 62059 whose controller stamped 62058).  This used to
+			// read pnode->nVersion unconditionally and crashed the daemon.  Touch
+			// pnode ONLY under fHaveObserved, which has already checked it.
+			//
+			// The crossing is judged against the BEST evidence of what the daemon
+			// actually runs: a fresh signed attestation first, else the observed
+			// handshake -- the same preference order as the Masternodes tab
+			// (qt/masternodemanager.cpp).  Judging it against `observed` alone
+			// reported a false crossing for every attested-only disagreement.
 			bool advIn = (mn.protocolVersion >= MIN_VOTING_PROTOCOL_VERSION);
-			bool obsIn = (pnode->nVersion      >= MIN_VOTING_PROTOCOL_VERSION);
 
 			d.push_back(json_spirit::Pair("advertised_counts", advIn));
-			d.push_back(json_spirit::Pair("observed_would_count", obsIn));
-			bool fCrosses = (advIn != obsIn);
+
+			// null = no evidence from that source (no live connection / no fresh
+			// attestation), so a script cannot mistake "unknown" for "false".
+			d.push_back(json_spirit::Pair("observed_would_count",
+				fHaveObserved ? json_spirit::Value(pnode->nVersion >= MIN_VOTING_PROTOCOL_VERSION)
+							  : json_spirit::Value()));
+			d.push_back(json_spirit::Pair("attested_would_count",
+				fHaveAttested ? json_spirit::Value(mn.nAttestedVersion >= MIN_VOTING_PROTOCOL_VERSION)
+							  : json_spirit::Value()));
+
+			// At least one source exists here (we only get this far on a
+			// disagreement), but stay defensive: fall back to the advertised value,
+			// which by construction cannot cross itself.
+			const int nBestVersion = fHaveAttested ? mn.nAttestedVersion
+			                       : fHaveObserved ? pnode->nVersion
+			                       : mn.protocolVersion;
+
+			d.push_back(json_spirit::Pair("crosses_floor_source",
+				fHaveAttested ? "attested" : fHaveObserved ? "observed" : "none"));
+
+			bool fCrosses = (advIn != (nBestVersion >= MIN_VOTING_PROTOCOL_VERSION));
 
 			if (fCrosses)
 			{
