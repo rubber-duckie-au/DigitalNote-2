@@ -311,12 +311,15 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         strHTML += "<br><b>" + tr("Comment") + ":</b><br>" + GUIUtil::HtmlEscape(wtx.mapValue["comment"], true) + "<br>";
 
     // v2.0.0.8 UI fix: show the clean transaction hash only.  The previous
-    // code appended formatSubTxId's "-%03d" suffix using rec->idx -- but
-    // rec->idx is the display-row sort ordinal ("Subtransaction index, for
-    // sort key"), not an input or output index, so the suffix was always
-    // "-000" for single-row transactions and meaningless otherwise.
-    // formatSubTxId itself is left unchanged (it is still used by
-    // getTxID()/TxIDRole); only this user-facing detail line is corrected.
+    // code appended a "-%03d" suffix built from rec->idx -- but rec->idx is
+    // the display-row sort ordinal ("Subtransaction index, for sort key"), not
+    // an input or output index, so the suffix was always "-000" for
+    // single-row transactions and meaningless otherwise.
+    //
+    // v2.0.0.9 completed the fix at the source: TransactionRecord::getTxID()
+    // (and therefore TxIDRole, "Copy transaction ID" and the CSV export) now
+    // returns the bare hash too, and the suffix helper is gone.  This line is
+    // kept as-is because it builds its string from wtx directly.
     strHTML += "<b>" + tr("Transaction ID") + ":</b> " + QString::fromStdString(wtx.GetHash().ToString()) + "<br>";
 
     if (wtx.IsCoinBase() || wtx.IsCoinStake())

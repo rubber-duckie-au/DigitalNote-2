@@ -100,7 +100,31 @@ bool CTxOut::IsDust(int64_t MIN_RELAY_TX_FEE) const
 	// need a CTxIn of at least 148 bytes to spend,
 	// so dust is a txout less than 546 satoshis
 	// with default nMinRelayTxFee.
-	return ((nValue * 1000) / (3 * ((int)GetSerializeSize(SER_DISK,0) + 148)) < MIN_RELAY_TX_FEE);
+	//
+	// >>> v2.0.0.9 FINDING-2026-016: DO NOT restore the original form. <<<
+	//
+	// This was:
+	//     return ((nValue * 1000) / (3 * (GetSerializeSize(...) + 148)) < MIN_RELAY_TX_FEE);
+	//
+	// which evaluated (nValue * 1000) FIRST and overflowed signed 64-bit above
+	//     (2^63 - 1) / 1000 = 9,223,372,036,854,775 units = 92,233,720 XDN.
+	// The product wrapped NEGATIVE, the comparison was trivially true, every
+	// such output was declared dust, and CreateTransaction failed with
+	// "Transaction amount too small" -- for the LARGEST sends the wallet can be
+	// asked to make. Reported on rc3, 2026-11-05.
+	//
+	// Upstream Bitcoin cannot reach this: its entire supply is 21M at 1e8 units,
+	// so no output comes close. XDN's supply is far larger -- a single testnet
+	// reserve block pays 80,000,000 XDN -- so consolidating two exceeds it. An
+	// inherited assumption that stopped holding when the money supply changed.
+	//
+	// Rearranged so only SMALL values are multiplied. Multiplying both sides of
+	// the original by nSpendCost/1000 gives exactly this; the two forms agree for
+	// every value that did not overflow. MIN_RELAY_TX_FEE * nSpendCost is at most
+	// a few million, nowhere near the limit.
+	const int64_t nSpendCost = 3 * ((int)GetSerializeSize(SER_DISK, 0) + 148);
+
+	return nValue < (MIN_RELAY_TX_FEE * nSpendCost) / 1000;
 }
 
 bool operator==(const CTxOut& a, const CTxOut& b)

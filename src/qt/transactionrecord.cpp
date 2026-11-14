@@ -338,12 +338,27 @@ bool TransactionRecord::statusUpdateNeeded()
     return status.cur_num_blocks != nBestHeight || status.cur_num_ix_locks != nCompleteTXLocks;
 }
 
+// v2.0.0.9 UI fix: return the bare 64-character transaction hash.
+//
+// This used to call a formatSubTxId() helper that appended "-%03d" built from
+// `idx`.  `idx` is the display-row sort ordinal ("Subtransaction index, for
+// sort key" -- see the header), NOT a vin/vout index, so the suffix carried no
+// information: it was "-000" for every single-row transaction and arbitrary
+// row ordering for anything that decomposed into several rows.
+//
+// v2.0.0.8 corrected only the Transaction details dialog, which builds its own
+// string from wtx.GetHash().  Every consumer of getTxID() -- i.e. of
+// TransactionTableModel::TxIDRole -- kept the suffix:
+//
+//   * transactionview.cpp copyTxID()      -> "Copy transaction ID" clipboard
+//   * transactionview.cpp exportClicked() -> the "ID" column of the CSV export
+//
+// Both of those are values the user pastes into an explorer, a block explorer
+// search box or an RPC call, where the suffix makes the id invalid.  Fixing it
+// at the source rather than at each call site keeps the two paths in agreement
+// with the details dialog and with `gettransaction`.  The helper had no other
+// caller and has been removed so the broken format cannot be reintroduced.
 QString TransactionRecord::getTxID() const
 {
-    return formatSubTxId(hash, idx);
-}
-
-QString TransactionRecord::formatSubTxId(const uint256 &hash, int vout)
-{
-    return QString::fromStdString(hash.ToString() + strprintf("-%03d", vout));
+    return QString::fromStdString(hash.ToString());
 }

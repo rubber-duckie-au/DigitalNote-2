@@ -129,11 +129,9 @@ public:
     /** Whether the transaction was sent/received with a watch-only address */
     bool involvesWatchAddress;
 
-    /** Return the unique identifier for this transaction (part) */
+    /** Return the transaction hash for this row (bare 64-char hex, no
+     *  "-NNN" row-ordinal suffix -- see the note on the definition). */
     QString getTxID() const;
-
-    /** Format subtransaction id */
-    static QString formatSubTxId(const uint256 &hash, int vout);
 
     /** Update status from core wallet tx.
      */
