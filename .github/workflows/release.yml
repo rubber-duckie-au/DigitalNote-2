@@ -334,13 +334,62 @@ jobs:
 
           echo "BODY_FILE=/tmp/release-body.md" >> $GITHUB_OUTPUT
 
+      # v2.0.0.9 rc8: CREATE THE TAG HERE, at the exact commit this run built.
+      #
+      # For a DRAFT, the release only records target_commitish; GitHub creates
+      # the tag later, when the draft is PUBLISHED -- and publishing from the
+      # web page uses that page's Target selector, which was on master.
+      # v2.0.0.9-rc1 and v2.0.0.9-rc8 were both tagged on master's tip
+      # (86308e5) that way, although their binaries were built elsewhere.
+      #
+      # With the tag already in place, publishing attaches to it and the
+      # Target field no longer matters.  A tag pushed with GITHUB_TOKEN does
+      # not start other workflows, so this also stops the duplicate
+      # "push: tags" Release run that publishing used to trigger.
+      #
+      # The built commit is github.sha when the ref box was left blank (the
+      # "Use workflow from" tip at dispatch time).  If the checkout above now
+      # resolves somewhere else, the branch moved while the builds ran --
+      # refuse rather than tag code that was not built.  Re-running is safe:
+      # an existing tag on the same commit is accepted, any other is an error.
+      - name: Tag the built commit
+        id: mktag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          REF_INPUT: ${{ inputs.ref }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [ -z "$REF_INPUT" ] && [ "$HEAD_SHA" != "$DISPATCH_SHA" ]; then
+            echo "ERROR: the branch moved during this run: built $DISPATCH_SHA, checkout now $HEAD_SHA."
+            echo "       Not tagging. Re-run the workflow."
+            exit 1
+          fi
+          LINES=$(git ls-remote --tags origin | awk -v t="refs/tags/$TAG" '$2==t || $2==t"^{}"')
+          EXISTING=$(echo "$LINES" | awk -v t="refs/tags/$TAG" '$2==t"^{}" {print $1}')
+          [ -z "$EXISTING" ] && EXISTING=$(echo "$LINES" | awk 'NF {print $1; exit}')
+          if [ -n "$EXISTING" ]; then
+            if [ "$EXISTING" != "$HEAD_SHA" ]; then
+              echo "ERROR: tag $TAG already exists at $EXISTING, not at the built commit $HEAD_SHA."
+              exit 1
+            fi
+            echo "Tag $TAG already exists at the built commit $HEAD_SHA."
+          else
+            git tag "$TAG" "$HEAD_SHA"
+            git push origin "refs/tags/$TAG"
+            echo "Created tag $TAG at $HEAD_SHA."
+          fi
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # When manually dispatched, create-and-tag in one step.
+          # When manually dispatched, the step above has already created the tag
+          # at the built commit; target_commitish names the same commit.
           # When tag-pushed, the tag already exists; this just attaches files to it.
           tag_name: ${{ steps.tag.outputs.tag }}
-          target_commitish: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          target_commitish: ${{ steps.mktag.outputs.sha || github.sha }}
           name: "DigitalNote XDN ${{ steps.tag.outputs.tag }}"
           # Draft default is TRUE — releases never go public without explicit approval.
           # - manual dispatch: user checkbox controls (default checked = draft)
