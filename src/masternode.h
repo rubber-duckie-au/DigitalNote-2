@@ -79,8 +79,17 @@ class uint256;
 //     must use explicit RPC (Path B) to clear.
 //
 //   MIN_VOTING_PROTOCOL_VERSION
-//     Minimum peer protocol version that counts toward the consensus
-//     denominator.  Currently 62058 = the M1Q queue-capable floor.
+//     The M1Q vote-queue capability floor: 62058.  Builds below it cannot
+//     produce a vote queue.
+//
+//     >>> v2.0.0.9 (TODO 3.39): NO LONGER A CONSENSUS INPUT. <<<
+//     CountVotingEligible() used to skip masternodes below this floor, using
+//     the controller-stamped mn.protocolVersion -- gossip that two nodes can
+//     hold differently, so it could split the denominator.  That filter is
+//     gone; the denominator is collateral depth only.  This constant now only
+//     labels peers and masternodes as queue-capable in getdeploymentstatus
+//     (peers.consensus_capable, version_drift).  The notes below are kept for
+//     history: they explain why it was never raised in lockstep.
 //
 //     HISTORICAL: this was temporarily lowered to 62057 for the debug-build
 //     wedge-reproduction soak (so the test staker could form quorum with a
@@ -90,16 +99,12 @@ class uint256;
 //
 //     v2.0.0.9 / TODO 3.19 -- DO NOT raise this to track PROTOCOL_VERSION.
 //     PROTOCOL_VERSION moved to 62059 for v2.0.0.9, but this floor stays at
-//     62058 ON PURPOSE.  It gates the consensus DENOMINATOR:
-//     cmasternodevotetracker.cpp calls CountVotingEligible(N,
-//     MIN_VOTING_PROTOCOL_VERSION) and requires the result to be
-//     >= MIN_ENABLED_FOR_CONSENSUS (5).  Raising it to 62059 would drop every
-//     v2.0.0.8 masternode (62058) out of the denominator the instant v2.0.0.9
-//     ships; until 5+ masternodes upgrade, voted consensus would stop
-//     resolving -- the below-floor dead chain TODO 3.16 exists to rescue,
-//     self-inflicted via a constant.  The v2.0.0.8 fleet IS queue-capable and
-//     must keep counting.  Raise this only once the fleet has demonstrably
-//     migrated, as a separate decision with its own soak.
+//     62058 ON PURPOSE: v2.0.0.8 (62058) IS queue-capable.  When this floor
+//     still gated the denominator, raising it to 62059 would have dropped
+//     every v2.0.0.8 masternode out of it the instant v2.0.0.9 shipped -- the
+//     below-floor dead chain TODO 3.16 exists to rescue, self-inflicted via a
+//     constant.  It no longer gates consensus (see above), but it still defines
+//     "queue-capable" in the reports, so 62058 remains the correct value.
 // ---------------------------------------------------------------------------
 
 #define VOTED_CONSENSUS_ACTIVATION_HEIGHT				1480000

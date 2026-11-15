@@ -365,8 +365,9 @@ bool CActiveMasternode::Dseep(std::string& errorMessage)
 // means older nodes simply drop it: no compatibility break, no activation.
 //
 // ADVISORY ONLY.  The receiving side stores this in nAttestedVersion, which
-// nothing in consensus reads -- CountVotingEligible() still uses
-// protocolVersion.  Changing that is FINDING-2026-014 and needs its own soak.
+// nothing in consensus reads.  Since v2.0.0.9 (TODO 3.39) CountVotingEligible()
+// reads no version at all, so this feeds reporting only (getdeploymentstatus,
+// the Masternodes tab).
 bool CActiveMasternode::Mnver(std::string& errorMessage)
 {
 	// Same guard and key-acquisition path as Dseep(std::string&) -- this runs on

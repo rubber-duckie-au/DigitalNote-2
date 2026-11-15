@@ -419,7 +419,8 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 	// Denominator: eligible-voter count must be a pure function of
 	// nTargetHeight and committed chain state (same rule as the per-height
 	// GetCanonicalWinner -- CountVotingEligible, never CountEnabled).
-	int eligibleVoters = mnodeman.CountVotingEligible(nTargetHeight, MIN_VOTING_PROTOCOL_VERSION);
+	// v2.0.0.9 (TODO 3.39): no version filter -- see CountVotingEligible.
+	int eligibleVoters = mnodeman.CountVotingEligible(nTargetHeight);
 
 	if (eligibleVoters < MIN_ENABLED_FOR_CONSENSUS)
 	{
@@ -745,7 +746,7 @@ CMasternodeVoteTracker::QueueInfo CMasternodeVoteTracker::GetQueueInfo(int nTarg
 		return qi;
 	}
 
-	qi.eligibleVoters = mnodeman.CountVotingEligible(nTargetHeight, MIN_VOTING_PROTOCOL_VERSION);
+	qi.eligibleVoters = mnodeman.CountVotingEligible(nTargetHeight);
 
 	// Mirror the newest-first walk: report the first (newest) queue-height
 	// that actually has queues covering nTargetHeight.  This is the position

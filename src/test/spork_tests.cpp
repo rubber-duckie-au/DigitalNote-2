@@ -104,12 +104,12 @@ BOOST_AUTO_TEST_SUITE(ConsensusConstantTests)
 
 BOOST_AUTO_TEST_CASE(MinVotingProtocolVersionIsStatic)
 {
-	// MUST remain 62058.  It gates the voted-consensus DENOMINATOR via
-	// CountVotingEligible(N, MIN_VOTING_PROTOCOL_VERSION).  Raising it in
-	// lockstep with PROTOCOL_VERSION would drop the entire v2.0.0.8
-	// masternode fleet out of the denominator the instant a new build
-	// shipped -- inducing the below-floor dead chain the devops rescue
-	// exists to prevent.
+	// MUST remain 62058: the M1Q vote-queue capability floor (v2.0.0.8 is
+	// queue-capable).  Since v2.0.0.9 (TODO 3.39) it no longer gates the
+	// voted-consensus denominator -- CountVotingEligible() has no version
+	// filter -- but it still decides which peers and masternodes
+	// getdeploymentstatus reports as queue-capable.  Raising it in lockstep
+	// with PROTOCOL_VERSION would mislabel the whole v2.0.0.8 fleet.
 	BOOST_CHECK_EQUAL(MIN_VOTING_PROTOCOL_VERSION, 62058);
 }
 

@@ -1490,7 +1490,7 @@ json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp)
 			"\nResult:\n"
 			"{\n"
 			"  \"height\": n,                    (numeric) the queried height\n"
-			"  \"eligible_voters\": n,           (numeric) MNs at MIN_VOTING_PROTOCOL_VERSION+ eligible to vote for this height\n"
+			"  \"eligible_voters\": n,           (numeric) MNs whose collateral is deep enough to vote for this height\n"
 			"  \"queue_height_used\": n,         (numeric) the queue-height whose position was tallied (-1 if none)\n"
 			"  \"position\": n,                  (numeric) position within the queue for this height (-1 if none)\n"
 			"  \"queues_seen\": n,               (numeric) number of queues tallied at that queue-height\n"
@@ -1582,10 +1582,9 @@ json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp)
 //
 //   masternodes.*  -- whether the voted-consensus DENOMINATOR can still resolve.
 //                     This is the SAFETY signal and it is the one that can stall the
-//                     chain: voting_eligible counts MNs at
-//                     MIN_VOTING_PROTOCOL_VERSION+ (62058 -- deliberately NOT the
-//                     same as PROTOCOL_VERSION; see the guardrails in version.h /
-//                     masternode.h), and it must stay >= MIN_ENABLED_FOR_CONSENSUS.
+//                     chain: voting_eligible counts MNs whose collateral is deep
+//                     enough to vote (no version filter since v2.0.0.9 -- TODO
+//                     3.39), and it must stay >= MIN_ENABLED_FOR_CONSENSUS.
 //                     If meets_consensus_floor goes false post-activation the chain
 //                     cannot resolve a voted payee and depends on the 3.16 rescue.
 json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fHelp)
@@ -1627,7 +1626,9 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			"    \"total\": n,                      (numeric) masternodes known to this node\n"
 			"    \"enabled\": n,                    (numeric) enabled masternodes\n"
 			"    \"voting_eligible\": n,            (numeric) MNs counting toward the consensus denominator\n"
-			"    \"min_voting_protocol_version\": n,(numeric) the denominator floor (NOT PROTOCOL_VERSION)\n"
+			"                                       (collateral depth only; no version filter since v2.0.0.9)\n"
+			"    \"min_voting_protocol_version\": n,(numeric) the vote-queue capability floor used by the\n"
+			"                                       peer and version_drift reports (NOT PROTOCOL_VERSION)\n"
 			"    \"min_required_for_consensus\": n, (numeric) MIN_ENABLED_FOR_CONSENSUS\n"
 			"    \"meets_consensus_floor\": bool,   (boolean) voting_eligible >= min_required (SAFETY signal)\n"
 			"    \"measured_at_height\": n          (numeric) height the eligibility was measured for\n"
@@ -1637,10 +1638,10 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			"                                       could compare.  Coverage is partial by nature.\n"
 			"    \"agree\": n,                      (numeric) advertised protocol == observed on the wire\n"
 			"    \"disagree\": n,                   (numeric) they differ\n"
-			"    \"crosses_floor\": n,              (numeric) THE NUMBER THAT MATTERS.  Disagreements where\n"
-			"                                       one side is >= min_voting_protocol_version and the other\n"
-			"                                       is not -- i.e. this node's voted-consensus DENOMINATOR\n"
-			"                                       disagrees with observable reality.  Should be 0.\n"
+			"    \"crosses_floor\": n,              (numeric) Disagreements where one side is >=\n"
+			"                                       min_voting_protocol_version and the other is not -- i.e.\n"
+			"                                       the stamp misstates whether that daemon can vote.  Does\n"
+			"                                       not change the denominator (v2.0.0.9).  Should be 0.\n"
 			"    \"detail\": [ ... ]                (array) per-masternode breakdown of the disagreements\n"
 			"  }\n"
 			"}\n"
@@ -1782,15 +1783,17 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	// reading 62055 for 2.0.0.8 hosts, and 62059 for a host that has never run
 	// 2.0.0.9.
 	//
-	// That value is one of the two terms in CountVotingEligible()
-	// (cmasternodeman.cpp:257), i.e. the voted-consensus DENOMINATOR.  The
-	// other term, IsVotingEligible(), is pure committed chain state and is
-	// identical on every node; this one is gossip and is not.  See
-	// FINDING-2026-014.
+	// Until v2.0.0.9 that value was one of the two terms in
+	// CountVotingEligible(), i.e. the voted-consensus DENOMINATOR -- the one
+	// that was gossip rather than chain state (FINDING-2026-014).  It was
+	// removed from the denominator (TODO 3.39), so this block no longer
+	// describes a consensus input.  It still matters for LIVENESS: a masternode
+	// whose daemon is below MIN_VOTING_PROTOCOL_VERSION is counted but cannot
+	// produce a vote queue, which raises the bar the rest must clear.
 	//
 	// >>> THIS BLOCK DELIBERATELY DOES NOT CORRECT ANYTHING. <<<  The observed
-	// version is node-local: acting on it would make the denominator MORE
-	// divergent, and protocolVersion is inside the signed dsee that dseg
+	// version is node-local: acting on it would make any consensus input built
+	// on it divergent, and protocolVersion is inside the signed dsee that dseg
 	// relays alongside mn.sig, so a locally-altered value would fail signature
 	// verification at every peer.  MEASURE ONLY.
 	//
@@ -1919,9 +1922,10 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			d.push_back(json_spirit::Pair("attested_age_secs",
 				mn.nAttestedTime > 0 ? (int64_t)(GetAdjustedTime() - mn.nAttestedTime) : (int64_t)-1));
 
-			// Which side of the denominator floor each value falls on.  This is
-			// the field that matters: a disagreement that does not cross the
-			// floor is cosmetic, one that DOES changes this node's denominator.
+			// Which side of the vote-queue capability floor each value falls on.
+			// A disagreement that does not cross the floor is cosmetic; one that
+			// does means the stamp misstates whether this daemon can vote.  (Until
+			// v2.0.0.9 it also changed this node's denominator -- TODO 3.39.)
 			//
 			// v2.0.0.9 rc7: >>> pnode IS NULL WHENEVER WE ARE NOT PEERED WITH THIS
 			// MASTERNODE. <<<  That is the normal case for most of the fleet, and it
@@ -1995,8 +1999,11 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	drift.push_back(json_spirit::Pair("attested_share",
 		mnSnapshotSize > 0 ? ((double)driftAttested / (double)mnSnapshotSize) : -1.0));
 
-	// The headline number.  Non-zero means this node's voted-consensus
-	// denominator disagrees with observable reality for that many masternodes.
+	// Non-zero means that many masternodes' advertised (controller-stamped)
+	// version and their best observed or attested version fall on opposite
+	// sides of MIN_VOTING_PROTOCOL_VERSION.  Since v2.0.0.9 (TODO 3.39) this no
+	// longer changes the consensus denominator; it flags entries whose stamp
+	// misstates whether the daemon can vote.
 	drift.push_back(json_spirit::Pair("crosses_floor", driftCrossing));
 	drift.push_back(json_spirit::Pair("detail", driftDetail));
 
@@ -2006,7 +2013,7 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	// Measure eligibility for the height the queues actually cover (tip +
 	// VOTE_LOOKAHEAD), matching what GetCanonicalWinnerFromQueues will ask.
 	const int measuredAt = tipHeight + VOTE_LOOKAHEAD;
-	const int votingEligible = mnodeman.CountVotingEligible(measuredAt, MIN_VOTING_PROTOCOL_VERSION);
+	const int votingEligible = mnodeman.CountVotingEligible(measuredAt);
 
 	json_spirit::Object mns;
 	mns.push_back(json_spirit::Pair("total", mnodeman.size()));

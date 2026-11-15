@@ -28,8 +28,9 @@
 //     MIN_VOTING_PROTOCOL_VERSION).  These exist to FAIL when someone bumps a
 //     constant, forcing the bump to be conscious.
 //   * INVARIANT tests on relationships that must hold at any values.
-//   * A regression guard for the v2.0.0.9 MIN_VOTING_PROTOCOL_VERSION finding --
-//     the highest-value test in this file.
+//   * A regression guard for the v2.0.0.9 MIN_VOTING_PROTOCOL_VERSION finding.
+//     (Since TODO 3.39 that floor no longer gates the consensus denominator;
+//     the guards remain because it still defines "queue-capable".)
 //
 // NOTE: this file is still NOT in sources.pri.  It is rewritten for consistency
 // and so that it is correct if/when the test target is wired back up.  Wiring the
@@ -163,27 +164,21 @@ BOOST_AUTO_TEST_CASE(NewNodeAndPriorFleetInteroperate)
 	BOOST_CHECK_GE(62058, MIN_PEER_PROTO_VERSION);
 }
 
-// -- MIN_VOTING_PROTOCOL_VERSION (the consensus denominator floor) -------------
+// -- MIN_VOTING_PROTOCOL_VERSION (the vote-queue capability floor) -------------
 //
-// *** THE MOST IMPORTANT TESTS IN THIS FILE. ***
+// HISTORY: MIN_VOTING_PROTOCOL_VERSION used to gate the voted-consensus
+// DENOMINATOR -- CountVotingEligible skipped a masternode when
+// mn.protocolVersion < the floor.  Bumping it in lockstep with PROTOCOL_VERSION
+// (62059) would have dropped every v2.0.0.8 masternode (62058) out of the
+// denominator the instant v2.0.0.9 shipped and stalled voted consensus.  These
+// tests were written to make such a bump FAIL LOUDLY.
 //
-// MIN_VOTING_PROTOCOL_VERSION gates the voted-consensus DENOMINATOR:
-// cmasternodevotetracker.cpp calls
-//     CountVotingEligible(N, MIN_VOTING_PROTOCOL_VERSION)
-// and requires the result to be >= MIN_ENABLED_FOR_CONSENSUS (5).
-// CountVotingEligible skips a masternode when mn.protocolVersion < the floor.
-//
-// masternode.h's historical rationale said the denominator should track
-// PROTOCOL_VERSION "in lockstep".  Following that literally when PROTOCOL_VERSION
-// moved to 62059 would have dropped EVERY v2.0.0.8 masternode (62058) out of the
-// denominator the instant v2.0.0.9 shipped.  Until 5+ masternodes upgraded,
-// eligibleVoters would sit below MIN_ENABLED_FOR_CONSENSUS and voted consensus
-// would stop resolving -- the below-floor dead chain the 3.16 devops rescue exists
-// to recover from, self-inflicted by a constant.  (Not hypothetical: rpcmining.cpp
-// records CountVotingEligible transiently dropping to 4.)
-//
-// These tests exist so a future "tidy up the version constants in lockstep" change
-// FAILS LOUDLY instead of stalling mainnet.
+// v2.0.0.9 (TODO 3.39): CountVotingEligible no longer filters on version at
+// all -- the advertised version is gossip, and a gossip term in the denominator
+// can split it.  The floor now only decides which peers and masternodes
+// getdeploymentstatus reports as queue-capable.  The tests stay, re-described:
+// they pin which builds are classified queue-capable, and still catch a
+// lockstep bump that would misclassify the v2.0.0.8 fleet.
 
 BOOST_AUTO_TEST_CASE(MinVotingProtocolVersionIs62058)
 {
@@ -198,15 +193,16 @@ BOOST_AUTO_TEST_CASE(MinVotingProtocolVersionDoesNotTrackProtocolVersion)
 	// Regression guard for the v2.0.0.9 finding: the voting floor must NOT be
 	// bumped in lockstep with PROTOCOL_VERSION.  If these ever become equal
 	// because someone raised the floor to match a new PROTOCOL_VERSION, the
-	// existing fleet is excluded from the consensus denominator.
+	// existing fleet would be classified as not queue-capable.
 	BOOST_CHECK_LT(MIN_VOTING_PROTOCOL_VERSION, PROTOCOL_VERSION);
 }
 
 BOOST_AUTO_TEST_CASE(PriorFleetStillCountsTowardConsensusDenominator)
 {
-	// The v2.0.0.8 fleet (62058) is M1Q queue-capable and MUST keep counting.
-	// CountVotingEligible skips when mn.protocolVersion < MIN_VOTING_PROTOCOL_VERSION,
-	// so this models the inclusion test directly.
+	// The v2.0.0.8 fleet (62058) is M1Q queue-capable and must be classified
+	// as such.  (The test name predates TODO 3.39: the denominator no longer
+	// filters on version, so every masternode counts; this pins the
+	// capability classification.)
 	const int fleetProtocolVersion = 62058;
 
 	BOOST_CHECK(!(fleetProtocolVersion < MIN_VOTING_PROTOCOL_VERSION));
@@ -214,15 +210,17 @@ BOOST_AUTO_TEST_CASE(PriorFleetStillCountsTowardConsensusDenominator)
 
 BOOST_AUTO_TEST_CASE(NewBuildStillCountsTowardConsensusDenominator)
 {
-	// A v2.0.0.9 node (62059) must also count -- a bump must never exclude the
-	// build doing the bumping.
+	// A v2.0.0.9 node (62059) must also be classified queue-capable -- a bump
+	// must never exclude the build doing the bumping.
 	BOOST_CHECK(!(PROTOCOL_VERSION < MIN_VOTING_PROTOCOL_VERSION));
 }
 
 BOOST_AUTO_TEST_CASE(PreQueueBuildsExcludedFromConsensusDenominator)
 {
-	// The pre-queue builds are NOT queue-capable and must stay out of the
-	// denominator: 62057 (v2.0.0.8 pre-queue) and 62055 (v2.0.0.7).
+	// The pre-queue builds are NOT queue-capable and must be classified so:
+	// 62057 (v2.0.0.8 pre-queue) and 62055 (v2.0.0.7).  (Since TODO 3.39 they
+	// still COUNT in the denominator if their collateral is deep enough -- they
+	// just cannot vote.  The name predates that change.)
 	BOOST_CHECK_LT(62057, MIN_VOTING_PROTOCOL_VERSION);
 	BOOST_CHECK_LT(62055, MIN_VOTING_PROTOCOL_VERSION);
 }

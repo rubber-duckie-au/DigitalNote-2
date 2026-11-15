@@ -183,7 +183,9 @@ public:
 	// v2.0.0.8 voted-consensus: deterministic, chain-derived eligible-voter
 	// count for a given block height.  Consensus-denominator counterpart of
 	// CountEnabled().  See implementation for the full rationale.
-	int CountVotingEligible(int nBlockHeight, int protocolVersion = -1);
+	// v2.0.0.9 (TODO 3.39): no protocol-version argument -- the denominator
+	// does not filter on version any more.
+	int CountVotingEligible(int nBlockHeight);
 
 	int CountMasternodesAboveProtocol(int protocolVersion);
 

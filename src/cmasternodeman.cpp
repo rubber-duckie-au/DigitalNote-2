@@ -250,22 +250,43 @@ int CMasternodeMan::CountEnabled(int protocolVersion)
 //     vMasternodes by the normal CheckAndRemove lifecycle, so skipping
 //     Check() here does not admit spent collateral into the count.
 //
-// The protocol-version floor (MIN_VOTING_PROTOCOL_VERSION via the caller) is
-// retained: a peer too old to participate in the vote protocol must not
-// inflate the denominator.  protocolVersion is itself fixed per MN, so this
-// remains deterministic.
-int CMasternodeMan::CountVotingEligible(int nBlockHeight, int protocolVersion)
+// v2.0.0.9 (TODO 3.39 / FINDING-2026-014, option 1): NO protocol-version term.
+//
+// This used to skip masternodes whose mn.protocolVersion was below
+// MIN_VOTING_PROTOCOL_VERSION.  That value is gossip -- the stamp of whichever
+// wallet last ran 'masternode start', taken from whichever dsee THIS node last
+// received -- so two nodes could hold different values for the same masternode
+// and compute different denominators, thresholds and winners: a split with no
+// misbehaviour.  Every other input here is committed chain data.
+//
+// The cost of dropping it: a masternode whose daemon cannot produce a vote
+// queue (pre-62058) now counts in the denominator without ever voting, which
+// raises the 3/5 bar.  Measured before deciding (2026-11-15): 0 of 20 mainnet
+// masternodes below 62058, and testnet is all 62059, so today the count is
+// unchanged.  Re-measure before activation -- dsee still admits entries down
+// to MIN_POOL_PEER_PROTO_VERSION (62050).
+//
+// Note this removes ONE divergence source, not all of them: roster membership
+// (vMasternodes) is itself gossip.
+//
+// LOCKING: vMasternodes is mutated under cs (Add, CheckAndRemove), and this
+// used to iterate it with no lock at all.  LOCK2(cs_main, cs) takes cs_main
+// FIRST: IsVotingEligible() reaches cs_main through GetTransaction(), and
+// taking cs alone here would create a cs -> cs_main edge, the reverse of the
+// canonical cs_main -> cs order (the CW5 remedy, same shape as
+// GetCanonicalWinnerFromQueues).  Every caller already holds cs_main, so the
+// outer lock is recursive and costs nothing; it is here so a future caller
+// cannot get the order wrong.  The callers in cmasternodevotetracker.cpp hold
+// voteTracker.cs as well, giving cs_main -> voteTracker.cs -> cs; nothing in
+// the tree takes cs and then voteTracker.cs (checked 2026-11-15).
+int CMasternodeMan::CountVotingEligible(int nBlockHeight)
 {
+	LOCK2(cs_main, cs);
+
 	int i = 0;
-	protocolVersion = protocolVersion == -1 ? masternodePayments.GetMinMasternodePaymentsProto() : protocolVersion;
 
 	for(CMasternode& mn : vMasternodes)
 	{
-		if(mn.protocolVersion < protocolVersion)
-		{
-			continue;
-		}
-
 		if(!mn.IsVotingEligible(nBlockHeight))
 		{
 			continue;
@@ -1582,10 +1603,9 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 		// "upgraded" when only controllers were restarted.
 		//
 		// >>> ADVISORY ONLY.  nAttestedVersion is NOT read by consensus. <<<
-		// CountVotingEligible() still uses protocolVersion.  Wiring this in
-		// would be a consensus change needing its own activation and soak
-		// (FINDING-2026-014).  Keeping it advisory is what lets this ship
-		// without one.  DO NOT quietly promote it.
+		// Since v2.0.0.9 (TODO 3.39) CountVotingEligible() reads no version at
+		// all.  Promoting this into consensus would put gossip back into the
+		// denominator (FINDING-2026-014).  DO NOT quietly promote it.
 		CTxIn vin;
 		int nVersion = 0;
 		int64_t sigTime = 0;

@@ -61,17 +61,14 @@ static const int DATABASE_VERSION = 70509;
 //     the telemetry this bump enables -- not a side effect of it.
 //
 //   MIN_VOTING_PROTOCOL_VERSION (62058, masternode.h) -- intentionally NOT
-//     bumped, and this is the dangerous one.  It is the protocol floor for the
-//     voted-consensus DENOMINATOR: cmasternodevotetracker.cpp calls
-//     CountVotingEligible(N, MIN_VOTING_PROTOCOL_VERSION) and then requires
-//     eligibleVoters >= MIN_ENABLED_FOR_CONSENSUS (5).  Bumping it to 62059
-//     would exclude every v2.0.0.8 masternode (62058) from the denominator the
-//     moment 2.0.0.9 ships.  Until 5+ masternodes have upgraded, eligibleVoters
-//     would fall below the floor and voted consensus would stop resolving --
-//     i.e. the below-floor dead chain that TODO 3.16 exists to rescue, induced
-//     deliberately by a version constant.  The v2.0.0.8 fleet is M1Q
-//     queue-capable and must keep counting.  Raise it only after the fleet has
-//     demonstrably migrated, as its own decision with its own soak.
+//     bumped.  It is the M1Q vote-queue capability floor, and v2.0.0.8
+//     (62058) is queue-capable.  It used to gate the voted-consensus
+//     DENOMINATOR, where bumping it to 62059 would have excluded every v2.0.0.8
+//     masternode the moment 2.0.0.9 shipped and stalled voted consensus -- the
+//     below-floor dead chain TODO 3.16 exists to rescue.  Since v2.0.0.9
+//     (TODO 3.39) CountVotingEligible() applies no version filter at all, so
+//     this constant only labels peers and masternodes as queue-capable in
+//     getdeploymentstatus.  62058 is still the right value for that.
 // ---------------------------------------------------------------------------
 static const int PROTOCOL_VERSION = 62059;
 

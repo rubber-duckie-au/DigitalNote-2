@@ -68,10 +68,10 @@ public:
 	// stale data across restarts, and adding fields to the CMasternode
 	// serialisation would change the masternode.dat format for no benefit.
 	//
-	// DELIBERATELY NOT USED BY CONSENSUS.  CountVotingEligible() still reads
-	// protocolVersion.  Wiring these in would be a consensus change requiring
-	// its own activation and soak (FINDING-2026-014) -- keeping them advisory
-	// is what makes this shippable without one.
+	// DELIBERATELY NOT USED BY CONSENSUS.  Since v2.0.0.9 (TODO 3.39)
+	// CountVotingEligible() reads no version at all -- neither these nor the
+	// controller-stamped protocolVersion.  Making any version a consensus input
+	// again would reintroduce gossip into the denominator (FINDING-2026-014).
 	int nAttestedVersion;    // 0 = never attested
 	int64_t nAttestedTime;   // sigTime of the attestation, for freshness/anti-replay
 
