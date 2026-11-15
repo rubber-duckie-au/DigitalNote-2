@@ -1510,13 +1510,19 @@ tag so future archaeology doesn't need a separate enrichment pass.
 
 A coordinated three-part change shipped under the umbrella label
 "CW9" and gated by the consensus constant
-`VERION_2_0_1_0_MANDATORY_UPDATE_BLOCK = 1400000` on mainnet and
+`VERION_2_0_1_0_MANDATORY_UPDATE_BLOCK = 1280000` on mainnet and
 `VERION_2_0_1_0_TESTNET_UPDATE_BLOCK = 100` on testnet. Together
 these resolve the longstanding deferral of "Dev address rotation"
 recorded in earlier changelogs as H.8, fix a producer/validator
 off-by-one in the ladder lookup that has been latent since v1.0.1.5,
 and restore the strict devops-address check that was commented out
 sometime in the v2.0.0.6-or-earlier era.
+
+> **Corrected 2026-11-15.** This section originally gave the mainnet rotation height as
+> 1,400,000 (estimated September 2027). The height was lowered to **1,280,000** before
+> v2.0.0.8 shipped (`d86b8f3`, 2026-06-10, the same commit that set voted-consensus
+> activation to 1,480,000), and every released v2.0.0.8 build uses 1,280,000. The heights
+> and dates below have been updated to match the code.
 
 ### D.1bis.1 The deferred problem
 
@@ -1543,7 +1549,7 @@ restoring fast operations.
 
 | Network | New devops address | Activation block | Activation date (estimated) |
 |---|---|---|---|
-| Mainnet | `dGoFPie9QZmQ1Ty1beqSHytxNruehpGtGa` | 1,400,000 | ~early September 2027 (at current ~164,981 blocks/year, ~15 months from June 2026 tip 1,180,777) |
+| Mainnet | `dGoFPie9QZmQ1Ty1beqSHytxNruehpGtGa` | 1,280,000 | ~20 Dec 2026 – ~10 Jan 2027 (from tip 1,254,427 on 15 Nov 2026, at 120 s target vs ~190 s observed per block) |
 | Testnet | `tSRDftd9ghEZq3pbwRmwp2FT7VuLcvmtnX` | 100 | Within first few hours of testnet genesis-restart |
 
 Both addresses are fresh wallets generated specifically for v2.0.1.0.
@@ -1660,8 +1666,8 @@ Resulting behaviour matrix:
 
 | Network | Heights | Validator behaviour |
 |---|---|---|
-| Mainnet | 1 → 1,399,999 | Lax (log mismatch, accept block) — preserves all canonical chain history, including the v1.0.1.5 transition irregularities and the v1.0.4.2 chain-correction block 403117 mismatch |
-| Mainnet | 1,400,000 → ∞ | Strict — `fBlockHasPayments = false` on mismatch |
+| Mainnet | 1 → 1,279,999 | Lax (log mismatch, accept block) — preserves all canonical chain history, including the v1.0.1.5 transition irregularities and the v1.0.4.2 chain-correction block 403117 mismatch |
+| Mainnet | 1,280,000 → ∞ | Strict — `fBlockHasPayments = false` on mismatch |
 | Testnet | 1 → 99 | Lax |
 | Testnet | 100 → ∞ | Strict |
 
@@ -1738,9 +1744,9 @@ empirically via RPC probe (June 2026):
 | **v1.0.1.5 rotation** | 65020 | **Jul 2 2019 21:05 UTC** | Single-block rotation to `dHy3LZv...` (same UTC second as 65019 — single producer's binary swap-over) |
 | v1.0.1.5 era | 65020 → 403116 | Jul 2019 → Jul 2021 | `dHy3LZv...` is devops recipient |
 | **v1.0.4.2 rotation** | 403116 → 403117 | **Jul 2021** | Chain-correction hardfork; 1B XDN treasury injection at 403117; rotation to `dafC1Lkn...` |
-| v1.0.4.2 era | 403117 → 1,399,999 | Jul 2021 → ~Sep 2027 | `dafC1Lkn...` is devops recipient |
-| **v2.0.1.0 rotation** | 1,400,000 | **~Sep 2027** (estimated) | Rotation to `dGoFPie9...`, strict check re-engages |
-| v2.0.1.0 era | 1,400,000 → ∞ | ~Sep 2027+ | `dGoFPie9...` is devops recipient |
+| v1.0.4.2 era | 403117 → 1,279,999 | Jul 2021 → ~Dec 2026/Jan 2027 | `dafC1Lkn...` is devops recipient |
+| **v2.0.1.0 rotation** | 1,280,000 | **~Dec 2026 – Jan 2027** (estimated) | Rotation to `dGoFPie9...`, strict check re-engages |
+| v2.0.1.0 era | 1,280,000 → ∞ | ~Jan 2027+ | `dGoFPie9...` is devops recipient |
 
 One peculiarity of the v1.0.0.0 era is worth recording: the address
 `dSCXLHTZJJqTej8ZRszZxbLrS6dDGVJhw7` was an active PoS staking
@@ -1765,22 +1771,22 @@ After CW9, the canonical producer-validator agreement at the
 rotation boundary is:
 
 ```
-Block 1,399,999 (mainnet, the LAST block of the v1.0.4.2 era):
-  Producer asks getDevelopersAdressForHeight(1399999, t)
-    -> nHeight < VERION_2_0_1_0_MANDATORY_UPDATE_BLOCK (1400000)
+Block 1,279,999 (mainnet, the LAST block of the v1.0.4.2 era):
+  Producer asks getDevelopersAdressForHeight(1279999, t)
+    -> nHeight < VERION_2_0_1_0_MANDATORY_UPDATE_BLOCK (1280000)
     -> returns VERION_1_0_4_2_DEVELOPER_ADDRESS = "dafC1Lkn..."
-  Validator asks getDevelopersAdressForHeight(1399999, t)  (via wrapper)
+  Validator asks getDevelopersAdressForHeight(1279999, t)  (via wrapper)
     -> same result, "dafC1Lkn..."
-  Strict check: nHeight (1399999) >= nStrictHeight (1400000) is false
+  Strict check: nHeight (1279999) >= nStrictHeight (1280000) is false
     -> lax check, accept regardless
 
-Block 1,400,000 (mainnet, the FIRST block of the v2.0.1.0 era):
-  Producer asks getDevelopersAdressForHeight(1400000, t)
+Block 1,280,000 (mainnet, the FIRST block of the v2.0.1.0 era):
+  Producer asks getDevelopersAdressForHeight(1280000, t)
     -> nHeight < VERION_2_0_1_0_MANDATORY_UPDATE_BLOCK is FALSE
     -> returns VERION_2_0_1_0_DEVELOPER_ADDRESS = "dGoFPie9..."
-  Validator asks getDevelopersAdressForHeight(1400000, t)
+  Validator asks getDevelopersAdressForHeight(1280000, t)
     -> same result, "dGoFPie9..."
-  Strict check: nHeight (1400000) >= nStrictHeight (1400000) is true
+  Strict check: nHeight (1280000) >= nStrictHeight (1280000) is true
     -> STRICT enforcement engaged
   Producer paid "dGoFPie9..." (correct per ladder)
     -> matches, fBlockHasPayments stays true, block accepts
@@ -1790,17 +1796,17 @@ Identical analysis holds for testnet with `VERION_2_0_1_0_TESTNET_UPDATE_BLOCK =
 
 ### D.1bis.10 Deferred items
 
-A checkpoint at rotation_height + 2000 (mainnet: block 1,402,000;
+A checkpoint at rotation_height + 2000 (mainnet: block 1,282,000;
 testnet: block 2,100) was originally planned to ship in v2.0.0.8.
 This is **deferred to a future point release** (v2.0.0.8.1 or
 v2.0.0.9) because the block in question does not yet exist — there
 is no block hash to anchor the checkpoint to.
 
-Once block 1,402,000 has been mined post-rotation on mainnet, the
+Once block 1,282,000 has been mined post-rotation on mainnet, the
 next point release should add:
 
 ```cpp
-(1402000, uint256("0x<hash of block 1402000>"))
+(1282000, uint256("0x<hash of block 1282000>"))
 ```
 
 to `checkpoints.cpp`. This anchors the chain past the rotation
@@ -2142,7 +2148,7 @@ features:
 
 | Constant | Mainnet | Testnet | Gates what |
 |---|---|---|---|
-| `VERION_2_0_1_0_*_UPDATE_BLOCK` | 1,400,000 | 100 | Devops address rotation (CW9) |
+| `VERION_2_0_1_0_*_UPDATE_BLOCK` | 1,280,000 | 100 | Devops address rotation (CW9) |
 | `VOTED_CONSENSUS_ACTIVATION_FLOOR_*_VAL` | INT_MAX | 2000 | Voted-consensus enforcement |
 | `SPORK_15_VOTED_CONSENSUS_ACTIVATION` | 0 (no override) | 0 (no override) | Spork override that LOWERS the floor |
 
@@ -2928,9 +2934,9 @@ recorded so they are not re-investigated:
 
 - **Checkpoint at v2.0.1.0 rotation + 2000 blocks.** Originally
   planned for v2.0.0.8; deferred because the rotation activation
-  block (mainnet 1,400,000 / testnet 100) does not exist yet at
+  block (mainnet 1,280,000 / testnet 100) does not exist yet at
   v2.0.0.8 tag time. Add to `checkpoints.cpp` in v2.0.0.8.1 or
-  v2.0.0.9 once block 1,402,000 has been mined post-rotation on
+  v2.0.0.9 once block 1,282,000 has been mined post-rotation on
   mainnet (testnet: block 2,100). The entry takes the form
   `(1402000, uint256("0x<hash>"))`. Until that checkpoint ships,
   deep-reorg protection in the rotation window relies on accumulated
@@ -3045,7 +3051,7 @@ regress them.
 | VRX retarget determinism via committed time (D.1.3) | Resolved |
 | Historical mainnet `nBits` exception list extension CW8 (D.1.4) | Applied; 30 heights from full-chain scan, sorted-array + `std::binary_search` helper, log line enriched with `[PoS]`/`[PoW]` tag |
 | Mining-side same-timestamp guarantee CW7 (D.1.5) | Applied — late `nBits` assignment using committed `pblock->nTime` closes the 0.7%-per-stall residual mismatch risk |
-| Devops rotation + strict-check + off-by-one fix CW9 (D.1bis) | Applied — `getDevelopersAdressForHeight()` refactor, all 5 producer callers migrated, strict check re-enabled with height gate; testnet rotation block 100, mainnet rotation block 1,400,000 |
+| Devops rotation + strict-check + off-by-one fix CW9 (D.1bis) | Applied — `getDevelopersAdressForHeight()` refactor, all 5 producer callers migrated, strict check re-enabled with height gate; testnet rotation block 100, mainnet rotation block 1,280,000 |
 | Startup verify rollback (D.2) | Resolved with correct guard |
 | Testnet construction (E.1) | Operational; soak ongoing |
 | SPORK_14/15 activation crossing (E.2) | Completed — SUCCEEDED at testnet height 1837 |

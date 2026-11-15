@@ -522,10 +522,14 @@ substantial work in its own right.
   on submission. The fix eliminates that residual risk by using the
   block's own committed time on both sides. After v2.0.0.8, miner
   and validator agree on `nBits` by construction.
-- **New: devops address rotation — activates at block 1,400,000** —
+- **New: devops address rotation — activates at block 1,280,000** —
   the consensus-defined devops payment recipient rotates to a fresh
-  wallet at mainnet block 1,400,000 (estimated ~early September 2027
-  at current block rate). The previous address has accumulated four
+  wallet at mainnet block 1,280,000. *(Corrected 2026-11-15: these
+  notes originally said 1,400,000, estimated September 2027. The
+  shipped v2.0.0.8 code has always used 1,280,000 — the height was
+  changed before release, in `d86b8f3`. That is around late December
+  2026 to mid-January 2027; see the v2.0.0.9 release notes for a
+  current estimate.)* The previous address has accumulated four
   years of transaction history and the wallet file has grown to
   approximately 720MB on disk even after repeated Compact Wallet
   runs. The new address (`dGoFPie9QZmQ1Ty1beqSHytxNruehpGtGa`) is a
@@ -543,12 +547,12 @@ substantial work in its own right.
   since pre-v2.0.0.6 to avoid breaking resync past historical
   transition irregularities) is restored in v2.0.0.8 and gated to
   activate at the rotation block. Pre-rotation chain history
-  (everything before block 1,400,000 on mainnet) continues to
+  (everything before block 1,280,000 on mainnet) continues to
   validate leniently — log-only on any mismatch — preserving full
   from-genesis resync compatibility including the v1.0.1.5
   transition irregularities (mid-2019) and the v1.0.4.2
   chain-correction (block 403117, mid-2021). Post-rotation
-  (1,400,000 and beyond on mainnet, 100 and beyond on testnet) the
+  (1,280,000 and beyond on mainnet, 100 and beyond on testnet) the
   strict check rejects any block where the devops recipient
   disagrees with the consensus-defined expected address. This
   closes the misdirected-payment vulnerability that would otherwise
