@@ -1520,9 +1520,8 @@ sometime in the v2.0.0.6-or-earlier era.
 
 > **Corrected 2026-11-15.** This section originally gave the mainnet rotation height as
 > 1,400,000 (estimated September 2027). The height was lowered to **1,280,000** before
-> v2.0.0.8 shipped (`d86b8f3`, 2026-06-10, the same commit that set voted-consensus
-> activation to 1,480,000), and every released v2.0.0.8 build uses 1,280,000. The heights
-> and dates below have been updated to match the code.
+> v2.0.0.8 shipped (`d86b8f3`, 2026-06-10), and every released v2.0.0.8 build uses
+> 1,280,000. The heights and dates below have been updated to match the code.
 
 ### D.1bis.1 The deferred problem
 
