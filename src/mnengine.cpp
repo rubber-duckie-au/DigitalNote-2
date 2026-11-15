@@ -10,6 +10,7 @@
 #include "cvalidationstate.h"
 #include "cwallet.h"
 #include "cwallettx.h"
+#include "coutput.h"   // v2.0.0.9 rc8 (B6): SelectCoinsMasternode() returns std::vector<COutput>
 #include "mining.h"
 #include "creservekey.h"
 #include "net/cnode.h"
@@ -208,20 +209,52 @@ void ThreadCheckMNenginePool()
 		// A hot masternode finds its own collateral locally and self-registers; it
 		// has no use for its own dsee.  Only a node that is neither capable nor
 		// enabled is genuinely waiting for one.
+		//
+		// v2.0.0.9 rc8 (B6): two more HOT states that used to fall through and ask
+		// every 5 minutes:
+		//   * MASTERNODE_INPUT_TOO_NEW -- only reachable after ManageStatus() found
+		//     the collateral in THIS wallet (cactivemasternode.cpp), so it is hot by
+		//     construction; it is waiting for confirmations, not for a dsee.
+		//   * MASTERNODE_NOT_CAPABLE with a LOCKED wallet that holds a
+		//     collateral-sized output -- a hot node waiting to be unlocked.  The
+		//     status alone cannot tell it apart from a cold node (a cold node with an
+		//     encrypted, locked wallet stops at the same IsLocked() check), so the
+		//     wallet's own coins decide.  SelectCoinsMasternode() needs no unlock;
+		//     it takes cs_main -> cs_wallet, and this thread holds no locks here.
+		//     Checked only when the timer fires, so at most once per
+		//     DSEGK_ASK_AGAIN_SECONDS.
 		if(fMasterNode &&
 			activeMasternode.status != MASTERNODE_IS_CAPABLE &&
 			activeMasternode.status != MASTERNODE_REMOTELY_ENABLED &&
+			activeMasternode.status != MASTERNODE_INPUT_TOO_NEW &&
 			activeMasternode.pubKeyMasternode.IsValid() &&
 			mnEnginePool.IsMasternodeListSyncable())
 		{
 			static int64_t nLastSelfLookup = 0;
-		
+
 			int64_t nNow = GetTime();
-		
-			if(nNow - nLastSelfLookup >= DSEGK_ASK_AGAIN_SECONDS)
+
+			bool fHotAwaitingUnlock = false;
+
+			if(nNow - nLastSelfLookup >= DSEGK_ASK_AGAIN_SECONDS &&
+				activeMasternode.status == MASTERNODE_NOT_CAPABLE &&
+				pwalletMain != NULL && pwalletMain->IsLocked())
+			{
+				fHotAwaitingUnlock = !activeMasternode.SelectCoinsMasternode().empty();
+
+				if(fHotAwaitingUnlock)
+				{
+					nLastSelfLookup = nNow;   // re-check on the same cadence
+
+					LogPrint("masternode", "ThreadCheckMNenginePool -- wallet is locked and holds "
+							 "collateral (hot masternode); not asking peers for our own entry\n");
+				}
+			}
+
+			if(!fHotAwaitingUnlock && nNow - nLastSelfLookup >= DSEGK_ASK_AGAIN_SECONDS)
 			{
 				nLastSelfLookup = nNow;
-		
+
 				LOCK(cs_vNodes);
 		
 				for(CNode* pnode : vNodes)
