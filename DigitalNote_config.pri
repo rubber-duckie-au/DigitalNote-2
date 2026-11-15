@@ -1,8 +1,36 @@
 ## Version
-DIGITALNOTE_VERSION_MAJOR = 2
-DIGITALNOTE_VERSION_MINOR = 0
-DIGITALNOTE_VERSION_REVISION = 0
-DIGITALNOTE_VERSION_BUILD = 8
+##
+## SINGLE SOURCE OF TRUTH: src/clientversion.h.  The four numbers below are
+## PARSED from its CLIENT_VERSION_* #defines -- bump the version there, and
+## only there.
+##
+## The version used to be typed into both files and bumped by hand in each.
+## The v2.0.0.9 bump (0135b63) updated clientversion.h and missed this file,
+## which stayed at 2.0.0.8.  clientversion.h is the master because everything
+## else already reads it: the version the binary reports, the Windows
+## FileVersion (src/qt/res/bitcoin-qt.rc), version_tests and CI's "Report
+## version constants" step.  These variables only feed qmake's VERSION
+## (include/base.pri).
+##
+## A field that cannot be parsed stops qmake with an error, so a malformed
+## clientversion.h fails the build instead of producing a wrong VERSION.
+DIGITALNOTE_CLIENTVERSION_FILE  = $$PWD/src/clientversion.h
+DIGITALNOTE_CLIENTVERSION_LINES = $$cat($$DIGITALNOTE_CLIENTVERSION_FILE, lines)
+
+defineReplace(digitalNoteClientVersionField) {
+	field_regex = "^\\s*$${LITERAL_HASH}\\s*define\\s+CLIENT_VERSION_$$1\\s+([0-9]+)"
+	field_line  = $$find(DIGITALNOTE_CLIENTVERSION_LINES, $$field_regex)
+	!count(field_line, 1): error("DigitalNote_config.pri: expected exactly one '$${LITERAL_HASH}define CLIENT_VERSION_$$1 <number>' in $$DIGITALNOTE_CLIENTVERSION_FILE")
+	field_value = $$replace(field_line, "$${field_regex}.*", "\\1")
+	field_value = $$replace(field_value, "[^0-9]", "")
+	return($$field_value)
+}
+
+DIGITALNOTE_VERSION_MAJOR    = $$digitalNoteClientVersionField(MAJOR)
+DIGITALNOTE_VERSION_MINOR    = $$digitalNoteClientVersionField(MINOR)
+DIGITALNOTE_VERSION_REVISION = $$digitalNoteClientVersionField(REVISION)
+DIGITALNOTE_VERSION_BUILD    = $$digitalNoteClientVersionField(BUILD)
+message("DigitalNote version $${DIGITALNOTE_VERSION_MAJOR}.$${DIGITALNOTE_VERSION_MINOR}.$${DIGITALNOTE_VERSION_REVISION}.$${DIGITALNOTE_VERSION_BUILD} (from src/clientversion.h)")
 
 ## MSYS2 Install Path
 MINGW64_PREFIX 						  = $$system(cygpath -m /mingw64)
