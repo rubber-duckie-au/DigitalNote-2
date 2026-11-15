@@ -1183,11 +1183,20 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 		// The fleet seed hit exactly this: one reachable peer, banned in the same
 		// second, and the sync never started.
 		//
-		//   not found + behind peers -> 0    normal while syncing; drop it quietly
-		//   not found + caught up    -> 20   a vin that does not exist is suspicious,
-		//                                    but a reorg or a race can also cause it;
-		//                                    five of them still reach the ban score
-		//   found + mismatched       -> 100  the peer is demonstrably wrong
+		//   not found + we may lack it -> 0    normal while syncing; drop it quietly
+		//   not found + caught up      -> 20   a vin that does not exist is suspicious,
+		//                                      but a reorg or a race can also cause it;
+		//                                      five of them still reach the ban score
+		//   found + mismatched         -> 100  the peer is demonstrably wrong
+		//
+		// v2.0.0.9 rc8 (B4): "we may lack it" is now judged against the collateral
+		// confirmation margin, not IsBehindPeers()' 144-block slack.  A collateral
+		// needs only MASTERNODE_MIN_CONFIRMATIONS (7) confirmations on the sender's
+		// chain, so a node more than 7 blocks behind can legitimately be missing it --
+		// but IsBehindPeers() called a node up to 144 blocks behind "caught up" and
+		// charged the peer 20.  The peer-height estimate is also fixed at connect
+		// time and under-reports on long-lived connections, so a tip older than the
+		// same margin at target spacing (7 x 120 s) counts as "may lack it" too.
 		CMNengineSigner::VinPubkeyResult vinCheck =
 			mnEngineSigner.CheckVinPubkeyAssociation(vin, pubkey);
 		
@@ -1202,10 +1211,17 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 		
 		if(vinCheck == CMNengineSigner::VINPUBKEY_TX_NOT_FOUND)
 		{
-			if(mnEnginePool.IsBehindPeers())
+			const CBlockIndex* pindexTip = pindexBest;
+			const bool fMayLackCollateral =
+				mnEnginePool.IsBehindPeersBy(MASTERNODE_MIN_CONFIRMATIONS) ||
+				pindexTip == NULL ||
+				(GetAdjustedTime() - pindexTip->GetBlockTime()) >
+					(int64_t)MASTERNODE_MIN_CONFIRMATIONS * GetTargetSpacing;
+
+			if(fMayLackCollateral)
 			{
-				LogPrintf("dsee - collateral tx %s not in our chain yet and we are behind "
-						  "our peers; ignoring this entry without penalty\n",
+				LogPrintf("dsee - collateral tx %s not in our chain yet and we may be "
+						  "behind; ignoring this entry without penalty\n",
 						  vin.prevout.hash.ToString().substr(0,10).c_str());
 			}
 			else

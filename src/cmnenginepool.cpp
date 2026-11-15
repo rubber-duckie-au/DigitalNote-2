@@ -279,7 +279,19 @@ static std::atomic<int> nPeerHeightEstimate(-1);
 
 void CMNenginePool::RefreshPeerHeightEstimate()
 {
+	// v2.0.0.9 rc8 (B3): prefer OUTBOUND peers.
+	//
+	// nStartingHeight is self-reported.  Inbound peers are chosen by whoever
+	// connects to us, so a handful of inbound peers all claiming a high height
+	// could move the median, make IsBehindPeers() true, and switch off masternode
+	// gossip on this node.  Outbound peers are ones WE chose (addrman), which an
+	// attacker cannot fill as cheaply.
+	//
+	// Fall back to every peer only when we have no usable outbound peer at all
+	// (e.g. a node reached purely by inbound connections), so such a node is not
+	// left permanently "behind" with gossip switched off.
 	std::vector<int> vHeights;
+	std::vector<int> vOutboundHeights;
 
 	{
 		LOCK(cs_vNodes);
@@ -300,7 +312,17 @@ void CMNenginePool::RefreshPeerHeightEstimate()
 			}
 
 			vHeights.push_back(pnode->nStartingHeight);
+
+			if (!pnode->fInbound)
+			{
+				vOutboundHeights.push_back(pnode->nStartingHeight);
+			}
 		}
+	}
+
+	if (!vOutboundHeights.empty())
+	{
+		vHeights.swap(vOutboundHeights);
 	}
 
 	if (vHeights.empty())
@@ -329,6 +351,11 @@ void CMNenginePool::RefreshPeerHeightEstimate()
 
 bool CMNenginePool::IsBehindPeers()
 {
+	return IsBehindPeersBy(PEER_HEIGHT_TOLERANCE);
+}
+
+bool CMNenginePool::IsBehindPeersBy(int nToleranceBlocks)
+{
 	int nEstimate = nPeerHeightEstimate.load();
 
 	if (nEstimate < 0)
@@ -341,7 +368,7 @@ bool CMNenginePool::IsBehindPeers()
 	// when judging whether a peer is usefully ahead.  nStartingHeight is fixed at
 	// connection time, so on long-lived connections it UNDER-reports peers, which
 	// errs toward "not behind" -- the W-17 part 1 penalty split covers that.
-	return (nBestHeight + PEER_HEIGHT_TOLERANCE) < nEstimate;
+	return (nBestHeight + nToleranceBlocks) < nEstimate;
 }
 
 bool CMNenginePool::IsMasternodeListSyncable()

@@ -104,6 +104,9 @@ public:
 	// safe to call from anywhere, including the message handler.
 	static void RefreshPeerHeightEstimate();
 	static bool IsBehindPeers();
+	// v2.0.0.9 rc8 (B4): same test with a caller-chosen tolerance in blocks.
+	// IsBehindPeers() is IsBehindPeersBy(PEER_HEIGHT_TOLERANCE).
+	static bool IsBehindPeersBy(int nToleranceBlocks);
 	void Check();
 	void CheckFinalTransaction();
 	/// Charge fees to bad actors (Charge clients a fee if they're abusive)
