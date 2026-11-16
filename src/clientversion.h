@@ -38,7 +38,7 @@
 // requires fixing the repository's tag state FIRST.
 //
 // Set to "" (empty) for the tagged release build.
-#define CLIENT_VERSION_CANDIDATE   "rc8-"
+#define CLIENT_VERSION_CANDIDATE   "rc9-"
 
 // Converts the parameter X to a string after macro replacement on X has been performed.
 // Don't merge these into one macro!
