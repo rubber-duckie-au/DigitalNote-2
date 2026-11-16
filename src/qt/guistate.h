@@ -71,9 +71,11 @@ void setRecoveryPhraseUpgradeDeclined(const std::string& walletPath);
 // collateral amount).  Per-wallet: a different wallet file gets prompted
 // afresh on the same kind of receive.
 //
-// Per-UTXO suppression is NOT needed -- the prompt fires from
-// incomingTransaction which only fires once per UTXO appearance.  This
-// flag is the user's blanket opt-out for a given wallet.
+// Per-UTXO suppression is NOT needed -- the prompt fires from the CT_NEW
+// scan in TransactionTablePriv (via WalletModel::collateralCandidateReceived),
+// once per new transaction record; NOT from incomingTransaction (v2.0.0.9
+// rc9 correction, review 2 5.S7).  This flag is the user's blanket opt-out
+// for a given wallet; it is checked in the GUI slot, after the signal.
 
 bool is2MCollateralPromptSuppressed(const std::string& walletPath);
 void set2MCollateralPromptSuppressed(const std::string& walletPath);

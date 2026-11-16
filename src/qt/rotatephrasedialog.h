@@ -13,9 +13,19 @@
 //   2. Re-enter current password (proves authorization; we use it to
 //      re-encrypt the new vMasterKey under it).
 //   3. Wallet is unlocked, master key is rotated, new mnemonic is computed.
-//   4. New phrase is displayed in a "write this down NOW" dialog with
-//      a 10-second hold and a tick-box "I have written this down".
-//   5. Old phrase no longer works for this wallet file.
+//   4. New phrase is displayed in SeedPhraseDialog (FirstTimeAutoReveal
+//      mode, the same dialog used after first encryption).  When it closes,
+//      a confirmation box requires the tick-box "I have written down my new
+//      24-word recovery phrase" before "Done" is enabled; "Show the phrase
+//      again" (also Escape / close) re-opens the phrase.  The flow cannot
+//      end until the user ticks and clicks Done (v2.0.0.9 rc9, ROT).
+//   5. Old phrase no longer works for this wallet file (from the moment the
+//      rotation commits, before step 4).
+//
+// v2.0.0.9 rc9 note (review 2 5.S2): the "done stage" members below
+// (StageDone, buildDoneUi, the countdown / acknowledge / close slots and
+// their widgets) are DEAD -- never reached since the flow moved to
+// SeedPhraseDialog.  Removal is v2.0.1.0.
 //
 // All sensitive state is kept in SecureString and OPENSSL_cleansed before
 // the dialog is destroyed.
@@ -59,8 +69,9 @@ private:
     //   1. show consent dialog,
     //   2. prompt for password,
     //   3. call WalletModel::rotateRecoveryPhrase,
-    //   4. transition into stageDone showing the new phrase,
-    //   5. countdown 10s, then enable the "I have written this down" checkbox.
+    //   4. show the new phrase (SeedPhraseDialog) and loop until the user
+    //      ticks "I have written down my new 24-word recovery phrase" and
+    //      clicks Done (see the file header), then accept().
     void runFlow();
 
     bool showConsentDialog();

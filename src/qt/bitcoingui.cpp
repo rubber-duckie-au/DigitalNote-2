@@ -407,7 +407,7 @@ void DigitalNoteGUI::createActions()
     tabGroup->addAction(blockAction);
 
     showBackupsAction = new QAction(QIcon(":/icons/browse"), tr("Show Auto&Backups"), this);
-    showBackupsAction->setStatusTip(tr("S"));
+    showBackupsAction->setStatusTip(tr("Open the folder that holds the automatic wallet backups"));
 
     connect(blockAction, SIGNAL(triggered()), this, SLOT(gotoBlockBrowser()));
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -440,7 +440,7 @@ void DigitalNoteGUI::createActions()
     optionsAction->setMenuRole(QAction::PreferencesRole);
     toggleHideAction = new QAction(QIcon(":/icons/bitcoin"), tr("&Show / Hide"), this);
     encryptWalletAction = new QAction(QIcon(":/icons/lock_closed_toolbar"), tr("&Encrypt Wallet..."), this);
-    encryptWalletAction->setToolTip(tr("Encrypt or decrypt wallet"));
+    encryptWalletAction->setToolTip(tr("Encrypt the wallet"));
     backupWalletAction = new QAction(QIcon(":/icons/filesave"), tr("&Backup Wallet..."), this);
     backupWalletAction->setToolTip(tr("Backup wallet to another location"));
     importPrivateKeyAction = new QAction(QIcon(":/icons/key"), tr("&Import private key..."), this);
@@ -458,7 +458,7 @@ void DigitalNoteGUI::createActions()
 	checkWalletAction = new QAction(QIcon(":/icons/transaction_confirmed"), tr("&Check Wallet..."), this);
 	checkWalletAction->setStatusTip(tr("Check wallet integrity and report findings"));
 	repairWalletAction = new QAction(QIcon(":/icons/options"), tr("&Repair Wallet..."), this);
-	repairWalletAction->setStatusTip(tr("Fix wallet integrity and remove orphans"));
+	repairWalletAction->setStatusTip(tr("Fix spent/unspent flags that disagree with the block index"));
 
 	compactWalletAction = new QAction(QIcon(":/icons/options"), tr("&Compact Wallet..."), this);
 	compactWalletAction->setStatusTip(tr("Rebuild wallet.dat to reclaim space (restarts the wallet, takes time)"));
@@ -503,8 +503,8 @@ void DigitalNoteGUI::createActions()
     seedPhraseAction = new QAction(QIcon(":/icons/key"), tr("&Recovery Phrase..."), this);
     seedPhraseAction->setToolTip(
         tr("View your 24-word wallet recovery phrase.\n\n"
-           "Note: Only available for wallets encrypted in DigitalNote v2.0.0.7 or later.\n"
-           "Older encrypted wallets do not have a recovery phrase stored."));
+           "Note: the wallet must be encrypted. Wallets encrypted before\n"
+           "DigitalNote v2.0.0.7 are upgraded to a recovery phrase on first use."));
     connect(seedPhraseAction, SIGNAL(triggered()), this, SLOT(showSeedPhrase()));
 }
 
@@ -537,8 +537,9 @@ void DigitalNoteGUI::createMenuBar()
     settings->addAction(optionsAction);
 
     // Tools menu: maintenance operations.  Show Backups opens the wallet
-    // backup folder; Check/Repair Wallet validate and recover BDB state
-    // without restart; Compact Wallet is the dump-and-restore rebuild
+    // backup folder; Check/Repair Wallet compare (and repair) the legacy
+    // spent flags against the block index without restart -- they do not
+    // touch BDB state or orphans; Compact Wallet is the dump-and-restore rebuild
     // (long-running, requires restart).  All four were previously in
     // the Settings menu where they didn't belong (Settings is for
     // security state and preferences); the Tools menu was added in this
@@ -1490,8 +1491,8 @@ void DigitalNoteGUI::setEncryptionStatus(int status)
         lockWalletAction->setVisible(false);
         unlockForStakingAction->setVisible(true);   // primary use case
         encryptWalletAction->setEnabled(false);
-        encryptWalletAction->setText(tr("&Decrypt Wallet..."));
-        encryptWalletAction->setToolTip(tr("Unlock your wallet first, then use Decrypt Wallet."));
+        encryptWalletAction->setText(tr("&Encrypt Wallet..."));
+        encryptWalletAction->setToolTip(tr("The wallet is already encrypted"));
         fGUIunlock = false;
         break;
     }
@@ -1563,8 +1564,7 @@ void DigitalNoteGUI::checkWallet()
 			tr(
 				"Wallet failed integrity test!\n\n"
 				"Mismatched coin(s) found: %1.\n"
-				"Amount in question: %2.\n"
-				"Orphans found: %3.\n\n"
+				"Amount in question: %2.\n\n"
 				"Please backup wallet and run repair wallet.\n"
 			)
 			.arg(nMismatchSpent)
@@ -1626,7 +1626,8 @@ void DigitalNoteGUI::compactWallet()
         "preserved.</p>"
         "<p><b>Before you continue, you should understand:</b></p>"
         "<ul>"
-        "<li>The wallet will <b>shut down and restart</b> automatically.</li>"
+        "<li>The wallet will <b>shut down</b>. Start it again to run the "
+        "rebuild (it does not restart by itself).</li>"
         "<li>The rebuild can take <b>minutes to hours</b> on a large "
         "wallet. The wallet is unusable while it runs.</li>"
         "<li>Your original wallet will be preserved as "

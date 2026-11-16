@@ -237,9 +237,12 @@ void WalletModel::updateStatus()
  
     // v2.0.0.9 TODO 3.36: gated AND de-duplicated.
     //
-    // This was an unconditional LogPrintf on a POLLED path.  updateStatus() is
-    // driven by pollTimer at MODEL_UPDATE_DELAY = 250 ms (guiconstants.h:5), so
-    // it emitted 4 lines PER SECOND -- roughly 14,400 an hour, for the life of
+    // This was an unconditional LogPrintf.  v2.0.0.9 rc9 correction (review 2
+    // 5.S5): updateStatus() is NOT driven by pollTimer (that drives
+    // pollBalanceChanged); it runs on every NotifyStatusChanged from the
+    // keystore.  The observed ~4 lines per second therefore means something
+    // was firing that signal repeatedly -- not investigated.  The original
+    // note said it emitted roughly 14,400 lines an hour, for the life of
     // the process, on every user's wallet.  The overwhelming majority report an
     // unchanged status.
     //
@@ -714,7 +717,11 @@ bool WalletModel::setWalletLocked(bool locked, const SecureString &passPhrase, b
     else
     {
         // Unlock
-        return wallet->Unlock(passPhrase, stakingOnly);
+        // v2.0.0.9 rc9 (review 5.D2, R2): CWallet::Unlock is
+        // (pass, anonymizeOnly, stakingOnly).  The flag was being passed as
+        // anonymizeOnly, so a staking-only request did a FULL unlock unless
+        // the caller also set fWalletUnlockStakingOnly itself afterwards.
+        return wallet->Unlock(passPhrase, false, stakingOnly);
     }
 }
 

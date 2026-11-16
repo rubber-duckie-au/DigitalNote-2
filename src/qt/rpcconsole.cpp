@@ -577,7 +577,10 @@ void RPCConsole::on_lineEdit_returnPressed()
     QString cmd = ui->lineEdit->text();
     ui->lineEdit->clear();
 
-    if(!cmd.isEmpty())
+    // v2.0.0.9 rc9 (review 6.11, D5): ignore whitespace-only input.  The
+    // executor sends no reply for an empty argument list, so the console
+    // stayed "in flight" and locked up.
+    if(!cmd.trimmed().isEmpty())
     {
         message(CMD_REQUEST, cmd);
         setCommandInFlight(true);

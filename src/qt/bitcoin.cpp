@@ -267,26 +267,22 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     // ---------------------------------------------------------------------
-    // v2.0.0.9 Qt6: PIN THE WIDGET STYLE.
-    //
-    // >>> DO NOT ADD LogPrintf() ANYWHERE IN THIS FUNCTION. <<<
+    // v2.0.0.9: NO LogPrintf() BEFORE SelectParamsFromCommandLine().
+    // (v2.0.0.9 rc9 wording, review 2 5.S4.)
     //
     // A GUI diagnostic block lived here and was REMOVED 2026-08-28 because it
     // put debug.log in the WRONG DIRECTORY on testnet.
     //
     // LogPrintStr -> boost::call_once(DebugPrintInit) -> GetDataDir(), and
     // GetDataDir resolves nNet = Params().NetworkID() AND CACHES IT
-    // (util.cpp:1500-1516).  The network is not selected until
-    // SelectParamsFromCommandLine() in AppInit2 (init.cpp:476), which runs
-    // LATER than anything in this file.  So the FIRST LogPrintf here binds
-    // debug.log to the MAINNET directory for the whole process, whatever
-    // -testnet says.
+    // (util.cpp, GetDataDir).  The network is selected by the
+    // SelectParamsFromCommandLine() call further down THIS function (and
+    // again in AppInit2).  So a LogPrintf before that call binds debug.log to
+    // the MAINNET directory for the whole process, whatever -testnet says.
+    // After it, logging is safe.
     //
     // Moving the calls after ReadConfigFile() was NOT sufficient -- that is
     // the wrong boundary.  SelectParams is the one that matters.
-    //
-    // If this diagnostic is wanted again, emit it from AppInit2 AFTER
-    // SelectParamsFromCommandLine(), never from here.
     // ---------------------------------------------------------------------
     // v2.0.0.9 Qt6: PIN THE WIDGET STYLE.
     //
@@ -319,8 +315,6 @@ int main(int argc, char *argv[])
 #endif
 
     GUIUtil::applyDefaultFont(&app);
-
-    // Captured AFTER applyDefaultFont: what the UI actually uses.
 
     // Do this early as we don't want to bother initializing if we are just calling IPC
     // ... but do it after creating app, so QCoreApplication::arguments is initialized:

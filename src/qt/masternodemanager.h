@@ -85,10 +85,10 @@ private:
      *  unlocked (either fully or staking-only), returns true immediately.
      *  If locked, presents an AskPassphraseDialog in UnlockStaking mode
      *  so the user gets a checkbox-default for "keep unlocked for
-     *  staking" -- which keeps the MN functional after the worker
-     *  finishes (vs. the old plain-Unlock which lets the wallet auto-
-     *  relock and breaks local MN re-registration on transient network
-     *  hiccups).  Returns false if the user cancelled or the unlock
+     *  staking", which keeps sends blocked while the MN keeps working.
+     *  (v2.0.0.9 rc9 note: there is no GUI auto-relock; the old relock
+     *  was an explicit Lock() in MasternodeWorker, removed in v2.0.0.8.)
+     *  Returns false if the user cancelled or the unlock
      *  failed -- in which case the caller must abort the operation. */
     bool ensureWalletUnlocked();
 

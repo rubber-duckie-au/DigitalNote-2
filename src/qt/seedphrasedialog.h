@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: MIT
 //
 // seedphrasedialog.h
-// Qt dialog/tab that shows (and optionally verifies) the BIP39 seed phrase
-// for the current wallet.  Designed to be embedded as a tab in the main
-// wallet window OR used as a standalone modal dialog.
+// Qt dialog that shows (and optionally verifies) the BIP39 seed phrase for
+// the current wallet.  Always used as a modal dialog (never as a tab).
 //
 // Two display modes
 // -----------------
@@ -20,8 +19,12 @@
 //
 // Security design
 // ---------------
-//  * The mnemonic is never stored in a QLabel's text - it is written directly
-//    into the styled word grid and cleared on close via clearMnemonic().
+//  * The words ARE shown in per-word QLabels in the word grid (v2.0.0.9 rc9
+//    correction, review 2 5.S1).  clearMnemonic() hides the grid, wipes
+//    m_currentMnemonic and clears the clipboard if it still holds the phrase;
+//    the word labels themselves are only deleted on the next reveal.  The
+//    main window keeps one instance for the whole session, so after a reveal
+//    the words stay in hidden QLabels until then (or until exit).
 //  * In Normal mode, the "Reveal" button requires the wallet to be unlocked
 //    first, and a 10-second countdown must complete before display.
 //  * In FirstTimeAutoReveal mode the phrase is shown immediately; the user

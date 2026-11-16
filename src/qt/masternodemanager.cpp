@@ -189,7 +189,9 @@ void MasternodeManager::on_tableWidget_2_itemSelectionChanged()
     int n = ui->tableWidget_2->selectionModel()->selectedRows().count();
     ui->startButton->setEnabled(n > 0);
     ui->stopButton->setEnabled(n > 0);
-    // Edit operates on exactly one row -- multi-row edit isn't supported.
+    // Enabled only with exactly one row selected, but the Edit button
+    // ignores the selection: it opens the whole masternode config file
+    // (v2.0.0.9 rc9 note, review 2 5.S6).
     ui->editButton->setEnabled(n == 1);
 }
 
@@ -685,10 +687,14 @@ void MasternodeManager::onWorkerError(QString message)
 //     network drops -- continue to work because IsLocked() returns
 //     false.  Sends and other wallet-modifying ops remain blocked.
 //
-//   * If they uncheck the box: wallet unlocks fully but is subject to
-//     the normal auto-relock behaviour.  Local MN remains at risk of
-//     the historical relock-breaks-recovery issue.  Inform-only --
-//     we honour the user's choice.
+//   * If they uncheck the box: wallet unlocks fully.  v2.0.0.9 rc9
+//     correction (review 2 5.S3): a full GUI unlock has NO timeout either
+//     -- there is no GUI auto-relock timer (only the RPC walletpassphrase
+//     has one).  The historical relock came from an explicit Lock() in
+//     MasternodeWorker, removed in v2.0.0.8.  The wallet stays unlocked
+//     until the user locks it.
+//
+// Either way the master key stays decrypted, so the local MN keeps working.
 //
 bool MasternodeManager::ensureWalletUnlocked()
 {
@@ -895,8 +901,11 @@ void MasternodeManager::on_editButton_clicked()
     std::string statusObj;
 
     // load config data
+    // v2.0.0.9 rc9 (review 5.S6, R3): open the file the node actually reads
+    // (GetMasternodeConfigFile honours -mnconf), not a hard-coded
+    // <datadir>/masternode.conf.
     boost::filesystem::ifstream streamConfig(GetMasternodeConfigFile());
-    boost::filesystem::path mnodeConfig(GetDataDir() / "masternode.conf");
+    boost::filesystem::path mnodeConfig(GetMasternodeConfigFile());
 
     if (!streamConfig.good()) {
         statusObj += "<br>Cannot find MasterNode config file!" ;

@@ -6,6 +6,7 @@
 #include "seedphrasedialog.h"
 #include "decryptworker.h"
 #include <QThread>
+#include <QPointer>
 #include <QProgressDialog>
 #include <QApplication>
 #include "walletmodel.h"
@@ -371,14 +372,18 @@ void SeedPhraseDialog::onRevealClicked()
         bool upgradeSuccess = false;
         QString upgradeError;
 
+        // v2.0.0.9 rc9 (review 6.2, A13): `this` as the context object makes
+        // these QUEUED connections, so the lambdas run on the GUI thread (they
+        // touch widgets and the captured locals).  Without it they ran on the
+        // worker thread.  No processEvents() inside them: the loop below
+        // already pumps events.
         connect(thread, &QThread::started, worker, &DecryptWorker::run);
-        connect(worker, &DecryptWorker::progress, [&](int cur, int total, QString label) {
+        connect(worker, &DecryptWorker::progress, this, [&](int cur, int total, QString label) {
             progress.setRange(0, total);
             progress.setValue(cur);
             progress.setLabelText(label);
-            QApplication::processEvents();
         });
-        connect(worker, &DecryptWorker::finished, [&](bool ok, QString err) {
+        connect(worker, &DecryptWorker::finished, this, [&](bool ok, QString err) {
             upgradeSuccess = ok;
             upgradeError = err;
             thread->quit();
@@ -386,8 +391,11 @@ void SeedPhraseDialog::onRevealClicked()
         connect(thread, &QThread::finished, worker, &QObject::deleteLater);
         connect(thread, &QThread::finished, thread, &QObject::deleteLater);
 
+        // QPointer: the thread deletes itself (deleteLater on finished), which
+        // can happen inside processEvents() below.
+        QPointer<QThread> threadGuard(thread);
         thread->start();
-        while (thread->isRunning()) {
+        while (threadGuard && threadGuard->isRunning()) {
             QApplication::processEvents(QEventLoop::AllEvents, 100);
         }
         progress.close();
@@ -606,7 +614,11 @@ void SeedPhraseDialog::onVerifyClicked()
         QMessageBox::information(this, tr("Verification Successful"),
             tr("✓ Your seed phrase matches. It is recorded correctly."));
     } else {
-        SecureString ss(entered.toStdString().begin(), entered.toStdString().end());
+        // v2.0.0.9 rc9 (review 6.6, A14): build from ONE std::string.  The old
+        // code took begin() and end() of two different temporaries (undefined
+        // behaviour on every mismatched verify).
+        std::string strEntered = entered.toStdString();
+        SecureString ss(strEntered.begin(), strEntered.end());
         if (!BIP39Wallet::validateMnemonic(ss)) {
             QMessageBox::critical(this, tr("Invalid Mnemonic"),
                 tr("The phrase you entered is not a valid BIP39 mnemonic "
@@ -623,6 +635,15 @@ void SeedPhraseDialog::onVerifyClicked()
 
 void SeedPhraseDialog::clearMnemonic()
 {
+    // v2.0.0.9 rc9 (review 6.7, A15): this stops the 30-second clipboard timer
+    // below, so clear the clipboard NOW if it still holds the phrase --
+    // otherwise closing the dialog within 30 s left all 24 words there.
+    if (!m_currentMnemonic.isEmpty()) {
+        QClipboard *cb = QApplication::clipboard();
+        if (cb && cb->text() == m_currentMnemonic)
+            cb->clear();
+    }
+
     if (!m_currentMnemonic.isEmpty()) {
         // Overwrite Qt's copy-on-write string in place
         for (int i = 0; i < m_currentMnemonic.size(); ++i)

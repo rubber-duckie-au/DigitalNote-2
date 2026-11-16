@@ -167,16 +167,9 @@ void ConversationModel::rebuild()
 			return a.lastMessageTime > b.lastMessageTime;
 		});
 
-	// Step-1 validation: report grouping result (remove once the two-pane view lands).
-	qWarning() << "ConversationModel::rebuild ->" << conversations.size() << "conversations from"
-	           << (messageModel ? messageModel->rowCount(QModelIndex()) : 0) << "messages";
-	for(int c = 0; c < conversations.size(); c++)
-	{
-		const Conversation &cv = conversations.at(c);
-		qWarning() << "  conv" << c << ":" << (cv.label.isEmpty() ? truncateAddress(cv.counterparty) : cv.label)
-		           << "them=" << truncateAddress(cv.counterparty) << "me=" << truncateAddress(cv.myAddress)
-		           << cv.messageCount << "msgs, last" << cv.lastMessageTime.toString();
-	}
+	// v2.0.0.9 rc9 (review 6.9, A16): the step-1 validation dump that stood here
+	// wrote every conversation's label and addresses to debug.log on every
+	// rebuild (a privacy leak in logs users post for support).  Removed.
 
 	endResetModel();
 }

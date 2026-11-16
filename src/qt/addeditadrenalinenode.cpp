@@ -52,7 +52,7 @@ void AddEditAdrenalineNode::on_okButton_clicked()
     else if(ui->addressLineEdit->text() == "")
     {
         QMessageBox msg;
-        msg.setText("Please enter an ip address and port. (123.45.67.89:51441)");
+        msg.setText("Please enter an ip address and port. (123.45.67.89:18092)");
         msg.exec();
         return;
     }
@@ -85,7 +85,9 @@ void AddEditAdrenalineNode::on_okButton_clicked()
         std::string sTxHash = ui->txhashLineEdit->text().toStdString();
         std::string sOutputIndex = ui->outputindexLineEdit->text().toStdString();
 
-        boost::filesystem::path pathConfigFile = GetDataDir() / "masternode.conf";
+        // v2.0.0.9 rc9 (review 5.S6, R3): append to the file the node reads
+        // (GetMasternodeConfigFile honours -mnconf).
+        boost::filesystem::path pathConfigFile = GetMasternodeConfigFile();
         boost::filesystem::ofstream stream (pathConfigFile.string(), std::ios::out | std::ios::app);
         if (stream.is_open())
         {

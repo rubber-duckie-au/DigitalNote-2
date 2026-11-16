@@ -401,9 +401,10 @@ signals:
 
     /** Emitted when an incoming transaction creates a UTXO that looks
      *  like fresh masternode collateral: exactly 2,000,000 XDN, owned
-     *  by us, spendable, not already locked, and the user has not
-     *  globally suppressed the prompt for this wallet (see GuiState
-     *  is2MCollateralPromptSuppressed).  BitcoinGUI handles the prompt
+     *  by us, spendable, not already locked.  The per-wallet suppression
+     *  (GuiState is2MCollateralPromptSuppressed) is checked in the
+     *  BitcoinGUI slot, not before this emit (v2.0.0.9 rc9 correction,
+     *  review 2 5.S7).  BitcoinGUI handles the prompt
      *  dialog.  Fired from CT_NEW handling in TransactionTablePriv. */
     void collateralCandidateReceived(const QString &txidHex, int vout);
 

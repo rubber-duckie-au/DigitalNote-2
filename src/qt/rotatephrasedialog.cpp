@@ -116,8 +116,9 @@ RotatePhraseDialog::RotatePhraseDialog(WalletModel *model, QWidget *parent)
     setModal(true);
     setMinimumWidth(560);
 
-    // Attempt the flow.  The constructor returns either with the dialog
-    // ready to display the new phrase (StageDone) or the failure message
+    // Attempt the flow.  On success the new phrase is shown and confirmed
+    // inside runFlow() and the dialog is already accepted when the
+    // constructor returns; on failure it holds the failure message
     // (StageFailed).  If the user cancels at any consent step, we just
     // close immediately without showing anything.
     runFlow();
@@ -215,10 +216,38 @@ void RotatePhraseDialog::runFlow()
     // dialog disposes cleanly.
     hide();
 
-    SeedPhraseDialog phraseDlg(m_model, parentWidget(),
-                                SeedPhraseDialog::Mode::FirstTimeAutoReveal,
-                                phraseStr);
-    phraseDlg.exec();
+    // v2.0.0.9 rc9 (review 5.S2, ROT): the old recovery phrase stopped working
+    // the moment the rotation committed, so the user must confirm they have
+    // written the NEW one down before this flow can end.  Closing the
+    // confirmation (or choosing "Show the phrase again") re-opens the phrase.
+    for (;;)
+    {
+        {
+            SeedPhraseDialog phraseDlg(m_model, parentWidget(),
+                                        SeedPhraseDialog::Mode::FirstTimeAutoReveal,
+                                        phraseStr);
+            phraseDlg.exec();
+        }
+
+        QMessageBox confirm(parentWidget());
+        confirm.setWindowTitle(tr("Confirm your new recovery phrase"));
+        confirm.setIcon(QMessageBox::Warning);
+        confirm.setText(tr("Your OLD recovery phrase no longer works for this wallet.\n\n"
+                           "Only the NEW 24-word phrase you were just shown can restore it. "
+                           "Make sure you have written it down and stored it safely."));
+        QCheckBox *ack = new QCheckBox(tr("I have written down my new 24-word recovery phrase"));
+        confirm.setCheckBox(ack);
+        QPushButton *doneBtn  = confirm.addButton(tr("Done"), QMessageBox::AcceptRole);
+        QPushButton *againBtn = confirm.addButton(tr("Show the phrase again"), QMessageBox::RejectRole);
+        doneBtn->setEnabled(false);
+        connect(ack, &QCheckBox::toggled, doneBtn, &QPushButton::setEnabled);
+        confirm.setDefaultButton(againBtn);
+        confirm.setEscapeButton(againBtn);
+        confirm.exec();
+
+        if (confirm.clickedButton() == doneBtn && ack->isChecked())
+            break;
+    }
 
     // Wipe the local QString -- the SeedPhraseDialog has already wiped its
     // own internal copies on close.
