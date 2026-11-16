@@ -30,10 +30,13 @@ Release notes: [► docs/release-notes/v2.0.0.9.md](docs/release-notes/v2.0.0.9.
 Ecosystem overview: [► the full map](docs/digitalnote_ecosystem_2026.svg) — wallets,
 staking and masternodes, mining, the WXDN bridge, and encrypted messaging.
 
-Voted consensus activates on mainnet at block **1,480,000**. Until then the
-wallet behaves exactly as v2.0.0.8 did for payment selection — the machinery is
-present but inactive, and no masternode is dropped from eligibility by
-upgrading. v2.0.0.8 masternodes continue to count toward consensus.
+Voted consensus is **not scheduled on mainnet** in this release (testnet only).
+On mainnet the machinery is present but inactive: each block producer picks the
+masternode payee from its own list, as under v2.0.0.8. One difference: v2.0.0.9
+no longer requires a masternode to accept inbound connections from each peer to
+count as enabled, so IPv6 masternodes are now paid by upgraded nodes. No
+masternode is dropped from eligibility by upgrading, and v2.0.0.8 masternodes
+continue to count toward consensus.
 
 **This release is not mandatory**, and the network protocol remains compatible
 with v2.0.0.8 (protocol 62059; older clients still connect and sync).
@@ -47,6 +50,11 @@ github releases: [► DigitalNoteXDN/DigitalNote-2](https://github.com/DigitalNo
 Build instructions:
 -------------------
 DigitalNote Builder project: [► DigitalNoteXDN/DigitalNote-Builder](https://github.com/DigitalNoteXDN/DigitalNote-Builder)
+
+The Builder project (and this repository's CI) is the reference for current
+builds. The per-platform notes below are older and partly out of date: they
+describe Qt 5 and, for Windows, Boost 1.57 / OpenSSL 1.0.1p, while v2.0.0.9
+builds with Qt 6, Boost 1.91 and OpenSSL 3.x.
 
 Per-platform notes in this repository:
 
@@ -76,7 +84,7 @@ DigitalNote uses
 General Specs
 
 	* Block Spacing: 2 Minutes
-	* Stake Minimum Age: 15 Confirmations (PoS-v3) | 30 Minutes (PoS-v2)
+	* Stake Minimum Maturity: 25 Confirmations (no separate minimum age)
 	* Masternode Collateral: 2,000,000 XDN
 	* Mainnet P2P Port: 18092
 	* Mainnet RPC Port: 18094

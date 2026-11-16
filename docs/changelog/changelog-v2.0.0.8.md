@@ -2937,7 +2937,9 @@ recorded so they are not re-investigated:
   v2.0.0.8 tag time. Add to `checkpoints.cpp` in v2.0.0.8.1 or
   v2.0.0.9 once block 1,282,000 has been mined post-rotation on
   mainnet (testnet: block 2,100). The entry takes the form
-  `(1402000, uint256("0x<hash>"))`. Until that checkpoint ships,
+  `(1282000, uint256("0x<hash>"))` (erratum, v2.0.0.9: this example
+  previously read 1402000; the height is rotation + 2000 = 1,282,000).
+  Until that checkpoint ships,
   deep-reorg protection in the rotation window relies on accumulated
   chain work alone.
 

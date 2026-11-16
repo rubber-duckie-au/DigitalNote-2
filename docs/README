@@ -1,4 +1,4 @@
-DigitalNote 0.4.4 BETA
+DigitalNote (XDN)
 
 Copyright (c) 2013 NovaCoin Developers
 Copyright (c) 2011-2012 PPCoin Developers
@@ -11,8 +11,8 @@ cryptographic software written by Eric Young (eay@cryptsoft.com).
 
 Intro
 -----
-DigitalNote is a free open source project derived from DigitalNote, with
-the goal of providing a long-term energy-efficient scrypt-based crypto-currency.
-Built on the foundation of DigitalNote, PPCoin and NovaCoin, innovations such as proof-of-stake
-help further advance the field of crypto-currency.
+DigitalNote is a free open source proof-of-stake crypto-currency with
+masternodes and encrypted messaging, built on the foundation of PPCoin and
+NovaCoin. For the current release, features and build instructions see
+README.md in the repository root and docs/release-notes/.
 
