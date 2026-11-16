@@ -83,7 +83,7 @@ namespace DigitalNote {
 namespace SMSG {
 // Extern
 boost::thread_group								ext_thread_group;
-bool											ext_enabled = false;
+std::atomic<bool>								ext_enabled(false);
 std::map<int64_t, DigitalNote::SMSG::Bucket>	ext_buckets;
 std::vector<DigitalNote::SMSG::Address>			ext_addresses;
 DigitalNote::SMSG::Options						ext_options;
@@ -325,7 +325,9 @@ void Thread_Pow()
 		}
 
 		{
-			LOCK(DigitalNote::SMSG::ext_cs);
+			// v2.0.0.9: the iterator belongs to the database, so free it
+			// under ext_cs_db like every other use of it (was ext_cs).
+			LOCK(DigitalNote::SMSG::ext_cs_db);
 			
 			delete it;
 		}
@@ -1115,13 +1117,28 @@ bool Disable()
 		return false;
 	}
 
+	// v2.0.0.9: stop and join the worker threads BEFORE taking ext_cs.
+	//
+	// Thread() and Thread_Pow() both take ext_cs to finish a pass
+	// (bucket sweep; Store() after proof-of-work).  Joining them while
+	// holding ext_cs deadlocked: a worker blocked on ext_cs can never
+	// exit (a mutex wait is not a boost interruption point), so
+	// join_all() waited forever.  It hung every time smsgdisable ran
+	// during a send's proof-of-work, and the stuck RPC worker then
+	// also hung shutdown (StopRPCThreads joins it).
+	//
+	// Safe to join here: the workers never take cs_main or cs_wallet,
+	// which the RPC dispatcher holds around this call (smsgdisable is
+	// not threadSafe).  The same dispatcher locks also serialise
+	// Enable() and Disable(), so neither can run in the gap between
+	// the join and the clean-up below.
+	DigitalNote::SMSG::ext_enabled = false;
+	
+	DigitalNote::SMSG::ext_thread_group.interrupt_all();
+	DigitalNote::SMSG::ext_thread_group.join_all();
+	
 	{
 		LOCK(DigitalNote::SMSG::ext_cs);
-		
-		DigitalNote::SMSG::ext_enabled = false;
-		
-		DigitalNote::SMSG::ext_thread_group.interrupt_all();
-		DigitalNote::SMSG::ext_thread_group.join_all();
 		
 		// -- clear DigitalNote::SMSG::ext_buckets
 		std::map<int64_t, DigitalNote::SMSG::Bucket>::iterator it;
@@ -1215,7 +1232,15 @@ bool ReceiveData(CNode* pfrom, const std::string &strCommand, CDataStream& vRecv
 			}
 		}
 		
-		uint32_t nBuckets = DigitalNote::SMSG::ext_buckets.size();
+		uint32_t nBuckets;
+		
+		{
+			// v2.0.0.9: read the bucket count under ext_cs (was unlocked).
+			LOCK(DigitalNote::SMSG::ext_cs);
+			
+			nBuckets = DigitalNote::SMSG::ext_buckets.size();
+		}
+		
 		uint32_t nLocked = 0; // no. of locked buckets on this node
 		uint32_t nInvBuckets; // no. of bucket headers sent by peer in smsgInv
 		
@@ -1301,17 +1326,27 @@ bool ReceiveData(CNode* pfrom, const std::string &strCommand, CDataStream& vRecv
 				continue;
 			}
 
-			if (fDebugSmsg)
-			{
-				LogPrint("smsg", "peer bucket %d %u %u.\n", time, ncontent, hash);
-				LogPrint("smsg", "this bucket %d %u %u.\n", time,
-					DigitalNote::SMSG::ext_buckets[time].setTokens.size(),
-					DigitalNote::SMSG::ext_buckets[time].hash
-				);
-			}
-			
 			{
 				LOCK(DigitalNote::SMSG::ext_cs);
+				
+				// v2.0.0.9: this debug lookup used to run BEFORE taking
+				// ext_cs, and used operator[], which inserts a missing
+				// bucket.  That modified ext_buckets while Thread() could
+				// be erasing from it under ext_cs (heap corruption risk).
+				// fDebugSmsg is on whenever any -debug category is set, so
+				// this was not limited to -debug=smsg.  Now done under the
+				// lock with find(), which never inserts.
+				if (fDebugSmsg)
+				{
+					std::map<int64_t, DigitalNote::SMSG::Bucket>::const_iterator itDbg =
+						DigitalNote::SMSG::ext_buckets.find(time);
+					
+					LogPrint("smsg", "peer bucket %d %u %u.\n", time, ncontent, hash);
+					LogPrint("smsg", "this bucket %d %u %u.\n", time,
+						itDbg != DigitalNote::SMSG::ext_buckets.end() ? itDbg->second.setTokens.size() : 0,
+						itDbg != DigitalNote::SMSG::ext_buckets.end() ? itDbg->second.hash : 0
+					);
+				}
 				
 				if (DigitalNote::SMSG::ext_buckets[time].nLockCount > 0)
 				{
