@@ -34,39 +34,53 @@ class uint256;
 // v2.0.0.8.  Full design rationale lives in PhaseC-design.md; brief notes:
 //
 //   VOTED_CONSENSUS_ACTIVATION_HEIGHT
-//     Block height at which validators begin enforcing the voted-consensus
-//     payment rule.  Pre-activation: existing behaviour (any valid MN
-//     payee accepted).  Post-activation: payee must match canonical voted
-//     winner if consensus exists, else permissive fallback.
+//     The MAINNET block height at which validators begin enforcing the
+//     voted-consensus payment rule.  It is the mainnet floor read by
+//     GetEffectiveVotedConsensusActivationHeight() (cblock.cpp); testnet has
+//     its own floor (2000) there.
 //
-//     For M0/M1/M2/M3/M4 development builds: set to INT_MAX so enforcement
-//     never triggers and the wallet runs identically to v2.0.0.7.
-//     For M6 pre-release testing: still INT_MAX.
-//     For M7 release: set to release_height 1480000 (7 months)
+//     >>> v2.0.0.9 rc9 (Duckie, 2026-11-16): NOT SCHEDULED on mainnet. <<<
+//     INT_MAX = never.  v2.0.0.9 nodes stay permissive and follow whatever
+//     chain enforcing nodes build.  v2.0.1.0 sets the real height once the
+//     enforcement model (V-plan Group 1) is finished and soaked.  rc1-rc8 of
+//     v2.0.0.9 wired 1,480,000 here; that is withdrawn.  Mainnet also ignores
+//     SPORK_15 (S1), so no spork can switch enforcement on in this build.
+//
+//     What "activation" changes, for reference:
+//       - Before activation, and always on a v2.0.0.9 mainnet node: the
+//         masternode-slot payee is NOT enforced by validators (the payment
+//         amounts and the devops output still are); producers pick the
+//         payee with FindOldestNotInVec.
+//       - After activation: validators require the voted winner when their
+//         vote tracker has one (strict check), else any payee they recognise
+//         as a masternode (weak check), and always accept the devops address
+//         in the masternode slot.  Producers with no voted winner defer, then
+//         mint a devops-paid rescue block (producer policy, not a validity
+//         rule; see ShouldMintRescueBlock).
 //
 //   VOTE_LOOKAHEAD
-//     Number of blocks ahead each masternode votes for.  An MN observing
-//     block N broadcasts a vote for block N + VOTE_LOOKAHEAD.  Matches the
-//     historical +10 used by the (broken) CMasternodePayments::ProcessBlock.
+//     Length of each masternode's payee queue.  A masternode that sees block N
+//     broadcasts ONE queue predicting the payees for N+1 .. N+VOTE_LOOKAHEAD.
 //
 //   VOTE_PAST_HORIZON
-//     Votes for heights below (currentHeight - VOTE_PAST_HORIZON) are
-//     rejected as too old.  Lets late votes still be useful for a few blocks
-//     after the height they apply to.
+//     Queues for heights below (currentHeight - VOTE_PAST_HORIZON) are
+//     rejected as too old.
 //
 //   VOTE_TIME_WINDOW_SECONDS
-//     Maximum acceptable skew between vote.nTimeSigned and local clock.
-//     Matches the existing +/-30min tolerance used by dsee/dseep.
+//     Maximum acceptable skew between a queue's nTimeSigned and the local
+//     clock: +/-30 min.  (dsee/dseep/mnver allow +/-60 min; the two values
+//     are independent -- do not "align" them.)
 //
 //   REORG_DEPTH_BUFFER
-//     When computing vote inputs (lastPaidHeight from chain), use chain
-//     state at (currentHeight - REORG_DEPTH_BUFFER) for stability.  Handles
-//     typical 1-block reorgs comfortably.  Deep reorgs (>10 blocks) trigger
-//     vote-tracker cache clearing as a fallback.
+//     Reorg-stability margin.  It shifts candidate and voter eligibility
+//     back from the target height (SimulateQueue, CountVotingEligible) and
+//     bounds the queue-height acceptance window.  There is NO cache clearing
+//     on deep reorgs; a disconnect erases only that height's queues.
 //
 //   MIN_ENABLED_FOR_CONSENSUS
-//     Sanity floor.  Below this many enabled MNs, no canonical winner can
-//     form and the permissive fallback rule applies unconditionally.
+//     Sanity floor.  If fewer masternodes than this are voting-eligible
+//     (CountVotingEligible, not CountEnabled) for a height, no canonical
+//     winner can form for it.
 //
 //   VOTED_CONSENSUS_THRESHOLD_NUMERATOR / VOTED_CONSENSUS_THRESHOLD_DENOMINATOR
 //     Integer expression of the 60% threshold.  Implemented as
@@ -74,9 +88,10 @@ class uint256;
 //     3/5 == 60%.
 //
 //   MAX_EQUIVOCATIONS_PER_SESSION
-//     After this many equivocation events from the same MN, fresh dsee no
-//     longer clears equivocator status (Path A of S14.3 disabled).  Operator
-//     must use explicit RPC (Path B) to clear.
+//     NO EFFECT since the v2.0.0.8 hotfix (Issue 3): nothing marks
+//     equivocators any more -- a second queue from the same voter at the same
+//     height simply replaces the first if it is newer.  Kept only because the
+//     dead equivocator code still references it (removal: v2.0.1.0).
 //
 //   MIN_VOTING_PROTOCOL_VERSION
 //     The M1Q vote-queue capability floor: 62058.  Builds below it cannot
@@ -107,7 +122,7 @@ class uint256;
 //     "queue-capable" in the reports, so 62058 remains the correct value.
 // ---------------------------------------------------------------------------
 
-#define VOTED_CONSENSUS_ACTIVATION_HEIGHT				1480000
+#define VOTED_CONSENSUS_ACTIVATION_HEIGHT				INT_MAX		// NOT SCHEDULED (v2.0.0.9 rc9)
 #define VOTE_LOOKAHEAD									10
 #define VOTE_PAST_HORIZON								10
 #define VOTE_TIME_WINDOW_SECONDS						(30 * 60)
@@ -233,12 +248,14 @@ class uint256;
 //   = MASTERNODE_MIN_CONFIRMATIONS (collateral maturity, 7) +
 //     REORG_DEPTH_BUFFER          (reorg-stability margin, 10)
 //
-//   The buffer guarantees the eligible-voter set for height N cannot change
-//   under any reorg shallower than REORG_DEPTH_BUFFER, which is the deepest
-//   reorg the vote system itself tolerates (see VOTE_PAST_HORIZON / the
-//   ProcessVote window).  This makes CountVotingEligible(N) a pure function
-//   of committed chain state and therefore identical on every synced node --
-//   the property GetCanonicalWinner requires to be deterministic.
+//   The buffer keeps the collateral-depth part of eligibility for height N
+//   stable under any reorg shallower than REORG_DEPTH_BUFFER (see
+//   VOTE_PAST_HORIZON and the queue-height window).  It does NOT make
+//   CountVotingEligible(N) identical on every node: WHICH masternodes are in
+//   the roster is gossip, and two nodes can hold different rosters (see
+//   CountVotingEligible and the roster-completeness notes in
+//   cmasternodeman.cpp).  GetCanonicalWinnerFromQueues uses this count as its
+//   denominator.
 // ---------------------------------------------------------------------------
 #define VOTER_ELIGIBILITY_DEPTH							(MASTERNODE_MIN_CONFIRMATIONS + REORG_DEPTH_BUFFER)
 

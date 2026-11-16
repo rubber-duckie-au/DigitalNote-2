@@ -17,33 +17,28 @@ class CScript;
 class CTxIn;
 class CNode;  // v2.0.0.8 PB-MN-FETCH Lite: pfrom parameter on CheckBlock
 
-// v2.0.0.8 M4: validation hook.  Defined in cblock.cpp.  Returns the payee
-// that consensus expects at nBlockHeight.  Pre-activation OR
-// post-activation-with-no-consensus: defers to legacy
-// masternodePayments.GetBlockPayee.  Post-activation with consensus: returns
-// the canonical voted payee from voteTracker.  M5 routes block CREATION
-// through this same hook so creators agree with validators post-activation.
+// v2.0.0.8 M4: defined in cblock.cpp.  Post-activation with a voted winner in
+// this node's tracker: returns true and that payee, which CheckBlock's strict
+// check then ENFORCES.  Otherwise it falls through to the legacy
+// masternodePayments.GetBlockPayee, whose list is permanently empty, so it
+// returns false and the caller chooses (validators stay permissive; producers
+// use FindOldestNotInVec before activation, defer / rescue after it).  M5
+// routes block CREATION through this same hook.
 // fQuiet suppresses the "no consensus; falling back to legacy" log line.
 // Pass true from READ-ONLY query callers: `masternode winners` calls this in a
 // loop over 30 heights, so one RPC wrote up to 30 consensus-failure lines into
 // debug.log that had nothing to do with block production. Confirmed on testnet
 // 2026-10-07: all 17 such lines landed in the single second the RPC was run.
 bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut, bool fQuiet = false);
-// v2.0.0.9 consensus rescue: true iff a devops MN-slot block at (nBlockHeight, nBlockTime)
-// extending pindexPrev is a valid rescue block (post-activation, no voted winner,
-// >= RESCUE_STALL_SECS block-relative stall). Pure function of committed chain data.
 // v2.0.0.9 rescue -- PRODUCER POLICY ONLY.  NOT a validity predicate: never call
 // this from CheckBlock().  Renamed from IsRescueActive() on 2026-07-23 so that a
 // validator call reads as obviously wrong.  See FINDING-2026-009 and
 // v209-rescue-fix-SPEC-2026-07-23.md.
 bool ShouldMintRescueBlock(const CBlockIndex* pindexPrev, int nBlockHeight, int64_t nBlockTime);
 
-// v2.0.0.8 PB-16: expose the spork-aware activation height so consensus-
-// adjacent code (notably CMasternodeMan::FindOldestNotInVecChainDerived)
-// can clamp pre-activation `lastpaid` values to a single tied "epoch
-// zero" -- preventing stale legacy lastpaid distributions from biasing
-// post-activation rotation.  Returns INT_MAX when activation is not set
-// (the v2.0.0.8 mainnet ship default until spork broadcast).
+// The voted-consensus activation height in force.  Mainnet: the compiled
+// floor, INT_MAX (NOT SCHEDULED) in v2.0.0.9, and SPORK_15 is ignored.
+// Testnet: 2000, or a lower SPORK_15 value.  Every activation gate reads this.
 int GetEffectiveVotedConsensusActivationHeight();
 
 typedef std::unique_ptr<CBlock> CBlockPtr;

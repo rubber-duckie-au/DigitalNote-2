@@ -223,7 +223,8 @@ VelocityResult Velocity(CBlockIndex* prevBlock, CBlock* block)
 	//      nTimeOffset has not yet converged is in no position to
 	//      judge another node's "future" claim.
 	//
-	// The full post-mortem is in v209-TODO.md.
+	// (The full post-mortem was in an internal v209-TODO.md that is not in
+	// this repository; the reasoning above is the record.)
 	{
 		static const int64_t WALLCLOCK_FUTURE_TOLERANCE     = 180; // seconds
 		static const int     MIN_TIME_SAMPLES_FOR_ENFORCE   = 11;

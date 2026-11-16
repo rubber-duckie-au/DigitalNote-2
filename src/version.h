@@ -34,21 +34,21 @@ static const int DATABASE_VERSION = 70509;
 //   62058 = v2.0.0.8 POST-QUEUE (M1Q queue-based voting).
 //           Adds the mnvotequeue / getmnqueues messages; it is the version
 //           at which a node is counted as a queue-voting peer.
-//   62059 = v2.0.0.9 (this build).  CONSENSUS-CAPABLE: this is the first
-//           build whose mainnet voted-consensus activation is actually
-//           wired (FINDING-2026-003: the resolver now reads
-//           VOTED_CONSENSUS_ACTIVATION_HEIGHT = 1480000; every earlier
-//           mainnet build resolved to INT_MAX and could NEVER activate).
-//           It also carries the 3.16 devops rescue rule.
+//   62059 = v2.0.0.9 (this build).  Mainnet voted-consensus activation is
+//           NOT SCHEDULED (VOTED_CONSENSUS_ACTIVATION_HEIGHT = INT_MAX, and
+//           mainnet ignores SPORK_15) -- the same effective mainnet behaviour
+//           as every earlier build.  rc1-rc8 of v2.0.0.9 wired 1,480,000
+//           (FINDING-2026-003); rc9 withdrew that (Duckie, 2026-11-16).  It also
+//           carries the producer-side devops rescue policy (TODO 3.16), which
+//           is not a validity rule.
 //
-// WHY 62059 EXISTS (TODO 3.19).  With activation set in stone at 1480000 the
-// network holds two behaviourally distinct classes that are otherwise hard to
-// tell apart: pre-2.0.0.9 builds (activation == INT_MAX, voted consensus can
-// never fire) and 2.0.0.9 builds (activation == 1480000, it will).  A distinct
-// protocol version makes that visible in the version handshake, so getpeerinfo
-// and the deployment-status telemetry can COUNT consensus-capable peers ahead
-// of the M8 proceed/defer decision at activation_height - 2 weeks, instead of
-// inferring it from subver strings.
+// WHY 62059 EXISTS (TODO 3.19).  It identifies v2.0.0.9 nodes in the version
+// handshake, so getpeerinfo and the deployment-status telemetry can count
+// upgraded peers instead of inferring it from subver strings.  It was bumped
+// when activation was wired to 1,480,000 so the network could tell
+// activating builds from non-activating ones; with activation not scheduled
+// in rc9 it remains an adoption marker for the release that v2.0.1.0's
+// activation will build on.
 //
 // ---------------------------------------------------------------------------
 // DO NOT "BUMP THE OTHER TWO IN LOCKSTEP".  Three constants look related; only
@@ -82,7 +82,10 @@ static const int MIN_PEER_PROTO_VERSION = 62052;
 static const int MIN_POOL_PEER_PROTO_VERSION = 62050;
 static const int MIN_INSTANTX_PROTO_VERSION = 62050;
 
-//! minimum peer version that can receive masternode payments
+// Legacy (inherited).  Despite the old name, NO payee path filters on these:
+// they only set the default protocol floor for CountEnabled() (display) via
+// CMasternodePayments::GetMinMasternodePaymentsProto().  Both are 62051, so
+// SPORK_10 (which picks between them) changes nothing.
 // V1 - Last protocol version before update
 // V2 - Newest protocol version
 static const int MIN_MASTERNODE_PAYMENT_PROTO_VERSION_1 = 62051;

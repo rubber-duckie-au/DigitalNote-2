@@ -132,8 +132,8 @@ BOOST_AUTO_TEST_CASE(FormatSubVersionWithComments)
 //   62055 = v2.0.0.7
 //   62057 = v2.0.0.8 PRE-QUEUE  (superseded/dead)
 //   62058 = v2.0.0.8 POST-QUEUE (M1Q queue-based voting)
-//   62059 = v2.0.0.9            (consensus-capable: mainnet activation actually
-//                                wired to 1480000; earlier builds were INT_MAX)
+//   62059 = v2.0.0.9            (mainnet activation NOT SCHEDULED since rc9;
+//                                rc1-rc8 wired 1480000)
 
 BOOST_AUTO_TEST_CASE(ProtocolVersionIs62059)
 {

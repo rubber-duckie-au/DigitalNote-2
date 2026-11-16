@@ -282,7 +282,17 @@ uint256 ComputeStakeModifierV2(const CBlockIndex* pindexPrev, const uint256& ker
 }
 
 // DigitalNote kernel protocol
-// coinstake must meet hash target according to the protocol:
+// coinstake must meet hash target according to the protocol.
+//
+// v2.0.0.9 rc9 correction (review 2 3.#7; inherited): the CURRENT (V2) kernel,
+// as computed below, is
+//     Hash_echo512(bnStakeModifierV2 + txPrev.nTime + prevout.hash + prevout.n + nTimeTx)
+//         <= target(nBits) * nValueIn
+// There is no block-time term, and the weight is the coin VALUE, not a time
+// weight.  The stake logs below print the OLD V1 nStakeModifier, which is NOT
+// the modifier that is hashed (logging bnStakeModifierV2 is v2.0.1.0).  The
+// rest of this comment describes the original (V1) design:
+//
 // kernel (input 0) must meet the formula
 //     hash(nStakeModifier + txPrev.block.nTime + txPrev.nTime + txPrev.vout.hash + txPrev.vout.n + nTime) < bnTarget * nWeight
 // this ensures that the chance of getting a coinstake is proportional to the

@@ -7,9 +7,13 @@ class CBlockIndex;
 
 // v2.0.0.8 testnet-payment-constants:
 //
-// Masternode and DevOps payment toggles.  CreateCoinStake and the
-// CheckBlock payment validator both branch on Params().NetworkID() and
-// read the _TESTNET variants on testnet, the bare names on mainnet.
+// Masternode and DevOps payment toggles.  v2.0.0.9 rc9 correction (review 2
+// 3.#4): these are read ONLY by CreateCoinStake (the staker), against the
+// wall clock (GetTime()), using the _TESTNET variants on testnet and the
+// bare names on mainnet.  CheckBlock does NOT read them: it always requires
+// the masternode + devops outputs.  Changing a value here changes only what
+// this node's staker builds -- and a staker that omits the outputs has its
+// own blocks rejected.
 //
 // Previously the four _TESTNET constants were all 9993058800 (year
 // 2286) -- "OFF (NOT TOGGLED)".  That made testnet PoS DIVERGE from
@@ -33,9 +37,9 @@ class CBlockIndex;
 // the mainnet STOP_* values.
 //
 // This is a testnet-configuration correction only.  No mainnet constant
-// changes; no change to CreateCoinStake or CheckBlock logic -- those two
-// were always consistent with each other, the testnet constants were the
-// sole source of the divergence.
+// changes; no change to CreateCoinStake or CheckBlock logic -- the testnet
+// constants (read only by CreateCoinStake) were the sole source of the
+// divergence.
 #define START_MASTERNODE_PAYMENTS_TESTNET	1546300800	// ON  (Tuesday, January 1, 2019 12:00:00 AM UTC) -- pre-testnet-genesis
 #define START_MASTERNODE_PAYMENTS			1554494400	// ON  (Friday, April 5, 2019 1:00:00 PM GMT-07:00 | PDT)
 #define STOP_MASTERNODE_PAYMENTS_TESTNET	9993058800	// OFF (never stop -- matches mainnet)
@@ -66,9 +70,11 @@ void VRX_Simulate_Retarget();
 // curve must measure stall time deterministically from this block timestamp,
 // NOT from GetAdjustedTime() (wall clock), or the retarget becomes
 // non-reproducible and historical blocks fail re-validation on resync.
-// A value of 0 means "not supplied" -> fall back to GetAdjustedTime()
-// (used by the mining path, where the new block's timestamp is not yet
-// finalised and is ~now anyway).
+// v2.0.0.9 rc9 (review 2 3.#5): every caller supplies an explicit time
+// (validation passes the block's own time; mining and the RPCs pass the new
+// block's nTime or GetAdjustedTime()).  A value of 0 means "not supplied" ->
+// fall back to GetAdjustedTime(): a defensive, NON-DETERMINISTIC fallback
+// only -- never add a caller that relies on it.
 void VRX_ThreadCurve(const CBlockIndex* pindexLast, bool fProofOfStake, int64_t nNewBlockTime = 0);
 void VRX_Dry_Run(const CBlockIndex* pindexLast);
 unsigned int VRX_Retarget(const CBlockIndex* pindexLast, bool fProofOfStake, int64_t nNewBlockTime = 0);

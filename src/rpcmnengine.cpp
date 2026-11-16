@@ -143,10 +143,10 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 			"2. \"passphrase\"     (string, optional) The wallet passphrase\n"
 			"\nAvailable commands:\n"
 			"  count        - Print number of all known masternodes (optional: 'enabled', 'both')\n"
-			"  current      - Print info on current masternode winner\n"
+			"  current      - Print the highest-scoring masternode (InstantX rank; NOT the next payee)\n"
 			"  debug        - Print masternode status\n"
 			"  genkey       - Generate new masternodeprivkey\n"
-			"  enforce      - Enforce masternode payments\n"
+			"  enforce      - Print the masternode-payment enforcement start time (a fixed value)\n"
 			"  list         - Print list of all known masternodes (see masternodelist for more info)\n"
 			"  list-conf    - Print masternode.conf in JSON format\n"
 			"  outputs      - Print masternode compatible outputs\n"
@@ -422,7 +422,7 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 				return "masternode started remotely";
 			
 			case MASTERNODE_INPUT_TOO_NEW:
-				return "masternode input must have at least 15 confirmations";
+				return "masternode input must have at least 7 confirmations";
 			
 			case MASTERNODE_STOPPED:
 				return "masternode is stopped";
@@ -553,7 +553,7 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 
 			json_spirit::Object statusObj;
 			statusObj.push_back(json_spirit::Pair("alias", mne.getAlias()));
-			statusObj.push_back(json_spirit::Pair("result", result ? "succesful" : "failed"));
+			statusObj.push_back(json_spirit::Pair("result", result ? "successful" : "failed"));
 
 			if(result)
 			{
@@ -592,7 +592,7 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 				return "masternode started remotely";
 			
 			case MASTERNODE_INPUT_TOO_NEW:
-				return "masternode input must have at least 15 confirmations";
+				return "masternode input must have at least 7 confirmations";
 				
 			case MASTERNODE_IS_CAPABLE:
 				return "successfully started masternode";
@@ -697,9 +697,9 @@ json_spirit::Value masternode(const json_spirit::Array& params, bool fHelp)
 			
 			// v2.0.0.8 M5 follow-up: route through GetEnforcedPayee so
 			// post-activation displayed "winners" reflect the voted
-			// consensus rather than the legacy vWinning map.  Pre-
-			// activation behaviour unchanged (GetEnforcedPayee falls
-			// through to masternodePayments.GetBlockPayee).
+			// consensus.  Otherwise GetEnforcedPayee returns false (its
+			// legacy GetBlockPayee fallback is always empty), giving the
+			// "pre-activation" / "unresolved" rows below.
 			// fQuiet: this is a read-only display loop over 30 heights, not block
 			// production. Without it each call wrote up to 30 false "falling back
 			// to legacy" lines into debug.log.
@@ -1343,20 +1343,20 @@ json_spirit::Value getmnlastpaid(const json_spirit::Array& params, bool fHelp)
 			"\nResult:\n"
 			"{\n"
 			"  \"chain_height\": n,             (numeric) current chain tip height\n"
-			"  \"scanned_to_height\": n,        (numeric) oldest block scanned by initial walk\n"
 			"  \"masternodes\": [               (array) one entry per enabled masternode\n"
 			"    {\n"
-			"      \"vin\": \"txid-prefix:n\",  (string) collateral outpoint\n"
+			"      \"vin\": \"COutPoint(txid-prefix, n)\",  (string) collateral outpoint "
+			"(first 10 hex digits of the txid; the filter argument takes the full \"txid:vout\")\n"
 			"      \"address\": \"...\",        (string) MN payment address\n"
 			"      \"last_paid_height\": n,     (numeric) most recent payment block, "
 			"or 0 if none in scanned range\n"
 			"      \"blocks_since_paid\": n,    (numeric) chain_height - last_paid_height, "
 			"or chain_height if never seen\n"
-			"      \"voting_recently\": bool,   (boolean) whether this MN has been "
-			"seen voting in the active window (~last 10 blocks).  v2.0.0.7 MNs always "
-			"show false; broken v2.0.0.8 MNs may also show false.\n"
-			"      \"last_vote_height\": n      (numeric) most recent height this MN "
-			"voted for in our local tally, or 0 if not seen.\n"
+			"      \"voting_recently\": bool,   (boolean) true if this node holds a vote "
+			"queue from this MN (queues are kept for heights down to tip - 10).  MNs that "
+			"do not send vote queues always show false.\n"
+			"      \"last_vote_height\": n      (numeric) highest queue height this MN has "
+			"broadcast a vote queue for, in this node's tracker, or 0 if none held.\n"
 			"    }, ...\n"
 			"  ]\n"
 			"}\n"
@@ -1431,8 +1431,8 @@ json_spirit::Value getmnlastpaid(const json_spirit::Array& params, bool fHelp)
 		int blocksSincePaid = (lastPaidHeight == 0) ? chainHeight : (chainHeight - lastPaidHeight);
 
 		// Look up voting activity for this MN.  If not in voterActivity map,
-		// the MN hasn't had a vote land in our mapVotes within the active
-		// window (or it's a v2.0.0.7 MN that doesn't vote at all).
+		// we hold no vote queue from this MN in mapQueues (or it's an MN that
+		// doesn't send queues at all).
 		int lastVoteHeight = 0;
 		std::map<COutPoint, int>::const_iterator vait = voterActivity.find(mn.vin.prevout);
 		if (vait != voterActivity.end())
@@ -1441,8 +1441,8 @@ json_spirit::Value getmnlastpaid(const json_spirit::Array& params, bool fHelp)
 		}
 
 		// "Recently" = anywhere in the active vote-tracking window.
-		// mapVotes only retains heights within VOTE_PAST_HORIZON of the tip,
-		// so presence in voterActivity == voted within the last ~10 blocks.
+		// mapQueues only retains queue heights down to tip - VOTE_PAST_HORIZON,
+		// so presence in voterActivity == sent a queue within that window.
 		bool votingRecently = (lastVoteHeight > 0);
 
 		json_spirit::Object entry;
@@ -1484,7 +1484,10 @@ json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp)
 			"getvoteinfo [height]\n"
 			"\nReports the masternode voted-consensus QUEUE tally for a given\n"
 			"block height (M1Q queue-based voting).  If no height is given,\n"
-			"uses the current chain tip + VOTE_LOOKAHEAD.\n"
+			"uses the NEXT block (current chain tip + 1): the height producers\n"
+			"and validators ask about.  Consensus for a height is only reported\n"
+			"once the tip is within 3 blocks of it, so a height further ahead\n"
+			"normally shows has_consensus = false.\n"
 			"\nArguments:\n"
 			"1. height       (numeric, optional) The block height to inspect.\n"
 			"\nResult:\n"
@@ -1521,7 +1524,11 @@ json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp)
 		{
 			throw std::runtime_error("Chain not loaded");
 		}
-		targetHeight = pindexBest->nHeight + VOTE_LOOKAHEAD;
+		// v2.0.0.9 rc9 (review 2 1.C5): default to tip + 1, the height
+		// GetEnforcedPayee is asked about.  The old default (tip +
+		// VOTE_LOOKAHEAD) was always beyond the commit point
+		// (tip < target - VOTE_COMMIT_BUFFER), so it never showed consensus.
+		targetHeight = pindexBest->nHeight + 1;
 	}
 
 	CMasternodeVoteTracker::QueueInfo info = voteTracker.GetQueueInfo(targetHeight);
@@ -1575,10 +1582,11 @@ json_spirit::Value getvoteinfo(const json_spirit::Array& params, bool fHelp)
 // Everything here is read-only observation.  Two independent readiness signals are
 // reported and they are NOT interchangeable:
 //
-//   peers.*        -- how much of the network we can SEE is running a
-//                     consensus-capable build (protocol >= 62059).  This is a
-//                     rollout-progress signal.  It is inherently partial: it counts
-//                     only our own connections, not the whole network.
+//   peers.*        -- how much of the network we can SEE is vote-queue capable
+//                     (protocol >= MIN_VOTING_PROTOCOL_VERSION = 62058, so v2.0.0.8
+//                     peers count) and how much runs this build (>= PROTOCOL_VERSION).
+//                     These are rollout-progress signals.  They are inherently
+//                     partial: they count only our own connections.
 //
 //   masternodes.*  -- whether the voted-consensus DENOMINATOR can still resolve.
 //                     This is the SAFETY signal and it is the one that can stall the
@@ -1600,22 +1608,26 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			"  \"build\": {\n"
 			"    \"client_version\": n,             (numeric) this node's CLIENT_VERSION\n"
 			"    \"protocol_version\": n,           (numeric) this node's PROTOCOL_VERSION\n"
-			"    \"consensus_capable\": bool        (boolean) true if this build's mainnet activation is wired (not INT_MAX)\n"
+			"    \"consensus_capable\": bool        (boolean) true if this build has a voted-consensus activation\n"
+			"                                       height scheduled on this network.  v2.0.0.9 mainnet: false\n"
+			"                                       (not scheduled); testnet: true\n"
 			"  },\n"
 			"  \"activation\": {\n"
-			"    \"effective_height\": n,           (numeric) activation height in force (compiled floor, or spork-15 if it LOWERS it)\n"
+			"    \"scheduled\": bool,               (boolean) false if no activation height is set (mainnet in v2.0.0.9)\n"
+			"    \"effective_height\": n,           (numeric) activation height in force; 2147483647 when not scheduled.\n"
+			"                                       Testnet: the compiled floor, or spork-15 if it LOWERS it.\n"
+			"                                       Mainnet ignores spork-15 (v2.0.0.9)\n"
 			"    \"spork15_value\": n,              (numeric) raw spork-15 value (0 = unset/no override)\n"
-			"    \"spork15_lowering\": bool,        (boolean) true if spork-15 is what is currently in force (pulling activation earlier)\n"
+			"    \"spork15_lowering\": bool,        (boolean) true if spork-15 is what is currently in force (testnet only)\n"
 			"    \"current_height\": n,             (numeric) current chain tip\n"
-			"    \"blocks_remaining\": n,           (numeric) blocks until activation (0 once activated)\n"
+			"    \"blocks_remaining\": n,           (numeric) blocks until activation (0 once activated, -1 if not scheduled)\n"
 			"    \"activated\": bool                (boolean) tip >= effective activation height\n"
 			"  },\n"
 			"  \"peers\": {\n"
 			"    \"total\": n,                      (numeric) connected peers with a negotiated version\n"
-			"    \"consensus_capable\": n,          (numeric) peers at MIN_VOTING_PROTOCOL_VERSION or\n"
-			"                                       above -- i.e. able to take part in voted consensus.\n"
-			"                                       NOTE this is the 62058 floor, NOT PROTOCOL_VERSION:\n"
-			"                                       v2.0.0.8 peers are queue-capable and DO count.\n"
+			"    \"consensus_capable\": n,          (numeric) QUEUE-capable peers: at MIN_VOTING_PROTOCOL_VERSION\n"
+			"                                       (62058) or above, so able to send vote queues.  NOT the same\n"
+			"                                       as build.consensus_capable; v2.0.0.8 peers DO count here.\n"
 			"    \"pre_consensus\": n,              (numeric) peers below that floor\n"
 			"    \"consensus_capable_share\": x.xx  (numeric) capable/total, -1 if no peers\n"
 			"    \"at_current_build\": n,           (numeric) peers at PROTOCOL_VERSION or above --\n"
@@ -1631,7 +1643,8 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			"                                       peer and version_drift reports (NOT PROTOCOL_VERSION)\n"
 			"    \"min_required_for_consensus\": n, (numeric) MIN_ENABLED_FOR_CONSENSUS\n"
 			"    \"meets_consensus_floor\": bool,   (boolean) voting_eligible >= min_required (SAFETY signal)\n"
-			"    \"measured_at_height\": n          (numeric) height the eligibility was measured for\n"
+			"    \"measured_at_height\": n          (numeric) height the eligibility was measured for (tip + 1,\n"
+			"                                       the next block -- the height producers and validators ask about)\n"
 			"  },\n"
 			"  \"version_drift\": {                 (object) DIAGNOSTIC ONLY -- see FINDING-2026-014\n"
 			"    \"observed\": n,                   (numeric) masternodes this node is CONNECTED to, so\n"
@@ -1670,25 +1683,27 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	build.push_back(json_spirit::Pair("client_version", CLIENT_VERSION));
 	build.push_back(json_spirit::Pair("protocol_version", PROTOCOL_VERSION));
 
-	// "Consensus capable" means this build can actually reach activation.  Every
-	// pre-2.0.0.9 mainnet build resolved the floor to INT_MAX (FINDING-2026-003)
-	// and could never activate no matter how long it ran.
-	build.push_back(json_spirit::Pair("consensus_capable", effectiveActivation != std::numeric_limits<int>::max()));
+	// "Consensus capable" means this build has an activation height scheduled on
+	// this network.  v2.0.0.9 mainnet is NOT scheduled (INT_MAX, rc9), the same as
+	// every earlier mainnet build, so this reads false there; testnet reads true.
+	const bool fScheduled = (effectiveActivation != std::numeric_limits<int>::max());
+	build.push_back(json_spirit::Pair("consensus_capable", fScheduled));
 	result.push_back(json_spirit::Pair("build", build));
 
 	// -- activation ----------------------------------------------------------
 	const int tipHeight = pindexBest->nHeight;
 	const int64_t spork15 = GetSporkValue(SPORK_15_VOTED_CONSENSUS_ACTIVATION);
 
-	// Spork-15 may only LOWER activation, never raise it:
-	// GetEffectiveVotedConsensusActivationHeight() returns the spork value only when
-	// (spork > 0 && spork < floor), otherwise the compiled-in floor.  So if the
-	// effective height equals a set spork value, the spork is what is in force.
-	// (The compiled-in floor itself lives in an anonymous namespace in cblock.cpp and
-	// is deliberately not exposed here; effective_height is what actually governs.)
+	// Testnet: spork-15 may only LOWER activation -- the resolver returns the
+	// spork value only when (spork > 0 && spork < floor), otherwise the compiled
+	// floor.  So if the effective height equals a set spork value, the spork is in
+	// force.  Mainnet ignores spork-15 (S1), so this is always false there.
+	// (The compiled-in floor lives in an anonymous namespace in cblock.cpp and is
+	// deliberately not exposed here; effective_height is what actually governs.)
 	const bool spork15Lowering = (spork15 > 0 && (int)spork15 == effectiveActivation);
 
 	json_spirit::Object activation;
+	activation.push_back(json_spirit::Pair("scheduled", fScheduled));
 	activation.push_back(json_spirit::Pair("effective_height", effectiveActivation));
 	activation.push_back(json_spirit::Pair("spork15_value", spork15));
 	activation.push_back(json_spirit::Pair("spork15_lowering", spork15Lowering));
@@ -1696,7 +1711,8 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 
 	const bool activated = (tipHeight >= effectiveActivation);
 	activation.push_back(json_spirit::Pair("activated", activated));
-	activation.push_back(json_spirit::Pair("blocks_remaining", activated ? 0 : (effectiveActivation - tipHeight)));
+	activation.push_back(json_spirit::Pair("blocks_remaining",
+		!fScheduled ? -1 : (activated ? 0 : (effectiveActivation - tipHeight))));
 	result.push_back(json_spirit::Pair("activation", activation));
 
 	// -- peers ---------------------------------------------------------------
@@ -1728,11 +1744,10 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 			// labelled everything else "cannot activate".  That is the WRONG
 			// FLOOR and it understates readiness badly.
 			//
-			// version.h:63-74 is explicit: MIN_VOTING_PROTOCOL_VERSION stays at
-			// 62058 precisely because "the v2.0.0.8 fleet is M1Q queue-capable
-			// and must keep counting".  A 2.0.0.8 peer CAN participate in voted
-			// consensus.  Measuring against PROTOCOL_VERSION measured "peers
-			// running MY build" while calling it consensus capability.
+			// MIN_VOTING_PROTOCOL_VERSION stays at 62058 because v2.0.0.8 is M1Q
+			// queue-capable (see version.h and masternode.h): a 2.0.0.8 peer CAN
+			// send vote queues.  Measuring against PROTOCOL_VERSION measured
+			// "peers running MY build" while calling it consensus capability.
 			//
 			// Observed on mainnet 2026-08-08: 2 of 13 by the old measure,
 			// 9 of 13 by the correct one -- the difference between "nowhere near
@@ -2010,9 +2025,11 @@ json_spirit::Value getdeploymentstatus(const json_spirit::Array& params, bool fH
 	result.push_back(json_spirit::Pair("version_drift", drift));
 
 	// -- masternodes (the SAFETY signal) -------------------------------------
-	// Measure eligibility for the height the queues actually cover (tip +
-	// VOTE_LOOKAHEAD), matching what GetCanonicalWinnerFromQueues will ask.
-	const int measuredAt = tipHeight + VOTE_LOOKAHEAD;
+	// v2.0.0.9 rc9 (review 1.C6): measure eligibility for the NEXT block (tip + 1),
+	// the height producers (miner.cpp, rpcmining.cpp) and validators (CheckBlock)
+	// pass to GetCanonicalWinnerFromQueues.  It used to measure at tip +
+	// VOTE_LOOKAHEAD; eligibility only grows with height, so that over-read.
+	const int measuredAt = tipHeight + 1;
 	const int votingEligible = mnodeman.CountVotingEligible(measuredAt);
 
 	json_spirit::Object mns;
@@ -2034,9 +2051,11 @@ json_spirit::Value listequivocators(const json_spirit::Array& params, bool fHelp
 	{
 		throw std::runtime_error(
 			"listequivocators\n"
-			"\nReports masternodes currently marked as equivocators on THIS node.\n"
-			"Equivocator status is per-node; it does not propagate.  Recovery\n"
-			"is via fresh dsee (Path A) or the clearequivocator RPC (Path B).\n"
+			"\nReports masternodes marked as equivocators on THIS node.\n"
+			"NOTE: since the v2.0.0.8 hotfix (Issue 3) nothing marks equivocators,\n"
+			"so this list is ALWAYS EMPTY.  A second vote queue from the same\n"
+			"masternode now simply replaces the first if newer.  Kept for\n"
+			"compatibility.\n"
 			"\nResult:\n"
 			"[\n"
 			"  {\n"
@@ -2074,8 +2093,10 @@ json_spirit::Value clearequivocator(const json_spirit::Array& params, bool fHelp
 	{
 		throw std::runtime_error(
 			"clearequivocator \"vin\"\n"
-			"\nRemoves an equivocator entry from THIS node's tracker.  Local-only;\n"
-			"other nodes still see the MN as an equivocator until they clear it.\n"
+			"\nRemoves an equivocator entry from THIS node's tracker.\n"
+			"NOTE: since the v2.0.0.8 hotfix (Issue 3) nothing marks equivocators,\n"
+			"so there is never an entry to clear and this always returns\n"
+			"cleared = false.  Kept for compatibility.\n"
 			"\nArguments:\n"
 			"1. \"vin\"        (string, required) Collateral outpoint as \"txid:vout\"\n"
 			"\nResult:\n"

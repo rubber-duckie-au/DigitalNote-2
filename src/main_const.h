@@ -10,7 +10,18 @@ static const int64_t CENT = 1000000;
 static const unsigned int MAX_BLOCK_SIZE_INCREASE_MULTIPLE = 2;
 /** The number of blocks to consider in the computation of median block size */
 static const unsigned int NUM_BLOCKS_FOR_MEDIAN_BLOCK = 25;
-/** The maximum allowed size for a serialized block, in bytes (network rule) */
+/** The maximum allowed size for a serialized block, in bytes (network rule)
+ *
+ *  v2.0.0.9 rc9 NOTE (review 2 3.#3; inherited) -- NOT a single network-wide
+ *  value.  This is a non-const static in a header, so EVERY .cpp has its own
+ *  copy.  Only cblock.cpp's copy is reassigned (adaptive sizing, at the start
+ *  of each ConnectBlock), and the adaptive calculation opens the wrong block
+ *  files (blocks/blk%05u.dat; this node writes blk%04u.dat), so it pins
+ *  cblock.cpp's copy to MIN_BLOCK_SIZE (code reading; not re-checked on a
+ *  live node).  Result:
+ *  CheckBlock allows 15,256,128 bytes until this node's first ConnectBlock
+ *  after startup and ~1.5 MB after it; other files (e.g. miner.cpp) always see
+ *  15,256,128.  Any change here is a CONSENSUS decision (v2.0.1.0 list). */
 static unsigned int MAX_BLOCK_SIZE = 15256128;
 /** The minimum allowed size for a serialized block, in bytes (network rule) */
 static const unsigned int MIN_BLOCK_SIZE = 1525612;

@@ -5,7 +5,11 @@
 #include "main_const.h"
 
 /** Minimum nCoinAge required to stake PoS */
-static const unsigned int nStakeMinAge = 2 / 60; // 30 minutes
+// v2.0.0.9 rc9 (review 2 1.C8): integer division -- 2 / 60 evaluates to 0, so
+// this imposes no minimum age (the old "30 minutes" note was wrong); stake
+// maturity comes from nStakeMinConfirmations below.  This is a CONSENSUS value
+// (kernel.cpp coin-age): do not change it without a coordinated hard fork.
+static const unsigned int nStakeMinAge = 2 / 60; // = 0
 /** Time to elapse before new modifier is computed */
 static const unsigned int nModifierInterval = 2 * 60;
 /** Genesis block subsidy */
@@ -20,9 +24,11 @@ static const int64_t BLOCK_SPACING = 120;
 static const int64_t BLOCK_SPACING_MIN = 45;
 /** Block spacing maximum */
 static const int64_t BLOCK_SPACING_MAX = 190;
-// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): a block that pays the
-// devops address in the masternode slot is a valid rescue block only once the chain
-// has been stalled (block-relative, no voted winner) for at least this long.  30 min:
+// v2.0.0.9 devops rescue, PRODUCER THRESHOLD ONLY (v2.0.0.9 rc9 wording, review 2
+// 1.A3): a producer mints a devops-paid rescue block only once the chain has been
+// stalled (block-relative, no voted winner) for at least this long.  Validators do
+// not use it: CheckBlock accepts a devops masternode-slot payee with no stall
+// condition (v209-rescue-fix-SPEC-2026-07-23).  30 min:
 // well above organic ~15 min high-difficulty gaps (so ordinary slow blocks are never
 // rescued) and well below VRX's 1 h difficulty-recovery onset (so the two never
 // interact).  Identical on mainnet and testnet.

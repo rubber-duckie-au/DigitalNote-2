@@ -56,7 +56,7 @@
 #include "cflatdata.h"
 
 #include "cblock.h"
-#include "mining.h"		// v2.0.0.9: RESCUE_STALL_SECS (consensus rescue)
+#include "mining.h"		// v2.0.0.9: RESCUE_STALL_SECS (producer-only devops rescue)
 
 // Every received block is assigned a unique and increasing identifier, so we
 // know which one to give priority in case of a fork.
@@ -65,42 +65,27 @@ CCriticalSection cs_nBlockSequenceId;
 // Blocks loaded from disk are assigned id 0, so start the counter at 1.
 uint32_t nBlockSequenceId = 1;
 
-// v2.0.0.8 M4: Voted-consensus payment activation height.
+// Voted-consensus payment activation height.
 //
-// Activation gate is hybrid: a hardcoded floor (compile-time constant) AND
-// an optional spork override (SPORK_15) where set.  Effective activation
-// height = min(floor, spork) when spork>0, else floor.
+// GetEffectiveVotedConsensusActivationHeight() below is the single resolver
+// every consensus and producer gate reads.  It returns a per-network FLOOR:
 //
-// The min() prevents a compromised spork key from activating retroactively
-// (spork can only LOWER the activation, never raise above the hardcoded
-// floor that consensus already agrees on).  Mainnet ships with floor =
-// INT_MAX (effectively never), so initial activation requires spork action.
-// When mainnet is ready, a future release will bake the agreed activation
-// height into VOTED_CONSENSUS_ACTIVATION_FLOOR.
+//   * MAINNET: VOTED_CONSENSUS_ACTIVATION_HEIGHT (masternode.h), which is
+//     INT_MAX -- NOT SCHEDULED -- since v2.0.0.9 rc9 (Duckie, 2026-11-16).
+//     rc1-rc8 wired 1,480,000 (P1 / FINDING-2026-003); that is withdrawn:
+//     v2.0.1.0 sets the real height after the enforcement-model work and a
+//     soak.  Mainnet IGNORES SPORK_15 (S1): with the floor at INT_MAX the
+//     spork would otherwise be the only way to switch on enforcement in this
+//     build, and it would do so with the rules v2.0.1.0 replaces.
+//   * TESTNET: 2000, and SPORK_15 may LOWER it (spork > 0 && spork < floor);
+//     a spork value at or above the floor is ignored.  Note that sporks are
+//     not persisted and a newer spork replaces an older one, so on testnet the
+//     effective height can also move back up to the floor.
 //
-// Testnet uses a low floor so UAT can run end-to-end activation tests
-// without spork plumbing.  See M4-design-notes.md S4 Pattern 3.
+// The VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET / _TESTNET -D overrides below
+// are build-time test hooks; no build file in this repository sets them.
 namespace {
 
-// v2.0.0.9 P1 (FINDING-2026-003): un-strand the mainnet voted-consensus activation.
-//
-// History: making voted-consensus activation a block-height constant
-// (VOTED_CONSENSUS_ACTIVATION_HEIGHT = 1480000, masternode.h) was intentional; the
-// accident was that this height was never WIRED to the floor macro the resolver reads.
-// So a stock mainnet build resolved the floor to INT_MAX and voted consensus never
-// activated, while the Rust v3 node wired 1480000 and would split from C++ at that
-// height.  This release does the wiring the M4 design always intended.
-//
-// Behaviour after this change (Steve's spec, confirmed):
-//   * HEIGHT IS SET IN-BINARY. A stock mainnet build activates at exactly 1480000 with
-//     no spork required -- the floor IS VOTED_CONSENSUS_ACTIVATION_HEIGHT, so 1480000
-//     has a single source of truth (masternode.h) and the value + mechanism cannot
-//     drift apart again.
-//   * SPORK-15 MAY LOWER, NEVER RAISE. GetEffectiveVotedConsensusActivationHeight()
-//     returns min(floor, spork-15 when set > 0), so signing spork-15 below 1480000
-//     pulls activation earlier (operational lever, no rebuild); a spork value above
-//     1480000 is ignored. This bounded-spork-authority property is why activation is
-//     (deliberately) the one constant read through a resolver rather than directly.
 #ifdef VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET
 const int VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET_VAL = VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET;
 #else
@@ -128,26 +113,25 @@ const int VOTED_CONSENSUS_ACTIVATION_FLOOR_TESTNET_VAL = 2000;
 
 } // anonymous namespace
 
-// v2.0.0.8 PB-16: moved out of the anonymous namespace above so that
-// CMasternodeMan::FindOldestNotInVecChainDerived (in cmasternodeman.cpp)
-// can read the activation height to clamp stale pre-activation `lastpaid`
-// values.  Behaviour unchanged.  Declared in cblock.h.
+// Declared in cblock.h.  Callers: GetEnforcedPayee, ShouldMintRescueBlock,
+// the CheckBlock weak payee check, the producer gates (miner.cpp,
+// rpcmining.cpp, rpcmintblock.cpp), the roster-completeness refresh and the
+// masternode / deployment RPCs.
 int GetEffectiveVotedConsensusActivationHeight()
 {
-	int floor;
-	if (TestNet())
+	if (!TestNet())
 	{
-		floor = VOTED_CONSENSUS_ACTIVATION_FLOOR_TESTNET_VAL;
+		// v2.0.0.9 rc9 (S1): mainnet ignores SPORK_15.  The floor is the
+		// compiled value (NOT SCHEDULED = INT_MAX in this release).
+		return VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET_VAL;
 	}
-	else
-	{
-		floor = VOTED_CONSENSUS_ACTIVATION_FLOOR_MAINNET_VAL;
-	}
+
+	int floor = VOTED_CONSENSUS_ACTIVATION_FLOOR_TESTNET_VAL;
 
 	int64_t sporkVal = GetSporkValue(SPORK_15_VOTED_CONSENSUS_ACTIVATION);
 
-	// Spork=0 (default) means "no override".  Non-zero spork lowers the
-	// activation height -- but never raises it above floor.
+	// Testnet only.  Spork=0 (default) means "no override".  A positive spork
+	// below the floor lowers the activation height; anything else is ignored.
 	if (sporkVal > 0 && sporkVal < floor)
 	{
 		return (int)sporkVal;
@@ -156,21 +140,20 @@ int GetEffectiveVotedConsensusActivationHeight()
 	return floor;
 }
 
-// v2.0.0.8 M4: validation hook.  Returns the payee that consensus expects
-// for nBlockHeight.  Three regimes:
+// v2.0.0.8 M4: returns the payee consensus expects for nBlockHeight, if any.
 //
-//   1. Before activation: legacy behavior -- defer to masternodePayments.
-//      GetBlockPayee, which reads winning entries from the M3-era PoS-only
-//      vWinning map.  Returns false if no winner has been broadcast yet.
-//
-//   2. At/after activation, consensus formed: returns the canonical voted
-//      payee from the vote tracker (M2/M3 machinery).
-//
-//   3. At/after activation, no consensus yet: PERMISSIVE FALLBACK.  Behaves
-//      as before activation (soft-fork).  This avoids stalling the chain
-//      if the voting fleet has insufficient coverage at activation height
-//      (e.g. v2.0.0.7 holdouts, network partition).  See M4-design-notes.md
-//      S5 Option 1.
+//   * At/after activation, with a voted winner in THIS node's tracker:
+//     returns true and the voted payee.  CheckBlock's strict check ENFORCES
+//     whatever this returns -- so anything that makes it return true becomes a
+//     validity rule on this node.
+//   * Otherwise (before activation, or no voted winner): falls through to the
+//     legacy masternodePayments.GetBlockPayee().  That list (vWinning) is
+//     permanently EMPTY -- mnw signatures are checked against an empty key
+//     (CMasternodePayments::strMainPubKey = "") and the local winner logic is
+//     never enabled -- so in practice this returns false, and callers pick the
+//     payee themselves (FindOldestNotInVec before activation; defer / rescue
+//     after it).  Validators stay permissive in that case.  The dead fallback
+//     is removed in v2.0.1.0 (V1).
 bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut, bool fQuiet)
 {
 	int activationHeight = GetEffectiveVotedConsensusActivationHeight();
@@ -178,13 +161,10 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut, bool f
 	if (nBlockHeight >= activationHeight)
 	{
 		CScript votedPayee;
-		// v2.0.0.8 M1Q: consensus is now read from the queue-based tracker
-		// (GetCanonicalWinnerFromQueues) instead of the per-height point-vote
-		// path (GetCanonicalWinner).  The contract is unchanged: returns
-		// (true, payee) on consensus, false otherwise.  The per-height
-		// GetCanonicalWinner / mapVotes path is retained in the tracker for
-		// one release as defensive deserialization but is no longer the
-		// consensus source.  See v208-M1Q-queue-based-voting-SPEC.md S12.
+		// v2.0.0.8 M1Q: consensus is read from the queue-based tracker
+		// (GetCanonicalWinnerFromQueues): (true, payee) on consensus, false
+		// otherwise.  The older per-height vote path (GetCanonicalWinner /
+		// mapVotes / CMasternodeVote) has been removed from the tree.
 		if (voteTracker.GetCanonicalWinnerFromQueues(nBlockHeight, votedPayee))
 		{
 			payeeOut = votedPayee;
@@ -193,18 +173,20 @@ bool GetEnforcedPayee(int nBlockHeight, CScript &payeeOut, CTxIn &vinOut, bool f
 			// return on the voted path.  vinOut is explicitly CLEARED so
 			// that any caller doing mnodeman.Find(vinOut) gets a
 			// deterministic NULL rather than matching a stale leftover vin.
-			// (The previous nLastPaid consumer in main.cpp ProcessBlock has
+			// (The previous nLastPaid writer in main.cpp ProcessBlock has
 			// been removed entirely -- OnBlockConnected is now the sole
-			// authority for the per-MN last-paid display field -- but the
-			// clear is kept as correct defensive hygiene for the function's
-			// contract: voted path => no vin.)
+			// writer of CMasternode::nLastPaid, which is NOT display-only: it
+			// is FindOldestNotInVec's ranking key -- but the clear is kept as
+			// correct defensive hygiene for the function's contract: voted
+			// path => no vin.)
 			vinOut = CTxIn();
 			return true;
 		}
 
-		// Activation height reached but no consensus -- fall through to
-		// legacy lookup (permissive).  Logged so operators can spot
-		// extended consensus failures.
+		// Activation height reached but no voted winner.  The legacy lookup
+		// below is always empty (see header), so this returns false and the
+		// caller decides (validators: permissive; producers: defer / rescue).
+		// Logged so operators can spot extended consensus failures.
 		if (fDebug && !fQuiet)
 		{
 			LogPrintf("GetEnforcedPayee -- height %d at/after activation %d "
@@ -1776,16 +1758,13 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 							// GATE.  Using GetEffectiveVotedConsensusActivationHeight()
 							// gives us:
 							//   - On mainnet (floor = VOTED_CONSENSUS_ACTIVATION_HEIGHT,
-							//     1,480,000 as of v2.0.0.9): never fires below that
-							//     height, matching v2.0.0.6 effective behaviour
-							//     byte-for-byte.  (Corrected 2026-09-22: this used to
-							//     say the floor was INT_MAX, which it no longer is.
-							//     The gate always read the live resolver, so behaviour
-							//     was right -- only the comment was stale.)
+							//     NOT SCHEDULED = INT_MAX since v2.0.0.9 rc9): never
+							//     fires, matching v2.0.0.6 effective behaviour
+							//     byte-for-byte.  Mainnet also ignores SPORK_15 (S1).
 							//   - On testnet (floor = 2000): fires from height
 							//     2000 onwards, the same height at which
 							//     voted-consensus also activates
-							//   - SPORK_15 lowers both gates together:
+							//   - On testnet, SPORK_15 lowers both gates together:
 							//     coordinated rollout, no awkward partial state
 							const int nWeakCheckActivationHeight =
 								GetEffectiveVotedConsensusActivationHeight();
@@ -1832,15 +1811,18 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 						// nothing strict happens pre-activation or with no
 						// 60% vote).
 						//
-						// Gated identically to the PoW block: the post-startup
-						// checks-delay warmup must have elapsed
-						// (nMasterNodeChecksEngageTime != 0), so PoS and PoW
-						// enforce under identical conditions.
+						// Gated identically to the PoW block.  NOTE (v2.0.0.9 rc9,
+						// review 2 1.A4): there is NO post-startup warmup.
+						// nMasterNodeChecksEngageTime is set non-zero whenever
+						// the node is not in IBD, and this code only runs when
+						// !fIsInitialDownload, so "!= 0" is always true here.
+						// A restarted node enforces payee checks as soon as it
+						// leaves IBD.  (Inherited; the 45-minute delay value is
+						// never compared with the clock.)
 						// v2.0.0.8 Spec C: fMnAdvRelay gate removed.  The strict
-						// voted-consensus check now engages on its own merits --
-						// warmup elapsed (nMasterNodeChecksEngageTime != 0) plus
-						// GetEnforcedPayee returning an enforceable payee (which
-						// itself self-gates on activation height + consensus).
+						// voted-consensus check engages whenever GetEnforcedPayee
+						// returns an enforceable payee (which itself self-gates
+						// on activation height + consensus).
 						if (nMasterNodeChecksEngageTime != 0)
 						{
 							CScript enforcedPayee;
@@ -2054,11 +2036,10 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 						// registered masternode.  Pre-this-patch, the PoW path
 						// stopped there -- so a PoW miner could pay any valid MN
 						// (e.g. one it controls) instead of the consensus-voted
-						// winner, and the block was accepted.  The PoS path is
-						// strict (GetEnforcedPayee match enforced in the earlier
-						// masternode-payment block); the PoW path was not.  This
-						// closes that asymmetry: a PoW miner that ignores the
-						// vote now has its block rejected.
+						// winner, and the block was accepted.  The PoS path has
+						// the matching strict check (the PoS branch above); the
+						// PoW path did not.  This closes that asymmetry: a PoW
+						// miner that ignores the vote now has its block rejected.
 						//
 						// GetEnforcedPayee returns the voted-consensus payee
 						// only when past activation height AND consensus formed;
@@ -2068,11 +2049,11 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 						// rollout behaviour (nothing strict happens until the
 						// chain is past activation and a 60% vote exists).
 						//
-						// Gated the same way as the weak check:
-						//   - nMasterNodeChecksEngageTime != 0 : the post-startup
-						//     "checks delay" warmup has elapsed (the node has a
-						//     settled MN list and synced vote state).  Enforcing
-						//     before this would wrongly reject good blocks.
+						// Gated the same way as the weak check.  NOTE (v2.0.0.9
+						// rc9, review 2 1.A4): nMasterNodeChecksEngageTime != 0
+						// only means "not in IBD", which is always true here; it
+						// is NOT a warmup and does not wait for a settled MN list
+						// or synced vote state.  See the PoS counterpart above.
 						//
 						// Companion to the PoS-side enforcement; see also
 						// GetEnforcedPayee in this file and miner.cpp (the block
@@ -2213,14 +2194,14 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig, C
 				// v2.0.0.8: raised from DoS(10) to DoS(100).  A block that
 				// reaches here with fBlockHasPayments == false has a genuine
 				// payment violation -- wrong masternode/devops amount, wrong
-				// coinbase/coinstake output structure, or (post warmup, with
-				// advisory relay on) a masternode payee that does not match
-				// voted consensus.  All of these are hard consensus failures,
-				// not minor misbehaviour, so the peer is scored accordingly.
-				// The startup checks-delay grace window is handled UPSTREAM:
-				// the address-validity branches only set fBlockHasPayments =
-				// false once nMasterNodeChecksEngageTime != 0, so a node still
-				// in warmup never reaches this DoS for an address reason.
+				// coinbase/coinstake output structure, or a masternode payee
+				// that does not match voted consensus.  All of these are hard
+				// consensus failures, not minor misbehaviour, so the peer is
+				// scored accordingly.
+				// v2.0.0.9 rc9 (review 2 1.A4): there is no startup grace
+				// window.  The address-validity branches test
+				// nMasterNodeChecksEngageTime != 0, which is always true once
+				// the node is out of IBD (the only time they run).
 				//
 				// v2.0.0.8 CW11: tiered scoring.  nPaymentsDoSScore defaults to
 				// 100 (hard failure) and is lowered to 10 by the soft-failure
@@ -2703,7 +2684,15 @@ bool CBlock::SignBlock(CWallet& wallet, int64_t nFees)
 				// fix maintains the same invariant the CW7 / CW7-bis-PoW
 				// work established: nBits is always GetNextTargetRequired
 				// of whatever nTime the block carries.
-				nBits = GetNextTargetRequired(pindexBest, true, nTime);
+				//
+				// v2.0.0.9 rc9 (review 2.10): GetNextTargetRequired works through
+				// unlocked file-scope VRX globals in blockparams.cpp, which block
+				// processing also uses under cs_main.  The staker holds no locks
+				// here, so take cs_main for the call.
+				{
+					LOCK(cs_main);
+					nBits = GetNextTargetRequired(pindexBest, true, nTime);
+				}
 
 				// we have to make sure that we have no future timestamps in
 				// our transactions set
@@ -2873,7 +2862,9 @@ bool CBlock::SetBestChainInner(CTxDB& txdb, CBlockIndex *pindexNew)
 	//      blocks' MN payments were never cached at all), and
 	//   2. recorded it at the FINAL tip height, not the block's own height.
 	// The cache ended up sparse and height-shifted, so
-	// FindOldestNotInVecChainDerived kept selecting MNs whose payments had
+	// FindOldestNotInVecChainDerived (deleted 2026-08-07, FINDING-2026-008;
+	// the queue simulation in BroadcastQueue now uses this cache instead)
+	// kept selecting MNs whose payments had
 	// never registered -- producing the persistent vote-rotation looping
 	// seen on testnet (e.g. tFdB winning heights 1058-1061 despite being
 	// paid repeatedly in that range).

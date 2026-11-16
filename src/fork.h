@@ -13,7 +13,7 @@ static const int64_t nReservePhaseStart = 1;
 static const int64_t VELOCITY_TOGGLE = 175; // Implementation of the Velocity system into the chain.
 /** Velocity retarget toggle block */
 static const int64_t VELOCITY_TDIFF = 0; // Use Velocity's retargetting method.
-/** Protocol 3.0 toggle */
+/** (Inherited empty "Protocol 3.0 toggle" heading; nothing defined here.) */
 
 /*
 	Early development adresses
@@ -79,9 +79,11 @@ static const int64_t VELOCITY_TDIFF = 0; // Use Velocity's retargetting method.
 #define VERION_2_0_1_0_DEVELOPER_ADDRESS		"dGoFPie9QZmQ1Ty1beqSHytxNruehpGtGa"
 
 /* Testnet developer address (v2.0.0.8 testnet bootstrap).
- * Block construction and validation on testnet always uses this regardless
- * of mainnet fork-date logic.  Mainnet logic still chooses between the
- * three mainnet developer addresses above based on block height/time. */
+ * Used on testnet only BELOW block 100 (VERION_2_0_1_0_TESTNET_UPDATE_BLOCK);
+ * from block 100 testnet uses VERION_2_0_1_0_TESTNET_DEVELOPER_ADDRESS below.
+ * Mainnet chooses between the FOUR mainnet developer addresses above by
+ * block height/time (fork.cpp getDevelopersAdressForHeight).
+ * (v2.0.0.9 rc9 correction, review 2 3.#6.) */
 #define TESTNET_DEVELOPER_ADDRESS				"tRutwwW5LVYyYw72s3uTiWVGemNXh6FT5d"
 
 /* Testnet v2.0.1.0 rotation.  Activates at block 100 to exercise the

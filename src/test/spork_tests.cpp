@@ -126,11 +126,14 @@ BOOST_AUTO_TEST_CASE(ProtocolVersionIsAtLeastMinVoting)
 	BOOST_CHECK_GE(PROTOCOL_VERSION, MIN_VOTING_PROTOCOL_VERSION);
 }
 
-BOOST_AUTO_TEST_CASE(VotedConsensusActivationHeightIsExact)
+BOOST_AUTO_TEST_CASE(VotedConsensusActivationIsNotScheduled)
 {
-	// Must be exactly 1,480,000.  The Rust v3 port wires the same value; any
-	// divergence splits the two implementations at that height.
-	BOOST_CHECK_EQUAL(VOTED_CONSENSUS_ACTIVATION_HEIGHT, 1480000);
+	// v2.0.0.9 rc9 (Duckie, 2026-11-16): mainnet voted-consensus activation is
+	// NOT SCHEDULED in this release -- INT_MAX, never.  rc1-rc8 wired 1,480,000;
+	// that was withdrawn.  v2.0.1.0 sets the real height.  If this fails, the
+	// mainnet floor was changed: make sure that was a deliberate release
+	// decision (and that any other implementation matches).
+	BOOST_CHECK_EQUAL(VOTED_CONSENSUS_ACTIVATION_HEIGHT, INT_MAX);
 }
 
 BOOST_AUTO_TEST_CASE(DevopsRotationHeightIsExact)

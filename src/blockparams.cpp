@@ -480,6 +480,12 @@ void VRX_ThreadCurve(const CBlockIndex* pindexLast, bool fProofOfStake, int64_t 
 		// Version 1.2 Extended Curve Run Upgrade
 		if(pindexLast->GetBlockTime() > VERION_1_0_1_5_MANDATORY_UPDATE_START)
 		{// ON Tuesday, Jul 02, 2019 12:00:00 PM PDT
+			// v2.0.0.9 rc9 note (review 2 3.#5): the first paragraph below
+			// describes the ORIGINAL v2.0.0.8 design.  It was replaced by
+			// the RESYNC FIX that follows: the stall term is now measured
+			// from the targeted block's own timestamp (nNewBlockTime), NOT
+			// the wall clock.  "wallClockDelta" is a historical name.
+			//
 			// v2.0.0.8 difficulty-recovery: use WALL CLOCK time since the
 			// last block, not the block-timestamp delta.  The original
 			// logic compared two block timestamps that are identical on
@@ -517,15 +523,14 @@ void VRX_ThreadCurve(const CBlockIndex* pindexLast, bool fProofOfStake, int64_t 
 			// therefore the identical nBits.
 			//
 			// Behaviour is preserved for live operation: at mint time the
-			// miner passes GetAdjustedTime() (the block's timestamp is not
-			// finalised yet, and is ~now anyway), which is exactly what the
-			// old code used -- so the stall-recovery curve still engages
-			// for a genuinely stalled chain.  Only the non-determinism is
-			// removed.
+			// producer passes the new block's nTime (or, in some mining
+			// RPCs, GetAdjustedTime()), which is ~now -- so the
+			// stall-recovery curve still engages for a genuinely stalled
+			// chain.  Only the non-determinism is removed.
 			//
-			// nNewBlockTime == 0 means "not supplied" (defensive / any
-			// caller not updated) -> fall back to the old wall-clock
-			// behaviour rather than compute a nonsense negative delta.
+			// nNewBlockTime == 0 means "not supplied" -> fall back to the
+			// old wall-clock behaviour.  v2.0.0.9 rc9: no caller passes 0;
+			// this is a defensive, NON-DETERMINISTIC fallback only.
 			int64_t blockDelta = blkTime - cntTime;
 			int64_t nEffectiveNewTime = (nNewBlockTime > 0)
 											? nNewBlockTime
@@ -593,7 +598,7 @@ void VRX_Dry_Run(const CBlockIndex* pindexLast)
 	// Reset difficulty for payments update
 	if(pindexLast->GetBlockTime() > 0)
 	{
-		if(pindexLast->GetBlockTime() > VERION_1_0_1_5_MANDATORY_UPDATE_START) // ON Monday, May 20, 2019 12:00:00 AM
+		if(pindexLast->GetBlockTime() > VERION_1_0_1_5_MANDATORY_UPDATE_START) // ON Tuesday, 2 July 2019 19:00:00 GMT
 		{
 			if(pindexLast->GetBlockTime() < VERION_1_0_1_5_MANDATORY_UPDATE_START + 480)
 			{
@@ -714,6 +719,12 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 //
 // Coin base subsidy
 //
+// v2.0.0.9 rc9 NOTE (review 2 3.#2; inherited): the plan below is HISTORICAL
+// and does not describe the code.  There is NO supply cap: the "hardCap"
+// branches in GetProofOfWorkReward / GetProofOfStakeReward only run at height
+// <= 1 (nReservePhaseStart = 1).  Masternode payment is 150 XDN from block
+// 403117 (GetMasternodePayment), and the SeeSaw was removed in 1.0.4.2.
+// The reward code is CONSENSUS: do not "restore" a cap (that is a hard fork).
 //
 // Reward calculations for 25-years of XDN emissions
 // 10 Billion Total     | 8 Billion Premine
@@ -818,7 +829,9 @@ int64_t GetProofOfWorkReward(int nHeight, int64_t nFees)
 			nSubsidy = nBlockRewardReserve;
 		}
 	}
-	// hardCap v2.1
+	// "hardCap v2.1" -- NOT a supply cap: this is the else of
+	// nHeight > nReservePhaseStart (= 1), so it only runs at height <= 1.
+	// Consensus code; keep as is (v2.0.0.9 rc9 note, review 2 3.#2).
 	else if(pindexBest->nMoneySupply > MAX_SINGLE_TX)
 	{
 		LogPrint("MINEOUT", "GetProofOfWorkReward(): create=%s nFees=%d\n", FormatMoney(nFees), nFees);
@@ -859,7 +872,9 @@ int64_t GetProofOfStakeReward(const CBlockIndex* pindexPrev, int64_t nCoinAge, i
 			nSubsidy = nBlockRewardReserve;
 		}
 	}
-	// hardCap v2.1
+	// "hardCap v2.1" -- NOT a supply cap: this is the else of
+	// nHeight > nReservePhaseStart (= 1), so it only runs at height <= 1.
+	// Consensus code; keep as is (v2.0.0.9 rc9 note, review 2 3.#2).
 	else if(pindexBest->nMoneySupply > MAX_SINGLE_TX)
 	{
 		LogPrint("MINEOUT", "GetProofOfStakeReward(): create=%s nFees=%d\n", FormatMoney(nFees), nFees);
