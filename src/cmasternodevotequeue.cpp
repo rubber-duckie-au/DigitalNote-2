@@ -71,8 +71,8 @@ uint256 CMasternodeVoteQueue::GetHash() const
 {
 	// Inv-mechanism hash.  Combines all signable fields so that two queues
 	// from the same voter at the same nQueueHeight with different content
-	// (the equivocation case) hash distinctly -- both copies travel the
-	// network and the receiver sees the equivocation rather than treating
+	// hash distinctly -- both copies travel the network and the receiver
+	// applies newer-wins replacement (hotfix Issue 3) rather than treating
 	// the second as a duplicate.
 	//
 	// Each payee is streamed individually rather than streaming the whole

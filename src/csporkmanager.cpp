@@ -169,21 +169,21 @@ bool CSporkManager::Sign(CSporkMessage& spork)
 
 	if(!mnEngineSigner.SetKey(strMasterPrivKey, errorMessage, key2, pubkey2))
 	{
-		LogPrintf("CMasternodePayments::Sign - ERROR: Invalid masternodeprivkey: '%s'\n", errorMessage.c_str());
+		LogPrintf("CSporkManager::Sign - ERROR: Invalid spork private key: '%s'\n", errorMessage.c_str());
 		
 		return false;
 	}
 
 	if(!mnEngineSigner.SignMessage(strMessage, errorMessage, spork.vchSig, key2))
 	{
-		LogPrintf("CMasternodePayments::Sign - Sign message failed");
+		LogPrintf("CSporkManager::Sign - Sign message failed\n");
 		
 		return false;
 	}
 
 	if(!mnEngineSigner.VerifyMessage(pubkey2, spork.vchSig, strMessage, errorMessage))
 	{
-		LogPrintf("CMasternodePayments::Sign - Verify message failed");
+		LogPrintf("CSporkManager::Sign - Verify message failed\n");
 		
 		return false;
 	}

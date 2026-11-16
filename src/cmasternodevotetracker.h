@@ -35,14 +35,16 @@ struct EquivocationRecord
 /**
  * CMasternodeVoteTracker -- v2.0.0.8 M1Q queue-based voting tracker.
  *
- * Collects per-voter ordered payee queues for upcoming heights,
- * detects equivocation (two distinct queues from the same voter at the
- * same nQueueHeight), and exposes a queue-based canonical-winner
- * lookup for enforcement.
+ * Collects per-voter ordered payee queues for upcoming heights and
+ * exposes a queue-based canonical-winner lookup for enforcement.
  *
  * Storage shape: mapQueues[nQueueHeight][voterVin] -> CMasternodeVoteQueue.
- * One queue per voter per nQueueHeight; any second distinct queue is
- * equivocation (M1Q spec S8).
+ * One queue per voter per nQueueHeight.  A second distinct queue from the
+ * same voter at the same nQueueHeight REPLACES the stored one if its
+ * nTimeSigned is newer (v2.0.0.8 hotfix Issue 3).  It is NOT marked as
+ * equivocation any more: the original M1Q spec S8 rule was removed, and the
+ * equivocator maps below are never written (v2.0.0.9 rc9 note, review 2
+ * 1.A9/1.B2).
  *
  * Design references:
  *   v208-M1Q-queue-based-voting-SPEC.md
@@ -118,14 +120,11 @@ public:
 	// =====================================================================
 	// v2.0.0.8 M1Q -- queue-based voting state and interface.
 	//
-	// These REPLACE the per-height mapVotes path post-activation.  Storage
+	// These replaced the per-height mapVotes path (since removed).  Storage
 	// shape: [nQueueHeight][voterVin] -> the voter's queue.  ONE queue per
 	// voter per nQueueHeight; a second distinct queue from the same voter
-	// at the same nQueueHeight is equivocation (M1Q spec S8).
-	//
-	// Definitions land in M1Q step 3 (this declaration block is added in
-	// step 2 so the message-handler references resolve).  See
-	// v208-M1Q-queue-based-voting-SPEC.md.
+	// at the same nQueueHeight replaces it if newer (hotfix Issue 3; not
+	// equivocation).  See v208-M1Q-queue-based-voting-SPEC.md.
 	// =====================================================================
 	std::map<int, std::map<COutPoint, CMasternodeVoteQueue> > mapQueues;
 	std::map<uint256, CMasternodeVoteQueue> mapQueuesByHash;

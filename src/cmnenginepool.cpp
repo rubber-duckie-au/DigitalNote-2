@@ -126,6 +126,16 @@ bool CMNenginePool::SetCollateralAddress(const std::string &strAddress)
 //
 void CMNenginePool::UnlockCoins()
 {
+	// v2.0.0.9 rc9 (R4, review 2 2.#13): under -disablewallet pwalletMain is
+	// NULL, but ThreadCheckMNenginePool still runs the idle timeout path that
+	// calls this.  Nothing can have been locked without a wallet.
+	if (!pwalletMain)
+	{
+		lockedCoins.clear();
+
+		return;
+	}
+
 	while(true)
 	{
 		TRY_LOCK(pwalletMain->cs_wallet, lockWallet);

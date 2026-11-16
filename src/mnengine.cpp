@@ -272,13 +272,6 @@ void ThreadCheckMNenginePool()
 			}
 		}
 		
-		// Ask ONE peer for the full list, once, after we are caught up.
-		//
-		// DsegUpdate has exactly one other call site (main.cpp, on connect), so a
-		// node whose connections were all made while it was still behind -- or that
-		// went blind after connecting -- never asked again and fell back to the slow
-		// per-entry AskForMN path.  DsegUpdate keeps its own per-peer 3-hour guard,
-		// so this cannot spam.
 		// Ask peers for the full list -- once we are synced, and AGAIN while our roster
 		// still looks short.
 		//

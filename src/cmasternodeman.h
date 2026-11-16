@@ -21,6 +21,7 @@ class CPubKey;
 class CDataStream;
 class CScript;
 class CBlock;
+class CBlockIndex;
 
 class CMasternodeMan
 {
@@ -57,9 +58,11 @@ private:
 	// This guarantees v2.0.0.7 <-> v2.0.0.8 cache file compatibility and
 	// avoids stale-data risk if cache and chain ever diverge.
 	//
-	// Replaces the broken per-wallet nLastPaid field (PhaseA-current-state.md
-	// S1.5) as the input to FindOldestNotInVecChainDerived.  CMasternode's
-	// own nLastPaid field is preserved for display purposes only.
+	// Consumers: GetQueuePaymentSnapshot (the vote-queue simulation in
+	// CActiveMasternode::BroadcastQueue / SimulateQueue) and getmnlastpaid.
+	// NOTE: CMasternode::nLastPaid is a SEPARATE field and is NOT display-only:
+	// it is FindOldestNotInVec's ranking key (SecondsSincePayment), i.e. the
+	// live mainnet payee pick before activation.  OnBlockConnected writes both.
 	// ----------------------------------------------------------------------
 	std::map<COutPoint, int> mapLastPaidHeight;
 
@@ -87,10 +90,14 @@ private:
 	// committed precedent for being paid in this context -- a much higher
 	// bar than "is currently in our local list".
 	//
-	// SIZE / PRUNING.  Bounded by MAX_LASTPAID_SCAN_DEPTH (50000) entries.
-	// When new entries push past that bound, the oldest are pruned.  At
-	// observed ~3min/block and ~30 active MNs, the window holds ~112 days
-	// of attestations -- ample coverage for resync and live operation.
+	// SIZE / PRUNING.  Capped at MAX_LASTPAID_SCAN_DEPTH (50000) DISTINCT
+	// SCRIPTS; the lowest-height entries are evicted only past that cap.  With
+	// ~30 payees the cap is never reached, so in practice there is NO age
+	// limit: any script seen as a tip payee since startup (or in the startup
+	// walk) stays attested for the life of the process.  Entries are not
+	// removed on reorg, and blocks connected inside Reorganize are not
+	// recorded (SetBestChain records only the final tip).  Ageing these out
+	// is a v2.0.1.0 design item (V2).
 	//
 	// NOT serialized -- always rebuilt from chain on startup, same lifecycle
 	// as mapLastPaidHeight.
@@ -134,6 +141,12 @@ private:
 	// it as a walk bound.
 	int nLastPaidHeightScannedTo;
 
+	// v2.0.0.9 rc9 (A6/C4): the walk behind RecomputeLastPaidHeight, on copies
+	// of the MN's outpoint and payee script so no vMasternodes pointer is held
+	// across the disk reads.  Takes cs only to write the result.
+	void RecomputeLastPaidHeightFor(const COutPoint& outpoint, const CScript& mnScript,
+	                                const CBlockIndex* pindexFrom);
+
 public:
 	// keep track of dsq count to prevent masternodes from gaming mnengine queue
 	int64_t nDsqCount;
@@ -166,9 +179,9 @@ public:
 	void OnBlockAccepted(int nHeight, const CScript& mnPayee);
 
 	// v2.0.0.8 PB-PAYEEDET Tier 2: query the chain-derived historical
-	// attestation map.  Returns true if the payee has appeared as an
-	// MN-payment-slot payee in any block within our chain-walk window
-	// (MAX_LASTPAID_SCAN_DEPTH blocks).  Used as a Tier-2 fallback from
+	// attestation map.  Returns true if the payee has been recorded as an
+	// MN-payment-slot payee since startup (no age limit; see the map's
+	// SIZE / PRUNING note).  Used as a Tier-2 fallback from
 	// IsPayeeAValidMasternode when the live vMasternodes check misses.
 	bool IsPayeeHistoricallyAttested(const CScript& payee) const;
 
@@ -236,30 +249,37 @@ public:
 	// All methods are thread-safe (acquire cs internally).
 	// ----------------------------------------------------------------------
 
-	// Look up MN by the address its rewards are paid to.
-	// Uses dest equality (works for both P2PK and P2PKH outputs).
-	// Returns NULL if no MN's payment address matches.
-	CMasternode* FindByPayeeAddress(const CTxDestination& dest);
 
-	// Called from main.cpp after a block is connected at the tip.  Scans the
-	// block's payment-bearing transaction (coinstake for PoS, coinbase for
-	// PoW), identifies the MN payee by address match, and updates the cache.
+	// Called when a block is connected (SetBestChainInner, and per block
+	// inside Reorganize).  Reads ONLY the block's masternode-slot output (the
+	// CheckBlock index rule) and credits EVERY masternode whose payee script
+	// matches it: mapLastPaidHeight = height and nLastPaid = block time.
+	// v2.0.0.9 rc9 (review 3.1/3.2): it used to credit the first output paying
+	// ANY masternode address -- so a stake returned to a collateral address was
+	// recorded as a payment -- and only the first masternode with that address.
 	void OnBlockConnected(const CBlock& block, int nBlockHeight);
 
-	// Called from main.cpp after a block is disconnected (reorg).  If the
-	// disconnected block was an MN's last-known-payment block, triggers a
-	// bounded walk to find the next-most-recent payment for that MN.
+	// Called from Reorganize for each disconnected block.  For every
+	// masternode whose cached last-paid height is this block, recomputes it
+	// by walking back from the disconnected block's PARENT (review 2.7: it
+	// used to walk from the old tip and re-find the block being removed).
+	// nLastPaid is not rewound on disconnect.
 	void OnBlockDisconnected(const CBlock& block, int nBlockHeight);
 
-	// Walk the chain backward from current tip, looking for the most recent
-	// payment to the given MN.  Bounded by nLastPaidHeightScannedTo so the
-	// walk terminates.  If no payment found in range, removes the cache
-	// entry (MN is treated as "never paid in scanned range").
-	void RecomputeLastPaidHeight(CMasternode* mn);
+	// Walk the chain backward from pindexFrom (default: the current tip),
+	// looking for the most recent block whose masternode-slot output pays
+	// this MN.  Walks up to MAX_LASTPAID_SCAN_DEPTH blocks and stops at the
+	// first payment found; a never-paid MN costs the full 50,000 block reads,
+	// and Add() calls this while holding cs (review 3.9 / V11).  If no payment
+	// is found, removes the cache entry (treated as longest-ago-paid).
+	void RecomputeLastPaidHeight(CMasternode* mn, const CBlockIndex* pindexFrom = NULL);
 
-	// One-time at startup (after chain is loaded): walk backward up to
-	// MAX_LASTPAID_SCAN_DEPTH blocks, recording the most recent payment for
-	// each enabled MN.  Stops early if all enabled MNs are accounted for.
+	// One-time at startup (after mncache.dat is loaded and the chain is
+	// loaded): walk backward up to MAX_LASTPAID_SCAN_DEPTH blocks, recording
+	// the most recent masternode-slot payment for each enabled MN (Tier 1)
+	// and every slot payee in mapHistoricalPayees (Tier 2).  It does NOT stop
+	// early: once every MN is found it keeps walking for Tier 2, so startup
+	// always reads up to MAX_LASTPAID_SCAN_DEPTH blocks.
 	void PopulateLastPaidHeightCache();
 
 	// v2.0.0.9 blindness guard: does committed chain history show masternode
@@ -279,7 +299,7 @@ public:
 
 	// Return cached lastPaidHeight for an MN.  Returns 0 if not found in the
 	// cache (which means "never paid in our scanned range" -- treated as
-	// longest-ago-paid by FindOldestNotInVecChainDerived).
+	// longest-ago-paid by the vote-queue simulation).
 	int GetLastPaidHeight(const COutPoint& vinPrevout) const;
 
 	// v2.0.0.8 M1Q: snapshot every MN's chain-derived payment state under a

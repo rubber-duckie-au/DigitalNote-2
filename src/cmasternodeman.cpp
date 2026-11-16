@@ -79,10 +79,11 @@ bool CMasternodeMan::Add(CMasternode &mn)
 		// startup PopulateLastPaidHeightCache run stay at paidHeight=0 forever
 		// and get incorrectly selected as "longest-ago-paid."  See UAT-followup U3.
 		//
-		// RecomputeLastPaidHeight does a bounded walk; in steady-state runtime
-		// it only walks back to nLastPaidHeightScannedTo (a recent point), so
-		// the per-Add cost is small.  Safe to call under cs since
-		// CCriticalSection is recursive.
+		// RecomputeLastPaidHeight walks back up to MAX_LASTPAID_SCAN_DEPTH
+		// blocks and stops at the first payment found.  For an active MN that
+		// is a short walk; for a never-paid MN it is the full 50,000 block
+		// reads, done here while holding cs (review 3.9 / V11, v2.0.1.0).
+		// Safe to call under cs since CCriticalSection is recursive.
 		CMasternode &added = vMasternodes.back();
 		RecomputeLastPaidHeight(&added);
 
@@ -557,9 +558,9 @@ CMasternode* CMasternodeMan::GetCurrentMasterNode(int mod, int64_t nBlockHeight,
 // calling it for the same nBlockHeight get the same answer, by
 // construction.  This is the same architectural principle the original
 // CW12 work established for the strict path, applied to the weak fallback
-// path that was missed in that refactor.  See the CountVotingEligible
-// comment above (lines 219-245) for the full rationale -- it applies here
-// verbatim.
+// path that was missed in that refactor.  See the comment above
+// CMasternodeMan::CountVotingEligible for the full rationale -- it applies
+// here verbatim.
 //
 // Also dropped: the mn.Check() call.  Check() mutates activeState on stale
 // ping or spent collateral and has the same time-sensitivity that
@@ -604,16 +605,17 @@ bool CMasternodeMan::IsPayeeAValidMasternode(CScript payee, int nBlockHeight)
 	// The local vMasternodes view is eventually-consistent and may not
 	// reflect MNs that the chain has already accepted as payees -- either
 	// during a resync where dseg gossip has not yet populated our list, or
-	// for an MN that has since decommissioned but was paid earlier in our
-	// chain-walk window.  In those cases the chain ITSELF is the
-	// authoritative attestation: if this exact payee script has appeared
-	// as an MN-payment-block payee in any block within MAX_LASTPAID_SCAN_DEPTH
-	// of the tip, the network consensus has already vouched for it.
+	// for an MN that has since decommissioned but was paid earlier.  In
+	// those cases the chain is used as the attestation: the payee script
+	// has appeared as an MN-slot payee in the startup walk (up to
+	// MAX_LASTPAID_SCAN_DEPTH blocks) or as a tip payee since startup.
 	//
-	// This relaxes the weak check, but only to the level of "chain has
-	// previously accepted this payee" -- a far higher bar than "local list
-	// has this payee right now".  The stricter checks (CW12 voted-consensus,
-	// payment amount, devops slot) are unaffected.
+	// v2.0.0.9 rc9 (review 2 1.A5): this is LOOSER than "the current chain
+	// accepted it".  Entries have no age limit in practice and are not
+	// removed on reorg, so a payee seen as tip payee on a since-orphaned
+	// branch also passes.  See the SIZE / PRUNING note in cmasternodeman.h;
+	// ageing out is a v2.0.1.0 item (V2).  The stricter checks (CW12
+	// voted-consensus, payment amount, devops slot) are unaffected.
 	if(IsPayeeHistoricallyAttested(payee))
 	{
 		return true;
@@ -1508,6 +1510,13 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
 				pmn->lastDseep = sigTime;
 
+				// v2.0.0.9 rc9 note (review 2 2.#28, inherited): this gate is the
+				// ONLY place a dseep refreshes lastTimeSeen, and it passes at most
+				// once per MASTERNODE_MIN_DSEEP_SECONDS (30 min) per masternode.
+				// So a "stop" that arrives within 30 min of the last refresh is
+				// ignored here, and other nodes keep listing the masternode until
+				// it expires (MASTERNODE_EXPIRATION_SECONDS, ~65 min).  Behaviour
+				// change is on the v2.0.1.0 list.
 				if(!pmn->UpdatedWithin(MASTERNODE_MIN_DSEEP_SECONDS))
 				{
 					if(stop)
@@ -1519,10 +1528,11 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 						pmn->UpdateLastSeen();
 
 						// v2.0.0.8 hotfix Issue 1: wire Path A auto-clear into
-						// the dseep heartbeat handler.  dseep is the frequent
-						// (~MASTERNODE_MIN_DSEEP_SECONDS) heartbeat; without
-						// this call equivocator state can only auto-clear via
-						// dsee broadcasts, which are rare in steady state.
+						// the dseep heartbeat handler.  dseep refreshes an entry
+						// at most once per MASTERNODE_MIN_DSEEP_SECONDS (30 min,
+						// see the gate above).  v2.0.0.9 rc9 note: equivocator
+						// state is never set any more (hotfix Issue 3), so this
+						// call is a no-op; removal is v2.0.1.0.
 						// See v208-Issue1-OnFreshDsee-wiring-SPEC.md.
 						voteTracker.OnFreshDsee(vin.prevout);
 
@@ -1984,28 +1994,11 @@ int CMasternodeMan::size()
 // v2.0.0.8 M1: chain-derived last-paid-height cache
 // ===========================================================================
 
-CMasternode* CMasternodeMan::FindByPayeeAddress(const CTxDestination& dest)
-{
-	LOCK(cs);
-
-	// Convert the destination to a script for comparison.  This bypasses the
-	// boost::variant<>::operator== requirement that some destination leaf
-	// types (notably CStealthAddress) don't fully satisfy.  Pattern matches
-	// existing IsPayeeAValidMasternode.
-	CScript scriptForDest = GetScriptForDestination(dest);
-
-	for (CMasternode& mn : vMasternodes)
-	{
-		CScript mnScript = GetScriptForDestination(mn.pubkey.GetID());
-
-		if (mnScript == scriptForDest)
-		{
-			return &mn;
-		}
-	}
-
-	return NULL;
-}
+// v2.0.0.9 rc9 (A6): FindByPayeeAddress() was removed.  Its only callers were
+// the last-paid hooks, which matched ANY output against it and updated only the
+// FIRST masternode with that address (reviews 3.1/3.2).  They now read the
+// masternode-slot output (GetMasternodeSlotPayee, below) and update every
+// masternode whose payee script matches.
 
 int CMasternodeMan::GetLastPaidHeight(const COutPoint& vinPrevout) const
 {
@@ -2023,11 +2016,11 @@ int CMasternodeMan::GetLastPaidHeight(const COutPoint& vinPrevout) const
 
 // v2.0.0.8 PB-PAYEEDET Tier 2: query historical attestation map.
 //
-// Returns true if this payee script has appeared as an MN-payment-slot
-// payee in any block within our chain-walk window (the most recent
-// MAX_LASTPAID_SCAN_DEPTH blocks).  The chain is the canonical record
-// of payees the network has consensus-accepted; this read tells the weak
-// check "yes the chain has previously vouched for this address".
+// Returns true if this payee script was recorded as an MN-payment-slot
+// payee by the startup walk (up to MAX_LASTPAID_SCAN_DEPTH blocks back) or
+// as a tip payee at any time since startup.  v2.0.0.9 rc9 (review 2 1.A5):
+// there is no block-height window -- entries never age out in practice and
+// are not removed on reorg (see the SIZE / PRUNING note in the header).
 //
 // Distinct from Tier 1 (live vMasternodes membership): Tier 2 admits
 // MNs that have decommissioned but were active in the recent past, and
@@ -2061,10 +2054,11 @@ bool CMasternodeMan::IsPayeeHistoricallyAttested(const CScript& payee) const
 // new block becomes the canonical tip.  Idempotent (later calls for the
 // same payee update the height to the more recent value).
 //
-// PRUNING.  Bounded by MAX_LASTPAID_SCAN_DEPTH entries.  When the map
-// grows past that bound, the lowest-height entries are evicted until
-// the size is back within bound.  This keeps the window covering the
-// most recent ~50000 blocks of payees, matching the startup walk depth.
+// PRUNING.  Bounded by MAX_LASTPAID_SCAN_DEPTH (50000) DISTINCT SCRIPTS.
+// When the map grows past that bound, the lowest-height entries are
+// evicted.  v2.0.0.9 rc9 (review 2 1.A5): this is a count of scripts, not
+// a block window -- with ~30 payees the bound is never reached, so entries
+// never age out.  Ageing out is a v2.0.1.0 item (V2).
 void CMasternodeMan::OnBlockAccepted(int nHeight, const CScript& mnPayee)
 {
 	if (mnPayee.empty())
@@ -2238,14 +2232,22 @@ std::vector<CMnPaymentSnapshotEntry> CMasternodeMan::GetQueuePaymentSnapshot() c
 	return result;
 }
 
-void CMasternodeMan::OnBlockConnected(const CBlock& block, int nBlockHeight)
+// v2.0.0.9 rc9 (review 3.1, A6): the payee script of a block's MASTERNODE-SLOT
+// output, or an empty script if the block has none.  Same index rule as
+// CheckBlock and the OnBlockAccepted hook in CBlock::SetBestChain:
+//   PoS: coinstake vtx[1]; 4 outputs -> vout[2], 5 outputs (split stake) -> vout[3]
+//   PoW: coinbase vtx[0]; vout[1]
+// The script is normalised through ExtractDestination so it compares equal to
+// GetScriptForDestination(mn.pubkey.GetID()).  Last-paid tracking must read
+// ONLY this output: a coinstake's stake-return outputs can pay a collateral
+// address too (an operator staking from it), and crediting those recorded the
+// wrong masternode as paid.
+static CScript GetMasternodeSlotPayee(const CBlock& block)
 {
-	// Pick the payment-bearing transaction.  PoS: coinstake (vtx[1]).
-	// PoW: coinbase (vtx[0]).  Verified against production blocks per
-	// PhaseA-current-state.md S4.2.
+	const bool fIsPoS = block.IsProofOfStake();
 	const CTransaction* paymentTx = NULL;
 
-	if (block.IsProofOfStake() && block.vtx.size() >= 2)
+	if (fIsPoS && block.vtx.size() >= 2)
 	{
 		paymentTx = &block.vtx[1];
 	}
@@ -2255,232 +2257,217 @@ void CMasternodeMan::OnBlockConnected(const CBlock& block, int nBlockHeight)
 	}
 	else
 	{
+		return CScript();
+	}
+
+	int nMnSlotIdx = -1;
+
+	if (fIsPoS)
+	{
+		if (paymentTx->vout.size() == 4)
+			nMnSlotIdx = 2;
+		else if (paymentTx->vout.size() == 5)
+			nMnSlotIdx = 3;
+	}
+	else
+	{
+		if (paymentTx->vout.size() >= 2)
+			nMnSlotIdx = 1;
+	}
+
+	if (nMnSlotIdx <= 0 || nMnSlotIdx >= (int)paymentTx->vout.size())
+	{
+		return CScript();
+	}
+
+	const CTxOut& out = paymentTx->vout[nMnSlotIdx];
+
+	if (out.nValue == 0)
+	{
+		return CScript();
+	}
+
+	CTxDestination dest;
+
+	if (!ExtractDestination(out.scriptPubKey, dest))
+	{
+		return CScript();
+	}
+
+	return GetScriptForDestination(dest);
+}
+
+void CMasternodeMan::OnBlockConnected(const CBlock& block, int nBlockHeight)
+{
+	const CScript slotPayee = GetMasternodeSlotPayee(block);
+
+	if (slotPayee.empty())
+	{
 		return;
 	}
 
-	// Scan outputs, find the one paying a known MN.  Address-based
-	// identification handles PoS and PoW uniformly, regardless of vout
-	// position (which varies with stake-split / devops presence).
-	for (const CTxOut& out : paymentTx->vout)
+	// v2.0.0.9 rc9 (review 3.1/3.2, A6): credit EVERY masternode whose payee
+	// script is the slot payee (two masternodes can share a collateral
+	// address), and write nLastPaid under cs.  nLastPaid is NOT display-only:
+	// FindOldestNotInVec ranks by it (SecondsSincePayment), so it is the live
+	// mainnet payee pick before activation.
+	LOCK(cs);
+
+	for (CMasternode& mn : vMasternodes)
 	{
-		if (out.nValue == 0)
+		if (GetScriptForDestination(mn.pubkey.GetID()) != slotPayee)
 		{
 			continue;
 		}
 
-		CTxDestination dest;
+		mapLastPaidHeight[mn.vin.prevout] = nBlockHeight;
+		mn.nLastPaid = block.GetBlockTime();
 
-		if (!ExtractDestination(out.scriptPubKey, dest))
-		{
-			continue;
-		}
-
-		CMasternode* mn = FindByPayeeAddress(dest);
-
-		if (mn != NULL)
-		{
-			{
-				LOCK(cs);
-				mapLastPaidHeight[mn->vin.prevout] = nBlockHeight;
-			}
-
-			// Also update the MN's nLastPaid for display purposes only;
-			// selection no longer relies on this field.
-			mn->nLastPaid = block.GetBlockTime();
-
-			LogPrint("masternode", "CMasternodeMan::OnBlockConnected -- MN %s paid at height %d\n",
-					  mn->vin.prevout.ToString(), nBlockHeight);
-
-			return;  // only one MN payment per block expected
-		}
+		LogPrint("masternode", "CMasternodeMan::OnBlockConnected -- MN %s paid at height %d\n",
+				  mn.vin.prevout.ToString(), nBlockHeight);
 	}
 }
 
 void CMasternodeMan::OnBlockDisconnected(const CBlock& block, int nBlockHeight)
 {
-	const CTransaction* paymentTx = NULL;
+	const CScript slotPayee = GetMasternodeSlotPayee(block);
 
-	if (block.IsProofOfStake() && block.vtx.size() >= 2)
+	if (slotPayee.empty())
 	{
-		paymentTx = &block.vtx[1];
+		return;
 	}
-	else if (block.vtx.size() >= 1)
+
+	// v2.0.0.9 rc9 (review 2.7, C4): walk from the disconnected block's PARENT.
+	// Reorganize disconnects before SetBestChain moves pindexBest, so a walk
+	// from pindexBest started at the old tip and found the very block being
+	// disconnected.  Blocks are disconnected from the top down, so each
+	// recompute starts below everything already removed.
+	const CBlockIndex* pindexFrom = NULL;
+	uint256 hashBlock = block.GetHash();
+	std::map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
+
+	if (mi != mapBlockIndex.end() && mi->second != NULL)
 	{
-		paymentTx = &block.vtx[0];
+		pindexFrom = mi->second->pprev;
 	}
 	else
 	{
+		LogPrintf("CMasternodeMan::OnBlockDisconnected -- block %s not in index; "
+				  "cannot recompute last-paid heights\n", hashBlock.ToString());
 		return;
 	}
 
-	for (const CTxOut& out : paymentTx->vout)
+	// Collect the masternodes whose cached last-paid block is this one.
+	// Disconnecting an earlier payment block has no effect on the most-recent
+	// record.  Copies are taken under cs and the (disk-reading) walks run after
+	// it is released, so no pointer into vMasternodes is held across them.
+	std::vector<std::pair<COutPoint, CScript> > vRecompute;
+
 	{
-		if (out.nValue == 0)
+		LOCK(cs);
+
+		for (CMasternode& mn : vMasternodes)
 		{
-			continue;
-		}
-
-		CTxDestination dest;
-
-		if (!ExtractDestination(out.scriptPubKey, dest))
-		{
-			continue;
-		}
-
-		CMasternode* mn = FindByPayeeAddress(dest);
-
-		if (mn != NULL)
-		{
-			// Only recompute if this block is the cached last-paid block for
-			// this MN.  Disconnecting an earlier payment block has no effect
-			// on the most-recent record.
-			bool needsRecompute = false;
-
+			if (GetScriptForDestination(mn.pubkey.GetID()) != slotPayee)
 			{
-				LOCK(cs);
-
-				std::map<COutPoint, int>::iterator it = mapLastPaidHeight.find(mn->vin.prevout);
-
-				if (it != mapLastPaidHeight.end() && it->second == nBlockHeight)
-				{
-					needsRecompute = true;
-				}
+				continue;
 			}
 
-			if (needsRecompute)
-			{
-				LogPrintf("CMasternodeMan::OnBlockDisconnected -- recomputing lastPaidHeight "
-						  "for MN %s (was %d)\n",
-						  mn->vin.prevout.ToString(), nBlockHeight);
+			std::map<COutPoint, int>::iterator it = mapLastPaidHeight.find(mn.vin.prevout);
 
-				RecomputeLastPaidHeight(mn);
+			if (it == mapLastPaidHeight.end() || it->second != nBlockHeight)
+			{
+				continue;
 			}
 
-			return;
+			vRecompute.push_back(std::make_pair(mn.vin.prevout, slotPayee));
 		}
+	}
+
+	for (const std::pair<COutPoint, CScript>& entry : vRecompute)
+	{
+		LogPrintf("CMasternodeMan::OnBlockDisconnected -- recomputing lastPaidHeight "
+				  "for MN %s (was %d)\n",
+				  entry.first.ToString(), nBlockHeight);
+
+		RecomputeLastPaidHeightFor(entry.first, entry.second, pindexFrom);
 	}
 }
 
-void CMasternodeMan::RecomputeLastPaidHeight(CMasternode* mn)
+void CMasternodeMan::RecomputeLastPaidHeight(CMasternode* mn, const CBlockIndex* pindexFrom)
 {
-	if (mn == NULL || pindexBest == NULL)
+	if (mn == NULL)
 	{
 		return;
 	}
 
-	CScript mnScript = GetScriptForDestination(mn->pubkey.GetID());
+	COutPoint outpoint;
+	CScript mnScript;
 
-	CBlockIndex* pindex = pindexBest;
+	{
+		LOCK(cs);
+		outpoint = mn->vin.prevout;
+		mnScript = GetScriptForDestination(mn->pubkey.GetID());
+	}
 
-	// v2.0.0.8 PB-6: bound the walk by MAX_LASTPAID_SCAN_DEPTH, NOT by
-	// nLastPaidHeightScannedTo.
-	//
-	// The previous bound was `pindex->nHeight > nLastPaidHeightScannedTo`.
-	// nLastPaidHeightScannedTo is set to wherever the startup scan
-	// (PopulateLastPaidHeightCache) TERMINATED -- and that scan
-	// terminates EARLY, as soon as a payment has been found for every
-	// enabled MN.  On a healthy chain that is only tens of blocks below
-	// the tip.  So the old bound made this function scan only a tiny
-	// recent window.
-	//
-	// Consequences of the old bound:
-	//   - A masternode that joins via dsee AFTER startup, whose last
-	//     payment is deeper than that shallow window, was never found.
-	//     RecomputeLastPaidHeight then fell through to the erase() below
-	//     and the MN was wrongly treated as never-paid (longest-ago) --
-	//     so it was over-prioritised and won votes it should not have.
-	//   - On a reorg (OnBlockDisconnected path) that disconnects an MN's
-	//     cached last-paid block, the recompute likewise only looked at
-	//     the shallow window and could erase a still-valid older entry.
-	//
-	// The comment at the Add() call site claimed the scannedTo bound
-	// kept the walk "small" because scannedTo was "a recent point" --
-	// that reasoning was inverted: a recent floor makes the walk small
-	// precisely BY missing most of the chain.
-	//
-	// Fix: walk up to MAX_LASTPAID_SCAN_DEPTH blocks, exactly like
-	// PopulateLastPaidHeightCache does.  A late-joining MN now gets the
-	// same quality of answer the startup scan gives.  The walk still
-	// stops the instant the MN's payment is found, so for any genuinely
-	// active MN the cost is only ~(fleet size) block reads; the full
-	// depth is reached only for an MN with no payment in the last
-	// MAX_LASTPAID_SCAN_DEPTH blocks, for which "erase / treat as
-	// longest-ago" is the correct answer anyway.  Add() is cold (MNs
-	// join minutes apart), so the deeper bound is not a hot-path cost.
+	RecomputeLastPaidHeightFor(outpoint, mnScript, pindexFrom);
+}
+
+// Walk back from pindexFrom (default: the tip) for the most recent block whose
+// MASTERNODE-SLOT output pays mnScript.
+//
+// History (v2.0.0.8 PB-6): the walk used to be bounded by
+// nLastPaidHeightScannedTo, which made it miss payments deeper than a shallow
+// recent window; it is bounded by MAX_LASTPAID_SCAN_DEPTH instead.  It stops at
+// the first payment found, so an active MN costs ~(fleet size) block reads; a
+// never-paid MN costs the full MAX_LASTPAID_SCAN_DEPTH reads (and Add() calls
+// this while holding cs -- review 3.9 / V11).
+//
+// v2.0.0.9 rc9 (review 3.1, A6): match ONLY the masternode-slot output
+// (GetMasternodeSlotPayee), not any output paying the address.
+void CMasternodeMan::RecomputeLastPaidHeightFor(const COutPoint& outpoint, const CScript& mnScript,
+                                                const CBlockIndex* pindexFrom)
+{
+	if (pindexBest == NULL)
+	{
+		return;
+	}
+
+	const CBlockIndex* pindex = (pindexFrom != NULL) ? pindexFrom : pindexBest;
 	int nWalked = 0;
 
 	while (pindex != NULL && nWalked < MAX_LASTPAID_SCAN_DEPTH)
 	{
 		CBlock block;
 
-		if (!block.ReadFromDisk(pindex))
+		if (block.ReadFromDisk(pindex) && GetMasternodeSlotPayee(block) == mnScript)
 		{
-			pindex = pindex->pprev;
-			nWalked++;
-			continue;
-		}
-
-		const CTransaction* paymentTx = NULL;
-
-		if (block.IsProofOfStake() && block.vtx.size() >= 2)
-		{
-			paymentTx = &block.vtx[1];
-		}
-		else if (block.vtx.size() >= 1)
-		{
-			paymentTx = &block.vtx[0];
-		}
-
-		if (paymentTx != NULL)
-		{
-			for (const CTxOut& out : paymentTx->vout)
 			{
-				if (out.nValue == 0)
-				{
-					continue;
-				}
-
-				CTxDestination dest;
-
-				if (!ExtractDestination(out.scriptPubKey, dest))
-				{
-					continue;
-				}
-
-				CScript outScript = GetScriptForDestination(dest);
-
-				if (outScript == mnScript)
-				{
-					{
-						LOCK(cs);
-						mapLastPaidHeight[mn->vin.prevout] = pindex->nHeight;
-					}
-
-					LogPrintf("CMasternodeMan::RecomputeLastPaidHeight -- found MN %s at height %d "
-							  "(walked %d blocks)\n",
-							  mn->vin.prevout.ToString(), pindex->nHeight, nWalked);
-
-					return;
-				}
+				LOCK(cs);
+				mapLastPaidHeight[outpoint] = pindex->nHeight;
 			}
+
+			LogPrintf("CMasternodeMan::RecomputeLastPaidHeight -- found MN %s at height %d "
+					  "(walked %d blocks)\n",
+					  outpoint.ToString(), pindex->nHeight, nWalked);
+
+			return;
 		}
 
 		pindex = pindex->pprev;
 		nWalked++;
 	}
 
-	// Not found within MAX_LASTPAID_SCAN_DEPTH blocks.  Remove entry so
-	// MN is treated as "never paid in our window" (longest-ago-paid for
-	// selection).  With the depth-bounded walk this now genuinely means
-	// "no payment in the last MAX_LASTPAID_SCAN_DEPTH blocks", which is
-	// the correct condition for that treatment.
+	// Not found within MAX_LASTPAID_SCAN_DEPTH blocks.  Remove the entry so the
+	// MN is treated as "never paid in our window" (longest-ago-paid for the
+	// vote-queue simulation).
 	{
 		LOCK(cs);
-		mapLastPaidHeight.erase(mn->vin.prevout);
+		mapLastPaidHeight.erase(outpoint);
 	}
 
 	LogPrintf("CMasternodeMan::RecomputeLastPaidHeight -- MN %s not found within %d blocks\n",
-			  mn->vin.prevout.ToString(), MAX_LASTPAID_SCAN_DEPTH);
+			  outpoint.ToString(), MAX_LASTPAID_SCAN_DEPTH);
 }
 
 // v2.0.0.9 blindness guard: does the chain know masternodes that we do not?
@@ -2497,9 +2484,11 @@ void CMasternodeMan::RecomputeLastPaidHeight(CMasternode* mn)
 // 1,300 XDN diverted from masternodes, and every other node accepted it, because
 // validation is deliberately permissive here (FINDING-2026-009).
 //
-// mapHistoricalPayees is COMMITTED chain data -- payees recorded as blocks
-// became the tip.  A payee in there provably existed.  If it is recent, and we
-// have never held an entry for it, our roster is demonstrably short.
+// mapHistoricalPayees records payees as blocks became the tip.  A payee in
+// there was paid on a chain this node followed.  (v2.0.0.9 rc9, review 2 1.A5:
+// not strictly "committed" -- entries are not removed on reorg, so a payee from
+// a since-orphaned branch can remain.)  If it is recent, and we have never held
+// an entry for it, our roster is very likely short.
 //
 // >>> THIS MUST NEVER VETO THE RESCUE, ONLY DELAY IT. <<<  A veto is
 // FINDING-2026-011 returning: if the masternodes we are missing are genuinely
@@ -2512,22 +2501,21 @@ void CMasternodeMan::RecomputeLastPaidHeight(CMasternode* mn)
 // for the whole scan window.  Sizing a quorum from it would make consensus
 // impossible for weeks after a large shutdown.  It answers only the narrow
 // question "am I seeing everything?", which it can answer soundly.
-// >>> LOCK ORDER -- WHY THIS IS SPLIT IN TWO. <<<
+// >>> WHY THIS IS SPLIT IN TWO (scan + flag). <<<
 //
-// The scan below takes cs (mnodeman).  It must NEVER run while cs_main is held,
-// because GetQueuePaymentSnapshot() holds cs and then reaches cs_main through
-// GetCollateralConfirmedHeight() -> GetTransaction() -- an existing
-// cs -> cs_main edge.  ShouldMintRescueBlock() is called from CreateNewBlock()
-// with LOCK2(cs_main, mempool.cs) already held (miner.cpp:250, still open at
-// :598), so calling the scan from there would close the cycle:
+// The SCAN (RefreshRosterCompleteness) runs in ThreadCheckMNenginePool every
+// ROSTER_REFRESH_SECONDS (30 s) and publishes a flag; the PRODUCER
+// (ShouldMintRescueBlock, called from CreateNewBlock / CreateCoinStake) only
+// reads the flag, lock-free.  Blindness changes over minutes, so a 30-second
+// refresh is far finer than needed.
 //
-//     staker thread : holds cs_main, wants cs
-//     masternode    : holds cs,      wants cs_main
-//
-// That is the 2026-05-31 ABBA wedge pattern.  So the SCAN runs in
-// ThreadCheckMNenginePool, which holds no locks, and publishes a flag; the
-// PRODUCER only reads the flag.  Blindness changes over minutes, so a once-per-
-// second refresh is far finer than needed.
+// v2.0.0.9 rc9 (review 2 1.A10): the ORIGINAL reason given here is out of date.
+// It said the scan must never run under cs_main because GetQueuePaymentSnapshot()
+// created a cs -> cs_main edge (the 2026-05-31 ABBA wedge pattern).  Since rc7
+// the canonical order is cs_main -> mnodeman.cs and BroadcastQueue (the only
+// caller of GetQueuePaymentSnapshot) is always entered with cs_main held (see
+// mnengine.cpp), so that edge is gone.  The split is still the right design: the
+// scan takes only cs, and the producer path never waits on mnodeman.cs.
 static std::atomic<bool> fRosterIncomplete(false);
 
 bool CMasternodeMan::IsRosterLikelyIncomplete()
@@ -2706,8 +2694,9 @@ void CMasternodeMan::PopulateLastPaidHeightCache()
 	{
 		LogPrintf("CMasternodeMan::PopulateLastPaidHeightCache -- no enabled MNs to scan for\n");
 
-		// On a fresh resync vMasternodes is empty at startup (mncache.dat not
-		// yet loaded, dseg gossip not yet received), so no MNs are "needed"
+		// On a fresh resync vMasternodes is empty at startup (no mncache.dat
+		// entries -- init loads mncache.dat before calling this -- and dseg
+		// gossip not yet received), so no MNs are "needed"
 		// from the walkback's perspective and it returns immediately.  This
 		// is the EXPECTED path on a fresh resync -- mapHistoricalPayees gets
 		// populated incrementally by OnBlockAccepted as each block is
@@ -2726,9 +2715,9 @@ void CMasternodeMan::PopulateLastPaidHeightCache()
 			  "for %u enabled MNs (max depth %d blocks)\n",
 			  nStartHeight, (unsigned)stillNeeded.size(), MAX_LASTPAID_SCAN_DEPTH);
 
-	// v2.0.0.8 UAT-4: max blocks we MIGHT walk, used for the progress
-	// display.  The actual walk usually ends early (all MNs found long
-	// before this cap), but we don't know how many in advance.
+	// v2.0.0.8 UAT-4: blocks we will walk, used for the progress display.
+	// The walk does NOT stop once every MN is found -- it keeps going to fill
+	// mapHistoricalPayees -- so it runs to this cap unless the chain is shorter.
 	int nProgressDenom = MAX_LASTPAID_SCAN_DEPTH;
 
 	// v2.0.0.8 UAT-4: emit an initial splash message so the user sees
@@ -2778,7 +2767,7 @@ void CMasternodeMan::PopulateLastPaidHeightCache()
 			// map.  Slot index mirrors CheckBlock's logic:
 			//   PoW coinbase (3 outs):  vout[1]
 			//   PoS coinstake (4 outs): vout[2]
-			//   PoS coinstake (5 outs, stealth): vout[3]
+			//   PoS coinstake (5 outs, split stake): vout[3]
 			int nMnSlotIdx = -1;
 
 			if (block.IsProofOfStake())
@@ -2814,51 +2803,36 @@ void CMasternodeMan::PopulateLastPaidHeightCache()
 				}
 			}
 
-			// Existing Tier 1 logic: match outputs against known MNs to
-			// populate mapLastPaidHeight.  Only meaningful while stillNeeded
-			// is non-empty (skip the expensive scan once all enabled MNs
-			// have been located).
+			// Tier 1: populate mapLastPaidHeight for the enabled MNs still
+			// needed.  v2.0.0.9 rc9 (review 3.1/3.2, A6): match ONLY the
+			// masternode-slot output (GetMasternodeSlotPayee), and record EVERY
+			// needed MN with that payee script (two MNs can share a collateral
+			// address).  It used to credit the first output paying any needed
+			// MN's address, including a stake returned to a collateral address.
 			if (!stillNeeded.empty())
 			{
-				for (const CTxOut& out : paymentTx->vout)
+				const CScript slotPayee = GetMasternodeSlotPayee(block);
+
+				if (!slotPayee.empty())
 				{
-					if (out.nValue == 0)
-					{
-						continue;
-					}
-
-					CTxDestination dest;
-
-					if (!ExtractDestination(out.scriptPubKey, dest))
-					{
-						continue;
-					}
-
-					CScript outScript = GetScriptForDestination(dest);
-
 					// Linear scan of stillNeeded -- with ~30 MNs this is trivial.
-					std::map<COutPoint, CScript>::iterator matchIt = stillNeeded.end();
-
 					for (std::map<COutPoint, CScript>::iterator it = stillNeeded.begin();
-						 it != stillNeeded.end(); ++it)
+						 it != stillNeeded.end(); )
 					{
-						if (it->second == outScript)
+						if (it->second == slotPayee)
 						{
-							matchIt = it;
-							break;
-						}
-					}
+							{
+								LOCK(cs);
+								mapLastPaidHeight[it->first] = pindex->nHeight;
+							}
 
-					if (matchIt != stillNeeded.end())
-					{
+							stillNeeded.erase(it++);
+							nFound++;
+						}
+						else
 						{
-							LOCK(cs);
-							mapLastPaidHeight[matchIt->first] = pindex->nHeight;
+							++it;
 						}
-
-						stillNeeded.erase(matchIt);
-						nFound++;
-						break;  // each block has at most one MN payment
 					}
 				}
 			}

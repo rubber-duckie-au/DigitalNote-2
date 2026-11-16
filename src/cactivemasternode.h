@@ -73,11 +73,12 @@ public:
 
 	// v2.0.0.8 M1Q: compute and broadcast a full ordered payee queue for the
 	// next VOTE_QUEUE_LENGTH heights, computed by deterministic forward
-	// simulation of the rotation from nQueueHeight.  Replaces BroadcastVote
-	// post-activation.  Called on every block-connect from main.cpp's
-	// ProcessBlock tip-update path.  Returns false (harmlessly) on the same
-	// gate conditions as BroadcastVote.  See
-	// v208-M1Q-queue-based-voting-SPEC.md S5/S11.
+	// simulation of the rotation from nQueueHeight.  Replaced the per-height
+	// BroadcastVote (since removed).  Called on every block-connect from
+	// main.cpp's ProcessBlock tip-update path.  Returns false (harmlessly)
+	// when there is no masternode key, the masternode is not capable or
+	// enabled, or there is no tip.  See v208-M1Q-queue-based-voting-SPEC.md
+	// S5/S11.
 	bool BroadcastQueue(int nQueueHeight);
 };
 

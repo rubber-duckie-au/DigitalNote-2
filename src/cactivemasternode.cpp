@@ -155,7 +155,12 @@ void CActiveMasternode::ManageStatus()
 			status = MASTERNODE_IS_CAPABLE;
 			notCapableReason = "";
 
-			pwalletMain->LockCoin(vin.prevout);
+			// v2.0.0.9 rc9 (review 5.9, D3): LockCoin writes setLockedCoins and
+			// wallet.dat, so take cs_wallet.
+			{
+				LOCK(pwalletMain->cs_wallet);
+				pwalletMain->LockCoin(vin.prevout);
+			}
 
 			// send to all nodes
 			CPubKey pubKeyMasternode;
@@ -226,7 +231,14 @@ bool CActiveMasternode::StopMasterNode(const std::string &strService, const std:
 		return false;
 	}
 
-	if (GetMasterNodeVin(vin, pubKeyMasternode, keyMasternode))
+	// v2.0.0.9 rc9 (review 3.12, D6): GetMasterNodeVin's key parameters are
+	// OUTPUTS (the collateral key).  Passing the masternode key variables here
+	// overwrote them, so the stop ping was signed with the collateral key and
+	// peers rejected it.  Use separate variables.
+	CPubKey pubKeyCollateral;
+	CKey keyCollateral;
+
+	if (GetMasterNodeVin(vin, pubKeyCollateral, keyCollateral))
 	{
 		LogPrintf("MasternodeStop::VinFound: %s\n", vin.ToString());
 	}
@@ -256,7 +268,12 @@ bool CActiveMasternode::StopMasterNode(const std::string &strService, const std:
 		return false;
 	}
 
-	if (!GetMasterNodeVin(vin, pubKeyMasternode, keyMasternode, strTxHash, strOutputIndex))
+	// v2.0.0.9 rc9 (review 3.12, D6): separate collateral-key variables -- see
+	// the 3-argument overload above.
+	CPubKey pubKeyCollateral;
+	CKey keyCollateral;
+
+	if (!GetMasterNodeVin(vin, pubKeyCollateral, keyCollateral, strTxHash, strOutputIndex))
 	{
 		errorMessage = "Could not locate vin for txhash " + strTxHash + " vout " + strOutputIndex;
 		LogPrintf("CActiveMasternode::StopMasterNode() - Error: %s\n", errorMessage.c_str());
@@ -848,11 +865,10 @@ bool CActiveMasternode::GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubke
 //         nothing to subtract, Case B proceeds on the full scan.)
 //
 // masternode.conf is re-read and re-validated HERE rather than relying on
-// the init-time CMasternodeConfig::read() -- that call's bool result is
-// discarded by init.cpp, and a parse failure there leaves a PARTIALLY
-// populated entries vector (parsing stops at the bad line).  A partial
-// list would under-subtract.  The file is tiny; re-parsing once per MN
-// start is free.
+// the init-time CMasternodeConfig::read() -- that call SKIPS a malformed line
+// (and init only logs a warning), so its entries vector can be missing an
+// entry.  A partial list would under-subtract.  The file is tiny; re-parsing
+// once per MN start is free.
 bool CActiveMasternode::GetLocalMasternodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey,
 		std::string& strNotCapableReason)
 {
@@ -871,7 +887,21 @@ bool CActiveMasternode::GetLocalMasternodeVin(CTxIn& vin, CPubKey& pubkey, CKey&
 		{
 			for (std::string line; std::getline(streamConfig, line); )
 			{
-				if (line.empty())
+				// v2.0.0.9 rc9 (review 3.11, A18): trim whitespace and a Windows
+				// '\r'; skip blank lines and '#' comment lines (same rules as
+				// CMasternodeConfig::read).  A genuinely malformed line still
+				// refuses below (Q2).
+				const std::string strWhitespace = " \t\r\n";
+				const size_t nFirst = line.find_first_not_of(strWhitespace);
+
+				if (nFirst == std::string::npos)
+				{
+					continue;
+				}
+
+				line = line.substr(nFirst, line.find_last_not_of(strWhitespace) - nFirst + 1);
+
+				if (line[0] == '#')
 				{
 					continue;
 				}
@@ -1100,7 +1130,7 @@ bool CActiveMasternode::EnableHotColdMasterNode(CTxIn& newVin, CService& newServ
 // ===========================================================================
 // v2.0.0.8 M1Q -- BroadcastQueue and the deterministic queue simulation.
 //
-// Replaces the per-height BroadcastVote post-activation.  Instead of voting a
+// Replaced the per-height BroadcastVote (since removed).  Instead of voting a
 // single payee for one future height, an MN broadcasts an ORDERED QUEUE of
 // the next VOTE_QUEUE_LENGTH payees, computed by forward-simulating the
 // rotation.  Because the simulation is a pure function of chain-derived state
@@ -1115,18 +1145,25 @@ bool CActiveMasternode::EnableHotColdMasterNode(CTxIn& newVin, CService& newServ
 
 namespace {
 
-// Pure forward simulation -- no locks, no globals.  Mirrors
-// FindOldestNotInVecChainDerived's ranking exactly: eligibility via
-// IsVotingEligible(referenceHeight) reconstructed from confirmedHeight; rank
-// by paidHeight (or confirmedHeight if never paid, else 0); smallest wins,
-// tiebreak on smallest vin.  After each position is filled, the chosen MN's
-// simulated paidHeight is advanced to that position's target height, so the
-// next position sees it as freshly paid and rotates past it.
+// Pure forward simulation -- no locks, no globals.  Ranking rule (v2.0.0.9
+// rc9 wording; the function it once mirrored, FindOldestNotInVecChainDerived,
+// was deleted 2026-08-07):
+//   - eligible: confirmedHeight >= 0 and confirmedHeight +
+//     VOTER_ELIGIBILITY_DEPTH <= referenceHeight (IsVotingEligible,
+//     reconstructed from the snapshot); nothing is eligible while
+//     referenceHeight <= 0;
+//   - rank: the simulated paid height if the MN has one, else its
+//     collateral confirm height;
+//   - lowest rank wins; ties go to the smallest vin.
+// After each position is filled, the chosen MN's simulated paid height is
+// advanced to that position's target height, so the next position sees it
+// as freshly paid and rotates past it.
 //
 // Operates on the CMnPaymentSnapshotEntry vector captured by
 // mnodeman.GetQueuePaymentSnapshot() under a single lock (spec S18.1).
 //
-// referenceHeight for position p mirrors BroadcastVote's anchor:
+// referenceHeight for position p (the same anchor the old per-height vote
+// used):
 //   targetHeight   = nQueueHeight + 1 + p
 //   referenceHeight = targetHeight - VOTE_LOOKAHEAD - REORG_DEPTH_BUFFER
 // identical for every node computing the same queue.
@@ -1208,11 +1245,18 @@ std::vector<CScript> SimulateQueue(int nQueueHeight,
 
 		if (best == NULL)
 		{
-			// No eligible candidate for this position.  Emit an empty script;
-			// the receiver's per-position tally will simply not reach
-			// consensus on an empty payee, and GetEnforcedPayee falls back to
-			// legacy for that height.  (In practice this only happens very
-			// early in the chain, where referenceHeight <= 0.)
+			// No eligible candidate for this position.  Emit an empty script.
+			// v2.0.0.9 rc9 (review 2 1.C4): the receiver's tally does NOT
+			// exclude an empty script, so if enough voters agree, consensus
+			// CAN form on an empty payee, and there is no legacy fallback
+			// (the legacy list is always empty).  GetEnforcedPayee then
+			// returns true with an empty payee; CheckBlock skips the strict
+			// check for an empty payee, and producers fall back to
+			// FindOldestNotInVec, which validators accept via the weak
+			// check, so the chain does not stall.  Treating an empty
+			// consensus as "no winner" is on the v2.0.1.0 list (V1).
+			// (In practice this only happens very early in the chain, where
+			// referenceHeight <= 0.)
 			result.push_back(CScript());
 			continue;
 		}
@@ -1231,7 +1275,7 @@ std::vector<CScript> SimulateQueue(int nQueueHeight,
 
 bool CActiveMasternode::BroadcastQueue(int nQueueHeight)
 {
-	// Gates 1-3: identical to BroadcastVote.
+	// Gates 1-3: same as the removed per-height BroadcastVote.
 	if (strMasterNodePrivKey.empty())
 	{
 		return false;
@@ -1257,9 +1301,9 @@ bool CActiveMasternode::BroadcastQueue(int nQueueHeight)
 	// accessor, which captures everything under a SINGLE cs acquisition
 	// (spec S18.1).  mnodeman.cs is private; external code never holds it
 	// directly -- GetQueuePaymentSnapshot is the encapsulated entry point.
-	// The snapshot captures exactly the inputs FindOldestNotInVecChainDerived
-	// reads: collateral confirm height (eligibility + never-paid fallback)
-	// and mapLastPaidHeight (ranking).
+	// The snapshot captures exactly the inputs SimulateQueue reads:
+	// collateral confirm height (eligibility + never-paid fallback) and
+	// mapLastPaidHeight (ranking).
 	std::vector<CMnPaymentSnapshotEntry> candidates = mnodeman.GetQueuePaymentSnapshot();
 
 	// Pure simulation -- no lock held.
@@ -1290,9 +1334,9 @@ bool CActiveMasternode::BroadcastQueue(int nQueueHeight)
 	          "nQueueHeight %d (%d positions)\n",
 	          vin.prevout.ToString(), nQueueHeight, (int)queue.size());
 
-	// Process our own queue locally before broadcasting (same rationale as
-	// BroadcastVote's self-ProcessVote: keep our local tally consistent with
-	// the network's, and don't under-count our own contribution).
+	// Process our own queue locally before broadcasting: keep our local
+	// tally consistent with the network's, and don't under-count our own
+	// contribution.
 	voteTracker.ProcessQueue(q, NULL);
 
 	// Push to every connected peer.  Pre-M1Q peers silently drop the unknown

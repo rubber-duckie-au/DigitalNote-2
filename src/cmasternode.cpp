@@ -171,8 +171,10 @@ bool operator!=(const CMasternode& a, const CMasternode& b)
 
 //
 // Deterministically calculate a given "score" for a masternode depending on how close it's hash is to
-// the proof of work for that block. The further away they are the better, the furthest will win the election
-// and get paid this block
+// the proof of work for that block. The further away they are the better.
+// v2.0.0.9 rc9 note (review 2 2.#9): this score does NOT choose who gets paid.
+// It feeds InstantX rank and the masternode list display; payees come from
+// FindOldestNotInVec (pre-activation) or the voted queue (post-activation).
 //
 uint256 CMasternode::CalculateScore(int mod, int64_t nBlockHeight)
 {
@@ -352,7 +354,7 @@ bool CMasternode::IsEnabled()
 // This is deliberately NOT a function of lastTimeSeen / activeState / ping
 // freshness.  Those are wall-clock liveness signals and differ between nodes;
 // using them in a consensus denominator is exactly the defect this fix
-// removes (see GetCanonicalWinner).  The collateral confirmation height is a
+// removes (see GetCanonicalWinnerFromQueues).  The collateral confirmation height is a
 // committed chain fact: every synced node resolves it identically, so
 // IsVotingEligible(N) yields the same answer on every node for the same N.
 //

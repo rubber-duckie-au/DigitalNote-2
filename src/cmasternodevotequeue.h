@@ -42,13 +42,14 @@ class CPubKey;
  * lands.  See ledger sections 16-18 and the M1Q spec for the full
  * mechanism analysis.
  *
- * Equivocation: two distinct queues from the same voter at the same
- * nQueueHeight are equivocation regardless of content.  A queue from the
- * same voter at a different nQueueHeight is a normal per-block recompute.
+ * Same voter, same nQueueHeight, different content: the receiver keeps
+ * the one with the newer nTimeSigned (v2.0.0.8 hotfix Issue 3).  It is NOT
+ * treated as equivocation any more (the original M1Q spec S8 rule was
+ * removed).  A queue from the same voter at a different nQueueHeight is a
+ * normal per-block recompute.
  *
- * Distinct from CMasternodeVote (the predecessor point-vote class), which
- * is deprecated post-activation but kept for one release as defensive
- * deserialization.  Distinct from CConsensusVote (InstantX transaction-lock
+ * Replaced CMasternodeVote (the predecessor point-vote class, since
+ * removed from the tree).  Distinct from CConsensusVote (InstantX transaction-lock
  * voting -- separate feature inherited from upstream).
  */
 class CMasternodeVoteQueue

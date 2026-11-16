@@ -31,13 +31,15 @@
  *   mapQueuesByHash: queue.GetHash() -> full queue, for inv-based relay
  *     (AlreadyHaveQueue + getdata).  Pruned in lockstep with mapQueues.
  *
- *   mapEquivocationDetection[voterVin] = (nQueueHeight, queueHash):
- *     last queue we saw from each voter.  A NEW queue from the same
- *     voter at the same nQueueHeight with a different hash is
- *     equivocation.
- *
- *   mapEquivocators[voterVin]: voters whose queues we currently reject.
- *     Cleared by OnFreshDsee (Path A) or ClearEquivocator RPC (Path B).
+ *   mapEquivocationDetection / mapEquivocators: v2.0.0.9 rc9 note
+ *     (review 2 1.A9/1.B2) -- NOTHING WRITES THESE ANY MORE.  Equivocation
+ *     marking was removed by v2.0.0.8 hotfix Issue 3 (ProcessQueue now does
+ *     newer-wins replacement, see below), so both maps are always empty and
+ *     OnFreshDsee, ClearEquivocator, IsEquivocator, GetEquivocatorList and
+ *     the ProcessQueue equivocator gate are no-ops.  Kept for the
+ *     listequivocators / clearequivocator RPCs (compat); the internals are
+ *     a v2.0.1.0 removal.  Safety against a double-voting masternode rests
+ *     on the 60% supermajority alone.
  *
  * Threading: every public method acquires cs.  Internal helpers assume
  * cs is already held; documented in their per-method comments.
@@ -240,7 +242,7 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 		return false;
 	}
 
-	// Time-window check (mirrors ProcessVote).
+	// Time-window check (same window the removed per-height ProcessVote used).
 	int64_t now = GetAdjustedTime();
 	if (q.nTimeSigned > now + VOTE_TIME_WINDOW_SECONDS)
 	{
@@ -273,9 +275,10 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 
 	COutPoint voterOutpoint = q.voterVin.prevout;
 
-	// Equivocator gate -- a voter previously marked equivocator is refused
-	// (persists across the wire-format change; same mapEquivocators as the
-	// per-height vote path, keyed on voterVin -- M1Q decision Q-C).
+	// Equivocator gate -- refuses a voter marked as an equivocator.
+	// v2.0.0.9 rc9 note (review 2 1.B2): nothing marks voters any more
+	// (hotfix Issue 3, below), so mapEquivocators is always empty and this
+	// gate never fires.  Kept until the v2.0.1.0 removal.
 	if (mapEquivocators.count(voterOutpoint))
 	{
 		if (LogAcceptCategory("masternode"))
@@ -288,12 +291,13 @@ bool CMasternodeVoteTracker::ProcessQueue(const CMasternodeVoteQueue &q, CNode *
 		return false;
 	}
 
-	// Equivocation detection (M1Q spec S8): a queue is uniquely identified
-	// by (voterVin, nQueueHeight).  If we already hold a queue from this
-	// voter at this nQueueHeight:
-	//   * identical hash    -> duplicate, drop silently (no error).
-	//   * different hash     -> EQUIVOCATION (two distinct queues for the
-	//                           same identity), record and reject.
+	// Duplicate / replacement handling: a queue is uniquely identified by
+	// (voterVin, nQueueHeight).  If we already hold a queue from this voter
+	// at this nQueueHeight:
+	//   * identical hash -> duplicate, drop silently (no error).
+	//   * different hash -> NEWER-WINS replacement by nTimeSigned (v2.0.0.8
+	//                       hotfix Issue 3, below).  The original M1Q spec S8
+	//                       "record as equivocation and reject" rule is gone.
 	std::map<int, std::map<COutPoint, CMasternodeVoteQueue> >::iterator qhIt =
 			mapQueues.find(q.nQueueHeight);
 
@@ -417,8 +421,9 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 	}
 
 	// Denominator: eligible-voter count must be a pure function of
-	// nTargetHeight and committed chain state (same rule as the per-height
-	// GetCanonicalWinner -- CountVotingEligible, never CountEnabled).
+	// nTargetHeight and committed chain state (CountVotingEligible, never
+	// CountEnabled; the same rule the removed per-height GetCanonicalWinner
+	// used).
 	// v2.0.0.9 (TODO 3.39): no version filter -- see CountVotingEligible.
 	int eligibleVoters = mnodeman.CountVotingEligible(nTargetHeight);
 
@@ -485,8 +490,8 @@ bool CMasternodeVoteTracker::GetCanonicalWinnerFromQueues(int nTargetHeight, CSc
 			}
 		}
 
-		// Supermajority + uniqueness rule, identical to the per-height
-		// GetCanonicalWinner: find payees clearing the threshold; require
+		// Supermajority + uniqueness rule (the same rule the removed
+		// per-height GetCanonicalWinner used): find payees clearing the threshold; require
 		// exactly one.  Two clearers is an ambiguous (contested) position,
 		// not a consensus -- skip to the next (older) queue-height.
 		int nClearingCount = 0;
@@ -983,37 +988,22 @@ void ProcessMessageMasternodeVote(CNode *pfrom, std::string &strCommand, CDataSt
 			}
 		}
 
-		// Relay-before-validate, split exactly as the mnvote handler:
-		// relay on the uncheckable (voter==NULL) branch so an incomplete-MN-
-		// list node does not suppress the queue for the fleet; otherwise
-		// relay only AFTER the signature verifies, so a junk-signature queue
-		// for a known voter never propagates.
+		// Relay only AFTER the signature verifies, so a junk-signature queue
+		// never propagates.
+		//
+		// v2.0.0.9 rc9 (review 4.4, C10): a queue from a voter we do not know
+		// is no longer relayed.  We cannot check its signature and do not store
+		// it, so the old inv fan-out let any peer make every node announce
+		// queues it could not serve.  We still ask the sender for the missing
+		// dsee; peers that know the voter receive the queue from their other
+		// connections.  (A bounded pending store for such queues is V26.)
 
 		CMasternode *voter = mnodeman.Find(q.voterVin);
 		if (voter == NULL)
 		{
-			// Uncheckable: relay so the queue is not suppressed for peers
-			// that DO know the voter, then ask for the missing dsee.
-			{
-				CInv inv(MSG_MASTERNODE_VOTE_QUEUE, q.GetHash());
-				std::vector<CInv> vInv;
-				vInv.push_back(inv);
-
-				LOCK(cs_vNodes);
-
-				for (CNode *pnode : vNodes)
-				{
-					if (pnode == pfrom)
-					{
-						continue;
-					}
-					pnode->PushMessage("inv", vInv);
-				}
-			}
-
 			if (LogAcceptCategory("masternode"))
 			{
-				LogPrintf("mnvotequeue -- unknown voter %s at nQueueHeight %d, relayed; "
+				LogPrintf("mnvotequeue -- unknown voter %s at nQueueHeight %d, not relayed; "
 						  "asking for dsee\n",
 						  q.voterVin.prevout.ToString(), q.nQueueHeight);
 			}
