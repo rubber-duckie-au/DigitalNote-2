@@ -130,10 +130,6 @@ CMainSignals g_signals;
 namespace
 {
 
-// Sources of received blocks, to be able to send them reject messages or ban
-// them, if processing happens afterwards. Protected by cs_main.
-std::map<uint256, NodeId> mapBlockSource;
-
 // Blocks that are in flight, and that are in the queue to be downloaded.
 // Protected by cs_main.
 struct QueuedBlock
@@ -2086,7 +2082,7 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 	}
 
 	// Block signature can be malleated in such a way that it increases block size up to maximum allowed by protocol
-	// For now we just strip garbage from newly received blocks
+	// so blocks whose signature is not in canonical form are rejected.
 	if (!IsCanonicalBlockSignature(pblock))
 	{
 		return error("ProcessBlock(): bad block signature encoding");
@@ -2209,7 +2205,7 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 		mapOrphanBlocksByPrev.erase(hashPrev);
 	}
 
-	// If initial sync or we can't find a masternode in our list
+	// Masternode / vote hooks: only once out of initial block download.
 	if(!IsInitialBlockDownload())
 	{
 		// v2.0.0.8 latent-11 fix: the local `CScript payee; CTxIn vin;`
@@ -2237,8 +2233,8 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 		// v2.0.0.8 M1Q: if this wallet is running as an active masternode,
 		// broadcast a full ordered payee QUEUE for the next
 		// VOTE_QUEUE_LENGTH heights, computed by deterministic forward
-		// simulation from the current tip.  Replaces the per-height
-		// BroadcastVote.  Other M1Q nodes receive and tally per-position;
+		// simulation from the current tip.  Replaced the per-height
+		// BroadcastVote (since removed).  Other M1Q nodes receive and tally per-position;
 		// pre-M1Q peers silently drop the unknown "mnvotequeue" command.
 		//
 		// BroadcastQueue internally checks status/key gates and returns
@@ -2252,12 +2248,14 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 		// If we're in LiteMode disable mnengine features without disabling masternodes
 		if (!fLiteMode && !fImporting && !fReindex && pindexBest->nHeight > Checkpoints::GetTotalBlocksEstimate())
 		{
-			// v2.0.0.8 latent-11 fix: the per-MN "last paid" display field
+			// v2.0.0.8 latent-11 fix: the per-MN "last paid" field
 			// (CMasternode::nLastPaid) is now set EXCLUSIVELY by
 			// CMasternodeMan::OnBlockConnected, which -- once per connected
 			// block -- identifies the masternode the block ACTUALLY paid
-			// (FindByPayeeAddress on the block's outputs) and sets that
+			// (since v2.0.0.9 rc9: its masternode-slot output) and sets that
 			// MN's nLastPaid to the connecting block's GetBlockTime().
+			// nLastPaid is NOT display-only: FindOldestNotInVec ranks by it,
+			// so it drives the pre-activation payee pick.
 			//
 			// The block that USED to live here did:
 			//     GetEnforcedPayee(...) -> Find(vin) -> nLastPaid = GetAdjustedTime()
@@ -2272,8 +2270,8 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 			//   * it ran AFTER OnBlockConnected and CLOBBERED the correct
 			//     per-MN block-time value OnBlockConnected had just written.
 			// It is removed.  OnBlockConnected is the single authority for
-			// nLastPaid.  Nothing else writes or depends on it being
-			// touched here (it is read only by the masternode-list RPCs).
+			// nLastPaid.  Nothing else writes it here.  (Readers: the
+			// masternode-list RPCs AND FindOldestNotInVec's payee ranking.)
 			mnEnginePool.CheckTimeout();
 			mnEnginePool.NewBlock();
 			masternodePayments.ProcessBlock(GetHeight()+10);
@@ -3689,18 +3687,21 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 		pfrom->AddInventoryKnown(inv);
 
 		LOCK(cs_main);
-		
-		// Remember who we got this block from.
-		mapBlockSource[inv.hash] = pfrom->GetId();
+
+		// v2.0.0.9 rc9 (review 4.6): the mapBlockSource write that stood here was
+		// never read or erased anywhere (a slow leak); removed.
 		MarkBlockAsReceived(inv.hash, pfrom->GetId());
 
-		ProcessBlock(pfrom, &block);
+		bool fBlockAccepted = ProcessBlock(pfrom, &block);
 		if (block.nDoS)
 		{
 			Misbehaving(pfrom->GetId(), block.nDoS);
 		}
-		
-		if (DigitalNote::SMSG::ext_enabled)
+
+		// v2.0.0.9 rc9 (review 4.6): scan only blocks ProcessBlock accepted.
+		// Rejected junk blocks used to feed their pubkeys into the persistent
+		// SMSG pubkey DB at zero ban score.
+		if (fBlockAccepted && DigitalNote::SMSG::ext_enabled)
 		{
 			DigitalNote::SMSG::ScanBlock(block);
 		}

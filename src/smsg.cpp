@@ -211,8 +211,12 @@ void Thread()
 					
 					fExists = 1; //found in vNodes
 
-					LOCK(pnode->smsgData.cs_smsg_net);
-					
+					// v2.0.0.9 rc9 (review 1.3): take cs_vSend BEFORE cs_smsg_net.  The
+					// message thread holds cs_vSend and then takes cs_smsg_net (SendData),
+					// so the old order here (cs_smsg_net, then cs_vSend inside PushMessage)
+					// could deadlock all networking.  Same order as Disable().
+					LOCK2(pnode->cs_vSend, pnode->smsgData.cs_smsg_net);
+
 					int64_t ignoreUntil = GetTime() + SMSG_TIME_IGNORE;
 					pnode->smsgData.ignoreUntil = ignoreUntil;
 					
@@ -908,8 +912,9 @@ int WriteIni()
  *  that incoming network smsg messages need to be handled correctly.
  *  Worker thread creation moved to StartThreads(), called from
  *  AppInit2's end-of-init block so it cannot race with concurrent
- *  startup work in AppInit2.  See HOTFIX-NOTES.md for the full
- *  rationale.
+ *  startup work in AppInit2.  Rationale: see the comment at the
+ *  StartThreads() call in init.cpp and above MilliSleep() in util.cpp
+ *  (HOTFIX-NOTES.md is not in this repository).
  */
 bool Start(bool fDontStart, bool fScanChain)
 {
@@ -961,7 +966,8 @@ bool Start(bool fDontStart, bool fScanChain)
  *  caller defer thread creation until AppInit2 is fully done, which
  *  matches the established pattern in this codebase (compare
  *  fWalletLoadComplete / GUI poll guards) and prevents the
- *  Apple-Silicon-specific crash described in HOTFIX-NOTES.md.
+ *  Apple-Silicon-specific crash described at the StartThreads() call in
+ *  init.cpp.
  */
 bool StartThreads()
 {
@@ -1423,7 +1429,10 @@ bool ReceiveData(CNode* pfrom, const std::string &strCommand, CDataStream& vRecv
 		
 		memcpy(&nBuckets, &vchData[0], 4);
 
-		if (vchData.size() < 4 + nBuckets * 8)
+		// v2.0.0.9 rc9 (review 4.1): the old check `size < 4 + nBuckets * 8` was
+		// computed in 32 bits and wrapped (nBuckets = 0x20000000 -> 0), letting a
+		// 4-byte payload drive an out-of-bounds read loop.  Divide instead.
+		if (nBuckets > (vchData.size() - 4) / 8)
 		{
 			return false;
 		}
@@ -2979,6 +2988,18 @@ int Receive(CNode* pfrom, std::vector<uint8_t>& vchData)
 
 		DigitalNote::SMSG::SecureMessage *psmsg = (DigitalNote::SMSG::SecureMessage*) &vchData[n];
 
+		// v2.0.0.9 rc9 (review 4.7): nPayload comes from the peer and was never
+		// checked against the buffer, so Validate() could read past its end.
+		// 64-bit sum so a huge nPayload cannot wrap.
+		if ((uint64_t)n + SMSG_HDR_LEN + psmsg->nPayload > vchData.size())
+		{
+			LogPrint("smsg", "Error: message payload runs past the end of the data, n = %u.\n", n);
+
+			Misbehaving(pfrom->GetId(), 1);
+
+			break;
+		}
+
 		int rv;
 		if ((rv = DigitalNote::SMSG::Validate(&vchData[n], &vchData[n + SMSG_HDR_LEN], psmsg->nPayload)) != 0)
 		{
@@ -2991,8 +3012,10 @@ int Receive(CNode* pfrom, std::vector<uint8_t>& vchData)
 			{
 				Misbehaving(pfrom->GetId(), 1);
 			}
-			
-			continue;
+
+			// v2.0.0.9 rc9 (review 4.7): was `continue` without advancing n, which
+			// re-validated the same bytes up to nBunch times.  Stop reading the bunch.
+			break;
 		}
 		
 		{
@@ -3785,7 +3808,9 @@ int Encrypt(DigitalNote::SMSG::SecureMessage &smsg, const std::string &addressFr
 int Send(std::string &addressFrom, std::string &addressTo, std::string &message, std::string &sError)
 {
 	/* Encrypt secure message, and place it on the network
-		Make a copy of the message to sender's first address and place in send queue db
+		Make an outbox copy encrypted to addressFrom (the sender address the user
+		picked; first owned address only as the fallback for an anon send), and
+		place the message in the send queue db
 		proof of work thread will pick up messages from  send queue db
 
 	*/
@@ -3916,9 +3941,11 @@ int Send(std::string &addressFrom, std::string &addressTo, std::string &message,
 	//
 	// addressFrom is the correct key: it is the address the user chose to send from,
 	// it is guaranteed owned, and it was just proven SMSG-encryptable a few lines
-	// above (the recipient copy at Encrypt(smsg, addressFrom, addressTo, ...) at
-	// ~3787 succeeded).  Using it guarantees the sender copy round-trips whenever the
-	// recipient copy does.
+	// above (the recipient copy via Encrypt(smsg, addressFrom, addressTo, ...)
+	// succeeded).  Using it makes the sender copy round-trip in the normal case.
+	// (v2.0.0.9 rc9 note, review 2 3.#8: not a strict guarantee -- e.g. an
+	// uncompressed from-key may pass the send and still fail the outbox copy;
+	// untested.)
 	std::string addressOutbox = "None";
 	CDigitalNoteAddress coinAddrOutbox;
 

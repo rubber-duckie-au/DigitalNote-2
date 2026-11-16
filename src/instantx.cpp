@@ -97,10 +97,7 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
 		int nBlockHeight = CreateNewLock(tx);
 
 		bool fMissingInputs = false;
-		CBlockIndex* pindex;
 		CValidationState state;
-		CBlock block;
-		CTxDB txdb("r");
 
 		bool fAccepted = false;
 		
@@ -156,9 +153,10 @@ void ProcessMessageInstantX(CNode* pfrom, std::string& strCommand, CDataStream& 
 					{
 						LogPrintf("ProcessMessageInstantX::txlreq - Found Existing Complete IX Lock\n");
 
-						//reprocess the last 15 blocks
-						block.DisconnectBlock(txdb, pindex);
-						tx.DisconnectInputs(txdb);
+						// v2.0.0.9 rc9 (review 4.2): the inherited "reprocess the last
+						// 15 blocks" code that stood here called DisconnectBlock() on an
+						// empty CBlock with an uninitialised CBlockIndex* -- a remote
+						// crash.  It never reprocessed anything; removed.
 					}
 				}
 			}
@@ -450,10 +448,6 @@ bool ProcessConsensusVote(CNode* pnode, CConsensusVote& ctx)
 		LogPrint("instantx", "InstantX::ProcessConsensusVote - Transaction Lock Exists %s !\n", ctx.txHash.ToString().c_str());
 	}
 
-	CBlockIndex* pindex;
-	CBlock block;
-	CTxDB txdb("r");
-	
 	//compile consessus vote
 	std::map<uint256, CTransactionLock>::iterator i = mapTxLocks.find(ctx.txHash);
 	
@@ -506,15 +500,10 @@ bool ProcessConsensusVote(CNode* pnode, CConsensusVote& ctx)
 					}
 				}
 
-				// resolve conflicts
-
-				//if this tx lock was rejected, we need to remove the conflicting blocks
-				if(mapTxLockReqRejected.count((*i).second.txHash))
-				{
-					//reprocess the last 15 blocks
-					block.DisconnectBlock(txdb, pindex);
-					tx.DisconnectInputs(txdb);
-				}
+				// v2.0.0.9 rc9 (review 4.2): the inherited "if this tx lock was
+				// rejected, remove the conflicting blocks" code that stood here called
+				// DisconnectBlock() on an empty CBlock with an uninitialised
+				// CBlockIndex* -- a remote crash.  It never removed anything; removed.
 			}
 		}
 		

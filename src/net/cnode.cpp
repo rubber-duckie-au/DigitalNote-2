@@ -199,7 +199,10 @@ void CNode::PushInventory(const CInv& inv)
 
 void CNode::AskFor(const CInv& inv)
 {
-	if (mapAskFor.size() > MAPASKFOR_MAX_SZ)
+	// v2.0.0.9 rc9 (review 4.5): also cap setAskFor.  Hashes a peer announced
+	// but never delivered stayed in it for the life of the connection
+	// (SETASKFOR_MAX_SZ existed but was never used; Bitcoin Core's fix).
+	if (mapAskFor.size() > MAPASKFOR_MAX_SZ || setAskFor.size() > SETASKFOR_MAX_SZ)
 		return;
 	// a peer may not have multiple non-responded queue positions for a single inv item
 	if (!setAskFor.insert(inv.hash).second)

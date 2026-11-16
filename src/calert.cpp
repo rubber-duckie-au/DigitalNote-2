@@ -195,6 +195,13 @@ bool CAlert::ProcessAlert(bool fThread)
 	// alerts or it will be ignored (so an attacker can't
 	// send an "everything is OK, don't panic" version that
 	// cannot be overridden):
+	//
+	// WARNING (v2.0.0.9 rc9 note, review 2 3.#1; inherited): the conditions
+	// below are INVERTED compared with Bitcoin (!= where Bitcoin has ==, and
+	// "setSubVer.empty() == false").  A genuine final alert is REJECTED, and
+	// a max-ID alert that differs in every field is accepted.  The alert
+	// system is believed inert (the mainnet alert key does not look like a
+	// valid public key; untested).  Code fix or retirement: v2.0.1.0.
 	int maxInt = std::numeric_limits<int>::max();
 
 	if (nID == maxInt)
