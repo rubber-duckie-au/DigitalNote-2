@@ -21,10 +21,11 @@ json_spirit::Value getrecoveryphrase(const json_spirit::Array& params, bool fHel
 		throw std::runtime_error(
 			"getrecoveryphrase \"passphrase\"\n"
 			"\n"
-			"Returns the 24-word BIP39 recovery phrase for this wallet.\n"
+			"Returns the 24-word BIP39 recovery phrase for this wallet -- the same\n"
+			"phrase the GUI shows (Settings -> Recovery Phrase).\n"
 			"The wallet must be unlocked before calling this command.\n"
-			"The phrase is derived deterministically from your wallet password.\n"
-			"The same password always produces the same phrase.\n"
+			"The phrase comes from the wallet's master key: it does NOT change when\n"
+			"you change the wallet password, only when the phrase is rotated.\n"
 			"\n"
 			"IMPORTANT: Keep this phrase secret. Anyone with this phrase and\n"
 			"           your wallet.dat can access your funds.\n"
@@ -73,21 +74,28 @@ json_spirit::Value getrecoveryphrase(const json_spirit::Array& params, bool fHel
 		throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT,
 			"Error: The wallet passphrase entered was incorrect.");
 
-	// Wallet must have gone through the recovery phrase upgrade
-	// (Settings -> Recovery Phrase in GUI performs this one-time step)
-	if (!pwalletMain->HasRecoveryPhraseFlag())
+	OPENSSL_cleanse(const_cast<char*>(strPassphrase.data()), strPassphrase.size());
+
+	// v2.0.0.9 rc9 (review 5.1, A7): the wallet must actually hold a recovery-
+	// phrase master key.  The old check (HasRecoveryPhraseFlag) is also set by
+	// EncryptWallet without creating that key, so it let wallets with no phrase
+	// through.  The GUI (Settings -> Recovery Phrase) performs the one-time
+	// upgrade that creates it.
+	if (!pwalletMain->HasMnemonicMasterKey())
 		throw JSONRPCError(RPC_WALLET_ERROR,
-			"Error: This wallet has not yet been upgraded for recovery phrase support. "
+			"Error: This wallet has no recovery phrase yet. "
 			"Use the GUI: Settings -> Recovery Phrase to complete the one-time upgrade. "
 			"Note: Multiple recovery phrases are not supported - one phrase per wallet.");
 
-	// Derive the recovery mnemonic from the passphrase
+	// v2.0.0.9 rc9 (review 5.1, A7): return the wallet's REAL phrase.  It used
+	// to derive one from the password (BIP39Passphrase::mnemonicFromPassphrase,
+	// the deprecated "D1" scheme), which unlocks nothing: the stored phrase key
+	// is derived from the master key ("D2", mnemonicFromVMasterKey), exactly as
+	// GetCurrentMnemonic does for the GUI.
 	SecureString mnemonic;
-	BIP39Passphrase::Result res = BIP39Passphrase::mnemonicFromPassphrase(strPassphrase, mnemonic);
-	OPENSSL_cleanse(const_cast<char*>(strPassphrase.data()), strPassphrase.size());
 
-	if (res != BIP39Passphrase::Result::OK)
-		throw JSONRPCError(RPC_WALLET_ERROR, "Failed to generate recovery phrase.");
+	if (!pwalletMain->GetCurrentMnemonic(mnemonic))
+		throw JSONRPCError(RPC_WALLET_ERROR, "Failed to derive the recovery phrase.");
 
 	json_spirit::Object result;
 	result.push_back(json_spirit::Pair("phrase",

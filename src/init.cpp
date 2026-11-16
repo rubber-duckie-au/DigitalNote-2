@@ -268,7 +268,7 @@ std::string HelpMessage()
 	strUsage += "  -proxy=<ip:port>       " + ui_translate("Connect through SOCKS5 proxy") + "\n";
 	strUsage += "  -tor=<ip:port>         " + ui_translate("Use proxy to reach tor hidden services (default: same as -proxy)") + "\n";
 	strUsage += "  -dns                   " + ui_translate("Allow DNS lookups for -addnode, -seednode and -connect") + "\n";
-	strUsage += "  -port=<port>           " + ui_translate("Listen for connections on <port> (default: 51441)") + "\n";
+	strUsage += "  -port=<port>           " + ui_translate("Listen for connections on <port> (default: 18092, testnet: 28092)") + "\n";
 	strUsage += "  -maxconnections=<n>    " + ui_translate("Maintain at most <n> connections to peers (default: 125)") + "\n";
 	strUsage += "  -addnode=<ip>          " + ui_translate("Add a node to connect to and attempt to keep the connection open") + "\n";
 	strUsage += "  -connect=<ip>          " + ui_translate("Connect only to the specified node(s)") + "\n";
@@ -295,7 +295,7 @@ std::string HelpMessage()
 #endif
 
 	strUsage += "  -paytxfee=<amt>        " + ui_translate("Fee per KB to add to transactions you send") + "\n";
-	strUsage += "  -mininput=<amt>        " + ui_translate("When creating transactions, ignore inputs with value less than this (default: 0.01)") + "\n";
+	strUsage += "  -mininput=<amt>        " + ui_translate("Ignore wallet outputs below this value for staking and when recognising incoming transactions; incoming payments below it are not recorded. Does not affect sending (default: 0)") + "\n";
 
 	if (fHaveGUI)
 	{
@@ -335,7 +335,7 @@ std::string HelpMessage()
 												"solved instantly. This is intended for regression testing tools and app development.") + "\n";
 	strUsage += "  -rpcuser=<user>        " + ui_translate("Username for JSON-RPC connections") + "\n";
 	strUsage += "  -rpcpassword=<pw>      " + ui_translate("Password for JSON-RPC connections") + "\n";
-	strUsage += "  -rpcport=<port>        " + ui_translate("Listen for JSON-RPC connections on <port> (default: 10257)") + "\n";
+	strUsage += "  -rpcport=<port>        " + ui_translate("Listen for JSON-RPC connections on <port> (default: 18094, testnet: 28094)") + "\n";
 	strUsage += "  -rpcallowip=<ip>       " + ui_translate("Allow JSON-RPC connections from specified IP address") + "\n";
 
 	if (!fHaveGUI)
@@ -356,7 +356,7 @@ std::string HelpMessage()
 	strUsage += "  -rebuildwallet         " + ui_translate("Dump and recreate wallet.dat to reclaim free pages and rebuild structure. Safe; the original wallet is preserved as wallet.dat.bak.") + "\n";
 	strUsage += "  -salvagewallet         " + ui_translate("DEPRECATED -- see -rebuildwallet (Tools menu: Compact Wallet)") + "\n";
 	strUsage += "  -checkblocks=<n>       " + ui_translate("How many blocks to check at startup (default: 500, 0 = all)") + "\n";
-	strUsage += "  -checklevel=<n>        " + ui_translate("How thorough the block verification is (0-6, default: 1)") + "\n";
+	strUsage += "  -checklevel=<n>        " + ui_translate("How thorough the block verification is (0-7, default: 1)") + "\n";
 	strUsage += "  -loadblock=<file>      " + ui_translate("Imports blocks from external blk000?.dat file") + "\n";
 	strUsage += "  -maxorphanblocks=<n>   " + strprintf(ui_translate("Keep at most <n> unconnectable blocks in memory (default: %u)"), DEFAULT_MAX_ORPHAN_BLOCKS) + "\n";
 	strUsage += "  -backtoblock=<n>       " + ui_translate("Rollback local block chain to block height <n>") + "\n";
@@ -364,9 +364,8 @@ std::string HelpMessage()
 
 	strUsage += "\n" + ui_translate("Block creation options:") + "\n";
 	strUsage += "  -blockminsize=<n>      "   + ui_translate("Set minimum block size in bytes (default: 0)") + "\n";
-	strUsage += "  -blockmaxsize=<n>      "   + ui_translate("Set maximum block size in bytes (default: 250000)") + "\n";
+	strUsage += "  -blockmaxsize=<n>      "   + strprintf(ui_translate("Set maximum block size in bytes (default: %u)"), MAX_BLOCK_SIZE_GEN/2) + "\n";
 	strUsage += "  -blockprioritysize=<n> "   + ui_translate("Set maximum size of high-priority/low-fee transactions in bytes (default: 50000)") + "\n";
-	strUsage += "  -scaleblocksizeoptions=<n>"    + strprintf(ui_translate("Adaptively scale block size options (max, min, priority) (default: %d)"), DEFAULT_SCALE_BLOCK_SIZE_OPTIONS) + "\n";
 
 	strUsage += "\n" + ui_translate("SSL options: (see the DigitalNote Wiki for SSL setup instructions)") + "\n";
 	strUsage += "  -rpcssl                                  " + ui_translate("Use OpenSSL (https) for JSON-RPC connections") + "\n";
@@ -380,18 +379,19 @@ std::string HelpMessage()
 	strUsage += "  -mnconflock=<n>            " + ui_translate("Lock masternodes from masternode configuration file (default: 1)") + "\n";
 	strUsage += "  -masternodeprivkey=<n>     " + ui_translate("Set the masternode private key") + "\n";
 	strUsage += "  -masternodeaddr=<n>        " + ui_translate("Set external address:port to get to this masternode (example: address:port)") + "\n";
-	strUsage += "  -masternodeminprotocol=<n> " + ui_translate("Ignore masternodes less than version (example: 61401; default : 0)") + "\n";
+	strUsage += "  -masternodeminprotocol=<n> " + strprintf(ui_translate("Ignore masternodes less than version (default: %d)"), MIN_POOL_PEER_PROTO_VERSION) + "\n";
+	strUsage += "  -masternodepaymentskey=<key> " + ui_translate("Spork-signing private key (network operators only). Loaded at startup; startup fails if the key is invalid") + "\n";
 
 	strUsage += "\n" + ui_translate("InstantX options:") + "\n";
 	strUsage += "  -enableinstantx=<n>    " + ui_translate("Enable instantx, show confirmations for locked transactions (bool, default: true)") + "\n";
-	strUsage += "  -instantxdepth=<n>     " + strprintf(ui_translate("Show N confirmations for a successfully locked transaction (0-9999, default: %u)"), nInstantXDepth) + "\n"; 
+	strUsage += "  -instantxdepth=<n>     " + strprintf(ui_translate("Show N confirmations for a successfully locked transaction (0-60, default: %u)"), nInstantXDepth) + "\n";
 	strUsage += ui_translate("Secure messaging options:") + "\n" +
 		"  -nosmsg                                  " + ui_translate("Disable secure messaging.") + "\n" +
 		"  -debugsmsg                               " + ui_translate("Log extra debug messages.") + "\n" +
 		"  -smsgscanchain                           " + ui_translate("Scan the block chain for public key addresses on startup.") + "\n";
 	strUsage += "  -stakethreshold=<n> " + ui_translate("This will set the output size of your stakes to never be below this number (default: 100)") + "\n";
-	strUsage += "  -liveforktoggle=<n> " + ui_translate("Toggle experimental features via block height testing fork, (example: -command=<fork_height>)") + "\n";
-	strUsage += "  -webwallet=<n> " + ui_translate("Toggle web-wallet node flag via 1/0, (example: -command=<true/false>)") + "\n";
+	strUsage += "  -liveforktoggle=<n> " + ui_translate("No effect (retained for compatibility; a non-zero value below the current block height still stops startup)") + "\n";
+	strUsage += "  -webwallet=<0|1> " + ui_translate("Start an UNAUTHENTICATED WebSocket push server on all IPv4 interfaces, port 7778, that sends secure-message (SMSG) contents to any client, and switch to web-wallet account mapping (default: 0)") + "\n";
 
 	return strUsage;
 }
@@ -541,7 +541,13 @@ bool AppInit2(boost::thread_group& threadGroup)
 	}
 
 	// Process masternode config
-	masternodeConfig.read(GetMasternodeConfigFile());
+	// v2.0.0.9 rc9 (review 2.#19, A18): the result was ignored, so a malformed
+	// line was invisible.  Malformed lines are now skipped individually; warn.
+	if (!masternodeConfig.read(GetMasternodeConfigFile()))
+	{
+		LogPrintf("WARNING: masternode.conf has line(s) that could not be parsed and were "
+				  "skipped -- see the 'Could not parse masternode.conf line' entries above\n");
+	}
 
 	if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
 	{
@@ -802,11 +808,11 @@ bool AppInit2(boost::thread_group& threadGroup)
 		// which is "" (never initialised in the codebase), so SetPrivKey
 		// returns false unconditionally even when the WIF is perfectly valid.
 		// The masternode-payments master infrastructure is non-operational
-		// network-wide (see CHANGELOG S22.5) and will be replaced by
-		// masternode-voted consensus in v2.0.0.8.  For now, the -masternodepaymentskey
-		// arg is used solely to load the spork-signing privkey; the
-		// masternodePayments side stays disabled (enabled = false) which
-		// matches actual network behaviour.
+		// network-wide; payee selection is FindOldestNotInVec before
+		// voted-consensus activation and the voted queue after it (v2.0.0.8+).
+		// The -masternodepaymentskey arg is used solely to load the
+		// spork-signing privkey; the masternodePayments side stays disabled
+		// (enabled = false) which matches actual network behaviour.
 
 		if (!sporkManager.SetPrivKey(GetArg("-masternodepaymentskey", "")))
 		{
@@ -974,11 +980,26 @@ bool AppInit2(boost::thread_group& threadGroup)
 		// so a broken state can't cause an infinite rebuild loop.
 		const bool fRebuildPending = RebuildPendingFlagExists();
 		const bool fRebuildArg     = GetBoolArg("-rebuildwallet", false);
-		if (fRebuildPending || fRebuildArg)
+
+		// v2.0.0.9 rc9 (review 1 5.6, A12): an interrupted swap (wallet.dat
+		// missing, but .bak and .new both present) must be completed on EVERY
+		// start, whatever the pending flag says.  The flag is consumed on the
+		// launch that ran the rebuild, so without this a failed second rename
+		// fell through to LoadWallet, which created a NEW EMPTY wallet.dat --
+		// and from then on recovery never ran.  RebuildWallet's first block
+		// completes the swap; if that fails we refuse to start (below).
+		const boost::filesystem::path pathWalletLive = GetDataDir() / strWalletFileName;
+		const bool fInterruptedSwap =
+			!boost::filesystem::exists(pathWalletLive)
+			&& boost::filesystem::exists(GetDataDir() / (strWalletFileName + ".bak"))
+			&& boost::filesystem::exists(GetDataDir() / (strWalletFileName + ".new"));
+
+		if (fRebuildPending || fRebuildArg || fInterruptedSwap)
 		{
-			LogPrintf("AppInit2: rebuild requested (pending-flag=%s, arg=%s)\n",
+			LogPrintf("AppInit2: rebuild requested (pending-flag=%s, arg=%s, interrupted-swap=%s)\n",
 			          fRebuildPending ? "yes" : "no",
-			          fRebuildArg ? "yes" : "no");
+			          fRebuildArg ? "yes" : "no",
+			          fInterruptedSwap ? "yes" : "no");
 
 			uiInterface.InitMessage(ui_translate("Preparing wallet rebuild..."));
 
@@ -990,6 +1011,25 @@ bool AppInit2(boost::thread_group& threadGroup)
 			// what the GUI reads for outcome reporting -- we never want
 			// to retry the rebuild silently on the next launch.
 			RebuildPendingFlagRemove();
+
+			if (!fOK && !boost::filesystem::exists(pathWalletLive)
+			    && (boost::filesystem::exists(GetDataDir() / (strWalletFileName + ".bak"))
+			        || boost::filesystem::exists(GetDataDir() / (strWalletFileName + ".new"))))
+			{
+				// v2.0.0.9 rc9 (A12): never continue with no wallet.dat while the
+				// user's wallet is sitting in .bak / .new -- LoadWallet would
+				// create an empty one and hide it.  (With no wallet and no
+				// leftovers at all, e.g. -rebuildwallet on a fresh datadir, we
+				// fall through to normal load exactly as before.)
+				LogPrintf("AppInit2: RebuildWallet failed and %s is missing: %s\n",
+				          pathWalletLive.string(), strRebuildErr);
+
+				return InitError(strprintf(ui_translate(
+					"Wallet rebuild could not be completed and %s is missing: %s\n"
+					"Your wallet is safe in %s.bak / %s.new in the data directory."
+					" Do NOT start the wallet until this is resolved."),
+					strWalletFileName, strRebuildErr, strWalletFileName, strWalletFileName));
+			}
 
 			if (!fOK)
 			{
@@ -1680,20 +1720,40 @@ bool AppInit2(boost::thread_group& threadGroup)
 		activeMasternode.ManageStatus();
 	}
 
-	if(GetBoolArg("-mnconflock", false))
+	// v2.0.0.9 rc9 (review 5.2, A8): lock every masternode.conf collateral
+	// output by default, so a normal send can never spend a collateral and take
+	// a masternode down.  Was default false (while the -help text said 1).
+	// -mnconflock=0 turns it off.  Guards: no wallet under -disablewallet;
+	// LockCoin needs cs_wallet; a malformed output index is skipped with a log
+	// line instead of throwing out of init.
+	if (pwalletMain && GetBoolArg("-mnconflock", true))
 	{
 		LogPrintf("Locking Masternodes:\n");
-		
-		uint256 mnTxHash;
-		
+
+		LOCK(pwalletMain->cs_wallet);
+
 		for(CMasternodeConfigEntry mne : masternodeConfig.getEntries())
 		{
 			LogPrintf("  %s %s\n", mne.getTxHash(), mne.getOutputIndex());
-			
+
+			unsigned int nOutputIndex = 0;
+
+			try
+			{
+				nOutputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
+			}
+			catch (const boost::bad_lexical_cast&)
+			{
+				LogPrintf("  -mnconflock: skipping alias %s, bad output index '%s'\n",
+					mne.getAlias(), mne.getOutputIndex());
+
+				continue;
+			}
+
+			uint256 mnTxHash;
 			mnTxHash.SetHex(mne.getTxHash());
-			
-			COutPoint outpoint = COutPoint(mnTxHash, boost::lexical_cast<unsigned int>(mne.getOutputIndex()));
-			
+
+			COutPoint outpoint = COutPoint(mnTxHash, nOutputIndex);
 			pwalletMain->LockCoin(outpoint);
 		}
 	}
@@ -1804,7 +1864,8 @@ bool AppInit2(boost::thread_group& threadGroup)
 	// completed) rather than during SMSG::Start() at Step 10.5.
 	// On macOS Apple Silicon (arm64), starting the SMSG worker
 	// threads earlier exposed a race: the worker's first call to
-	// MilliSleep() (boost::chrono::steady_clock::now() internally)
+	// MilliSleep() (which then used boost::chrono::steady_clock::now();
+	// it now uses std::this_thread::sleep_for, see util.cpp)
 	// could crash with SIGSEGV while the main thread was still
 	// inside AppInit2.  ARM64's weaker memory ordering exposed the
 	// race; x86_64 platforms masked it.  Matches the established

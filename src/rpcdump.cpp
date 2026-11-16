@@ -619,8 +619,9 @@ json_spirit::Value dumprawwallet(const json_spirit::Array& params, bool fHelp)
 		throw std::runtime_error(
 			"dumprawwallet \"filename\"\n"
 			"\n"
-			"Hidden RPC. Dumps every BDB record in the wallet (in cursor order)\n"
-			"to <filename> in the rebuild-dump v1 format. Unlike dumpwallet,\n"
+			"Advanced. Dumps every BDB record in the wallet file (-wallet, default\n"
+			"wallet.dat; in cursor order) to <filename> in the rebuild-dump v1\n"
+			"format. Unlike dumpwallet,\n"
 			"this preserves ALL record types -- watch-only addresses, A4 coin\n"
 			"locks, stealth addresses, multisig redeem scripts, the BIP39\n"
 			"mnemonic master key, address book entries, transaction history --\n"
@@ -628,8 +629,10 @@ json_spirit::Value dumprawwallet(const json_spirit::Array& params, bool fHelp)
 			"wallet.dat (modulo BDB free-page bloat) via createfromdumpfile or\n"
 			"the -rebuildwallet startup path.\n"
 			"\n"
-			"Does not require the wallet to be unlocked: the dumpfile contains\n"
-			"encrypted-key records as-is, never plaintext private keys.\n"
+			"Does not require the wallet to be unlocked: records are copied as-is.\n"
+			"TREAT THE DUMPFILE LIKE THE WALLET ITSELF: for an UNENCRYPTED wallet it\n"
+			"contains the private keys in plain text, and for any wallet it contains\n"
+			"the stealth-address scan secrets.  Never share it.\n"
 			"\n"
 			"WARNING: while this RPC runs, BDB writes from the live wallet may\n"
 			"interleave with cursor reads, producing an inconsistent snapshot.\n"
@@ -644,9 +647,17 @@ json_spirit::Value dumprawwallet(const json_spirit::Array& params, bool fHelp)
 		);
 	}
 
+	// v2.0.0.9 rc9 (review 5.10, D4): dump the wallet file actually in use
+	// (-wallet=), not a hard-coded "wallet.dat".  Under -disablewallet there is
+	// no wallet to dump (R4).
+	if (!pwalletMain)
+	{
+		throw JSONRPCError(RPC_WALLET_ERROR, "No wallet loaded (running with -disablewallet)");
+	}
+
 	boost::filesystem::path dumpfilePath(params[0].get_str());
 	std::string strError;
-	if (!DumpAllRecords(bitdb, "wallet.dat", dumpfilePath, strError))
+	if (!DumpAllRecords(bitdb, pwalletMain->strWalletFile, dumpfilePath, strError))
 	{
 		throw JSONRPCError(RPC_WALLET_ERROR, strError);
 	}
@@ -662,7 +673,7 @@ json_spirit::Value createfromdumpfile(const json_spirit::Array& params, bool fHe
 		throw std::runtime_error(
 			"createfromdumpfile \"dumpfile\" \"new-wallet-filename\"\n"
 			"\n"
-			"Hidden RPC. Reads a v1 dumpfile (as produced by dumprawwallet\n"
+			"Advanced. Reads a v1 dumpfile (as produced by dumprawwallet\n"
 			"or by the -rebuildwallet startup path) and writes a fresh BDB\n"
 			"wallet at <new-wallet-filename> within the data directory.\n"
 			"Refuses to overwrite an existing destination.\n"

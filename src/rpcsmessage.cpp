@@ -447,7 +447,9 @@ json_spirit::Value smsgscanbuckets(const json_spirit::Array& params, bool fHelp)
 {
 	if (fHelp || params.size() != 0)
 	{
-		throw std::runtime_error("smsgscanbuckets \nForce rescan of all messages in the bucket store.");
+		throw std::runtime_error("smsgscanbuckets \nRescan all messages in the bucket store for messages to this wallet.\n"
+			"WARNING: each bucket file is DELETED after it is scanned (and expired files are deleted),\n"
+			"so this node stops holding and relaying those messages.  Not a harmless rescan.");
 	}
 
 	if (!DigitalNote::SMSG::ext_enabled)
@@ -937,7 +939,8 @@ json_spirit::Value smsgbuckets(const json_spirit::Array& params, bool fHelp)
 	{
 		throw std::runtime_error(
 			"smsgbuckets [stats|dump]\n"
-			"Display some statistics.");
+			"stats: display some statistics (default).\n"
+			"dump:  WARNING -- DELETES every bucket file and empties the in-memory bucket list.");
 	}
 
 	if (!DigitalNote::SMSG::ext_enabled)

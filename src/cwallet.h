@@ -273,15 +273,16 @@ public:
 	 *  after this returns true, the OLD recovery phrase no longer decrypts
 	 *  this wallet file.  The user must immediately note down the new phrase.
 	 *
-	 *  Wallet must be unlocked.  strNewPassword may be the same as the
-	 *  current password (we do not require a password change as part of
-	 *  rotation), but rotation does need a password to re-encrypt
-	 *  CMasterKey[1] -- the caller passes whichever password the user
-	 *  intends to keep using.
+	 *  Wallet must be unlocked.  strCurrentPassword is the wallet's current
+	 *  password; it is kept (rotation does not change the password) and is
+	 *  used to re-encrypt CMasterKey[1].
 	 *
-	 *  The operation is atomic at the BDB transaction level: if any step
-	 *  fails the wallet file is left untouched.  In-memory state is
-	 *  rolled back on failure as well.
+	 *  The operation is atomic at the BDB transaction level: the master keys,
+	 *  every re-encrypted CKey and (since v2.0.0.9 rc9) every re-encrypted
+	 *  stealth spend secret are written in ONE transaction, so if any step
+	 *  fails the wallet file is left untouched.  In-memory state is only
+	 *  changed after the commit.  cs_wallet is held for the whole rotation
+	 *  (since v2.0.0.9 rc9), so no key can be added part-way through.
 	 *
 	 *  Returns true on success.  newMnemonicOut is populated only on success. */
 	bool RotateMnemonicMasterKey(const SecureString& strCurrentPassword,

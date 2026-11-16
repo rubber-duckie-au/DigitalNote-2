@@ -246,7 +246,7 @@ bool CDB::Write(const K& key, const T& value, bool fOverwrite)
 
 template bool CDB::Write<std::pair<std::string, long>, CKeyPool>(const std::pair<std::string, long>&, const CKeyPool&, bool);
 template bool CDB::Write<std::pair<std::string, long long>, CKeyPool>(const std::pair<std::string, long long>&, const CKeyPool&, bool);
-// Used by DecryptWallet EraseMasterKey (NOT CALLED - retained for future use)
+// Used by CWalletDB::EraseMasterKey (LIVE: phrase rotation and DecryptWallet)
 template bool CDB::Erase<std::pair<std::string, unsigned int>>(const std::pair<std::string, unsigned int>&);
 template bool CDB::Write<std::pair<std::string, unsigned int>, CMasterKey>(const std::pair<std::string, unsigned int>&, const CMasterKey&, bool);
 template bool CDB::Write<std::pair<std::string, std::string>, std::string>(const std::pair<std::string, std::string>&, const std::string&, bool);

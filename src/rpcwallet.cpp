@@ -2442,13 +2442,13 @@ json_spirit::Value walletpassphrase(const json_spirit::Array& params, bool fHelp
 	if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 3))
 	{
 		throw std::runtime_error(
-			"walletpassphrase \"passphrase\" timeout ( anonymizeonly )\n"
+			"walletpassphrase \"passphrase\" timeout ( stakingonly )\n"
 			"\nStores the wallet decryption key in memory for 'timeout' seconds.\n"
 			"This is needed prior to performing transactions related to private keys such as sending XDN\n"
 			"\nArguments:\n"
 			"1. \"passphrase\"     (string, required) The wallet passphrase\n"
 			"2. timeout            (numeric, required) The time to keep the decryption key in seconds.\n"
-			"3. anonymizeonly      (boolean, optional, default=flase) If is true sending functions are disabled."
+			"3. stakingonly        (boolean, optional, default=false) Unlock for staking only; sending, signing and key export stay disabled.\n"
 			"\nNote:\n"
 			"Issuing the walletpassphrase command while the wallet is already unlocked will set a new unlock\n"
 			"time that overrides the old one.\n"
@@ -2749,7 +2749,9 @@ json_spirit::Value checkwallet(const json_spirit::Array& params, bool fHelp)
 	{
 		throw std::runtime_error(
 			"checkwallet\n"
-			"Check wallet for integrity.\n"
+			"Check the legacy per-transaction spent flags against the transaction index.\n"
+			"These flags are kept for downgrade compatibility; since v2.0.0.8 balances,\n"
+			"coin selection and staking do NOT read them, so this does not check balances.\n"
 		);
 	}
 
@@ -2778,7 +2780,8 @@ json_spirit::Value repairwallet(const json_spirit::Array& params, bool fHelp)
 	{
 		throw std::runtime_error(
 			"repairwallet\n"
-			"Repair wallet if checkwallet reports any problem.\n"
+			"Reconcile the legacy per-transaction spent flags with the transaction index\n"
+			"(see checkwallet).  Does not affect balances and does not remove orphans.\n"
 		);
 	}
 
@@ -2854,12 +2857,12 @@ json_spirit::Value settxfee(const json_spirit::Array& params, bool fHelp)
 			"settxfee amount\n"
 			"\nSet the transaction fee per kB.\n"
 			"\nArguments:\n"
-			"1. amount         (numeric, required) The transaction fee in XDN/kB rounded to the nearest 0.00000001\n"
+			"1. amount         (numeric, required) The transaction fee in XDN/kB, rounded DOWN to a multiple of 0.01\n"
 			"\nResult\n"
 			"true|false        (boolean) Returns true if successful\n"
 			"\nExamples:\n"
-			+ HelpExampleCli("settxfee", "0.00001")
-			+ HelpExampleRpc("settxfee", "0.00001")
+			+ HelpExampleCli("settxfee", "0.01")
+			+ HelpExampleRpc("settxfee", "0.01")
 		);
 	}
 
@@ -3351,7 +3354,7 @@ json_spirit::Value cclistcoins(const json_spirit::Array& params, bool fHelp)
 // to wallet.dat.
 //
 // Locked outputs are excluded from staking (see AvailableCoinsForStaking)
-// and from coin selection (see SelectCoins).
+// and from coin selection (the filter is in AvailableCoins).
 // ---------------------------------------------------------------------------
 
 json_spirit::Value lockunspent(const json_spirit::Array& params, bool fHelp)
@@ -3360,8 +3363,8 @@ json_spirit::Value lockunspent(const json_spirit::Array& params, bool fHelp)
 	{
 		throw std::runtime_error(
 			"lockunspent unlock [{\"txid\":\"txid\",\"vout\":n},...]\n"
-			"\nUpdates list of temporarily unspendable outputs.\n"
-			"Temporarily lock (unlock=false) or unlock (unlock=true) specified transaction outputs.\n"
+			"\nUpdates list of unspendable (locked) outputs.\n"
+			"Lock (unlock=false) or unlock (unlock=true) specified transaction outputs.\n"
 			"A locked transaction output will not be chosen by automatic coin selection,\n"
 			"when spending or staking.\n"
 			"Locks are persistent across wallet restarts.\n"
@@ -3456,7 +3459,7 @@ json_spirit::Value listlockunspent(const json_spirit::Array& params, bool fHelp)
 	{
 		throw std::runtime_error(
 			"listlockunspent\n"
-			"\nReturns list of temporarily unspendable outputs.\n"
+			"\nReturns list of unspendable (locked) outputs.  Locks persist across restarts.\n"
 			"See the lockunspent call to lock and unlock transactions for spending.\n"
 			"\nResult:\n"
 			"[\n"

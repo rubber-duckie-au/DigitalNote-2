@@ -198,6 +198,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
 	{ "searchrawtransactions", 2 },
 	{ "searchrawtransactions", 3 },
 	{ "spork", 1 },
+	// v2.0.0.9 rc9 (R4, review 2 4.T11): both read params[0].get_int().
+	{ "scanforalltxns", 0 },
+	{ "scanforstealthtxns", 0 },
 };
 
 class CRPCConvertTable

@@ -156,7 +156,9 @@ bool CWalletDB::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey)
 	return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
 }
 
-// The following are used by DecryptWallet (NOT CALLED - retained for future use)
+// WriteKeyOverwrite is used only by DecryptWallet (NOT CALLED).  The Erase*
+// and RecoveryPhraseFlag helpers below are LIVE (phrase rotation,
+// EncryptWallet) -- do not remove them with DecryptWallet.
 bool CWalletDB::WriteKeyOverwrite(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta)
 {
 	nWalletDBUpdated++;

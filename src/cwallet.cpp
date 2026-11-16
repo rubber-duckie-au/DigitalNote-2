@@ -1170,6 +1170,69 @@ bool CWallet::RemoveWatchOnly(const CScript &dest, const RemoveProgressFn& progr
 
 	for (const uint256& hash : vToErase)
 	{
+		// v2.0.0.9 rc9 (review 5.4, A10): before the CWalletTx is destroyed,
+		// drop every index entry that points at it.  wtxOrdered holds raw
+		// CWalletTx* (read by listtransactions and AddToWallet's smart-time
+		// loop) and mmTxSpends holds this tx as a spender of its inputs; both
+		// were left dangling, a use-after-free until restart.
+		mapWallet_t::iterator mwi = mapWallet.find(hash);
+
+		if (mwi != mapWallet.end())
+		{
+			CWalletTx* pwtx = &mwi->second;
+			bool fFoundOrdered = false;
+
+			std::pair<TxItems::iterator, TxItems::iterator> ordRange =
+				wtxOrdered.equal_range(pwtx->nOrderPos);
+
+			for (TxItems::iterator oi = ordRange.first; oi != ordRange.second; )
+			{
+				if (oi->second.first == pwtx)
+				{
+					wtxOrdered.erase(oi++);
+					fFoundOrdered = true;
+				}
+				else
+				{
+					++oi;
+				}
+			}
+
+			if (!fFoundOrdered)
+			{
+				// Defensive: nOrderPos not where expected -- full scan.
+				for (TxItems::iterator oi = wtxOrdered.begin(); oi != wtxOrdered.end(); )
+				{
+					if (oi->second.first == pwtx)
+					{
+						wtxOrdered.erase(oi++);
+					}
+					else
+					{
+						++oi;
+					}
+				}
+			}
+
+			for (const CTxIn& txin : pwtx->vin)
+			{
+				std::pair<mmTxSpends_t::iterator, mmTxSpends_t::iterator> spRange =
+					mmTxSpends.equal_range(txin.prevout);
+
+				for (mmTxSpends_t::iterator si = spRange.first; si != spRange.second; )
+				{
+					if (si->second == hash)
+					{
+						mmTxSpends.erase(si++);
+					}
+					else
+					{
+						++si;
+					}
+				}
+			}
+		}
+
 		mapWallet.erase(hash);
 
 		if (fFileBacked)
@@ -1641,13 +1704,17 @@ bool CWallet::VerifyPassphrase(const SecureString& strWalletPassphrase) const
 	return false;
 }
 
-// NOT CALLED - retained for future use.
+// NOT CALLED - unreachable from the GUI and from RPC; retained for now
+// (removal candidate, v2.0.1.0).
 // This function fully decrypts the wallet.dat, removing all encryption.
-// It uses a two-phase commit: write all plain keys first (WriteKeyOverwrite),
-// then erase encrypted records. If interrupted mid-Phase-A wallet.dat is safe
-// (both plain and ckey records exist); if interrupted mid-Phase-B the wallet
-// loader handles duplicate keys gracefully.
-// To enable: add Decrypt mode back to askpassphrasedialog and call from GUI.
+// It writes all plain keys first (WriteKeyOverwrite), then erases the
+// encrypted records.
+// v2.0.0.9 rc9 (review 2 4.S4): an INTERRUPTED decrypt leaves an UNLOADABLE
+// wallet.  A wallet.dat holding both plain "key" and encrypted "ckey"
+// records fails to load as DB_CORRUPT (SetCrypted refuses once plain keys
+// are loaded, or LoadKey refuses on a locked encrypted store).  The
+// plaintext safety backup written below is then the only way back.
+// askpassphrasedialog already has a Decrypt mode; nothing opens it.
 bool CWallet::DecryptWallet(const SecureString& strWalletPassphrase)
 {
 	if (!IsCrypted())
@@ -2029,29 +2096,24 @@ bool CWallet::GetCurrentMnemonic(SecureString& mnemonicOut) const
 //   * Caller may want to Lock() afterwards to force the user to re-enter
 //     the (possibly new) password before doing more.
 
-// =====================================================================
-// DEBUG-INSTRUMENTED REPLACEMENT for CWallet::RotateMnemonicMasterKey
-// =====================================================================
-//
-// Replace the existing RotateMnemonicMasterKey function in src/cwallet.cpp
-// with this version.  Identical logic to the original; the only difference
-// is a LogPrintf("RotateMnemonic FAIL: ...") added before every "return
-// false" path so debug.log will tell us exactly where the rotation is
-// failing.
-//
-// After we identify the failing path we can either fix the underlying
-// cause and revert this back to the silent version, or keep the
-// LogPrintfs as permanent diagnostic output (they're cheap and only fire
-// on the failure paths, so production cost is zero).
-//
-// Output goes to <datadir>/debug.log -- on Windows that's typically
-// %APPDATA%\DigitalNote\debug.log.
-// =====================================================================
+// Every failure path logs "RotateMnemonic FAIL: <step>" to debug.log.
 
 bool CWallet::RotateMnemonicMasterKey(const SecureString& strCurrentPassword,
                                        SecureString& newMnemonicOut)
 {
 	newMnemonicOut.clear();
+
+	// v2.0.0.9 rc9 (review 1 5.3 part 2, A9): hold cs_wallet for the WHOLE
+	// rotation.  Step 2 snapshots mapCryptedKeys and step 6 replaces it; a key
+	// added in between (key-pool top-up by the staker's CReserveKey or
+	// getnewaddress, a new stealth address) was encrypted under the OLD master
+	// key and then silently dropped from memory and never re-encrypted on disk.
+	// Every key-adding path holds cs_wallet, so holding it here closes the
+	// window.  It also covers the stealthAddresses and mapKeyMetadata reads
+	// below.  Lock order: cs_wallet -> cs_KeyStore -> bitdb.cs_db, the same as
+	// every other wallet path; nothing in this function takes cs_main.  The
+	// inner LOCK(cs_wallet) blocks below are now re-entrant (recursive mutex).
+	LOCK(cs_wallet);
 
 	if (!IsCrypted()) {
 		LogPrintf("RotateMnemonic FAIL: wallet is not encrypted\n");
@@ -2374,6 +2436,39 @@ bool CWallet::RotateMnemonicMasterKey(const SecureString& strCurrentPassword,
 			}
 		}
 
+		// v2.0.0.9 rc9 (review 5.3, A9): persist the re-encrypted stealth spend
+		// secrets in the SAME transaction, exactly as EncryptWallet and
+		// ChangeWalletPassphrase write theirs.  Previously step 3 re-encrypted
+		// them in memory only: after the next lock or restart the old-key
+		// ciphertext came back from disk, the old master key no longer existed,
+		// and owned stealth funds became unspendable.  The record written is a
+		// COPY carrying the new-key ciphertext; memory keeps the plain secret
+		// while unlocked (see step 6).  WriteStealthAddress overwrites.
+		if (ok)
+		{
+			for (const auto& pair : newStealthSecrets)
+			{
+				for (auto it = stealthAddresses.begin(); it != stealthAddresses.end(); ++it)
+				{
+					if (it->spend_pubkey != pair.first)
+						continue;
+
+					CStealthAddress sxDisk = *it;
+					sxDisk.spend_secret = pair.second;
+
+					if (!walletdb.WriteStealthAddress(sxDisk))
+					{
+						ok = false;
+						failPoint = "WriteStealthAddress";
+					}
+					break;
+				}
+
+				if (!ok)
+					break;
+			}
+		}
+
 		if (!ok || !walletdb.TxnCommit())
 		{
 			if (!ok) {
@@ -2410,23 +2505,16 @@ bool CWallet::RotateMnemonicMasterKey(const SecureString& strCurrentPassword,
 		nMasterKeyMaxID = std::max(nMasterKeyMaxID, oldPasswordEntryId + 1);
 	}
 
-	// Step 6: Swap in-memory crypted-keys map and update stealth addresses.
+	// Step 6: Swap in-memory crypted-keys map.
+	//
+	// v2.0.0.9 rc9 (review 5.3, A9): stealth addresses are NOT touched here any
+	// more.  While the wallet is unlocked their in-memory spend_secret is the
+	// PLAIN secret, which rotation does not change; the new-key ciphertext was
+	// written to disk in step 5, and Lock() reloads it from there.  (This step
+	// used to put the ciphertext into memory while unlocked.)
 	{
 		LOCK(cs_KeyStore);
 		mapCryptedKeys = std::move(newCryptedKeys);
-
-		for (auto& pair : newStealthSecrets)
-		{
-			for (auto it = stealthAddresses.begin(); it != stealthAddresses.end(); ++it)
-			{
-				if (it->spend_pubkey == pair.first)
-				{
-					CStealthAddress& sx = const_cast<CStealthAddress&>(*it);
-					sx.spend_secret    = pair.second;
-					break;
-				}
-			}
-		}
 
 		// Replace the live vMasterKey so subsequent operations use the new key.
 		CCryptoKeyStore::vMasterKey = vNewMasterKey;
@@ -4078,7 +4166,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		}
 	}
 
-	// stop masternode payments (for testing)
+	// stop masternode payments.  STOP_MASTERNODE_PAYMENTS(_TESTNET) is
+	// 9993058800 (year 2286), so this never fires; masternode payments are
+	// always on (v2.0.0.9 rc9 note, review 2 4.S5; removal is v2.0.1.0).
 	if ( Params().NetworkID() == CChainParams_Network::TESTNET )
 	{
 		if (GetTime() > STOP_MASTERNODE_PAYMENTS_TESTNET )
@@ -4097,7 +4187,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 	bool hasPayment = true;
 	if(bMasterNodePayment)
 	{
-		//spork
 		// v2.0.0.8 M5: route through GetEnforcedPayee.  See PoW counterpart
 		// in miner.cpp for full rationale -- creator must agree with
 		// validator post-activation.  Also replaces the
@@ -4105,7 +4194,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		// fix as miner.cpp's PoW path got in M3p5).
 		if(!GetEnforcedPayee(pindexPrev->nHeight+1, payee, vin))
 		{
-			// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC):
+			// v2.0.0.9 devops rescue, PRODUCER POLICY ONLY
+			// (v209-rescue-devops-fallback-SPEC, corrected below):
 			// no voted winner.  If the chain has been stalled >= RESCUE_STALL_SECS
 			// (block-relative), this is a rescue block: it MUST pay the devops
 			// address, NOT a locally-chosen FindOldestNotInVec masternode.  That
@@ -4119,9 +4209,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 			// depend on node-local vote-queue state (FINDING-2026-009; the testnet
 			// split of 2026-07-23).  Paying devops here remains correct because it
 			// is the DETERMINISTIC choice: the point is to avoid a node-local pick,
-			// not to satisfy a validator predicate.  Post-activation,
-			// FindOldestNotInVec is bypassed entirely -- devops is the
-			// deterministic terminus.
+			// not to satisfy a validator predicate.  Post-activation the staker
+			// gate (ThreadStakeMiner) normally defers until rescue is active,
+			// so the FindOldestNotInVec pick below is rarely reached then --
+			// but it is NOT bypassed entirely (v2.0.0.9 rc9, review 2 4.S6):
+			// the gate and this call are evaluated at different moments, so
+			// if the winner or the stall state changes in between, it runs.
 			if (ShouldMintRescueBlock(pindexPrev, pindexPrev->nHeight + 1, GetAdjustedTime()))
 			{
 				payee = GetScriptForDestination(devopaddress.Get());
@@ -4132,7 +4225,17 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 				// Pre-activation this is the normal path; post-activation the
 				// producer gate (ThreadStakeMiner) defers until rescue is active,
 				// so this legacy pick is only reachable pre-activation in practice.
-				CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
+				//
+				// v2.0.0.9 rc9 (review 1.1 / B7b): take cs_main BEFORE mnodeman.cs.
+				// FindOldestNotInVec holds mnodeman.cs and reaches cs_main inside
+				// mn.Check(); block processing takes them in the canonical order
+				// cs_main -> mnodeman.cs, so calling it bare here could deadlock the
+				// staker against block processing.  No other lock is held here.
+				CMasternode* pmn = NULL;
+				{
+					LOCK(cs_main);
+					pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
+				}
 
 				if(pmn)
 				{
@@ -4152,6 +4255,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 			// rationale.  This site mirrors that one -- the predicate
 			// symmetry (builder uses the same reachability test as the
 			// validator's weak check) is what closes the C3 stall.
+			// v2.0.0.9 rc9 (review 2 1.C2): this is NOT a guarantee.  A
+			// validator holding the same voted winner runs the strict check
+			// and rejects any payee other than the voted one or devops.
+			// Producer behaviour is on the v2.0.1.0 list (V1).
 			CTxDestination addrDest;
 			ExtractDestination(payee, addrDest);
 			CBitcoinAddress addrOut(addrDest);
@@ -4171,14 +4278,21 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 						  pindexPrev->nHeight + 1,
 						  addrOut.ToString().c_str());
 
-				// Demote to the legacy path -- same as the no-consensus
-				// branch above.
+				// Demote -- same fallback as the no-consensus branch above
+				// (GetBlockPayee is always empty, so FindOldestNotInVec, then
+				// devops).
 				payee = CScript();
 				vin = CTxIn();
 
 				if (!masternodePayments.GetBlockPayee(pindexPrev->nHeight + 1, payee, vin))
 				{
-					CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
+					// v2.0.0.9 rc9 (review 1.1 / B7b): cs_main before mnodeman.cs,
+					// as above.
+					CMasternode* pmn = NULL;
+					{
+						LOCK(cs_main);
+						pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
+					}
 
 					if(pmn)
 					{
@@ -4235,7 +4349,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		}
 	}
 
-	// stop devops payments (for testing)
+	// stop devops payments.  STOP_DEVOPS_PAYMENTS(_TESTNET) is 9993058800
+	// (year 2286), so this never fires; devops payments are always on
+	// (v2.0.0.9 rc9 note, review 2 4.S5; removal is v2.0.1.0).
 	if ( Params().NetworkID() == CChainParams_Network::TESTNET )
 	{
 		if (GetTime() > STOP_DEVOPS_PAYMENTS_TESTNET )
@@ -4257,7 +4373,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		// verify address
 		if(devopaddress.IsValid())
 		{
-			//spork
+			// Fixed date, not a spork: always true on today's chain.
 			if(pindexBest->GetBlockTime() > 1546123500)
 			{ // ON  (Saturday, December 29, 2018 10:45 PM)
 					devpayee = GetScriptForDestination(devopaddress.Get());
@@ -4294,7 +4410,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
 	int64_t blockValue = nCredit;
 	int64_t masternodePayment = GetMasternodePayment(pindexPrev->nHeight+1, nReward);
-	int64_t devopsPayment = GetDevOpsPayment(pindexPrev->nHeight+1, nReward); // TODO: Activate devops
+	int64_t devopsPayment = GetDevOpsPayment(pindexPrev->nHeight+1, nReward); // devops payments are active
 
 	// Set output amount
 	// Standard stake (no Masternode or DevOps payments)

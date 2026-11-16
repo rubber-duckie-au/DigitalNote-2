@@ -274,7 +274,10 @@ json_spirit::Value spork(const json_spirit::Array& params, bool fHelp)
 		}
 
 		// SPORK VALUE
-		int64_t nValue = params[1].get_int();
+		// v2.0.0.9 rc9 (review 2.#23, R1): get_int64, not get_int.  get_int()
+		// is static_cast<int>(), which truncated the documented OFF value
+		// 4070908800 to -224058496 -- a time in the past, i.e. ON.
+		int64_t nValue = params[1].get_int64();
 
 		//broadcast new spork
 		if(sporkManager.UpdateSpork(nSporkID, nValue))
@@ -290,8 +293,18 @@ json_spirit::Value spork(const json_spirit::Array& params, bool fHelp)
 
 	throw std::runtime_error(
 		"spork <name> [<value>]\n"
-		"<name> is the corresponding spork name, or 'show' to show all current spork settings"
-		"<value> is a epoch datetime to enable or disable spork"
+		"spork show\n"
+		"\n"
+		"<name> is a spork name (e.g. SPORK_2_INSTANTX).  'show' lists the sporks this\n"
+		"node has RECEIVED from the network (sporks still at their default are not listed).\n"
+		"\n"
+		"<value> depends on the spork:\n"
+		"  most sporks: a Unix time.  The spork is ON once that time has passed, so\n"
+		"               0 = on now, 4070908800 (year 2099) = off.\n"
+		"  SPORK_5_MAX_VALUE: an amount in whole XDN.\n"
+		"  SPORK_15_VOTED_CONSENSUS_ACTIVATION: a block height; 0 = no override.\n"
+		"               Testnet only -- mainnet ignores SPORK_15 (v2.0.0.9).\n"
+		"Signing requires the spork key (-masternodepaymentskey).\n"
 		+ HelpRequiringPassphrase()
 	);
 }

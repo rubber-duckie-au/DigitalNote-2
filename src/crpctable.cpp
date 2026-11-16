@@ -127,8 +127,8 @@ static const CRPCCommand vRPCCommands[] =
 	{ "checkkernel",            &checkkernel,            true,      false,     true },
 	{ "getnewstealthaddress",   &getnewstealthaddress,   false,     false,     true },
 	{ "liststealthaddresses",   &liststealthaddresses,   false,     false,     true },
-	{ "scanforalltxns",         &scanforalltxns,         false,     false,     false },
-	{ "scanforstealthtxns",     &scanforstealthtxns,     false,     false,     false },
+	{ "scanforalltxns",         &scanforalltxns,         false,     false,     true },	// v2.0.0.9 rc9 R4: needs the wallet
+	{ "scanforstealthtxns",     &scanforstealthtxns,     false,     false,     true },	// v2.0.0.9 rc9 R4: needs the wallet
 	{ "importstealthaddress",   &importstealthaddress,   false,     false,     true },
 	{ "sendtostealthaddress",   &sendtostealthaddress,   false,     false,     true },
 	{ "smsgenable",             &smsgenable,             false,     false,     false },
