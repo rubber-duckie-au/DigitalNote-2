@@ -508,7 +508,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 					// masternode/devops payment
 					int64_t blockReward = GetProofOfWorkReward(pindexPrev->nHeight + 1, nFees);
 					bool hasPayment = true;
-					bool bMasterNodePayment = true;// TODO: Setup proper network toggle
+					bool bMasterNodePayment = true; // Always true; the "else" branch below is dead (v2.0.0.9 rc9 note, review 2 1.B5; removal is v2.0.1.0)
 					CScript mn_payee;
 					CScript do_payee;
 					CTxIn vin;
@@ -552,7 +552,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 					// verify address
 					if(devopaddress.IsValid())
 					{
-						//spork
+						// Fixed date, not a spork: always true on today's chain.
 						if(pindexBest->GetBlockTime() > 1546123500) // ON  (Saturday, December 29, 2018 10:45 PM)
 						{
 								do_payee = GetScriptForDestination(devopaddress.Get());
@@ -569,16 +569,17 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
 					if(bMasterNodePayment)
 					{
-												//spork
 						// v2.0.0.8 M5: route through GetEnforcedPayee instead of
 						// directly calling masternodePayments.GetBlockPayee.
 						// Post-activation with consensus, this returns the
 						// voted-consensus winner -- matching what the validator
-						// (cblock.cpp via M4) will check against.  Otherwise
-						// behaves identically to the previous direct call.
+						// (cblock.cpp via M4) will check against.  Otherwise it
+						// returns false (the legacy list is always empty) and the
+						// branch below picks the payee.
 						if(!GetEnforcedPayee(pindexPrev->nHeight+1, mn_payee, vin))
 						{
-							// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC):
+							// v2.0.0.9 devops rescue, PRODUCER POLICY ONLY
+							// (v209-rescue-devops-fallback-SPEC, corrected below):
 							// no voted winner.  If the chain has been stalled
 							// >= RESCUE_STALL_SECS (block-relative), this is a rescue
 							// block and MUST pay the deterministic devops address, NOT a
@@ -601,8 +602,8 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 							}
 							else
 							{
-								// vWinning has no entry for the upcoming height -- legacy
-								// fallback (pre-activation normal path; see FindOldestNotInVec
+								// No voted winner and no rescue: node-local pick
+								// (pre-activation normal path; see FindOldestNotInVec
 								// rationale / the "same MN paid twice" UAT fix vs the old
 								// GetCurrentMasterNode(1)).
 								CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
@@ -624,22 +625,22 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 							// builder cannot resolve the winner in its own MN
 							// list -- AND the winner is not the devops fallback
 							// address (which is itself a legitimate payee) --
-							// demote to the legacy fallback chain by calling
-							// masternodePayments.GetBlockPayee directly, exactly
-							// as if consensus had not formed.  This is the same
-							// path the post-activation no-consensus case already
-							// uses (cblock.cpp:GetEnforcedPayee line 186).  The
-							// existing cascade then picks a real alternative MN
-							// if it can, or devops if it cannot.
+							// demote: call masternodePayments.GetBlockPayee
+							// directly (always empty), then FindOldestNotInVec,
+							// then devops.
 							//
 							// The builder's reachability check
 							// (IsPayeeAValidMasternode + devops-address check) is
-							// EXACTLY what the validator's weak check uses, so a
-							// payee that passes here is guaranteed to pass
-							// validation.  Predicate symmetry is the whole point
-							// of this mechanism -- the 1892 stall was caused by
-							// builder and validator using different definitions
-							// of "valid MN", and this aligns them.
+							// EXACTLY what the validator's WEAK check uses -- the
+							// 1892 stall was caused by builder and validator using
+							// different definitions of "valid MN", and this aligns
+							// them.  v2.0.0.9 rc9 (review 2 1.C2): that is NOT a
+							// guarantee.  A validator that holds the same voted
+							// winner runs the STRICT check and rejects any payee
+							// other than the voted one or devops, so a demoted
+							// block can still be rejected.  Producer behaviour is
+							// on the v2.0.1.0 list (V1).  Mainnet voted consensus
+							// is not scheduled in v2.0.0.9, so this is testnet-only.
 							CTxDestination addrDest;
 							ExtractDestination(mn_payee, addrDest);
 							CBitcoinAddress addrOut(addrDest);
@@ -659,9 +660,8 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 										  pindexPrev->nHeight + 1,
 										  addrOut.ToString().c_str());
 
-								// Demote to the same legacy path GetEnforcedPayee
-								// uses on no-consensus.  Reset and re-fill via the
-								// same fallback structure as above.
+								// Demote: reset and re-fill via the same fallback
+								// structure as the no-consensus case above.
 								mn_payee = CScript();
 								vin = CTxIn();
 
@@ -1050,12 +1050,13 @@ void ThreadStakeMiner(CWallet *pwallet)
 		//
 		// A node must NOT mint a block while voted consensus is active for
 		// that block's height UNLESS it can actually produce the voted
-		// payee.  If it cannot, CreateNewBlock -> GetEnforcedPayee falls
-		// back to legacy GetBlockPayee and builds a block paying a payee
-		// the rest of the (vote-aware) fleet will reject with
-		// "Couldn't find masternode payment or payee" -- which is exactly
-		// the 1412 fork: the staker had an empty vote tracker, minted on
-		// the legacy payee, and every fleet node banned it.
+		// payee.  If it cannot, GetEnforcedPayee returns false (its legacy
+		// GetBlockPayee fallback is always empty) and the producer picks a
+		// node-local payee, building a block the rest of the (vote-aware)
+		// fleet will reject with "Couldn't find masternode payment or
+		// payee" -- which is exactly the 1412 fork: the staker had an empty
+		// vote tracker, minted on a locally chosen payee, and every fleet
+		// node banned it.
 		//
 		// The gate mirrors GetEnforcedPayee's own logic precisely so the
 		// producer and the validators agree:
@@ -1063,13 +1064,14 @@ void ThreadStakeMiner(CWallet *pwallet)
 		//   nextHeight = pindexBest->nHeight + 1   (the block we'd build)
 		//
 		//   * nextHeight <  activationHeight  -> voted consensus NOT active.
-		//     Legacy GetBlockPayee is the CORRECT payee source.  Do not
+		//     The producer picks the payee itself (FindOldestNotInVec;
+		//     validators do not check the payee pre-activation).  Do not
 		//     gate -- mint normally.  (Gating here would wrongly freeze
 		//     staking on every pre-activation chain.)
 		//
 		//   * nextHeight >= activationHeight  -> voted consensus IS active.
 		//     The block MUST carry the voted payee.  Only mint if
-		//     GetCanonicalWinner can supply one for nextHeight.  If it
+		//     GetCanonicalWinnerFromQueues can supply one for nextHeight.  If it
 		//     cannot (empty/sub-quorum vote tracker on this node), DEFER:
 		//     sleep and retry rather than mint a block that will fork.
 		//
@@ -1092,8 +1094,8 @@ void ThreadStakeMiner(CWallet *pwallet)
 				// and enforcement use.  Step 4 switched the producer to
 				// BroadcastQueue (main.cpp ~2258) and the validator to
 				// GetCanonicalWinnerFromQueues, but this readiness gate was
-				// left probing the now-dormant per-height GetCanonicalWinner
-				// (mapVotes), which is no longer populated -> the gate
+				// left probing the per-height GetCanonicalWinner (mapVotes,
+				// both since removed), which was no longer populated -> the gate
 				// deferred forever and the staker never resumed after the
 				// M1Q restart.  GetCanonicalWinnerFromQueues(tip+1) is the
 				// correct producer/validator-agreeing probe: its commit-point
@@ -1142,7 +1144,8 @@ void ThreadStakeMiner(CWallet *pwallet)
 
 				if (!fHaveCanonical)
 				{
-					// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC):
+					// v2.0.0.9 devops rescue, PRODUCER POLICY ONLY
+					// (v209-rescue-devops-fallback-SPEC, corrected below):
 					// no voted winner.  Normally we defer (below) rather than mint a
 					// block the fleet would reject.  BUT if the chain has been stalled
 					// >= RESCUE_STALL_SECS (block-relative), this is a genuine

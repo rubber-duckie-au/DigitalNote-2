@@ -1,4 +1,5 @@
 #include "rpcprotocol.h"
+#include "enums/rpcerrorcode.h"	// v2.0.0.9 rc9: RPC_WALLET_ERROR
 #include "net.h"
 #include "net/cnodestats.h"
 #include "cblock.h"
@@ -22,9 +23,10 @@
 #include "miner.h"
 #include "creservekey.h"
 
-// v2.0.0.8.1: PoW consensus readiness gate implemented in rpcmining.cpp.
-// Declared here as extern so mintblock can gate itself the same way.
-// See rpcmining.cpp EnforceVotedConsensusReadyOrThrow for the full rationale.
+// v2.0.0.8.1: PoW consensus readiness gate.  This is a separate static COPY of
+// rpcmining.cpp's EnforceVotedConsensusReadyOrThrow (not a shared declaration),
+// so the two can drift; see rpcmining.cpp for the full rationale.  Sharing one
+// function is a v2.0.1.0 tidy-up.
 static void EnforceVotedConsensusReadyOrThrow()
 {
 	if (pindexBest == NULL)
@@ -51,9 +53,9 @@ static void EnforceVotedConsensusReadyOrThrow()
 
 	if (!fHaveCanonical)
 	{
-		// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): permit a
-		// devops-fallback rescue block once the chain has been stalled
-		// >= RESCUE_STALL_SECS (block-relative).  See rpcmining.cpp for rationale.
+		// v2.0.0.9 rescue (producer policy, not a validity rule; current spec
+		// v209-rescue-fix-SPEC-2026-07-23): permit a devops-fallback rescue block
+		// once ShouldMintRescueBlock() says so.  See rpcmining.cpp.
 		if (ShouldMintRescueBlock(pindexBest, nNextHeight, GetAdjustedTime()))
 		{
 			LogPrintf("mintblock -- RESCUE: no voted winner for height %d and "
@@ -86,6 +88,26 @@ static void EnforceVotedConsensusReadyOrThrow()
 
 json_spirit::Value mintblock(const json_spirit::Array& params, bool fHelp)
 {
+	// v2.0.0.9 rc9 (review 5.5, A11): honour fHelp.  CRPCTable::help() calls
+	// every command with fHelp=true, so without this a plain `help` built and
+	// processed a block (and leaked a reserved key) on every call.
+	if (fHelp || params.size() != 0)
+	{
+		throw std::runtime_error(
+			"mintblock\n"
+			"\nBuilds a proof-of-work block on the current tip with this wallet's\n"
+			"mining key and submits it to this node.  Returns the block, or\n"
+			"\"rejected\".  Testing aid; refuses when voted consensus is active and\n"
+			"this node has no canonical winner for the next block.\n");
+	}
+
+	// v2.0.0.9 rc9 (R4): mintblock is registered without the wallet
+	// requirement, so under -disablewallet pwalletMain is NULL.
+	if (!pwalletMain)
+	{
+		throw JSONRPCError(RPC_WALLET_ERROR, "mintblock needs a wallet (running with -disablewallet)");
+	}
+
 	CBlock* block;
 	CReserveKey* pMiningKey = NULL;
 
@@ -107,18 +129,3 @@ json_spirit::Value mintblock(const json_spirit::Array& params, bool fHelp)
 
 	return block->ToString();
 }
-
-
-
-
-/*
-// Example
-json_spirit::Value mintblock(const json_spirit::Array& params, bool fHelp)
-{
-	CNodeStats stats;
-	
-	pnodeLocalHost->copyStats(stats);
-	
-	return stats.addrName;
-}
-*/

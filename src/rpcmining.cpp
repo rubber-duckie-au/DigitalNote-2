@@ -77,22 +77,26 @@ void ShutdownRPCMining()
 //
 // The v2.0.0.8 M1Q design routes both the block PRODUCER (CreateNewBlock ->
 // GetEnforcedPayee) and the block VALIDATOR (CheckBlock -> GetEnforcedPayee)
-// through the same voted-consensus source (voteTracker.GetCanonicalWinnerFrom-
-// Queues).  When that source returns a winner both sides agree; when it does
-// NOT, GetEnforcedPayee falls back to legacy masternodePayments.GetBlockPayee.
+// through the same voted-consensus source
+// (voteTracker.GetCanonicalWinnerFromQueues).  When that source returns a
+// winner both sides agree; when it does NOT, GetEnforcedPayee returns false
+// (its legacy masternodePayments.GetBlockPayee fallback is always empty --
+// v2.0.0.9 rc9, review 2 1.B1) and CreateNewBlock picks the payee itself
+// (FindOldestNotInVec).
 //
-// The legacy fallback is CORRECT for the "no node in the fleet has consensus"
-// case (pre-activation, or after a fleet-wide vote gap).  It is DANGEROUS
-// when it fires ONLY on this node -- i.e., the rest of the fleet has quorum
-// and enforces voted-consensus while this node's tracker is below quorum and
-// silently falls back.  The resulting block pays a legacy-derived MN; every
-// other fleet node evaluates it against the voted-consensus payee, sees a
-// mismatch, and rejects.  Half the fleet accepts (this node's chain), half
-// rejects (the vote-aware fleet) -> chain split.
+// That node-local pick is FINE for the "no node in the fleet has consensus"
+// case (pre-activation, or after a fleet-wide vote gap): validators then
+// apply only the weak check.  It is DANGEROUS when it happens ONLY on this
+// node -- i.e., the rest of the fleet has quorum and enforces voted-consensus
+// while this node's tracker is below quorum.  The resulting block pays a
+// locally chosen MN; every other fleet node evaluates it against the
+// voted-consensus payee, sees a mismatch, and rejects.  Half the fleet
+// accepts (this node's chain), half rejects (the vote-aware fleet) -> chain
+// split.
 //
-// PoS mining already has this gate: ThreadStakeMiner probes GetCanonicalWinner-
-// FromQueues before minting and sleeps 5s if false, refusing to produce a
-// block the fleet would reject.
+// PoS mining already has this gate: ThreadStakeMiner probes
+// GetCanonicalWinnerFromQueues before minting and sleeps 5s if false,
+// refusing to produce a block the fleet would reject.
 //
 // PoW mining had no equivalent: getworkex/getwork/getblocktemplate called
 // CreateNewBlock unconditionally.  Observed live on testnet 2026-06-30:
@@ -126,8 +130,9 @@ static void EnforceVotedConsensusReadyOrThrow()
 
 	if (nNextHeight < nActivationHeight)
 	{
-		// Pre-activation: legacy path IS the correct payee source,
-		// exactly as the PoS gate handles it.  Do not gate.
+		// Pre-activation: the producer's own pick (FindOldestNotInVec)
+		// is fine -- validators do not check the payee yet -- exactly
+		// as the PoS gate handles it.  Do not gate.
 		return;
 	}
 
@@ -147,13 +152,16 @@ static void EnforceVotedConsensusReadyOrThrow()
 
 	if (!fHaveCanonical)
 	{
-		// v2.0.0.9 consensus rescue (v209-rescue-devops-fallback-SPEC): no voted
-		// winner.  Normally we refuse to serve a template (throw -10).  BUT if the
-		// chain has been stalled >= RESCUE_STALL_SECS (block-relative), this is a
-		// genuine deadlock; allow the template so CreateNewBlock builds a
-		// devops-fallback rescue block that validators accept (CheckBlock ->
-		// ShouldMintRescueBlock).  Producer decides with GetAdjustedTime() (~= the block's
-		// eventual nTime); determinism is enforced on validation from committed data.
+		// v2.0.0.9 devops rescue, PRODUCER POLICY ONLY
+		// (v209-rescue-fix-SPEC-2026-07-23): no voted winner.  Normally we
+		// refuse to serve a template (throw -10).  BUT if the chain has been
+		// stalled >= RESCUE_STALL_SECS (block-relative), this is a genuine
+		// deadlock; allow the template so CreateNewBlock builds a devops-paid
+		// rescue block.  Validators do NOT run ShouldMintRescueBlock: CheckBlock
+		// accepts a devops masternode-slot payee unconditionally (v2.0.0.9 rc9
+		// wording, review 2 1.A2).  The producer decides with GetAdjustedTime();
+		// if its decision is wrong, one block pays devops instead of a
+		// masternode and every node still accepts it.
 		if (ShouldMintRescueBlock(pindexBest, nNextHeight, GetAdjustedTime()))
 		{
 			static int64_t nLastRescueLog = 0;
@@ -1063,9 +1071,13 @@ json_spirit::Value getblocktemplate(const json_spirit::Array& params, bool fHelp
 		}
 		else
 		{
-			// vWinning has no entry AND vote consensus not formed -- fall
-			// back to FindOldestNotInVec (same as ProcessBlock's secondary
-			// path).  This matches the equivalent fallback in miner.cpp.
+			// No voted consensus (vWinning is always empty) -- report the
+			// FindOldestNotInVec pick.  v2.0.0.9 rc9 (review 2 1.C3): this
+			// does NOT always match what CreateNewBlock pays.  Post-activation
+			// CreateNewBlock pays devops when ShouldMintRescueBlock is true,
+			// and demotes a voted winner it cannot resolve.  Only external
+			// BIP22 miners read this field.  A shared payee helper is on the
+			// v2.0.1.0 list (V1).
 			CMasternode* pmn = mnodeman.FindOldestNotInVec(std::vector<CTxIn>(), 0);
 			if(pmn)
 			{
