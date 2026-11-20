@@ -84,7 +84,15 @@ const std::string CLIENT_NAME("DigitalNoteoshi");
 //     v2.0.0.9-XDN-rc8-DigitalNote-Core
 // and the tagged build (candidate "") reports
 //     v2.0.0.9-XDN-DigitalNote-Core
-// exactly as before.  This is what makes getinfo -- and, once v2.0.0.9 ships,
-// the mnver attestation -- able to identify WHICH build produced a result.
+// exactly as before.  This is what lets getinfo identify WHICH build produced
+// a result.
+//
+// It is local only (v2.0.0.9 rc10 correction): nothing sends this string to
+// other nodes.  The mnver attestation carries just the protocol number, which
+// is 62059 for every v2.0.0.9 build, and the P2P user agent is built from the
+// numeric CLIENT_VERSION.  A signed attestation that carries the build is
+// planned for v2.0.1.0.  Two more limits: the string has no commit id
+// (GIT_COMMIT_ID above is the fixed text "XDN-"), and v2.0.0.9-rc1 predates
+// the candidate marker, so it reports the same string as the tagged release.
 const std::string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_CANDIDATE CLIENT_VERSION_SUFFIX);
 const std::string CLIENT_DATE(BUILD_DATE);
