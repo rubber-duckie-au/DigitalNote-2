@@ -5,6 +5,7 @@
 #include "util.h"
 #include "mnengine.h"
 #include "instantx.h"
+#include "blockparams.h"	// INSTANTX_SIGNATURES_REQUIRED
 #include "cwallettx.h"
 #include "mining.h"
 #include "script.h"
@@ -312,6 +313,17 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
         if (status.depth < 0)
         {
             status.status = TransactionStatus::Conflicted;
+        }
+        // v2.0.0.9 rc10: an InstantX-locked transaction that is in no block yet.
+        // status.depth already includes -instantxdepth (10), which used to show it
+        // as "Confirmed (10 confirmations)" while its amount was still pending and
+        // could not be spent.  Say what it is instead.  Checked before Offline: a
+        // lock means masternodes have seen it.  Once it is in a block the normal
+        // branches below take over.
+        else if (wtx.GetDepthInMainChain(false) == 0 &&
+                 wtx.GetTransactionLockSignatures() >= INSTANTX_SIGNATURES_REQUIRED)
+        {
+            status.status = TransactionStatus::Locked;
         }
         else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
         {

@@ -342,6 +342,9 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
     case TransactionStatus::Conflicted:
         status = tr("Conflicted");
         break;
+    case TransactionStatus::Locked:
+        status = tr("Locked (InstantX)");	// v2.0.0.9 rc10
+        break;
     case TransactionStatus::Immature:
         status = tr("Immature (%1 confirmations, will be available after %2)").arg(wtx->status.depth).arg(wtx->status.depth + wtx->status.matures_in);
         break;
@@ -514,6 +517,8 @@ QVariant TransactionTableModel::txStatusDecoration(const TransactionRecord *wtx)
         return QIcon(":/icons/transaction_confirmed");
     case TransactionStatus::Conflicted:
         return QIcon(":/icons/transaction_conflicted");
+    case TransactionStatus::Locked:
+        return QIcon(":/icons/lock_closed");	// v2.0.0.9 rc10
     case TransactionStatus::Immature: {
         int total = wtx->status.depth + wtx->status.matures_in;
         int part = (wtx->status.depth * 4 / total) + 1;
