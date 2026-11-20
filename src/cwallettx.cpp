@@ -707,7 +707,16 @@ bool CWalletTx::IsTrusted() const
 		return false;
 	}
 
-	int nDepth = GetDepthInMainChain();
+	// v2.0.0.9 rc10: the REAL block depth, not the InstantX-inflated one.
+	//
+	// "Trusted" decides what counts as AVAILABLE balance (GetBalance and its
+	// callers, the GUI).  Coin selection only ever spends outputs with at least
+	// one real block (CWallet::AvailableCoins uses GetDepthInMainChain(false)),
+	// so the default GetDepthInMainChain() -- which reports -instantxdepth (10)
+	// for an InstantX-locked transaction that is in no block yet -- made a locked
+	// payment show as available for a block before it could be spent.  InstantX
+	// itself is unchanged: the lock, and the "confirmations" it shows, stay.
+	int nDepth = GetDepthInMainChain(false);
 	if (nDepth >= 1)
 	{
 		return true;

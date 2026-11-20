@@ -3369,7 +3369,10 @@ CAmount CWallet::GetUnconfirmedBalance() const
 		{
 			const CWalletTx* pcoin = &(*it).second;
 			
-			if (!IsFinalTx(*pcoin) || (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0))
+			// v2.0.0.9 rc10: real block depth, matching IsTrusted() -- otherwise an
+			// InstantX-locked transaction in no block yet (inflated depth 10) would be
+			// neither available nor pending, and drop out of the total.
+			if (!IsFinalTx(*pcoin) || (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain(false) == 0))
 			{
 				nTotal += pcoin->GetAvailableCredit();
 			}
@@ -3447,7 +3450,10 @@ CAmount CWallet::GetUnconfirmedWatchOnlyBalance() const
 		{
 			const CWalletTx* pcoin = &(*it).second;
 			
-			if (!IsFinalTx(*pcoin) || (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0))
+			// v2.0.0.9 rc10: real block depth, matching IsTrusted() -- otherwise an
+			// InstantX-locked transaction in no block yet (inflated depth 10) would be
+			// neither available nor pending, and drop out of the total.
+			if (!IsFinalTx(*pcoin) || (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain(false) == 0))
 			{
 				nTotal += pcoin->GetAvailableWatchOnlyCredit();
 			}
