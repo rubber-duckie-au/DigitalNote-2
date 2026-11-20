@@ -347,7 +347,7 @@ std::string HelpMessage()
 	strUsage += "  -rpcthreads=<n>        " + ui_translate("Set the number of threads to service RPC calls (default: 4)") + "\n";
 	strUsage += "  -blocknotify=<cmd>     " + ui_translate("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n";
 	strUsage += "  -walletnotify=<cmd>    " + ui_translate("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n";
-	strUsage += "  -confchange            " + ui_translate("Require a confirmations for change (default: 0)") + "\n";
+	strUsage += "  -confchange            " + ui_translate("Count unconfirmed change as pending, not available, until it has a confirmation; it cannot be spent before then either way (default: 1)") + "\n";
 	strUsage += "  -alertnotify=<cmd>     " + ui_translate("Execute command when a relevant alert is received (%s in cmd is replaced by message)") + "\n";
 	strUsage += "  -upgradewallet         " + ui_translate("Upgrade wallet to latest format") + "\n";
 	strUsage += "  -createwalletbackups=<n> " + ui_translate("Number of automatic wallet backups (default: 10)") + "\n";
@@ -729,7 +729,22 @@ bool AppInit2(boost::thread_group& threadGroup)
 	}	
 #endif
 
-	fConfChange = GetBoolArg("-confchange", false);
+	// v2.0.0.9 rc10: default changed from false to true, so the balance is honest.
+	//
+	// fConfChange only decides whether CWalletTx::IsTrusted() trusts our OWN
+	// unconfirmed transactions, i.e. whether unconfirmed change counts as
+	// available (false) or pending (true).  It never decided spending: coin
+	// selection skips every output with 0 confirmations (CWallet::AvailableCoins,
+	// "coincontrol fix / ignore 0 confirm", inherited from TransferCoin), so with
+	// the old default the wallet showed change as available that it would refuse
+	// to send -- a second send before the next block failed "Insufficient funds"
+	// while the balance said there was enough.  Total is unchanged either way.
+	//
+	// The 0-confirmation filter itself stays: relay policy does not require
+	// low-S signatures (script_const.h), so an unconfirmed parent's txid can
+	// still be changed by a relaying node, which would strand any child built
+	// on its change.
+	fConfChange = GetBoolArg("-confchange", true);
 
 #ifdef ENABLE_WALLET
 	if (mapArgs.count("-mininput"))
