@@ -11,6 +11,22 @@
 
 #include "cblocklocator.h"
 
+// v2.0.0.9 rc11: the most entries Set() puts in a locator before the genesis
+// hash.  Set() steps back one block at a time, so building a locator all the
+// way to genesis touched every block index entry (~1.25 million on mainnet)
+// while cs_main was held.  On a host short of memory, where the index had been
+// paged out, that stalled a node for 15 s or more every 144 blocks, when
+// SetBestChain saves the wallet's locator (fleet.md, 2026-11-23/24).
+//
+// 25 entries sit at depths 0-10, 11, 13, 17, 25, 41, 73, 137, 265, 521, 1033,
+// 2057, 4105, 8201 and 16393: a walk of ~16,400 blocks instead of the whole
+// chain, and constant as the chain grows.  The list is a prefix of the
+// unbounded one, so a peer finds the same common block for any fork up to
+// that depth.  Only a fork deeper than ~16,400 blocks now matches only at
+// genesis, and a node cannot rejoin such a fork through sync anyway:
+// Checkpoints::CheckSync refuses any block 5,000 or more below its own tip.
+static const unsigned int LOCATOR_MAX_ENTRIES = 25;
+
 CBlockLocator::CBlockLocator()
 {
 	
@@ -105,6 +121,13 @@ void CBlockLocator::Set(const CBlockIndex* pindex)
 	while (pindex)
 	{
 		vHave.push_back(pindex->GetBlockHash());
+
+		// v2.0.0.9 rc11: stop here rather than walk on to genesis
+		// (LOCATOR_MAX_ENTRIES above).  The genesis hash is still added below.
+		if (vHave.size() >= LOCATOR_MAX_ENTRIES)
+		{
+			break;
+		}
 
 		// Exponentially larger steps back
 		for (int i = 0; pindex && i < nStep; i++)
