@@ -8,6 +8,7 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <atomic>
 
 #include <QObject>
 
@@ -336,11 +337,21 @@ public:
     void emitCollateralCandidate(const QString &txidHex, int vout);
     bool processingQueuedTransactions() { return fProcessingQueuedTransactions; }
 
+    /** Called on the core thread for every wallet transaction change
+     *  (v2.0.0.9 rc11).  pollBalanceChanged() re-sums the balances when the
+     *  count has moved since its last sum. */
+    void noteTransactionChanged() { ++nTxChangeCount; }
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;
     bool fForceCheckBalanceChanged;
     bool fProcessingQueuedTransactions;
+
+    // Wallet transaction changes counted on the core thread, and the count
+    // the last balance sum saw (v2.0.0.9 rc11; see pollBalanceChanged).
+    std::atomic<unsigned int> nTxChangeCount;
+    unsigned int nTxChangeCountSeen;
 
     // Wallet has an options model for wallet-specific options
     // (transaction fee, for example)

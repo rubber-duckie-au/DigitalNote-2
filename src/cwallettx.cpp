@@ -406,18 +406,24 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
 {
 	if (IsCoinBase() && GetBlocksToMaturity() > 0 && IsInMainChain())
 	{
-		if (fUseCache && fImmatureCreditCached)
-		{
-			return nImmatureCreditCached;
-		}
-		
-		nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE);
-		fImmatureCreditCached = true;
-		
-		return nImmatureCreditCached;
+		return GetImmatureCreditChecked(fUseCache);
 	}
 
 	return 0;
+}
+
+// v2.0.0.9 rc11: GetImmatureCredit() after its checks (split out unchanged).
+CAmount CWalletTx::GetImmatureCreditChecked(bool fUseCache) const
+{
+	if (fUseCache && fImmatureCreditCached)
+	{
+		return nImmatureCreditCached;
+	}
+
+	nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE);
+	fImmatureCreditCached = true;
+
+	return nImmatureCreditCached;
 }
 
 CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
@@ -426,13 +432,24 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
 	{
 		return 0;
 	}
-	
+
 	// Must wait until coinbase is safely deep enough in the chain before valuing it
 	if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
 	{
 		return 0;
 	}
-	
+
+	return GetAvailableCreditChecked(fUseCache);
+}
+
+// v2.0.0.9 rc11: GetAvailableCredit() after its maturity check (split out unchanged).
+CAmount CWalletTx::GetAvailableCreditChecked(bool fUseCache) const
+{
+	if (pwallet == 0)
+	{
+		return 0;
+	}
+
 	if (fUseCache && fAvailableCreditCached)
 	{
 		return nAvailableCreditCached;
@@ -507,18 +524,24 @@ CAmount CWalletTx::GetImmatureWatchOnlyCredit(const bool& fUseCache) const
 {
 	if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0 && IsInMainChain())
 	{
-		if (fUseCache && fImmatureWatchCreditCached)
-		{
-			return nImmatureWatchCreditCached;
-		}
-		
-		nImmatureWatchCreditCached = pwallet->GetCredit(*this, ISMINE_WATCH_ONLY);
-		fImmatureWatchCreditCached = true;
-		
-		return nImmatureWatchCreditCached;
+		return GetImmatureWatchOnlyCreditChecked(fUseCache);
 	}
 
 	return 0;
+}
+
+// v2.0.0.9 rc11: GetImmatureWatchOnlyCredit() after its checks (split out unchanged).
+CAmount CWalletTx::GetImmatureWatchOnlyCreditChecked(bool fUseCache) const
+{
+	if (fUseCache && fImmatureWatchCreditCached)
+	{
+		return nImmatureWatchCreditCached;
+	}
+
+	nImmatureWatchCreditCached = pwallet->GetCredit(*this, ISMINE_WATCH_ONLY);
+	fImmatureWatchCreditCached = true;
+
+	return nImmatureWatchCreditCached;
 }
 
 CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool& fUseCache) const
@@ -527,13 +550,24 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool& fUseCache) const
 	{
 		return 0;
 	}
-	
+
 	// Must wait until coinbase is safely deep enough in the chain before valuing it
 	if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
 	{
 		return 0;
 	}
-	
+
+	return GetAvailableWatchOnlyCreditChecked(fUseCache);
+}
+
+// v2.0.0.9 rc11: GetAvailableWatchOnlyCredit() after its maturity check (split out unchanged).
+CAmount CWalletTx::GetAvailableWatchOnlyCreditChecked(bool fUseCache) const
+{
+	if (pwallet == 0)
+	{
+		return 0;
+	}
+
 	if (fUseCache && fAvailableWatchCreditCached)
 	{
 		return nAvailableWatchCreditCached;
@@ -716,7 +750,13 @@ bool CWalletTx::IsTrusted() const
 	// for an InstantX-locked transaction that is in no block yet -- made a locked
 	// payment show as available for a block before it could be spent.  InstantX
 	// itself is unchanged: the lock, and the "confirmations" it shows, stay.
-	int nDepth = GetDepthInMainChain(false);
+	return IsTrustedAtDepth(GetDepthInMainChain(false));
+}
+
+// v2.0.0.9 rc11: IsTrusted() after its IsFinalTx check, with the real depth
+// supplied (split out unchanged).
+bool CWalletTx::IsTrustedAtDepth(int nDepth) const
+{
 	if (nDepth >= 1)
 	{
 		return true;

@@ -43,6 +43,15 @@ public:
 	int GetDepthInMainChain(bool enableIX=true) const;
 	bool IsInMainChain() const;
 	int GetBlocksToMaturity() const;
+
+	// v2.0.0.9 rc11: for callers that need several of the values above for
+	// the same transaction (the GUI's balance totals), from ONE block look-up.
+	// nChainDepth: > 0 exactly when IsInMainChain().  nDepthReal: what
+	// GetDepthInMainChain(false) returns.  nDepthIX: what GetDepthInMainChain()
+	// returns, computed only if fNeedIX (otherwise set to nDepthReal).
+	void GetDepths(int& nChainDepth, int& nDepthReal, int& nDepthIX, bool fNeedIX) const;
+	// GetBlocksToMaturity() for a transaction whose GetDepthInMainChain() is nDepthIX.
+	int GetBlocksToMaturityAtDepth(int nDepthIX) const;
 	bool AcceptToMemoryPool(bool fLimitFree=true, bool fRejectInsaneFee=true, bool ignoreFees=false);
 	int GetTransactionLockSignatures() const;
 	bool IsTransactionLockTimedOut() const;

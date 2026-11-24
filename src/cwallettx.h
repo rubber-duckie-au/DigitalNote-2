@@ -93,6 +93,16 @@ public:
 	CAmount GetAvailableCredit(bool fUseCache=true) const;
 	CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
 	CAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
+
+	// v2.0.0.9 rc11: the second halves of the four functions above, for a
+	// caller that has already made their maturity / main-chain checks with
+	// depths it looked up once (CMerkleTx::GetDepths).  The functions above
+	// make those checks and then call these.
+	CAmount GetImmatureCreditChecked(bool fUseCache=true) const;
+	CAmount GetAvailableCreditChecked(bool fUseCache=true) const;
+	CAmount GetImmatureWatchOnlyCreditChecked(bool fUseCache=true) const;
+	CAmount GetAvailableWatchOnlyCreditChecked(bool fUseCache=true) const;
+
 	CAmount GetChange() const;
 	void GetAmounts(std::list<std::pair<CTxDestination, int64_t> >& listReceived,
 					std::list<std::pair<CTxDestination, int64_t> >& listSent, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const;
@@ -102,6 +112,9 @@ public:
 
 	bool IsFromMe(const isminefilter& filter) const;
 	bool IsTrusted() const;
+	// v2.0.0.9 rc11: IsTrusted() for a final transaction whose
+	// GetDepthInMainChain(false) is nDepthReal.  IsTrusted() calls it.
+	bool IsTrustedAtDepth(int nDepthReal) const;
 	bool WriteToDisk();
 
 	int64_t GetTxTime() const;

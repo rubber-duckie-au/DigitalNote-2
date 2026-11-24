@@ -248,7 +248,45 @@ int CMerkleTx::GetBlocksToMaturity() const
 		return 0;
 	}
 
-	return std::max(0, nCoinbaseMaturity+75 - GetDepthInMainChain());
+	return GetBlocksToMaturityAtDepth(GetDepthInMainChain());
+}
+
+int CMerkleTx::GetBlocksToMaturityAtDepth(int nDepthIX) const
+{
+	if (!(IsCoinBase() || IsCoinStake()))
+	{
+		return 0;
+	}
+
+	return std::max(0, nCoinbaseMaturity+75 - nDepthIX);
+}
+
+// v2.0.0.9 rc11: the values GetDepthInMainChain(false), GetDepthInMainChain()
+// and IsInMainChain() return, from one block look-up.  Must stay in step with
+// GetDepthInMainChain(pindexRet, enableIX) above.
+void CMerkleTx::GetDepths(int& nChainDepth, int& nDepthReal, int& nDepthIX, bool fNeedIX) const
+{
+	AssertLockHeld(cs_main);
+
+	CBlockIndex *pindexRet = NULL;
+
+	nChainDepth = GetDepthInMainChainINTERNAL(pindexRet);
+	nDepthReal = nChainDepth;
+
+	if (nChainDepth == 0 && !mempool.exists(GetHash()))
+	{
+		nDepthReal = -1; // Not in chain, not in mempool
+	}
+
+	nDepthIX = nDepthReal;
+
+	if (fNeedIX && nDepthReal != -1 && nChainDepth < 10)
+	{
+		if (GetTransactionLockSignatures() >= INSTANTX_SIGNATURES_REQUIRED)
+		{
+			nDepthIX = nInstantXDepth + nChainDepth;
+		}
+	}
 }
 
 bool CMerkleTx::AcceptToMemoryPool(bool fLimitFree, bool fRejectInsaneFee, bool ignoreFees)

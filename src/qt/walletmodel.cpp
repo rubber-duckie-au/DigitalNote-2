@@ -18,6 +18,7 @@
 #include "spork.h"
 #include "coutput.h"
 #include "cwallettx.h"
+#include "main.h"          // IsFinalTx (v2.0.0.9 rc11 SumBalancesOnePass)
 #include "creservekey.h"
 #include "wallet.h"
 #include "script.h"
@@ -51,6 +52,7 @@
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet),
     fProcessingQueuedTransactions(false),
+    nTxChangeCount(0), nTxChangeCountSeen(0),
     optionsModel(optionsModel), addressTableModel(0), transactionTableModel(0),
     cachedBalance(0), cachedStake(0), cachedUnconfirmedBalance(0), cachedImmatureBalance(0),
     cachedEncryptionStatus(Unencrypted),
@@ -311,17 +313,130 @@ void WalletModel::pollBalanceChanged()
     if(!lockWallet)
         return;
 
-    if(fForceCheckBalanceChanged || nBestHeight != cachedNumBlocks || cachedTxLocks != nCompleteTXLocks)
+    // v2.0.0.9 rc11: two separate triggers.
+    // - A wallet transaction change (counted on the core thread, see
+    //   noteTransactionChanged) re-sums the balances only.  The count is read
+    //   while cs_wallet is held here, and the wallet changes only under
+    //   cs_wallet, so a change is either already in this sum or moves the
+    //   count for a later poll.  Before rc11 the change arrived as a queued
+    //   call after the block's own sum had already included it, and forced a
+    //   second full sum plus a second refresh of every row.
+    // - A new chain tip (or a reorg, or a new InstantX lock) also refreshes
+    //   the transaction rows whose display can still change.
+    const unsigned int nTxChanges = nTxChangeCount.load();
+    const bool fRowsNeedUpdate = transactionTableModel &&
+                                 transactionTableModel->confirmationsUpdateNeeded();
+
+    if(fForceCheckBalanceChanged || nTxChanges != nTxChangeCountSeen ||
+       nBestHeight != cachedNumBlocks || cachedTxLocks != nCompleteTXLocks || fRowsNeedUpdate)
     {
         fForceCheckBalanceChanged = false;
+        nTxChangeCountSeen = nTxChanges;
 
         // Balance and number of transactions might have changed
         cachedNumBlocks = nBestHeight;
 
         checkBalanceChanged();
-        if(transactionTableModel)
+        if(fRowsNeedUpdate)
             transactionTableModel->updateConfirmations();
     }
+}
+
+// v2.0.0.9 rc11 (toast freeze, 3e): the balance totals checkBalanceChanged()
+// shows, in ONE pass over the wallet, with each transaction's block depth
+// looked up once (CMerkleTx::GetDepths).  The results are exactly those of
+// CWallet::GetBalance, GetStake, GetUnconfirmedBalance, GetImmatureBalance and
+// their watch-only versions (cwallet.cpp).  Each of those walks the whole
+// wallet and looks a transaction's depth up one to three times; together they
+// took 0.8-2.5 s per block on the GUI thread on a 54,600-row testnet wallet
+// (M2-DEVOPS, 2026-11-23).  Each condition below names the function it
+// mirrors: keep them in step.
+struct BalanceTotals
+{
+    CAmount nBalance;
+    CAmount nStake;
+    CAmount nUnconfirmed;
+    CAmount nImmature;
+    CAmount nWatchBalance;
+    CAmount nWatchStake;
+    CAmount nWatchUnconfirmed;
+    CAmount nWatchImmature;
+};
+
+static BalanceTotals SumBalancesOnePass(const CWallet *wallet, bool fWatchOnly)
+{
+    BalanceTotals t = {0, 0, 0, 0, 0, 0, 0, 0};
+
+    LOCK2(cs_main, wallet->cs_wallet);
+
+    for (mapWallet_t::const_iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
+    {
+        const CWalletTx *pcoin = &(*it).second;
+        const bool fGenerated = pcoin->IsCoinBase() || pcoin->IsCoinStake();
+
+        // GetDepthInMainChain() with InstantX is only used, below, through
+        // GetBlocksToMaturity() and in GetStake(): generated transactions only.
+        int nChainDepth;
+        int nDepthReal;
+        int nDepthIX;
+        pcoin->GetDepths(nChainDepth, nDepthReal, nDepthIX, fGenerated);
+
+        const int nBlocksToMaturity = pcoin->GetBlocksToMaturityAtDepth(nDepthIX); // GetBlocksToMaturity()
+        const bool fFinal = IsFinalTx(*pcoin);
+        const bool fTrusted = fFinal && pcoin->IsTrustedAtDepth(nDepthReal);    // IsTrusted()
+        const bool fMature = !(fGenerated && nBlocksToMaturity > 0);           // GetAvailableCredit()'s check
+
+        // GetBalance(): IsTrusted() -> GetAvailableCredit()
+        if (fTrusted && fMature)
+        {
+            t.nBalance += pcoin->GetAvailableCreditChecked();
+
+            if (fWatchOnly)
+            {
+                t.nWatchBalance += pcoin->GetAvailableWatchOnlyCreditChecked();
+            }
+        }
+
+        // GetUnconfirmedBalance(): !IsFinalTx || (!IsTrusted() && GetDepthInMainChain(false) == 0)
+        //   -> GetAvailableCredit()
+        if ((!fFinal || (!fTrusted && nDepthReal == 0)) && fMature)
+        {
+            t.nUnconfirmed += pcoin->GetAvailableCreditChecked();
+
+            if (fWatchOnly)
+            {
+                t.nWatchUnconfirmed += pcoin->GetAvailableWatchOnlyCreditChecked();
+            }
+        }
+
+        // GetStake(): IsCoinStake() && GetBlocksToMaturity() > 0 && GetDepthInMainChain() > 0
+        //   -> GetCredit(ISMINE_SPENDABLE); GetWatchOnlyStake() the same with ISMINE_WATCH_ONLY
+        if (pcoin->IsCoinStake() && nBlocksToMaturity > 0 && nDepthIX > 0)
+        {
+            t.nStake += wallet->GetCredit(*pcoin, ISMINE_SPENDABLE);
+
+            if (fWatchOnly)
+            {
+                t.nWatchStake += wallet->GetCredit(*pcoin, ISMINE_WATCH_ONLY);
+            }
+        }
+
+        // GetImmatureBalance() -> GetImmatureCredit():
+        //   IsCoinBase() && GetBlocksToMaturity() > 0 && IsInMainChain()
+        if (pcoin->IsCoinBase() && nBlocksToMaturity > 0 && nChainDepth > 0)
+        {
+            t.nImmature += pcoin->GetImmatureCreditChecked();
+        }
+
+        // GetImmatureWatchOnlyBalance() -> GetImmatureWatchOnlyCredit():
+        //   (IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0 && IsInMainChain()
+        if (fWatchOnly && fGenerated && nBlocksToMaturity > 0 && nChainDepth > 0)
+        {
+            t.nWatchImmature += pcoin->GetImmatureWatchOnlyCreditChecked();
+        }
+    }
+
+    return t;
 }
 
 void WalletModel::checkBalanceChanged()
@@ -329,21 +444,18 @@ void WalletModel::checkBalanceChanged()
     TRY_LOCK(cs_main, lockMain);
     if(!lockMain) return;
 
-    CAmount newBalance = getBalance();
-    CAmount newStake = getStake();
-    CAmount newUnconfirmedBalance = getUnconfirmedBalance();
-    CAmount newImmatureBalance = getImmatureBalance();
-    CAmount newWatchOnlyBalance = 0;
-    CAmount newWatchOnlyStake = 0;
-    CAmount newWatchUnconfBalance = 0;
-    CAmount newWatchImmatureBalance = 0;
-    if (haveWatchOnly())
-    {
-        newWatchOnlyBalance = getWatchBalance();
-        newWatchOnlyStake = getWatchStake();
-        newWatchUnconfBalance = getWatchUnconfirmedBalance();
-        newWatchImmatureBalance = getWatchImmatureBalance();
-    }
+    // v2.0.0.9 rc11: one pass for every total (SumBalancesOnePass above)
+    // instead of getBalance(), getStake(), ... each walking the whole wallet.
+    const BalanceTotals totals = SumBalancesOnePass(wallet, haveWatchOnly());
+
+    CAmount newBalance = totals.nBalance;
+    CAmount newStake = totals.nStake;
+    CAmount newUnconfirmedBalance = totals.nUnconfirmed;
+    CAmount newImmatureBalance = totals.nImmature;
+    CAmount newWatchOnlyBalance = totals.nWatchBalance;
+    CAmount newWatchOnlyStake = totals.nWatchStake;
+    CAmount newWatchUnconfBalance = totals.nWatchUnconfirmed;
+    CAmount newWatchImmatureBalance = totals.nWatchImmature;
 
     if(cachedBalance != newBalance || cachedStake != newStake || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance ||
         cachedTxLocks != nCompleteTXLocks || cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchOnlyStake != newWatchOnlyStake || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance)
@@ -363,6 +475,9 @@ void WalletModel::checkBalanceChanged()
 
 void WalletModel::updateTransaction()
 {
+    // v2.0.0.9 rc11: the core hook below no longer posts this slot; it counts
+    // the change with noteTransactionChanged() instead.  Kept so any other
+    // caller still forces a balance check.
     // Balance and number of transactions might have changed
     fForceCheckBalanceChanged = true;
 }
@@ -801,9 +916,9 @@ static void NotifyTransactionChanged(WalletModel *walletmodel, CWallet *wallet, 
     QString strHash = QString::fromStdString(hash.GetHex());
 
     qDebug() << "NotifyTransactionChanged : " + strHash + " status= " + QString::number(status);
-    QMetaObject::invokeMethod(walletmodel, "updateTransaction", Qt::QueuedConnection/*,
-                              Q_ARG(QString, strHash),
-                              Q_ARG(int, status)*/);
+    // v2.0.0.9 rc11: count the change here, on the core thread, instead of
+    // posting a queued updateTransaction() call.  See pollBalanceChanged().
+    walletmodel->noteTransactionChanged();
 }
 
 static void ShowProgress(WalletModel *walletmodel, const std::string &title, int nProgress)

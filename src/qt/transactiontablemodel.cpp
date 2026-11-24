@@ -7,6 +7,10 @@
 #include <QDebug>
 #include <boost/bind.hpp>
 
+#include <limits>
+#include <utility>
+#include <vector>
+
 #include "guiutil.h"
 #include "transactionrecord.h"
 #include "guiconstants.h"
@@ -20,8 +24,18 @@
 #include "main_extern.h"
 #include "thread.h"
 #include "mining.h"
+#include "cblockindex.h"
+#include "instantx.h"   // nCompleteTXLocks
+#include "util.h"       // nInstantXDepth
 
 #include "transactiontablemodel.h"
+
+// v2.0.0.9 rc11: above this many separate row ranges, updateConfirmations()
+// sends one whole-table refresh instead (for example a deep reorg).  Measured
+// on a 54,600-row wallet: 100 single-row ranges cost 2-14 ms, so 2,000 costs
+// well under a second, still far less than the whole-table refresh on a
+// large wallet.  Small wallets reach the "more than half the rows" rule first.
+static const int MAX_REFRESH_RANGES = 2000;
 
 // Amount column is right-aligned it contains numbers
 static int column_alignments[] = {
@@ -56,12 +70,115 @@ class TransactionTablePriv
 public:
     TransactionTablePriv(CWallet *wallet, TransactionTableModel *parent) :
         wallet(wallet),
-        parent(parent)
+        parent(parent),
+        pindexLastSeen(NULL),
+        nLastTxLocks(-1)
     {
     }
 
     CWallet *wallet;
     TransactionTableModel *parent;
+
+    /* v2.0.0.9 rc11: the chain tip and InstantX lock count at the last
+     * updateConfirmations().  Block index entries are never freed while the
+     * wallet runs, so the pointer stays valid. */
+    const CBlockIndex *pindexLastSeen;
+    int nLastTxLocks;
+
+    /* v2.0.0.9 rc11: after a reorg, the first block height whose contents may
+     * have changed since the last refresh; INT_MAX if there was no reorg.
+     *
+     * A block that leaves the main chain loses its pnext link (Reorganize,
+     * main.cpp), so "the last tip we refreshed is no longer in the main chain"
+     * means a reorg happened.  Walking back from that tip to the first block
+     * still in the main chain gives the fork point, however many reorgs
+     * happened in between.  Caller holds cs_main. */
+    int reorgFromHeight() const
+    {
+        AssertLockHeld(cs_main);
+
+        if (pindexLastSeen == NULL || pindexLastSeen->IsInMainChain())
+        {
+            return std::numeric_limits<int>::max();
+        }
+
+        const CBlockIndex *pindex = pindexLastSeen;
+        while (pindex && !pindex->IsInMainChain())
+        {
+            pindex = pindex->pprev;
+        }
+
+        return pindex ? pindex->nHeight + 1 : 0;
+    }
+
+    /* v2.0.0.9 rc11: can this row's display change now?
+     *
+     * Every new block: rows whose cached status is not final (unconfirmed,
+     * under the recommended confirmations, immature, conflicted, locked,
+     * offline, not final yet), plus rows never computed or invalidated
+     * (cur_num_blocks < 0).  Confirmed and NotAccepted rows change only
+     * through a reorg.
+     *
+     * After a reorg (nFromHeight != INT_MAX), also every row in no block and
+     * every row in a block at or above the fork.  A node refuses any block
+     * 5,000 or more below its tip (Checkpoints::CheckSync), which bounds a
+     * reorg.  The row's block height comes from its cached status; the cached
+     * depth can include -instantxdepth, which only makes that estimate lower,
+     * so the bound is widened by the same amount. */
+    static bool rowMayChange(const TransactionStatus &status, int nFromHeight)
+    {
+        if (status.cur_num_blocks < 0)
+        {
+            return true;
+        }
+
+        if (status.status != TransactionStatus::Confirmed &&
+            status.status != TransactionStatus::NotAccepted)
+        {
+            return true;
+        }
+
+        if (nFromHeight == std::numeric_limits<int>::max())
+        {
+            return false;
+        }
+
+        if (status.depth <= 0)
+        {
+            return true;
+        }
+
+        const qint64 nRowHeight = (qint64)status.cur_num_blocks - status.depth + 1;
+
+        return nRowHeight >= (qint64)nFromHeight - nInstantXDepth;
+    }
+
+    /* v2.0.0.9 rc11: contiguous ranges [first, last] of rows that may change. */
+    void rowsToRefresh(int nFromHeight, std::vector<std::pair<int, int> > &vRanges) const
+    {
+        int nStart = -1;
+
+        for (int i = 0; i < cachedWallet.size(); ++i)
+        {
+            if (rowMayChange(cachedWallet.at(i).status, nFromHeight))
+            {
+                if (nStart < 0)
+                {
+                    nStart = i;
+                }
+            }
+            else if (nStart >= 0)
+            {
+                vRanges.push_back(std::make_pair(nStart, i - 1));
+                nStart = -1;
+            }
+        }
+
+        if (nStart >= 0)
+        {
+            vRanges.push_back(std::make_pair(nStart, (int)cachedWallet.size() - 1));
+        }
+    }
 
     /* Local cache of wallet.
      * As it is in the same order as the CWallet, by definition
@@ -199,8 +316,21 @@ public:
             parent->endRemoveRows();
             break;
         case CT_UPDATED:
-            // Miscellaneous updates -- nothing to do, status update will take care of this, and is only computed for
-            // visible transactions.
+            // v2.0.0.9 rc11: repaint this transaction's own rows.
+            // updateConfirmations() no longer refreshes every row on every
+            // block, so a change to a row whose cached status was already
+            // final would otherwise not be shown until the row is redrawn.
+            // Invalidating the cached status makes the next read recompute it,
+            // and keeps the row in the next per-block refresh as well.
+            if(inModel)
+            {
+                for (QList<TransactionRecord>::iterator it = lower; it != upper; ++it)
+                {
+                    it->status.cur_num_blocks = -1;
+                }
+                emit parent->dataChanged(parent->index(lowerIndex, TransactionTableModel::Status),
+                                         parent->index(upperIndex - 1, TransactionTableModel::Amount));
+            }
             break;
         }
     }
@@ -293,14 +423,58 @@ void TransactionTableModel::updateTransaction(const QString &hash, int status, b
     priv->updateWallet(updated, status, showTransaction);
 }
 
+bool TransactionTableModel::confirmationsUpdateNeeded() const
+{
+    AssertLockHeld(cs_main);
+
+    return priv->pindexLastSeen != pindexBest || priv->nLastTxLocks != nCompleteTXLocks;
+}
+
 void TransactionTableModel::updateConfirmations()
 {
-    // Blocks came in since last poll.
-    // Invalidate status (number of confirmations) and (possibly) description
-    //  for all rows. Qt is smart enough to only actually request the data for the
-    //  visible rows.
-    emit dataChanged(index(0, Status), index(priv->size()-1, Status));
-    emit dataChanged(index(0, ToAddress), index(priv->size()-1, ToAddress));
+    // A new chain tip, a reorg, or a new InstantX lock since the last call.
+    // Called from WalletModel::pollBalanceChanged with cs_main held.
+    //
+    // v2.0.0.9 rc11: refresh only the rows whose display can still change
+    // (TransactionTablePriv::rowMayChange).  Until rc11 this refreshed every
+    // row on every block.  Both filter proxies (Overview, Transactions tab)
+    // are dynamic, so each re-checked every row, and the Overview one also
+    // re-checked the sort order: measured 4-9 s per block on a 54,600-row
+    // wallet, with the GUI thread holding cs_main and cs_wallet throughout
+    // (rc11 toast-freeze probe, M2-DEVOPS, 2026-11-23).
+    AssertLockHeld(cs_main);
+
+    const int nFromHeight = priv->reorgFromHeight();
+    priv->pindexLastSeen = pindexBest;
+    priv->nLastTxLocks = nCompleteTXLocks;
+
+    if (priv->size() <= 0)
+    {
+        return;
+    }
+
+    std::vector<std::pair<int, int> > vRanges;
+    priv->rowsToRefresh(nFromHeight, vRanges);
+
+    int nRows = 0;
+    for (const std::pair<int, int> &range : vRanges)
+    {
+        nRows += range.second - range.first + 1;
+    }
+
+    if ((int)vRanges.size() > MAX_REFRESH_RANGES || nRows * 2 > priv->size())
+    {
+        // Start-up (no row computed yet) or a deep reorg: the old whole-table
+        // refresh, Status and ToAddress columns as before.
+        emit dataChanged(index(0, Status), index(priv->size()-1, Status));
+        emit dataChanged(index(0, ToAddress), index(priv->size()-1, ToAddress));
+        return;
+    }
+
+    for (const std::pair<int, int> &range : vRanges)
+    {
+        emit dataChanged(index(range.first, Status), index(range.second, Amount));
+    }
 }
 
 int TransactionTableModel::rowCount(const QModelIndex &parent) const

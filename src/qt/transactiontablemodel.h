@@ -66,6 +66,10 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QModelIndex index(int row, int column, const QModelIndex & parent = QModelIndex()) const;
 
+    /** True when the chain tip or the InstantX lock count has moved since the
+        last updateConfirmations().  Caller must hold cs_main. */
+    bool confirmationsUpdateNeeded() const;
+
 private:
     CWallet* wallet;
     WalletModel *walletModel;
