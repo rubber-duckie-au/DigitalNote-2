@@ -41,6 +41,7 @@
 #include "rpcrawtransaction.h"
 #include "tallyitem.h"
 #include "webwallet.h"
+#include "ccoincontrol.h"
 
 typedef std::map<std::string, tallyitem> mapAccountTally_t;
 
@@ -81,6 +82,59 @@ void EnsureWalletIsUnlocked()
 	{
 		throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Wallet is unlocked for staking only.");
 	}
+}
+
+// v2.0.0.9 rc11: the optional "changeaddress" argument of sendtoaddress,
+// sendfrom and sendmany.  Same rule as the Qt send dialog's "custom change
+// address" (qt/sendcoinsdialog.cpp): a valid key address whose private key
+// this wallet holds.  Watch-only, unknown, script and stealth addresses are
+// refused, because change sent there would not be ours to spend.  A null or
+// empty value means no change address: change goes to a new key-pool key,
+// as before.
+static CTxDestination ChangeAddressFromValue(const json_spirit::Value& value)
+{
+	if (value.type() == json_spirit::null_type)
+	{
+		return CNoDestination();
+	}
+
+	const std::string strAddress = value.get_str();
+
+	if (strAddress.empty())
+	{
+		return CNoDestination();
+	}
+
+	if (IsStealthAddress(strAddress))
+	{
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid change address: a stealth address cannot receive change");
+	}
+
+	CDigitalNoteAddress address(strAddress);
+
+	if (!address.IsValid())
+	{
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid change address");
+	}
+
+	CKeyID keyID;
+
+	if (!address.GetKeyID(keyID))
+	{
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid change address: must be a key address, not a script address");
+	}
+
+	if (!pwalletMain->HaveKey(keyID))
+	{
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid change address: this wallet does not hold its private key");
+	}
+
+	return address.Get();
+}
+
+static bool HasChangeAddress(const CTxDestination& destChange)
+{
+	return !boost::get<CNoDestination>(&destChange);
 }
 
 void WalletTxToJSON(const CWalletTx& wtx, json_spirit::Object& entry)
@@ -557,10 +611,10 @@ json_spirit::Value getaddressesbyaccount(const json_spirit::Array& params, bool 
 
 json_spirit::Value sendtoaddress(const json_spirit::Array& params, bool fHelp)
 {
-	if (fHelp || params.size() < 2 || params.size() > 4)
+	if (fHelp || params.size() < 2 || params.size() > 6)
 	{
 		throw std::runtime_error(
-			"sendtoaddress \"DigitalNote\" amount ( \"comment\" \"comment-to\" )\n"
+			"sendtoaddress \"DigitalNote\" amount ( \"comment\" \"comment-to\" \"narration\" \"changeaddress\" )\n"
 			"\nSent an amount to a given address. The amount is a real and is rounded to the nearest 0.00000001\n"
 			+ HelpRequiringPassphrase() +
 			"\nArguments:\n"
@@ -571,20 +625,47 @@ json_spirit::Value sendtoaddress(const json_spirit::Array& params, bool fHelp)
 			"4. \"comment-to\"  (string, optional) A comment to store the name of the person or organization \n"
 			"                             to which you're sending the transaction. This is not part of the \n"
 			"                             transaction, just kept in your wallet.\n"
+			"5. \"narration\"   (string, optional) Up to 24 characters stored IN the transaction on the chain,\n"
+			"                             where anyone can read it. \"\" for none.\n"
+			"6. \"changeaddress\" (string, optional) Send the change to this address instead of a new key.\n"
+			"                             It must be an address of this wallet that the wallet can spend from\n"
+			"                             (not watch-only, not a script or stealth address). Sending change back\n"
+			"                             to an address you already use links your transactions publicly.\n"
+			"                             Not supported when sending to a stealth address. \"\" for none.\n"
 			"\nResult:\n"
 			"\"transactionid\"  (string) The transaction id.\n"
 			"\nExamples:\n"
 			+ HelpExampleCli("sendtoaddress", "\"ie6sxvFwLpMsp5tRHpAS6q3cZVewmqYzTg\" 0.1")
 			+ HelpExampleCli("sendtoaddress", "\"ie6sxvFwLpMsp5tRHpAS6q3cZVewmqYzTg\" 0.1 \"donation\" \"seans outpost\"")
+			+ "\nSend 0.1 XDN and return the change to an address of this wallet:\n"
+			+ HelpExampleCli("sendtoaddress", "\"ie6sxvFwLpMsp5tRHpAS6q3cZVewmqYzTg\" 0.1 \"donation\" \"\" \"\" \"ThiLpx7oYd5YuuhsJAUD5ZsEX2YHgU98Us\"")
 			+ HelpExampleRpc("sendtoaddress", "\"ie6sxvFwLpMsp5tRHpAS6q3cZVewmqYzTg\", 0.1, \"donation\", \"seans outpost\"")
 		);
 	}
 
 	EnsureWalletIsUnlocked();
 
+	// v2.0.0.9 rc11: arguments 5 (narration) and 6 (changeaddress).  Before
+	// rc11 this RPC refused more than 4 arguments, so the narration read
+	// below could never be reached; sendtostealthaddress already took it.
+	CTxDestination destChange = CNoDestination();
+
+	if (params.size() > 5)
+	{
+		destChange = ChangeAddressFromValue(params[5]);
+	}
+
 	if (params[0].get_str().length() > 75 && IsStealthAddress(params[0].get_str()))
 	{
-		return sendtostealthaddress(params, false);
+		if (HasChangeAddress(destChange))
+		{
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "changeaddress is not supported when sending to a stealth address");
+		}
+
+		// sendtostealthaddress takes the first 5 arguments.
+		json_spirit::Array stealthParams(params.begin(), params.begin() + std::min<size_t>(params.size(), 5));
+
+		return sendtostealthaddress(stealthParams, false);
 	}
 
 	CDigitalNoteAddress address(params[0].get_str());
@@ -620,7 +701,11 @@ json_spirit::Value sendtoaddress(const json_spirit::Array& params, bool fHelp)
 		throw std::runtime_error("Narration must be 24 characters or less.");
 	}
 
-	std::string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, sNarr, wtx);
+	CCoinControl coinControl;
+	coinControl.destChange = destChange;
+
+	std::string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, sNarr, wtx, false,
+			HasChangeAddress(destChange) ? &coinControl : NULL);
 
 	if (strError != "")
 	{
@@ -1121,10 +1206,10 @@ json_spirit::Value movecmd(const json_spirit::Array& params, bool fHelp)
 
 json_spirit::Value sendfrom(const json_spirit::Array& params, bool fHelp)
 {
-	if (fHelp || params.size() < 3 || params.size() > 7)
+	if (fHelp || params.size() < 3 || params.size() > 8)
 	{
 		throw std::runtime_error(
-			"sendfrom \"fromaccount\" \"toDigitalNoteaddress\" amount ( minconf \"comment\" \"comment-to\" )\n"
+			"sendfrom \"fromaccount\" \"toDigitalNoteaddress\" amount ( minconf \"comment\" \"comment-to\" \"narration\" \"changeaddress\" )\n"
 			"\nSent an amount from an account to a DigitalNote address.\n"
 			"The amount is a real and is rounded to the nearest 0.00000001."
 			+ HelpRequiringPassphrase() + "\n"
@@ -1138,6 +1223,12 @@ json_spirit::Value sendfrom(const json_spirit::Array& params, bool fHelp)
 			"6. \"comment-to\"        (string, optional) An optional comment to store the name of the person or organization \n"
 			"                                     to which you're sending the transaction. This is not part of the transaction, \n"
 			"                                     it is just kept in your wallet.\n"
+			"7. \"narration\"         (string, optional) Up to 24 characters stored IN the transaction on the chain,\n"
+			"                                     where anyone can read it. \"\" for none.\n"
+			"8. \"changeaddress\"     (string, optional) Send the change to this address instead of a new key.\n"
+			"                                     It must be an address of this wallet that the wallet can spend from\n"
+			"                                     (not watch-only, not a script or stealth address). Sending change back\n"
+			"                                     to an address you already use links your transactions publicly. \"\" for none.\n"
 			"\nResult:\n"
 			"\"transactionid\"        (string) The transaction id.\n"
 			"\nExamples:\n"
@@ -1191,6 +1282,14 @@ json_spirit::Value sendfrom(const json_spirit::Array& params, bool fHelp)
 		throw std::runtime_error("Narration must be 24 characters or less.");
 	}
 
+	// v2.0.0.9 rc11: optional change address (argument 8).
+	CCoinControl coinControl;
+
+	if (params.size() > 7)
+	{
+		coinControl.destChange = ChangeAddressFromValue(params[7]);
+	}
+
 	// Check funds
 	int64_t nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
 	if (nAmount > nBalance)
@@ -1199,7 +1298,8 @@ json_spirit::Value sendfrom(const json_spirit::Array& params, bool fHelp)
 	}
 
 	// Send
-	std::string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, sNarr, wtx);
+	std::string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, sNarr, wtx, false,
+			HasChangeAddress(coinControl.destChange) ? &coinControl : NULL);
 	if (strError != "")
 	{
 		throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -1210,10 +1310,10 @@ json_spirit::Value sendfrom(const json_spirit::Array& params, bool fHelp)
 
 json_spirit::Value sendmany(const json_spirit::Array& params, bool fHelp)
 {
-	if (fHelp || params.size() < 2 || params.size() > 4)
+	if (fHelp || params.size() < 2 || params.size() > 5)
 	{
 		throw std::runtime_error(
-			"sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" )\n"
+			"sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" \"changeaddress\" )\n"
 			"\nSend multiple times. Amounts are double-precision floating point numbers."
 			+ HelpRequiringPassphrase() + "\n"
 			"\nArguments:\n"
@@ -1225,6 +1325,11 @@ json_spirit::Value sendmany(const json_spirit::Array& params, bool fHelp)
 			"    }\n"
 			"3. minconf                 (numeric, optional, default=1) Only use the balance confirmed at least this many times.\n"
 			"4. \"comment\"             (string, optional) A comment\n"
+			"5. \"changeaddress\"       (string, optional) Send the change to this address instead of a new key.\n"
+			"                                    It must be an address of this wallet that the wallet can spend from\n"
+			"                                    (not watch-only, not a script or stealth address), and not one of\n"
+			"                                    the addresses paid above. Sending change back to an address you\n"
+			"                                    already use links your transactions publicly. \"\" for none.\n"
 			"\nResult:\n"
 			"\"transactionid\"          (string) The transaction id for the send. Only 1 transaction is created regardless of \n"
 			"                                    the number of addresses.\n"
@@ -1285,6 +1390,21 @@ json_spirit::Value sendmany(const json_spirit::Array& params, bool fHelp)
 
 	EnsureWalletIsUnlocked();
 
+	// v2.0.0.9 rc11: optional change address (argument 5).  Refused if it is
+	// also one of the addresses paid, as a duplicated recipient already is.
+	CCoinControl coinControl;
+
+	if (params.size() > 4)
+	{
+		coinControl.destChange = ChangeAddressFromValue(params[4]);
+
+		if (HasChangeAddress(coinControl.destChange) &&
+			setAddress.count(CDigitalNoteAddress(coinControl.destChange)))
+		{
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, changeaddress is also an address paid");
+		}
+	}
+
 	// Check funds
 	int64_t nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
 	if (totalAmount > nBalance)
@@ -1297,7 +1417,8 @@ json_spirit::Value sendmany(const json_spirit::Array& params, bool fHelp)
 	int64_t nFeeRequired = 0;
 	int nChangePos;
 	std::string strFailReason;
-	bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePos, strFailReason);
+	bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePos, strFailReason,
+			HasChangeAddress(coinControl.destChange) ? &coinControl : NULL);
 
 	if (!fCreated)
 	{

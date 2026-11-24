@@ -339,9 +339,12 @@ public:
 	bool CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, int64_t nFees,
 			CTransaction& txNew, CKey& key);
 
-	std::string SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee=false);
+	// coinControl (v2.0.0.9 rc11): optional; the RPC sends use it only for a
+	// custom change address.  NULL keeps the previous behaviour.
+	std::string SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee=false,
+			const CCoinControl *coinControl=NULL);
 	std::string SendMoneyToDestination(const CTxDestination &address, int64_t nValue, std::string& sNarr, CWalletTx& wtxNew,
-			bool fAskFee=false);
+			bool fAskFee=false, const CCoinControl *coinControl=NULL);
 
 	bool NewStealthAddress(std::string& sError, std::string& sLabel, CStealthAddress& sxAddr);
 	bool AddStealthAddress(CStealthAddress& sxAddr);

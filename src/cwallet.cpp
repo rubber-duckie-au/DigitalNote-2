@@ -4506,7 +4506,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 	return true;
 }
 
-std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee)
+std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string& sNarr, CWalletTx& wtxNew, bool fAskFee,
+		const CCoinControl *coinControl)
 {
 	CReserveKey reservekey(this);
 	int64_t nFeeRequired;
@@ -4534,10 +4535,10 @@ std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string
 	vecSend.push_back(std::make_pair(scriptPubKey, nValue));
 	std::string strError = "";
 
-	if (!CreateTransaction(scriptPubKey, nValue, sNarr, wtxNew, reservekey, nFeeRequired))
+	if (!CreateTransaction(scriptPubKey, nValue, sNarr, wtxNew, reservekey, nFeeRequired, coinControl))
 	{
 		std::string strError;
-		
+
 		if (nValue + nFeeRequired > GetBalance())
 		{
 			strError = strprintf(
@@ -4566,7 +4567,7 @@ std::string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, std::string
 }
 
 std::string CWallet::SendMoneyToDestination(const CTxDestination& address, int64_t nValue, std::string& sNarr,
-		CWalletTx& wtxNew, bool fAskFee)
+		CWalletTx& wtxNew, bool fAskFee, const CCoinControl *coinControl)
 {
 	// Check amount
 	if (nValue <= 0)
@@ -4583,7 +4584,7 @@ std::string CWallet::SendMoneyToDestination(const CTxDestination& address, int64
 	CScript scriptPubKey;
 	scriptPubKey.SetDestination(address);
 
-	return SendMoney(scriptPubKey, nValue, sNarr, wtxNew, fAskFee);
+	return SendMoney(scriptPubKey, nValue, sNarr, wtxNew, fAskFee, coinControl);
 }
 
 bool CWallet::NewStealthAddress(std::string& sError, std::string& sLabel, CStealthAddress& sxAddr)
