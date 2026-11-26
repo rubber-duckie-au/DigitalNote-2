@@ -117,10 +117,10 @@ RotatePhraseDialog::RotatePhraseDialog(WalletModel *model, QWidget *parent)
     setMinimumWidth(560);
 
     // Attempt the flow.  On success the new phrase is shown and confirmed
-    // inside runFlow() and the dialog is already accepted when the
-    // constructor returns; on failure it holds the failure message
-    // (StageFailed).  If the user cancels at any consent step, we just
-    // close immediately without showing anything.
+    // inside runFlow(), and the dialog accepts itself as soon as exec()
+    // starts; on failure it holds the failure message (StageFailed).  If
+    // the user cancels at any consent step, we just close immediately
+    // without showing anything.
     runFlow();
 }
 
@@ -212,8 +212,8 @@ void RotatePhraseDialog::runFlow()
     OPENSSL_cleanse(const_cast<char*>(newPhrase.data()), newPhrase.size());
 
     // Hide ourselves before opening the SeedPhraseDialog so the user only
-    // sees one window.  We accept() at the end of this function so this
-    // dialog disposes cleanly.
+    // sees one window.  We accept at the end of this function (deferred
+    // until exec() runs) so this dialog disposes cleanly.
     hide();
 
     // v2.0.0.9 rc9 (review 5.S2, ROT): the old recovery phrase stopped working
@@ -257,7 +257,11 @@ void RotatePhraseDialog::runFlow()
         phraseStr.clear();
     }
 
-    accept();
+    // v2.0.0.9 rc12: accept once exec() is running, like the cancel paths
+    // above.  runFlow() runs from the constructor, before the caller's
+    // exec(); a plain accept() here only hid the dialog, and exec() then
+    // showed it again as an empty "Rotate recovery phrase" box.
+    QTimer::singleShot(0, this, &QDialog::accept);
     return;
 }
 
